@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
   getAvailabilityRecordForDate,
@@ -233,7 +233,7 @@ async function countTableRows(
   filter?: { column: string; value: string },
 ): Promise<number> {
   try {
-    let query = supabase.from(table).select('id', { count: 'exact', head: true })
+    let query = requireSupabase().from(table).select('id', { count: 'exact', head: true })
 
     if (filter) {
       query = query.eq(filter.column, filter.value)
@@ -260,7 +260,7 @@ async function countTableRows(
 
 async function fetchDriverComplianceRows(): Promise<DriverComplianceRow[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await requireSupabase()
       .from('drivers')
       .select('role, driving_licence_expiry, cpc_expiry, driver_card_expiry')
 
@@ -273,7 +273,7 @@ async function fetchDriverComplianceRows(): Promise<DriverComplianceRow[]> {
 
 async function fetchVehicleDocumentRows(): Promise<VehicleDocumentRow[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await requireSupabase()
       .from('vehicles')
       .select('id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry')
 
@@ -287,13 +287,13 @@ async function fetchVehicleDocumentRows(): Promise<VehicleDocumentRow[]> {
 async function fetchDashboardVehicles(): Promise<Vehicle[]> {
   try {
     const [vehicleResult, availabilityResult] = await Promise.all([
-      supabase
+      requireSupabase()
         .from('vehicles')
         .select(
           'id, created_at, registration, make, model, status, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry',
         )
         .order('created_at', { ascending: false }),
-      supabase
+      requireSupabase()
         .from('vehicle_availability')
         .select('id, created_at, vehicle_id, status, start_date, end_date, reason')
         .order('start_date', { ascending: false }),
@@ -331,7 +331,7 @@ async function fetchDashboardVehicles(): Promise<Vehicle[]> {
 
 async function fetchRecentWorkers(): Promise<DashboardRecentActivity[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await requireSupabase()
       .from('drivers')
       .select('id, first_name, last_name, created_at')
       .order('created_at', { ascending: false })
@@ -354,7 +354,7 @@ async function fetchRecentAvailabilityEvents(
   vehicleRegistrations: Map<string, string>,
 ): Promise<DashboardRecentActivity[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await requireSupabase()
       .from('vehicle_availability')
       .select('id, created_at, vehicle_id, status, start_date, reason')
       .order('created_at', { ascending: false })

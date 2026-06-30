@@ -22,7 +22,7 @@ import type {
   UpdateTimesheetInput,
 } from '@/lib/timesheetTypes'
 import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type { DriverRole } from '@/services/driversService'
 
@@ -272,7 +272,7 @@ async function fetchEntryTotalsByTimesheetIds(
   >()
   if (timesheetIds.length === 0) return totals
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheet_entries')
     .select('timesheet_id, total_minutes, break_minutes, overtime_minutes')
     .in('timesheet_id', timesheetIds)
@@ -340,14 +340,14 @@ function buildListSelect(query: TimesheetsQuery): string {
 }
 
 async function fetchTimesheetRowById(id: string): Promise<Timesheet> {
-  let { data, error } = await supabase
+  let { data, error } = await requireSupabase()
     .from('timesheets')
     .select(timesheetDetailSelect)
     .eq('id', id)
     .single()
 
   if (isMissingTimesheetEntryColumnError(error)) {
-    ;({ data, error } = await supabase
+    ;({ data, error } = await requireSupabase()
       .from('timesheets')
       .select(timesheetDetailSelectCore)
       .eq('id', id)
@@ -377,7 +377,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   const sortBy = query.sortBy ?? 'driverName'
   const sortDir = query.sortDir ?? 'asc'
 
-  let request = supabase
+  let request = requireSupabase()
     .from('timesheets')
     .select(buildListSelect(query), { count: 'exact' })
     .eq('week_start', weekStart)
@@ -457,7 +457,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
 export async function fetchTimesheetWeekStats(weekStart: string) {
   const normalizedWeek = normalizeWeekStartForCompany(weekStart)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .select('id, status')
     .eq('week_start', normalizedWeek)
@@ -483,7 +483,7 @@ export async function fetchTimesheetWeekStats(weekStart: string) {
 }
 
 export async function fetchTimesheets(): Promise<Timesheet[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .select(timesheetDetailSelect)
     .order('week_start', { ascending: false })
@@ -512,7 +512,7 @@ async function insertTimesheetWithEntries(
   weekStart: string,
   vehicleId: string | null = null,
 ): Promise<string> {
-  const { data: created, error } = await supabase
+  const { data: created, error } = await requireSupabase()
     .from('timesheets')
     .insert({
       driver_id: driverId,
@@ -542,7 +542,7 @@ async function insertTimesheetWithEntries(
     total_minutes: 0,
   }))
 
-  const { error: entriesError } = await supabase.from('timesheet_entries').insert(entryRows)
+  const { error: entriesError } = await requireSupabase().from('timesheet_entries').insert(entryRows)
 
   logSupabaseQuery({
     service: 'timesheetsService.insertTimesheetWithEntries',
@@ -552,7 +552,7 @@ async function insertTimesheetWithEntries(
   })
 
   if (entriesError) {
-    await supabase.from('timesheets').delete().eq('id', created.id)
+    await requireSupabase().from('timesheets').delete().eq('id', created.id)
     throw new TimesheetsServiceError(entriesError.message)
   }
 
@@ -587,7 +587,7 @@ export async function bulkCreateTimesheets(
     return { created: 0, skipped: 0 }
   }
 
-  const { data: existingRows, error: existingError } = await supabase
+  const { data: existingRows, error: existingError } = await requireSupabase()
     .from('timesheets')
     .select('driver_id')
     .eq('week_start', weekStart)
@@ -631,7 +631,7 @@ export async function updateTimesheet(
   if (input.status !== undefined) payload.status = input.status
   if (input.notes !== undefined) payload.notes = input.notes
 
-  const { error } = await supabase.from('timesheets').update(payload).eq('id', id)
+  const { error } = await requireSupabase().from('timesheets').update(payload).eq('id', id)
 
   logSupabaseQuery({
     service: 'timesheetsService.updateTimesheet',
@@ -648,7 +648,7 @@ export async function updateTimesheet(
 }
 
 export async function deleteTimesheet(id: string): Promise<void> {
-  const { error } = await supabase.from('timesheets').delete().eq('id', id)
+  const { error } = await requireSupabase().from('timesheets').delete().eq('id', id)
 
   logSupabaseQuery({
     service: 'timesheetsService.deleteTimesheet',
@@ -686,7 +686,7 @@ export async function upsertTimesheetEntries(
     }
   })
 
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('timesheet_entries')
     .upsert(rows, { onConflict: 'timesheet_id,day_date' })
 
@@ -701,7 +701,7 @@ export async function upsertTimesheetEntries(
     throw new TimesheetsServiceError(error.message)
   }
 
-  const { error: touchError } = await supabase
+  const { error: touchError } = await requireSupabase()
     .from('timesheets')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', timesheetId)
@@ -728,7 +728,7 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
 export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
   if (ids.length === 0) return 0
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .update({ status: 'Approved', updated_at: new Date().toISOString() })
     .in('id', ids)
@@ -752,7 +752,7 @@ export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
 export async function bulkRejectTimesheets(ids: string[]): Promise<number> {
   if (ids.length === 0) return 0
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .update({ status: 'Rejected', updated_at: new Date().toISOString() })
     .in('id', ids)
@@ -780,7 +780,7 @@ export async function fetchExistingTimesheetDriverIdsForWeek(
   if (driverIds.length === 0) return new Set()
 
   const normalizedWeek = normalizeWeekStartForCompany(weekStart)
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .select('driver_id')
     .eq('week_start', normalizedWeek)

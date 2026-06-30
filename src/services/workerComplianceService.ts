@@ -5,7 +5,7 @@ import type {
   UpdateWorkerComplianceRecordInput,
   WorkerComplianceRecord,
 } from '@/lib/complianceTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type { DriverRole } from '@/services/driversService'
 
@@ -95,7 +95,7 @@ function mapRow(row: WorkerComplianceRecordRow): WorkerComplianceRecord {
 }
 
 export async function fetchWorkerComplianceRecords(): Promise<WorkerComplianceRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .select(workerComplianceSelect)
     .order('expiry_date', { ascending: true, nullsFirst: false })
@@ -115,7 +115,7 @@ export async function fetchWorkerComplianceRecords(): Promise<WorkerComplianceRe
 export async function fetchWorkerComplianceRecordsByWorkerId(
   workerId: string,
 ): Promise<WorkerComplianceRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .select(workerComplianceSelect)
     .eq('worker_id', workerId)
@@ -135,7 +135,7 @@ export async function fetchWorkerComplianceRecordsByWorkerId(
 export async function fetchWorkerComplianceRecordById(
   id: string,
 ): Promise<WorkerComplianceRecord | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .select(workerComplianceSelect)
     .eq('id', id)
@@ -158,7 +158,7 @@ export async function createWorkerComplianceRecord(
 ): Promise<WorkerComplianceRecord> {
   const status = computeComplianceStatus(input.expiryDate)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .insert({
       worker_id: input.workerId,
@@ -203,7 +203,7 @@ export async function updateWorkerComplianceRecord(
   if (input.fileUrl !== undefined) patch.file_url = input.fileUrl?.trim() || null
   if (input.expiryDate !== undefined) patch.status = computeComplianceStatus(input.expiryDate)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .update(patch)
     .eq('id', id)
@@ -222,7 +222,7 @@ export async function updateWorkerComplianceRecord(
 }
 
 export async function deleteWorkerComplianceRecord(id: string): Promise<void> {
-  const { error } = await supabase.from('worker_compliance_records').delete().eq('id', id)
+  const { error } = await requireSupabase().from('worker_compliance_records').delete().eq('id', id)
 
   logSupabaseQuery({
     service: 'workerComplianceService.deleteWorkerComplianceRecord',

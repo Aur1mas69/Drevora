@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 
 export type AuthUser = {
   id: string
@@ -25,13 +25,19 @@ export async function signIn(
   email: string,
   password: string,
 ): Promise<SignInResult> {
+  if (!isSupabaseConfigured) {
+    throw new AuthServiceError(
+      'Sign-in is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
   const normalizedEmail = email.trim().toLowerCase()
 
   if (!normalizedEmail || !password) {
     throw new AuthServiceError('Email and password are required.')
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await requireSupabase().auth.signInWithPassword({
     email: normalizedEmail,
     password,
   })
@@ -56,7 +62,11 @@ export async function signIn(
 }
 
 export async function signOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut()
+  if (!isSupabaseConfigured) {
+    return
+  }
+
+  const { error } = await requireSupabase().auth.signOut()
 
   if (error) {
     throw new AuthServiceError(error.message)
@@ -64,7 +74,11 @@ export async function signOut(): Promise<void> {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const { data, error } = await supabase.auth.getUser()
+  if (!isSupabaseConfigured) {
+    return null
+  }
+
+  const { data, error } = await requireSupabase().auth.getUser()
 
   if (error) {
     throw new AuthServiceError(error.message)
@@ -81,7 +95,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function getCurrentSession(): Promise<AuthSession | null> {
-  const { data, error } = await supabase.auth.getSession()
+  if (!isSupabaseConfigured) {
+    return null
+  }
+
+  const { data, error } = await requireSupabase().auth.getSession()
 
   if (error) {
     throw new AuthServiceError(error.message)

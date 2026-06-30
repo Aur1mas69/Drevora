@@ -5,7 +5,7 @@ import { adminNavigationItems } from '@/lib/adminNavigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 
 function getGreeting(date = new Date()): string {
   const hour = date.getHours()
@@ -142,7 +142,7 @@ function TopBar() {
 
   useEffect(() => {
     async function loadHeaderProfile() {
-      const { data, error } = await supabase.auth.getUser()
+      const { data, error } = await requireSupabase().auth.getUser()
 
       if (error || !data.user) {
         return

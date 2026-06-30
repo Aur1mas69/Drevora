@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { todayString } from '@/lib/vehicleAvailability'
 
@@ -337,7 +337,7 @@ export async function fetchPlanningAvailabilityRecords(
   const yearStart = `${year}-01-01`
   const yearEnd = `${year}-12-31`
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .select(vehicleAvailabilitySelect)
     .lte('start_date', yearEnd)
@@ -361,7 +361,7 @@ async function fetchRelevantAvailabilityRecords(
   const today = todayString()
   const startDate = rangeStart ?? today
 
-  let query = supabase
+  let query = requireSupabase()
     .from('vehicle_availability')
     .select(vehicleAvailabilitySelect)
     .or(`end_date.is.null,end_date.gte.${startDate},start_date.gte.${startDate}`)
@@ -385,7 +385,7 @@ async function fetchRelevantAvailabilityRecords(
 
 export async function fetchVehicles(): Promise<Vehicle[]> {
   const table = 'vehicles'
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from(table)
     .select(vehicleSelect)
     .order('created_at', { ascending: false })
@@ -423,7 +423,7 @@ export async function fetchVehicleTimelineRecords(
 }
 
 export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicles')
     .select(vehicleSelect)
     .eq('id', id)
@@ -442,7 +442,7 @@ export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
 }
 
 export async function fetchVehicleTypeById(vehicleId: string): Promise<string | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicles')
     .select('vehicle_type')
     .eq('id', vehicleId)
@@ -466,7 +466,7 @@ export async function fetchVehicleTypeById(vehicleId: string): Promise<string | 
 export async function fetchAvailabilityRecords(
   vehicleId?: string,
 ): Promise<VehicleAvailability[]> {
-  let query = supabase
+  let query = requireSupabase()
     .from('vehicle_availability')
     .select(vehicleAvailabilitySelect)
     .order('start_date', { ascending: false })
@@ -500,7 +500,7 @@ export async function updateAvailabilityRecord(
     notes: input.notes.trim() || null,
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .update(payload)
     .eq('id', id)
@@ -516,7 +516,7 @@ export async function updateAvailabilityRecord(
 }
 
 export async function deleteAvailabilityRecord(id: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('vehicle_availability')
     .delete()
     .eq('id', id)
@@ -539,7 +539,7 @@ export async function createAvailabilityRecord(
     notes: input.notes.trim() || null,
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .insert(payload)
     .select(vehicleAvailabilitySelect)
@@ -555,7 +555,7 @@ export async function createAvailabilityRecord(
 
 export async function createVehicle(input: VehicleInput): Promise<Vehicle> {
   const payload = buildVehiclePayload(input)
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicles')
     .insert(payload)
     .select(vehicleSelect)
@@ -574,7 +574,7 @@ export async function updateVehicle(
   input: VehicleInput,
 ): Promise<Vehicle> {
   const payload = buildVehiclePayload(input)
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicles')
     .update(payload)
     .eq('id', id)
@@ -590,7 +590,7 @@ export async function updateVehicle(
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
-  const { error } = await supabase.from('vehicles').delete().eq('id', id)
+  const { error } = await requireSupabase().from('vehicles').delete().eq('id', id)
 
   if (error) {
     logVehicleSaveError({ id }, error)

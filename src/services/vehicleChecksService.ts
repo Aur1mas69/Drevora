@@ -16,7 +16,7 @@ import type {
   VehicleCheckSummaryStats,
 } from '@/lib/vehicleCheckTypes'
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
 type DriverJoinRow = {
@@ -175,10 +175,10 @@ function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
 
 async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
   const [checksResult, failItemsResult] = await Promise.all([
-    supabase
+    requireSupabase()
       .from('vehicle_checks')
       .select('inspection_date, overall_result, vehicle_id'),
-    supabase
+    requireSupabase()
       .from('vehicle_check_items')
       .select('id')
       .eq('result', 'Fail'),
@@ -235,7 +235,7 @@ export async function fetchVehicleChecks(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let request = supabase
+  let request = requireSupabase()
     .from('vehicle_checks')
     .select(vehicleCheckListSelect, { count: 'exact' })
 
@@ -291,7 +291,7 @@ export async function fetchVehicleChecks(
 }
 
 export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_checks')
     .select(vehicleCheckDetailSelect)
     .eq('id', id)
@@ -320,7 +320,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   const overallResult = computeOverallResult(input.items)
   const status = input.status ?? 'Completed'
 
-  const { data: checkRow, error: checkError } = await supabase
+  const { data: checkRow, error: checkError } = await requireSupabase()
     .from('vehicle_checks')
     .insert({
       vehicle_id: input.vehicleId,
@@ -346,7 +346,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   }
 
   const itemRows = buildItemRows(checkRow.id, input.items)
-  const { error: itemsError } = await supabase.from('vehicle_check_items').insert(itemRows)
+  const { error: itemsError } = await requireSupabase().from('vehicle_check_items').insert(itemRows)
 
   logSupabaseQuery({
     service: 'vehicleChecksService.createVehicleCheck.items',
@@ -356,7 +356,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   })
 
   if (itemsError) {
-    await supabase.from('vehicle_checks').delete().eq('id', checkRow.id)
+    await requireSupabase().from('vehicle_checks').delete().eq('id', checkRow.id)
     throw new VehicleChecksServiceError(itemsError.message)
   }
 
@@ -398,7 +398,7 @@ export async function updateVehicleCheck(
   if (input.status !== undefined) patch.status = input.status
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await requireSupabase()
     .from('vehicle_checks')
     .update(patch)
     .eq('id', id)
@@ -415,7 +415,7 @@ export async function updateVehicleCheck(
   }
 
   if (input.items) {
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await requireSupabase()
       .from('vehicle_check_items')
       .delete()
       .eq('vehicle_check_id', id)
@@ -425,7 +425,7 @@ export async function updateVehicleCheck(
     }
 
     const itemRows = buildItemRows(id, items)
-    const { error: itemsError } = await supabase.from('vehicle_check_items').insert(itemRows)
+    const { error: itemsError } = await requireSupabase().from('vehicle_check_items').insert(itemRows)
 
     logSupabaseQuery({
       service: 'vehicleChecksService.updateVehicleCheck.items',
@@ -448,7 +448,7 @@ export async function updateVehicleCheck(
 }
 
 export async function deleteVehicleCheck(id: string): Promise<void> {
-  const { error } = await supabase.from('vehicle_checks').delete().eq('id', id)
+  const { error } = await requireSupabase().from('vehicle_checks').delete().eq('id', id)
 
   logSupabaseQuery({
     service: 'vehicleChecksService.deleteVehicleCheck',

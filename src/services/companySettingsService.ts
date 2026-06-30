@@ -15,7 +15,7 @@ import {
   OVERTIME_MULTIPLIER_OPTIONS,
 } from '@/lib/companySettingsTypes'
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
-import { supabase } from '@/lib/supabase'
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type { DriverRole } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
@@ -273,8 +273,12 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
 }
 
 export async function fetchCompanySettings(): Promise<CompanySettings | null> {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+
   const table = 'companies'
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from(table)
     .select(companySettingsSelect)
     .order('created_at', { ascending: true })
@@ -316,7 +320,7 @@ export async function updateCompanySettings(
   const existing = await fetchCompanySettings()
 
   if (existing) {
-    const { data, error } = await supabase
+    const { data, error } = await requireSupabase()
       .from('companies')
       .update(payload)
       .eq('id', existing.id)
@@ -328,7 +332,7 @@ export async function updateCompanySettings(
   }
 
   const merged: CompanySettingsInput = { ...DEFAULT_COMPANY_SETTINGS, ...input }
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('companies')
     .insert(toDbPayload(merged))
     .select(companySettingsSelect)

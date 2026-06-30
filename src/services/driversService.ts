@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
 export type DriverStatus = 'Working' | 'Off Duty' | 'Holiday' | 'Suspended'
@@ -132,13 +132,13 @@ function mapDriverRow(row: DriverRow): Driver {
 
 export async function fetchDrivers(): Promise<Driver[]> {
   const table = 'drivers'
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from(table)
     .select(basicDriverSelectWithAssignment)
     .order('created_at', { ascending: false })
 
   if (error) {
-    const fallback = await supabase
+    const fallback = await requireSupabase()
       .from(table)
       .select(basicDriverSelect)
       .order('created_at', { ascending: false })
@@ -168,7 +168,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
 }
 
 export async function fetchDriversWithCompliance(): Promise<Driver[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('drivers')
     .select(complianceDriverSelect)
     .order('created_at', { ascending: false })
@@ -181,7 +181,7 @@ export async function fetchDriversWithCompliance(): Promise<Driver[]> {
 }
 
 export async function fetchDriverById(id: string): Promise<Driver | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('drivers')
     .select(basicDriverSelect)
     .eq('id', id)
@@ -210,7 +210,7 @@ export async function createDriver(input: CreateDriverInput): Promise<Driver> {
   console.info('[driversService.createDriver] Supabase table:', tableName)
   console.info('[driversService.createDriver] Insert payload:', insertPayload)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from(tableName)
     .insert(insertPayload)
     .select(basicDriverSelect)
@@ -243,7 +243,7 @@ export async function updateDriver(
     status: input.status,
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from(tableName)
     .update(updatePayload)
     .eq('id', id)
@@ -263,7 +263,7 @@ export async function updateDriver(
 }
 
 export async function deleteDriver(id: string): Promise<void> {
-  const { error } = await supabase.from('drivers').delete().eq('id', id)
+  const { error } = await requireSupabase().from('drivers').delete().eq('id', id)
 
   if (error) {
     console.error('[driversService.deleteDriver] Supabase delete error:', error)

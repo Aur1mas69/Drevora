@@ -32,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isCancelled && existingSession) {
           setSession(existingSession)
         }
+      } catch {
+        // Session restore must not block public routes from rendering.
       } finally {
         if (!isCancelled) {
           setIsAuthLoading(false)

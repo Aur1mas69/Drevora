@@ -3,7 +3,7 @@ import type {
   UpdateVehicleCheckTemplateInput,
   VehicleCheckTemplate,
 } from '@/lib/vehicleCheckTemplateTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 
 type VehicleCheckTemplateRow = {
   id: string
@@ -53,7 +53,7 @@ export async function fetchTemplatesByVehicleType(
   const normalizedType = vehicleType.trim()
   if (!normalizedType) return []
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_check_templates')
     .select(templateSelect)
     .eq('vehicle_type', normalizedType)
@@ -70,7 +70,7 @@ export async function fetchTemplatesByVehicleType(
 }
 
 export async function fetchActiveTemplates(): Promise<VehicleCheckTemplate[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_check_templates')
     .select(templateSelect)
     .eq('is_active', true)
@@ -99,7 +99,7 @@ export async function createTemplateItem(
     )
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_check_templates')
     .insert({
       vehicle_type: vehicleType,
@@ -132,7 +132,7 @@ export async function updateTemplateItem(
   if (input.isRequired !== undefined) patch.is_required = input.isRequired
   if (input.isActive !== undefined) patch.is_active = input.isActive
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_check_templates')
     .update(patch)
     .eq('id', id)
@@ -147,7 +147,7 @@ export async function updateTemplateItem(
 }
 
 export async function deleteTemplateItem(id: string): Promise<void> {
-  const { error } = await supabase.from('vehicle_check_templates').delete().eq('id', id)
+  const { error } = await requireSupabase().from('vehicle_check_templates').delete().eq('id', id)
 
   if (error) {
     throw new VehicleCheckTemplatesServiceError(error.message)

@@ -5,7 +5,7 @@ import type {
   UpdateVehicleComplianceRecordInput,
   VehicleComplianceRecord,
 } from '@/lib/complianceTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
 type VehicleJoinRow = {
@@ -87,7 +87,7 @@ function mapRow(row: VehicleComplianceRecordRow): VehicleComplianceRecord {
 }
 
 export async function fetchVehicleComplianceRecords(): Promise<VehicleComplianceRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_compliance_records')
     .select(vehicleComplianceSelect)
     .order('expiry_date', { ascending: true, nullsFirst: false })
@@ -106,7 +106,7 @@ export async function fetchVehicleComplianceRecords(): Promise<VehicleCompliance
 export async function fetchVehicleComplianceRecordsByVehicleId(
   vehicleId: string,
 ): Promise<VehicleComplianceRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_compliance_records')
     .select(vehicleComplianceSelect)
     .eq('vehicle_id', vehicleId)
@@ -128,7 +128,7 @@ export async function createVehicleComplianceRecord(
 ): Promise<VehicleComplianceRecord> {
   const status = computeComplianceStatus(input.expiryDate)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_compliance_records')
     .insert({
       vehicle_id: input.vehicleId,
@@ -173,7 +173,7 @@ export async function updateVehicleComplianceRecord(
   if (input.fileUrl !== undefined) patch.file_url = input.fileUrl?.trim() || null
   if (input.expiryDate !== undefined) patch.status = computeComplianceStatus(input.expiryDate)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('vehicle_compliance_records')
     .update(patch)
     .eq('id', id)
@@ -192,7 +192,7 @@ export async function updateVehicleComplianceRecord(
 }
 
 export async function deleteVehicleComplianceRecord(id: string): Promise<void> {
-  const { error } = await supabase.from('vehicle_compliance_records').delete().eq('id', id)
+  const { error } = await requireSupabase().from('vehicle_compliance_records').delete().eq('id', id)
 
   logSupabaseQuery({
     service: 'vehicleComplianceService.deleteVehicleComplianceRecord',

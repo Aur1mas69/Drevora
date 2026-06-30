@@ -9,7 +9,7 @@ import type {
   UpdateHolidayRequestInput,
 } from '@/lib/holidayRequestTypes'
 import { DEFAULT_HOLIDAY_PAGE_SIZE } from '@/lib/holidayRequestTypes'
-import { supabase } from '@/lib/supabase'
+import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type { DriverRole } from '@/services/driversService'
 
@@ -93,7 +93,7 @@ function mapRow(row: HolidayRequestRow): HolidayRequest {
 }
 
 async function fetchHolidayRequestStats(): Promise<HolidayRequestSummaryStats> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .select('status, start_date, end_date, worker_id, updated_at')
 
@@ -127,7 +127,7 @@ export async function fetchHolidayRequests(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let request = supabase
+  let request = requireSupabase()
     .from('holiday_requests')
     .select(holidayRequestSelect, { count: 'exact' })
 
@@ -187,7 +187,7 @@ export async function fetchHolidayRequests(
 }
 
 export async function fetchHolidayRequestById(id: string): Promise<HolidayRequest | null> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .select(holidayRequestSelect)
     .eq('id', id)
@@ -216,7 +216,7 @@ export async function createHolidayRequest(
     throw new HolidayRequestsServiceError('End date must be on or after start date.')
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .insert({
       worker_id: input.workerId,
@@ -258,7 +258,7 @@ export async function updateHolidayRequest(
   if (input.managerNote !== undefined) patch.manager_note = input.managerNote?.trim() || null
 
   if (input.startDate !== undefined || input.endDate !== undefined) {
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await requireSupabase()
       .from('holiday_requests')
       .select('start_date, end_date')
       .eq('id', id)
@@ -283,7 +283,7 @@ export async function updateHolidayRequest(
     patch.total_days = totalDays
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .update(patch)
     .eq('id', id)
@@ -305,7 +305,7 @@ export async function updateHolidayRequest(
 }
 
 export async function deleteHolidayRequest(id: string): Promise<void> {
-  const { error } = await supabase.from('holiday_requests').delete().eq('id', id)
+  const { error } = await requireSupabase().from('holiday_requests').delete().eq('id', id)
 
   logSupabaseQuery({
     service: 'holidayRequestsService.deleteHolidayRequest',

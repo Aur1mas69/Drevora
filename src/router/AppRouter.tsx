@@ -62,8 +62,17 @@ function AppRouter() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Navigate to="/admin-login" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/admin-login" replace />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/driver-login" element={<DriverLoginPage />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <RequireAuthPage>
+              <AdminDashboardPage />
+            </RequireAuthPage>
+          }
+        />
         <Route
           path="/admin"
           element={
