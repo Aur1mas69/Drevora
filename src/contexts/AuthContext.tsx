@@ -2,37 +2,68 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
+import { authService, type AuthSession } from '@/services/authService'
 
 type AuthContextValue = {
   isAuthenticated: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signOut: () => void
+  isAuthLoading: boolean
+  session: AuthSession | null
+  setAuthenticatedSession: (session: AuthSession) => void
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
 
-  const signIn = useCallback(async (_email: string, _password: string) => {
-    setIsAuthenticated(true)
+  useEffect(() => {
+    let isCancelled = false
+
+    async function restoreSession() {
+      try {
+        const existingSession = await authService.getCurrentSession()
+        if (!isCancelled && existingSession) {
+          setSession(existingSession)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsAuthLoading(false)
+        }
+      }
+    }
+
+    void restoreSession()
+
+    return () => {
+      isCancelled = true
+    }
   }, [])
 
-  const signOut = useCallback(() => {
-    setIsAuthenticated(false)
+  const setAuthenticatedSession = useCallback((nextSession: AuthSession) => {
+    setSession(nextSession)
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await authService.signOut()
+    setSession(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated,
-      signIn,
+      isAuthenticated: session !== null,
+      isAuthLoading,
+      session,
+      setAuthenticatedSession,
       signOut,
     }),
-    [isAuthenticated, signIn, signOut],
+    [isAuthLoading, session, setAuthenticatedSession, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

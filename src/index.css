@@ -150,3 +150,112 @@ body {
     @apply font-sans;
   }
 }
+
+/* DREVORA premium application shell — static layered baby blue background */
+.drevora-app-shell {
+  --drevora-card-shadow: 0 20px 50px rgba(30, 70, 140, 0.08);
+  transition: background-color 1.4s ease, background-image 1.4s ease;
+  background-color: #bfd8ff;
+  background-image:
+    radial-gradient(ellipse 130% 90% at 12% -8%, rgba(255, 255, 255, 0.55) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, #c9deff 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(120, 180, 255, 0.22) 0%, transparent 55%),
+    linear-gradient(180deg, #d7e8ff 0%, #c9deff 46%, #bfd8ff 100%);
+}
+
+.drevora-app-shell__orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+}
+
+.drevora-app-shell__orb--top-left {
+  top: -12rem;
+  left: -8rem;
+  width: 36rem;
+  height: 36rem;
+  background: rgba(255, 255, 255, 0.45);
+  filter: blur(200px);
+}
+
+.drevora-app-shell__orb--center {
+  top: 28%;
+  left: 38%;
+  width: 42rem;
+  height: 42rem;
+  background: rgba(160, 205, 255, 0.25);
+  filter: blur(220px);
+}
+
+.drevora-app-shell__orb--bottom-right {
+  right: -10rem;
+  bottom: -14rem;
+  width: 40rem;
+  height: 40rem;
+  background: rgba(120, 180, 255, 0.18);
+  filter: blur(260px);
+}
+
+.drevora-app-shell__noise {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.016;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* White cards float above the richer background */
+.drevora-app-shell main [data-slot='card']:is(.bg-white, .bg-white\/95, .bg-white\/80, .bg-white\/72) {
+  box-shadow: var(--drevora-card-shadow);
+}
+
+/* Dashboard ambience — subtle weather/time tinting */
+.drevora-app-shell--sunny {
+  background-color: #c8dcf8;
+  background-image:
+    radial-gradient(ellipse 120% 85% at 10% -6%, rgba(255, 248, 230, 0.42) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, #d4e6ff 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(255, 210, 140, 0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #dceaff 0%, #cfe3ff 46%, #c8dcf8 100%);
+}
+
+.drevora-app-shell--cloudy {
+  background-color: #b8cff5;
+  background-image:
+    radial-gradient(ellipse 130% 90% at 12% -8%, rgba(255, 255, 255, 0.42) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, #c0d8f8 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(100, 150, 220, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #d0e2fa 0%, #c0d4f4 46%, #b8cff5 100%);
+}
+
+.drevora-app-shell--rain {
+  background-color: #a8bfd8;
+  background-image:
+    radial-gradient(ellipse 120% 85% at 14% -4%, rgba(255, 255, 255, 0.28) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, #afc8e8 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(70, 110, 170, 0.22) 0%, transparent 55%),
+    linear-gradient(180deg, #b8cce8 0%, #a8bfd8 46%, #9fb5d0 100%);
+}
+
+.drevora-app-shell--night {
+  background-color: #6b8eb8;
+  background-image:
+    radial-gradient(ellipse 120% 85% at 12% -6%, rgba(120, 160, 220, 0.18) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, #5a7ea8 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(30, 50, 90, 0.28) 0%, transparent 55%),
+    linear-gradient(180deg, #7a9ec4 0%, #6888ae 46%, #5a7898 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drevora-app-shell {
+    transition: none;
+  }
+
+  .drevora-app-shell--sunny,
+  .drevora-app-shell--cloudy,
+  .drevora-app-shell--rain,
+  .drevora-app-shell--night {
+    transition: none;
+  }
+}

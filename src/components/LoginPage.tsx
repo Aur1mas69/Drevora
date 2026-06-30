@@ -10,25 +10,49 @@ import {
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/contexts/AuthContext'
+import {
+  authService,
+  AuthServiceError,
+  type AuthSession,
+} from '@/services/authService'
 import { ArrowLeft } from 'lucide-react'
 
 type LoginPageProps = {
   onBack: () => void
+  onSignInSuccess: (session: AuthSession) => void
+  title?: string
+  description?: string
 }
 
-function LoginPage({ onBack }: LoginPageProps) {
-  const { signIn } = useAuth()
+function LoginPage({
+  onBack,
+  onSignInSuccess,
+  title = 'DREVORA',
+  description = 'Driver portal',
+}: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsSubmitting(true)
-    await signIn(email, password)
-    setIsSubmitting(false)
+    setErrorMessage(null)
+
+    try {
+      const result = await authService.signIn(email, password)
+      onSignInSuccess(result.session)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof AuthServiceError
+          ? error.message
+          : 'Unable to sign in. Please try again.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -61,16 +85,25 @@ function LoginPage({ onBack }: LoginPageProps) {
             />
             <div className="space-y-1">
               <CardTitle className="text-2xl font-semibold tracking-[0.2em] text-[#0B1023]">
-                DREVORA
+                {title}
               </CardTitle>
               <CardDescription className="text-sm text-slate-500">
-                Driver portal
+                {description}
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent className="px-8 pb-8">
             <form className="space-y-5" onSubmit={handleSubmit}>
+              {errorMessage ? (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
+                  {errorMessage}
+                </p>
+              ) : null}
+
               <div className="space-y-2">
                 <label
                   htmlFor="email"
@@ -84,7 +117,10 @@ function LoginPage({ onBack }: LoginPageProps) {
                   name="email"
                   placeholder="you@company.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setErrorMessage(null)
+                    setEmail(e.target.value)
+                  }}
                   autoComplete="email"
                   required
                   className="h-10 border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
@@ -104,7 +140,10 @@ function LoginPage({ onBack }: LoginPageProps) {
                   name="password"
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setErrorMessage(null)
+                    setPassword(e.target.value)
+                  }}
                   autoComplete="current-password"
                   required
                   className="h-10 border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"

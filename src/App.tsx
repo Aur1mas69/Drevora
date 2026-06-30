@@ -1,19 +1,7 @@
-import ComingSoonPage from '@/components/ComingSoonPage'
-import WorkEntryPage from '@/components/WorkEntryPage'
-import { useAuth } from '@/contexts/AuthContext'
-
-function AppRoutes() {
-  const { isAuthenticated } = useAuth()
-
-  if (isAuthenticated) {
-    return <WorkEntryPage />
-  }
-
-  return <ComingSoonPage />
-}
+import AppRouter from '@/router/AppRouter'
 
 function App() {
-  return <AppRoutes />
+  return <AppRouter />
 }
 
 export default App

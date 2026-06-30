@@ -1,0 +1,30 @@
+---
+description: Create Supabase SQL migrations before React UI when new tables are needed
+alwaysApply: true
+---
+
+# Database migration first
+
+When a new feature needs **new database tables or columns**, create the SQL migration **before** any React UI, services, or types that depend on it.
+
+## Required order
+
+1. **Migration** — add `supabase/migrations/YYYYMMDDHHMMSS_descriptive_name.sql`
+2. **Schema sync** — update `supabase/schema.sql` (and `supabase/policies.sql` if grants/RLS change)
+3. **Service layer** — TypeScript service that reads/writes the new table
+4. **UI** — pages and components
+
+## Rules
+
+- **Never assume tables already exist** in the user's Supabase project.
+- **Never** wire UI to `supabase.from('…')` until the migration file exists in the repo.
+- Tell the user to run the migration on their Supabase project before testing.
+- Use idempotent SQL where possible (`IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`).
+- For MVP, follow existing pattern: disable RLS + grant `anon`/`authenticated` in migration and `policies.sql`.
+
+## Example
+
+```
+❌ BAD: CompliancePage.tsx + workerComplianceService.ts, no migration file
+✅ GOOD: 20260628220000_create_worker_compliance_records_table.sql → schema.sql → service → UI
+```
