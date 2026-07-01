@@ -3,10 +3,14 @@ import {
   formatDateTimeFromIso,
   getGlobalOvertimeAfterHours,
   getGlobalTimeFormat,
-  getGlobalWeekStarts,
-  normalizeWeekStart,
   type CompanyTimeFormat,
 } from '@/lib/dateTimeFormat'
+import { DEFAULT_CURRENCY, type CompanyCurrency } from '@/lib/companySettingsTypes'
+import {
+  DEFAULT_TIMESHEET_OVERTIME_RULES,
+  type TimesheetOvertimeRules,
+} from '@/lib/companySettingsTypes'
+import { getGlobalOvertimeMultiplier, getSetting } from '@/lib/companySettingsGlobals'
 import type { OvertimeMode } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
@@ -30,34 +34,136 @@ export function countWorkedDays(entries: Pick<TimesheetEntry, 'totalMinutes'>[])
 
 export function calculateAutomaticOvertimeMinutes(
   totalMinutes: number,
-  overtimeAfterHours: number = getGlobalOvertimeAfterHours(),
+  overtimeAfterHours: number | string = getGlobalOvertimeAfterHours(),
 ): number {
   if (totalMinutes <= 0) return 0
-  const thresholdMinutes = overtimeAfterHours * 60
+  const thresholdHours = Number.parseFloat(String(overtimeAfterHours))
+  if (Number.isNaN(thresholdHours)) return 0
+  const thresholdMinutes = thresholdHours * 60
   return Math.max(0, totalMinutes - thresholdMinutes)
 }
 
+export function buildTimesheetOvertimeRules(
+  partial: Partial<TimesheetOvertimeRules> = {},
+): TimesheetOvertimeRules {
+  return { ...DEFAULT_TIMESHEET_OVERTIME_RULES, ...partial }
+}
+
+export function resolveDayOvertimeRules(
+  dayDate: string,
+  rules: TimesheetOvertimeRules,
+): { afterHours: number; multiplier: number } {
+  const day = parseLocalDate(dayDate).getDay()
+
+  if (day === 6 && rules.saturdayOvertimeEnabled) {
+    return {
+      afterHours: rules.saturdayOvertimeAfterHours,
+      multiplier: rules.saturdayOvertimeMultiplier,
+    }
+  }
+
+  if (day === 0 && rules.sundayOvertimeEnabled) {
+    return {
+      afterHours: rules.sundayOvertimeAfterHours,
+      multiplier: rules.sundayOvertimeMultiplier,
+    }
+  }
+
+  return {
+    afterHours: rules.overtimeAfterHours,
+    multiplier: rules.overtimeMultiplier,
+  }
+}
+
+export function entryHasStartAndFinish(entry: {
+  startTime: string | null
+  finishTime: string | null
+}): boolean {
+  const start = parseTimeToMinutes(entry.startTime)
+  const finish = parseTimeToMinutes(entry.finishTime)
+  return start !== null && finish !== null && finish > start
+}
+
+export function roundHoursOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10
+}
+
+export function calculateEntryPaidEquivalentHours(
+  input: {
+    totalMinutes: number
+    overtimeMinutes: number
+    additionalHours: number
+  },
+  overtimeMultiplier: number = getGlobalOvertimeMultiplier(),
+): number {
+  const workedHours = input.totalMinutes / 60
+  const overtimeHours = (input.overtimeMinutes ?? 0) / 60
+  const additionalHours = input.additionalHours ?? 0
+  const normalHours = Math.max(workedHours - overtimeHours, 0)
+  return normalHours + overtimeHours * overtimeMultiplier + additionalHours
+}
+
+export type SummarizeTimesheetEntriesOptions = {
+  overtimeRules?: Partial<TimesheetOvertimeRules>
+}
+
 export function summarizeTimesheetEntries(
-  entries: TimesheetEntry[],
+  entries: Array<{
+    dayDate: string
+    totalMinutes: number
+    breakMinutes: number
+    overtimeMinutes: number
+    additionalHours: number
+    startTime: string | null
+    finishTime: string | null
+  }>,
+  options: SummarizeTimesheetEntriesOptions = {},
 ): {
   workedHours: number
   breakHours: number
   overtimeHours: number
+  additionalHours: number
+  totalHours: number
 } {
+  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
+
   let workedMinutes = 0
   let breakMinutes = 0
   let overtimeMinutes = 0
+  let additionalHoursTotal = 0
+  let totalPayableHours = 0
 
   for (const entry of entries) {
     workedMinutes += entry.totalMinutes
-    breakMinutes += entry.breakMinutes
     overtimeMinutes += entry.overtimeMinutes ?? 0
+    additionalHoursTotal += entry.additionalHours ?? 0
+
+    if (entryHasStartAndFinish(entry)) {
+      breakMinutes += entry.breakMinutes
+    }
+
+    const hasPayableHours =
+      entry.totalMinutes > 0 || (entry.additionalHours ?? 0) > 0
+
+    if (hasPayableHours) {
+      const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+      totalPayableHours += calculateEntryPaidEquivalentHours(
+        {
+          totalMinutes: entry.totalMinutes,
+          overtimeMinutes: entry.overtimeMinutes,
+          additionalHours: entry.additionalHours,
+        },
+        dayRules.multiplier,
+      )
+    }
   }
 
   return {
-    workedHours: Math.round((workedMinutes / 60) * 100) / 100,
-    breakHours: Math.round((breakMinutes / 60) * 100) / 100,
-    overtimeHours: Math.round((overtimeMinutes / 60) * 100) / 100,
+    workedHours: roundHoursOneDecimal(workedMinutes / 60),
+    breakHours: roundHoursOneDecimal(breakMinutes / 60),
+    overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
+    additionalHours: roundHoursOneDecimal(additionalHoursTotal),
+    totalHours: roundHoursOneDecimal(totalPayableHours),
   }
 }
 
@@ -155,13 +261,13 @@ export function sortTimesheetListItems(
 
 export function buildRecentWeekOptions(count = 8): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = []
-  const current = normalizeWeekStart(new Date().toISOString().slice(0, 10), getGlobalWeekStarts())
-  const start = new Date(`${current}T00:00:00`)
+  const current = normalizeWeekStartForCompany(formatLocalDateString(new Date()))
+  const start = parseLocalDate(current)
 
   for (let index = 0; index < count; index += 1) {
     const weekStart = new Date(start)
     weekStart.setDate(start.getDate() - index * 7)
-    const value = weekStart.toISOString().slice(0, 10)
+    const value = formatLocalDateString(weekStart)
     options.push({ value, label: formatWeekLabel(value) })
   }
 
@@ -244,36 +350,55 @@ export function buildWeekOptions(timesheets: Timesheet[]): { value: string; labe
 }
 
 export function normalizeWeekStartForCompany(dateValue: string): string {
-  return normalizeWeekStart(dateValue, getGlobalWeekStarts())
+  const date = parseLocalDate(dateValue)
+  const day = date.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  date.setDate(date.getDate() + diff)
+  return formatLocalDateString(date)
 }
 
 export function getDefaultWeekStartMonday(): string {
-  return normalizeWeekStart(new Date().toISOString().slice(0, 10), getGlobalWeekStarts())
+  return normalizeWeekStartForCompany(formatLocalDateString(new Date()))
+}
+
+export function parseLocalDate(dateValue: string): Date {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+export function formatLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export function buildWeekDates(weekStart: string): string[] {
+  const start = parseLocalDate(weekStart)
   const dates: string[] = []
-  const start = new Date(`${weekStart}T00:00:00`)
 
   for (let index = 0; index < 7; index += 1) {
     const current = new Date(start)
     current.setDate(start.getDate() + index)
-    dates.push(current.toISOString().slice(0, 10))
+    dates.push(formatLocalDateString(current))
   }
 
   return dates
 }
 
 export function formatWeekLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T00:00:00`)
+  const start = parseLocalDate(weekStart)
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
 
   const startLabel = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
   }).format(start)
   const endLabel = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -282,12 +407,27 @@ export function formatWeekLabel(weekStart: string): string {
   return `${startLabel} – ${endLabel}`
 }
 
+const CURRENCY_SYMBOLS: Record<CompanyCurrency, string> = {
+  GBP: '£',
+  EUR: '€',
+  USD: '$',
+  RUB: '₽',
+}
+
+export function formatBonusAmount(
+  amount: number,
+  currency: CompanyCurrency = getSetting('currency') ?? DEFAULT_CURRENCY,
+): string {
+  const symbol = CURRENCY_SYMBOLS[currency]
+  return `${symbol}${amount.toFixed(2)}`
+}
+
 export function formatDayLabel(dayDate: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'short',
-  }).format(new Date(`${dayDate}T00:00:00`))
+  }).format(parseLocalDate(dayDate))
 }
 
 export function formatBreak(minutes: number): string {
@@ -322,6 +462,7 @@ export function prepareEntryInputs(
         finishTime: existing.finishTime,
         totalMinutes: existing.totalMinutes,
         overtimeMinutes: existing.overtimeMinutes ?? 0,
+        additionalHours: existing.additionalHours ?? 0,
       }
     }
 
@@ -332,13 +473,14 @@ export function prepareEntryInputs(
       finishTime: null,
       totalMinutes: 0,
       overtimeMinutes: 0,
+      additionalHours: 0,
     }
   })
 }
 
 export type RecalculateEntryOptions = {
   overtimeMode?: OvertimeMode
-  overtimeAfterHours?: number
+  overtimeRules?: Partial<TimesheetOvertimeRules>
 }
 
 export function recalculateEntryInputs(
@@ -346,13 +488,14 @@ export function recalculateEntryInputs(
   options: RecalculateEntryOptions = {},
 ): TimesheetEntryInput[] {
   const overtimeMode = options.overtimeMode ?? 'Manual'
-  const overtimeAfterHours = options.overtimeAfterHours ?? getGlobalOvertimeAfterHours()
+  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
 
   return entries.map((entry) => {
     const totalMinutes = calculateEntryTotalMinutes(entry)
+    const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
     const overtimeMinutes =
       overtimeMode === 'Automatic'
-        ? calculateAutomaticOvertimeMinutes(totalMinutes, overtimeAfterHours)
+        ? calculateAutomaticOvertimeMinutes(totalMinutes, dayRules.afterHours)
         : entry.overtimeMinutes
 
     return {

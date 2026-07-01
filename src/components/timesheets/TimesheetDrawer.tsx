@@ -5,8 +5,10 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
 import {
   canEditTimesheet,
+  buildTimesheetOvertimeRules,
   formatBreak,
   formatDayLabel,
+  formatHours,
   formatHoursFromMinutes,
   getStatusBadgeClass,
   getStatusLabel,
@@ -57,13 +59,30 @@ export function TimesheetDrawer({
     timeFormat,
     overtimeAfterHours,
     overtimeMode,
+    overtimeMultiplier,
     defaultBreakMinutes,
+    settings,
   } = useCompanySettings()
   const [draftEntries, setDraftEntries] = useState<TimesheetEntryInput[]>([])
 
+  const overtimeRules = useMemo(
+    () =>
+      buildTimesheetOvertimeRules({
+        overtimeAfterHours,
+        overtimeMultiplier,
+        saturdayOvertimeEnabled: settings?.saturdayOvertimeEnabled ?? false,
+        saturdayOvertimeAfterHours: settings?.saturdayOvertimeAfterHours ?? 6,
+        saturdayOvertimeMultiplier: settings?.saturdayOvertimeMultiplier ?? 1.5,
+        sundayOvertimeEnabled: settings?.sundayOvertimeEnabled ?? false,
+        sundayOvertimeAfterHours: settings?.sundayOvertimeAfterHours ?? 0,
+        sundayOvertimeMultiplier: settings?.sundayOvertimeMultiplier ?? 2,
+      }),
+    [overtimeAfterHours, overtimeMultiplier, settings],
+  )
+
   const recalcOptions = useMemo(
-    () => ({ overtimeMode, overtimeAfterHours }),
-    [overtimeAfterHours, overtimeMode],
+    () => ({ overtimeMode, overtimeRules }),
+    [overtimeMode, overtimeRules],
   )
 
   useEffect(() => {
@@ -112,22 +131,27 @@ export function TimesheetDrawer({
 
   const summary = useMemo(() => {
     if (!timesheet) {
-      return { workedHours: 0, breakHours: 0, overtimeHours: 0 }
+      return {
+        workedHours: 0,
+        breakHours: 0,
+        overtimeHours: 0,
+        additionalHours: 0,
+        totalHours: 0,
+      }
     }
 
     const entriesForSummary = displayEntries.map((entry) => ({
-      id: entry.id ?? entry.dayDate,
-      timesheetId: timesheet?.id ?? '',
       dayDate: entry.dayDate,
       startTime: entry.startTime,
       breakMinutes: entry.breakMinutes,
       finishTime: entry.finishTime,
       totalMinutes: entry.totalMinutes,
       overtimeMinutes: entry.overtimeMinutes,
+      additionalHours: entry.additionalHours,
     }))
 
-    return summarizeTimesheetEntries(entriesForSummary)
-  }, [displayEntries, timesheet?.id])
+    return summarizeTimesheetEntries(entriesForSummary, { overtimeRules })
+  }, [displayEntries, overtimeRules, timesheet])
 
   if (!timesheet) return null
 
@@ -160,7 +184,7 @@ export function TimesheetDrawer({
       />
 
       <aside
-        className="relative flex h-full w-full max-w-2xl flex-col border-l border-[rgba(75,120,220,0.12)] bg-white shadow-[-20px_0_60px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 dark:backdrop-blur-xl"
+        className="relative flex h-full w-full max-w-3xl flex-col border-l border-[rgba(75,120,220,0.12)] bg-white shadow-[-20px_0_60px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 dark:backdrop-blur-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="timesheet-drawer-title"
@@ -179,7 +203,7 @@ export function TimesheetDrawer({
                 {timesheet.driverName}
               </h2>
               <p className={`mt-1 text-sm font-medium ${adminTextMuted}`}>
-                {timesheet.weekLabel}
+                Week: {timesheet.weekLabel}
               </p>
             </div>
             <Button
@@ -230,8 +254,8 @@ export function TimesheetDrawer({
         ) : null}
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <div className={`overflow-hidden ${adminTableShellSm}`}>
-            <table className="w-full border-collapse text-left text-xs">
+          <div className={`overflow-x-auto ${adminTableShellSm}`}>
+            <table className="w-full min-w-[720px] border-collapse text-left text-xs">
               <thead className={adminTableHeader}>
                 <tr className={adminTableHeadText}>
                   <th className="px-2 py-2">Day</th>
@@ -240,6 +264,7 @@ export function TimesheetDrawer({
                   <th className="px-2 py-2">Finish</th>
                   <th className="px-2 py-2">Worked</th>
                   <th className="px-2 py-2">Overtime</th>
+                  <th className="px-2 py-2">Additional Hours</th>
                 </tr>
               </thead>
               <tbody>
@@ -342,6 +367,36 @@ export function TimesheetDrawer({
                         </span>
                       )}
                     </td>
+                    <td className="px-2 py-1.5">
+                      {isEditable ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.25}
+                          placeholder="0"
+                          value={
+                            entry.additionalHours > 0 ? entry.additionalHours : ''
+                          }
+                          onChange={(event) =>
+                            updateEntry(entry.dayDate, {
+                              additionalHours: Math.max(
+                                0,
+                                Number.parseFloat(event.target.value) || 0,
+                              ),
+                            })
+                          }
+                          className={inputClassName}
+                          data-entry-index={index}
+                          data-field="additional-hours"
+                        />
+                      ) : (
+                        <span className={`tabular-nums ${adminText}`}>
+                          {entry.additionalHours > 0
+                            ? formatHours(entry.additionalHours)
+                            : '—'}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -350,10 +405,12 @@ export function TimesheetDrawer({
         </div>
 
         <div className={`border-t border-[rgba(75,120,220,0.08)] px-4 py-3 dark:border-white/10 ${adminInnerSoft}`}>
-          <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
             <SummaryItem label="Worked Hours" value={summary.workedHours} />
             <SummaryItem label="Break" value={summary.breakHours} />
             <SummaryItem label="Overtime" value={summary.overtimeHours} />
+            <SummaryItem label="Additional Hours" value={summary.additionalHours} />
+            <SummaryItem label="Total Hours" value={summary.totalHours} emphasized />
           </div>
 
           <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -406,11 +463,23 @@ export function TimesheetDrawer({
   )
 }
 
-function SummaryItem({ label, value }: { label: string; value: number }) {
+function SummaryItem({
+  label,
+  value,
+  emphasized = false,
+}: {
+  label: string
+  value: number
+  emphasized?: boolean
+}) {
   return (
     <div className="rounded-[10px] bg-white px-2.5 py-2 ring-1 ring-[rgba(75,120,220,0.08)] dark:bg-slate-800/70 dark:ring-white/10">
       <p className={`text-[10px] font-medium ${adminTextMuted}`}>{label}</p>
-      <p className={`mt-0.5 text-sm font-semibold tabular-nums ${adminHeading}`}>
+      <p
+        className={`mt-0.5 text-sm font-semibold tabular-nums ${
+          emphasized ? 'text-[#2563EB] dark:text-blue-300' : adminHeading
+        }`}
+      >
         {value.toFixed(1)}h
       </p>
     </div>

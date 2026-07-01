@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Driver } from '@/services/driversService'
-import { getDefaultWeekStartMonday } from '@/lib/timesheetUtils'
+import { getDefaultWeekStartMonday, formatWeekLabel, normalizeWeekStartForCompany } from '@/lib/timesheetUtils'
 import { Users, User, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -17,8 +17,8 @@ type NewTimesheetModalProps = {
   onCreateBulk: (mode: 'allActive' | 'driversByRole', weekStart: string) => void
 }
 
-const selectClassName =
-  'mt-1.5 h-10 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+const inputClassName =
+  'mt-1.5 h-10 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:ring-blue-900/40'
 
 const modeOptions: { value: NewTimesheetMode; label: string; description: string }[] = [
   {
@@ -165,7 +165,7 @@ export function NewTimesheetModal({
               <select
                 value={driverId}
                 onChange={(event) => setDriverId(event.target.value)}
-                className={selectClassName}
+                className={inputClassName}
                 required
                 disabled={drivers.length === 0 || isSaving}
               >
@@ -190,15 +190,20 @@ export function NewTimesheetModal({
           )}
 
           <label className="block">
-            <span className="text-xs font-semibold text-slate-700">Week starting</span>
+            <span className="text-xs font-semibold text-slate-700">Week</span>
             <Input
               type="date"
               value={weekStart}
-              onChange={(event) => setWeekStart(event.target.value)}
-              className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] text-sm"
+              onChange={(event) =>
+                setWeekStart(normalizeWeekStartForCompany(event.target.value))
+              }
+              className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] text-sm dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100"
               required
               disabled={isSaving}
             />
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+              Week: {formatWeekLabel(weekStart)}
+            </p>
           </label>
 
           <div className="flex justify-end gap-2 pt-1">

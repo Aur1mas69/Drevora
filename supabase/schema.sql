@@ -189,7 +189,7 @@ create table if not exists public.companies (
   default_vehicle_status text not null default 'Available',
   default_driver_role text not null default 'Driver',
   default_break_minutes integer not null default 30,
-  overtime_after_hours integer not null default 8,
+  overtime_after_hours numeric not null default 10.5,
   round_time_minutes integer not null default 0,
   require_manager_approval boolean not null default true,
   holiday_year_start text not null default '01-01',
@@ -203,13 +203,21 @@ create table if not exists public.companies (
   overtime_mode text not null default 'Manual',
   overtime_multiplier numeric not null default 1.5,
   currency text not null default 'GBP',
+  saturday_overtime_enabled boolean not null default false,
+  saturday_overtime_after_hours numeric not null default 6.0,
+  saturday_overtime_multiplier numeric not null default 1.5,
+  sunday_overtime_enabled boolean not null default false,
+  sunday_overtime_after_hours numeric not null default 0.0,
+  sunday_overtime_multiplier numeric not null default 2.0,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
   constraint companies_theme_check check (theme in ('light', 'dark', 'system')),
   constraint companies_default_break_check check (default_break_minutes in (30, 45, 60)),
   constraint companies_overtime_after_hours_check check (
-    overtime_after_hours >= 5 and overtime_after_hours <= 15
+    overtime_after_hours >= 5.5
+    and overtime_after_hours <= 15.5
+    and (overtime_after_hours * 2) = floor(overtime_after_hours * 2)
   ),
   constraint companies_round_time_check check (round_time_minutes in (0, 5, 15)),
   constraint companies_overtime_mode_check check (overtime_mode in ('Manual', 'Automatic')),
@@ -218,7 +226,27 @@ create table if not exists public.companies (
     and overtime_multiplier <= 2.5
     and mod((overtime_multiplier * 10)::numeric, 1) = 0
   ),
-  constraint companies_currency_check check (currency in ('GBP', 'EUR', 'USD', 'RUB'))
+  constraint companies_currency_check check (currency in ('GBP', 'EUR', 'USD', 'RUB')),
+  constraint companies_saturday_overtime_after_hours_check check (
+    saturday_overtime_after_hours >= 0
+    and saturday_overtime_after_hours <= 15.5
+    and (saturday_overtime_after_hours * 2) = floor(saturday_overtime_after_hours * 2)
+  ),
+  constraint companies_sunday_overtime_after_hours_check check (
+    sunday_overtime_after_hours >= 0
+    and sunday_overtime_after_hours <= 15.5
+    and (sunday_overtime_after_hours * 2) = floor(sunday_overtime_after_hours * 2)
+  ),
+  constraint companies_saturday_overtime_multiplier_check check (
+    saturday_overtime_multiplier >= 1.0
+    and saturday_overtime_multiplier <= 2.5
+    and (saturday_overtime_multiplier * 10) = floor(saturday_overtime_multiplier * 10)
+  ),
+  constraint companies_sunday_overtime_multiplier_check check (
+    sunday_overtime_multiplier >= 1.0
+    and sunday_overtime_multiplier <= 2.5
+    and (sunday_overtime_multiplier * 10) = floor(sunday_overtime_multiplier * 10)
+  )
 );
 
 create index if not exists companies_created_at_idx on public.companies (created_at);
@@ -237,7 +265,8 @@ create table if not exists public.timesheets (
   vehicle_id uuid references public.vehicles (id) on delete set null,
   week_start date not null,
   status text not null default 'Draft',
-  notes text
+  notes text,
+  bonus_amount numeric not null default 0
 );
 
 create table if not exists public.timesheet_entries (
@@ -249,7 +278,8 @@ create table if not exists public.timesheet_entries (
   finish_time time,
   total_minutes integer not null default 0,
   overtime_minutes integer not null default 0,
-  payroll_minutes integer not null default 0
+  payroll_minutes integer not null default 0,
+  additional_hours numeric not null default 0
 );
 
 alter table public.timesheets
@@ -259,7 +289,8 @@ alter table public.timesheets
   add column if not exists vehicle_id uuid references public.vehicles (id) on delete set null,
   add column if not exists week_start date,
   add column if not exists status text default 'Draft',
-  add column if not exists notes text;
+  add column if not exists notes text,
+  add column if not exists bonus_amount numeric not null default 0;
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -269,7 +300,8 @@ alter table public.timesheet_entries
   add column if not exists finish_time time,
   add column if not exists total_minutes integer default 0,
   add column if not exists overtime_minutes integer not null default 0,
-  add column if not exists payroll_minutes integer not null default 0;
+  add column if not exists payroll_minutes integer not null default 0,
+  add column if not exists additional_hours numeric not null default 0;
 
 create index if not exists timesheets_driver_id_idx on public.timesheets (driver_id);
 create index if not exists timesheets_vehicle_id_idx on public.timesheets (vehicle_id);

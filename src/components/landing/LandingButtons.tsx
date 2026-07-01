@@ -4,7 +4,14 @@ import { motion, useReducedMotion } from 'framer-motion'
 import type { ComponentProps } from 'react'
 
 type LandingButtonProps = ComponentProps<typeof Button> & {
-  motionVariant?: 'primary' | 'secondary' | 'secondary-light' | 'primary-on-dark'
+  motionVariant?:
+    | 'primary'
+    | 'secondary'
+    | 'secondary-light'
+    | 'primary-on-dark'
+    | 'primary-dark'
+    | 'secondary-dark'
+    | 'ghost-dark'
 }
 
 const hoverLift = {
@@ -30,6 +37,12 @@ export function LandingButton({
       'rounded-[14px] border-white/30 bg-white/10 font-semibold text-white backdrop-blur-sm hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_0_3px_rgba(255,255,255,0.12)]',
     'primary-on-dark':
       'rounded-[14px] bg-white font-semibold text-[#2563EB] shadow-lg hover:bg-blue-50 hover:shadow-xl',
+    'primary-dark':
+      'rounded-[10px] bg-[#3B6FFF] font-semibold text-white shadow-none hover:bg-[#2A5CE6]',
+    'secondary-dark':
+      'rounded-[10px] border border-[#1A2035] bg-transparent font-medium text-[#E8EDF5] shadow-none hover:border-[#6B7A99]',
+    'ghost-dark':
+      'rounded-[8px] border border-[#1A2035] bg-transparent font-medium text-[#6B7A99] shadow-none hover:border-[#3B6FFF] hover:text-[#3B6FFF]',
   }
 
   if (reduceMotion) {

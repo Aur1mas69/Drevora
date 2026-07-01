@@ -47,6 +47,7 @@ type TimesheetEntryRow = {
   total_minutes: number | null
   overtime_minutes: number | null
   payroll_minutes: number | null
+  additional_hours?: number | null
 }
 
 type TimesheetRow = {
@@ -58,6 +59,7 @@ type TimesheetRow = {
   week_start: string
   status: string
   notes: string | null
+  bonus_amount: number | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
   vehicles: VehicleJoinRow | VehicleJoinRow[] | null
   timesheet_entries?: TimesheetEntryRow[]
@@ -79,7 +81,8 @@ const timesheetEntrySelect = `
     break_minutes,
     finish_time,
     total_minutes,
-    overtime_minutes
+    overtime_minutes,
+    additional_hours
   `
 
 const timesheetEntrySelectCore = `
@@ -101,6 +104,7 @@ const timesheetDetailSelect = `
   week_start,
   status,
   notes,
+  bonus_amount,
   drivers ( first_name, last_name, role ),
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelect})
@@ -115,6 +119,7 @@ const timesheetDetailSelectCore = `
   week_start,
   status,
   notes,
+  bonus_amount,
   drivers ( first_name, last_name, role ),
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelectCore})
@@ -129,6 +134,7 @@ const timesheetListSelect = `
   week_start,
   status,
   notes,
+  bonus_amount,
   drivers ( first_name, last_name, role ),
   vehicles ( registration, fleet_number )
 `
@@ -162,9 +168,21 @@ function normalizeStatus(value: string | null | undefined): TimesheetStatus {
   }
 }
 
+function normalizeBonusAmount(value: number | null | undefined): number {
+  const amount = Number(value ?? 0)
+  if (Number.isNaN(amount)) return 0
+  return Math.max(0, amount)
+}
+
 function normalizeDriverRole(value: string | null | undefined): DriverRole | null {
   if (!value) return null
   return value as DriverRole
+}
+
+function normalizeAdditionalHours(value: number | null | undefined): number {
+  const hours = Number(value ?? 0)
+  if (Number.isNaN(hours)) return 0
+  return Math.max(0, hours)
 }
 
 function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
@@ -180,6 +198,7 @@ function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
     finishTime: normalizeTime(row.finish_time),
     totalMinutes,
     overtimeMinutes,
+    additionalHours: normalizeAdditionalHours(row.additional_hours),
   }
 }
 
@@ -209,6 +228,7 @@ function mapListRow(
     weekLabel: formatWeekLabel(row.week_start),
     status: normalizeStatus(row.status),
     notes: row.notes,
+    bonusAmount: normalizeBonusAmount(row.bonus_amount),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     driverName,
@@ -230,7 +250,9 @@ function mapTimesheetRow(row: TimesheetRow): Timesheet {
   return {
     ...listItem,
     entries,
-    ...totals,
+    workedHours: totals.workedHours,
+    breakHours: totals.breakHours,
+    overtimeHours: totals.overtimeHours,
   }
 }
 
@@ -246,6 +268,7 @@ function isMissingTimesheetEntryColumnError(
   const message = error.message.toLowerCase()
   return (
     message.includes('overtime_minutes') ||
+    message.includes('additional_hours') ||
     error.code === '42703'
   )
 }
@@ -670,12 +693,14 @@ export async function upsertTimesheetEntries(
     throw new TimesheetsServiceError('No timesheet entries to save')
   }
 
-  const rows = entries.map((entry) => {
+  const supabase = requireSupabase()
+
+  for (const entry of entries) {
     const totalMinutes = calculateEntryTotalMinutes(entry)
     const overtimeMinutes = entry.overtimeMinutes ?? 0
+    const additionalHours = normalizeAdditionalHours(entry.additionalHours)
 
-    return {
-      ...(entry.id ? { id: entry.id } : {}),
+    const row = {
       timesheet_id: timesheetId,
       day_date: entry.dayDate,
       start_time: mapInsertTime(entry.startTime),
@@ -683,25 +708,43 @@ export async function upsertTimesheetEntries(
       finish_time: mapInsertTime(entry.finishTime),
       total_minutes: totalMinutes,
       overtime_minutes: overtimeMinutes,
+      additional_hours: additionalHours,
     }
-  })
 
-  const { error } = await requireSupabase()
-    .from('timesheet_entries')
-    .upsert(rows, { onConflict: 'timesheet_id,day_date' })
+    if (entry.id) {
+      const { error } = await supabase
+        .from('timesheet_entries')
+        .update(row)
+        .eq('id', entry.id)
 
-  logSupabaseQuery({
-    service: 'timesheetsService.upsertTimesheetEntries',
-    table: 'timesheet_entries',
-    data: rows,
-    error,
-  })
+      logSupabaseQuery({
+        service: 'timesheetsService.upsertTimesheetEntries.update',
+        table: 'timesheet_entries',
+        data: [{ id: entry.id, ...row }],
+        error,
+      })
 
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
+      if (error) {
+        throw new TimesheetsServiceError(error.message)
+      }
+      continue
+    }
+
+    const { error } = await supabase.from('timesheet_entries').insert(row)
+
+    logSupabaseQuery({
+      service: 'timesheetsService.upsertTimesheetEntries.insert',
+      table: 'timesheet_entries',
+      data: [row],
+      error,
+    })
+
+    if (error) {
+      throw new TimesheetsServiceError(error.message)
+    }
   }
 
-  const { error: touchError } = await requireSupabase()
+  const { error: touchError } = await supabase
     .from('timesheets')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', timesheetId)

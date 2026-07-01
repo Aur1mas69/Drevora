@@ -34,12 +34,63 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'push_notifications',
   'session_timeout_minutes',
   'require_mfa',
+  'saturday_overtime_enabled',
+  'saturday_overtime_after_hours',
+  'saturday_overtime_multiplier',
+  'sunday_overtime_enabled',
+  'sunday_overtime_after_hours',
+  'sunday_overtime_multiplier',
 ] as const
 
 export type CompanySettingsColumn = (typeof COMPANY_SETTINGS_COLUMNS)[number]
 
+/** Core settings columns — safe to select even when weekend overtime migration is pending. */
+export const COMPANY_SETTINGS_CORE_COLUMNS = [
+  'id',
+  'created_at',
+  'name',
+  'logo_url',
+  'address',
+  'city',
+  'country',
+  'postcode',
+  'timezone',
+  'weather_location',
+  'date_format',
+  'time_format',
+  'week_starts_on',
+  'fleet_number_prefix',
+  'default_vehicle_status',
+  'default_driver_role',
+  'default_break_minutes',
+  'overtime_after_hours',
+  'overtime_mode',
+  'overtime_multiplier',
+  'currency',
+  'round_time_minutes',
+  'require_manager_approval',
+  'holiday_year_start',
+  'annual_leave_allowance',
+  'theme',
+  'compact_tables',
+  'email_notifications',
+  'push_notifications',
+  'session_timeout_minutes',
+  'require_mfa',
+] as const
+
+/** Weekend overtime columns — optional until migration is applied. */
+export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
+  'saturday_overtime_enabled',
+  'saturday_overtime_after_hours',
+  'saturday_overtime_multiplier',
+  'sunday_overtime_enabled',
+  'sunday_overtime_after_hours',
+  'sunday_overtime_multiplier',
+] as const
+
 /** PostgREST select list — must stay a string literal for Supabase client typing. */
-export const companySettingsSelect = `
+export const companySettingsCoreSelect = `
   id,
   created_at,
   name,
@@ -71,4 +122,54 @@ export const companySettingsSelect = `
   push_notifications,
   session_timeout_minutes,
   require_mfa
+` as const
+
+export const companySettingsWeekendSelect = `
+  saturday_overtime_enabled,
+  saturday_overtime_after_hours,
+  saturday_overtime_multiplier,
+  sunday_overtime_enabled,
+  sunday_overtime_after_hours,
+  sunday_overtime_multiplier
+` as const
+
+/** Full select including weekend overtime (requires latest migration). */
+export const companySettingsSelect = `
+  id,
+  created_at,
+  name,
+  logo_url,
+  address,
+  city,
+  country,
+  postcode,
+  timezone,
+  weather_location,
+  date_format,
+  time_format,
+  week_starts_on,
+  fleet_number_prefix,
+  default_vehicle_status,
+  default_driver_role,
+  default_break_minutes,
+  overtime_after_hours,
+  overtime_mode,
+  overtime_multiplier,
+  currency,
+  round_time_minutes,
+  require_manager_approval,
+  holiday_year_start,
+  annual_leave_allowance,
+  theme,
+  compact_tables,
+  email_notifications,
+  push_notifications,
+  session_timeout_minutes,
+  require_mfa,
+  saturday_overtime_enabled,
+  saturday_overtime_after_hours,
+  saturday_overtime_multiplier,
+  sunday_overtime_enabled,
+  sunday_overtime_after_hours,
+  sunday_overtime_multiplier
 ` as const

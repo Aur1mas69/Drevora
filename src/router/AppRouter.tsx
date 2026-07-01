@@ -16,6 +16,7 @@ import WorkerComplianceProfilePage from '@/pages/WorkerComplianceProfilePage'
 import DashboardPage from '@/pages/DashboardPage'
 import DriverDetailsPage from '@/pages/DriverDetailsPage'
 import DriverLoginPage from '@/pages/DriverLoginPage'
+import WorkerLoginPage from '@/pages/WorkerLoginPage'
 import DriversPage from '@/pages/DriversPage'
 import HistoryPage from '@/pages/HistoryPage'
 import LandingPage from '@/pages/LandingPage'
@@ -67,6 +68,7 @@ function AppRouter() {
         <Route path="/admin/login" element={<Navigate to="/admin-login" replace />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/driver-login" element={<DriverLoginPage />} />
+        <Route path="/worker-login" element={<WorkerLoginPage />} />
         <Route
           path="/admin/dashboard"
           element={

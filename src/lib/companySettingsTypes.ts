@@ -6,7 +6,7 @@ export type CompanyDateFormat = 'DMY' | 'MDY' | 'YMD'
 export type CompanyWeekStarts = 'monday' | 'sunday'
 export type CompanyTheme = 'light' | 'dark' | 'system'
 export type DefaultBreakMinutes = 30 | 45 | 60
-export type OvertimeAfterHours = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
+export type OvertimeAfterHours = number
 export type OvertimeMode = 'Manual' | 'Automatic'
 export type OvertimeMultiplier =
   | 1.1
@@ -32,13 +32,72 @@ export const OVERTIME_MULTIPLIER_OPTIONS: OvertimeMultiplier[] = [
 ]
 export const DEFAULT_OVERTIME_MULTIPLIER: OvertimeMultiplier = 1.5
 
-export const OVERTIME_AFTER_HOURS_OPTIONS: OvertimeAfterHours[] = [
-  5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-]
-export const DEFAULT_OVERTIME_AFTER_HOURS: OvertimeAfterHours = 8
+export const OVERTIME_AFTER_HOURS_MIN = 5.5
+export const OVERTIME_AFTER_HOURS_MAX = 15.5
+export const OVERTIME_AFTER_HOURS_STEP = 0.5
+
+export const OVERTIME_AFTER_HOURS_OPTIONS: OvertimeAfterHours[] = Array.from(
+  { length: Math.round((OVERTIME_AFTER_HOURS_MAX - OVERTIME_AFTER_HOURS_MIN) / OVERTIME_AFTER_HOURS_STEP) + 1 },
+  (_, index) =>
+    Math.round((OVERTIME_AFTER_HOURS_MIN + index * OVERTIME_AFTER_HOURS_STEP) * 10) / 10,
+)
+
+export const DEFAULT_OVERTIME_AFTER_HOURS: OvertimeAfterHours = 10.5
 
 export function formatOvertimeAfterHoursLabel(hours: OvertimeAfterHours): string {
-  return `${hours} hours`
+  return `${hours.toFixed(1)} hours`
+}
+
+export const WEEKEND_OVERTIME_AFTER_HOURS_MAX = 15.5
+export const WEEKEND_OVERTIME_AFTER_HOURS_STEP = 0.5
+
+export const WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS: number[] = Array.from(
+  {
+    length:
+      Math.round(WEEKEND_OVERTIME_AFTER_HOURS_MAX / WEEKEND_OVERTIME_AFTER_HOURS_STEP) + 1,
+  },
+  (_, index) => Math.round(index * WEEKEND_OVERTIME_AFTER_HOURS_STEP * 10) / 10,
+)
+
+export const WEEKEND_OVERTIME_MULTIPLIER_OPTIONS: number[] = Array.from(
+  { length: 16 },
+  (_, index) => Math.round((1 + index * 0.1) * 10) / 10,
+)
+
+export const DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS = 6
+export const DEFAULT_SATURDAY_OVERTIME_MULTIPLIER = 1.5
+export const DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS = 0
+export const DEFAULT_SUNDAY_OVERTIME_MULTIPLIER = 2
+
+export function formatWeekendOvertimeAfterHoursLabel(hours: number): string {
+  if (hours === 0) return '0.0 hours — from first hour'
+  return `${hours.toFixed(1)} hours`
+}
+
+export function formatWeekendOvertimeMultiplierLabel(value: number): string {
+  return `${value.toFixed(1)}x`
+}
+
+export type TimesheetOvertimeRules = {
+  overtimeAfterHours: number
+  overtimeMultiplier: number
+  saturdayOvertimeEnabled: boolean
+  saturdayOvertimeAfterHours: number
+  saturdayOvertimeMultiplier: number
+  sundayOvertimeEnabled: boolean
+  sundayOvertimeAfterHours: number
+  sundayOvertimeMultiplier: number
+}
+
+export const DEFAULT_TIMESHEET_OVERTIME_RULES: TimesheetOvertimeRules = {
+  overtimeAfterHours: DEFAULT_OVERTIME_AFTER_HOURS,
+  overtimeMultiplier: DEFAULT_OVERTIME_MULTIPLIER,
+  saturdayOvertimeEnabled: false,
+  saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
+  saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  sundayOvertimeEnabled: false,
+  sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
+  sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
 }
 
 export const THEME_OPTIONS: { value: CompanyTheme; label: string }[] = [
@@ -92,6 +151,12 @@ export type CompanySettings = {
   pushNotifications: boolean
   sessionTimeoutMinutes: number
   requireMfa: boolean
+  saturdayOvertimeEnabled: boolean
+  saturdayOvertimeAfterHours: number
+  saturdayOvertimeMultiplier: number
+  sundayOvertimeEnabled: boolean
+  sundayOvertimeAfterHours: number
+  sundayOvertimeMultiplier: number
 }
 
 export type CompanySettingsInput = {
@@ -124,6 +189,12 @@ export type CompanySettingsInput = {
   pushNotifications: boolean
   sessionTimeoutMinutes: number
   requireMfa: boolean
+  saturdayOvertimeEnabled: boolean
+  saturdayOvertimeAfterHours: number
+  saturdayOvertimeMultiplier: number
+  sundayOvertimeEnabled: boolean
+  sundayOvertimeAfterHours: number
+  sundayOvertimeMultiplier: number
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
@@ -142,7 +213,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   defaultVehicleStatus: 'Available',
   defaultDriverRole: 'Driver',
   defaultBreakMinutes: 30,
-  overtimeAfterHours: 8,
+  overtimeAfterHours: 10.5,
   overtimeMode: 'Manual',
   overtimeMultiplier: 1.5,
   currency: 'GBP',
@@ -156,6 +227,12 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   pushNotifications: false,
   sessionTimeoutMinutes: 480,
   requireMfa: false,
+  saturdayOvertimeEnabled: false,
+  saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
+  saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  sundayOvertimeEnabled: false,
+  sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
+  sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
 }
 
 export type CompanySettingsTab =

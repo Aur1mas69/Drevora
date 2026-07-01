@@ -1,4 +1,9 @@
-import { companySettingsSelect } from '@/lib/companySettingsColumns'
+import { resolveCompanyName } from '@/lib/company'
+import {
+  companySettingsCoreSelect,
+  companySettingsSelect,
+  companySettingsWeekendSelect,
+} from '@/lib/companySettingsColumns'
 import {
   DEFAULT_COMPANY_SETTINGS,
   type CompanyDateFormat,
@@ -15,8 +20,16 @@ import {
   DEFAULT_OVERTIME_MULTIPLIER,
   DEFAULT_CURRENCY,
   DEFAULT_OVERTIME_AFTER_HOURS,
-  OVERTIME_MULTIPLIER_OPTIONS,
+  DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
+  DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
+  DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  OVERTIME_AFTER_HOURS_MAX,
+  OVERTIME_AFTER_HOURS_MIN,
   OVERTIME_AFTER_HOURS_OPTIONS,
+  OVERTIME_MULTIPLIER_OPTIONS,
+  WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
+  WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   CURRENCY_OPTIONS,
 } from '@/lib/companySettingsTypes'
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
@@ -57,6 +70,12 @@ type CompanyRow = {
   push_notifications: boolean | null
   session_timeout_minutes: number | null
   require_mfa: boolean | null
+  saturday_overtime_enabled: boolean | null
+  saturday_overtime_after_hours: number | null
+  saturday_overtime_multiplier: number | null
+  sunday_overtime_enabled: boolean | null
+  sunday_overtime_after_hours: number | null
+  sunday_overtime_multiplier: number | null
 }
 
 export class CompanySettingsServiceError extends Error {
@@ -86,18 +105,86 @@ function normalizeBreakMinutes(value: number | null | undefined): DefaultBreakMi
   return 30
 }
 
-function normalizeOvertimeHours(value: number | null | undefined): OvertimeAfterHours {
-  if (value == null) return DEFAULT_OVERTIME_AFTER_HOURS
+function normalizeOvertimeHours(
+  value: number | string | null | undefined,
+): OvertimeAfterHours {
+  if (value == null || value === '') return DEFAULT_OVERTIME_AFTER_HOURS
 
-  const rounded = Math.round(value)
-  if (
-    rounded >= OVERTIME_AFTER_HOURS_OPTIONS[0] &&
-    rounded <= OVERTIME_AFTER_HOURS_OPTIONS[OVERTIME_AFTER_HOURS_OPTIONS.length - 1]
-  ) {
-    return rounded as OvertimeAfterHours
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return DEFAULT_OVERTIME_AFTER_HOURS
+
+  const snapped = Math.round(parsed * 2) / 2
+  const clamped = Math.min(
+    OVERTIME_AFTER_HOURS_MAX,
+    Math.max(OVERTIME_AFTER_HOURS_MIN, snapped),
+  )
+
+  if (OVERTIME_AFTER_HOURS_OPTIONS.includes(clamped)) {
+    return clamped
   }
 
-  return DEFAULT_OVERTIME_AFTER_HOURS
+  let nearest = DEFAULT_OVERTIME_AFTER_HOURS
+  let minDiff = Math.abs(nearest - clamped)
+
+  for (const option of OVERTIME_AFTER_HOURS_OPTIONS) {
+    const diff = Math.abs(option - clamped)
+    if (diff < minDiff) {
+      nearest = option
+      minDiff = diff
+    }
+  }
+
+  return nearest
+}
+
+function snapToNearestOption(value: number, options: number[], fallback: number): number {
+  if (options.includes(value)) return value
+
+  let nearest = fallback
+  let minDiff = Math.abs(nearest - value)
+
+  for (const option of options) {
+    const diff = Math.abs(option - value)
+    if (diff < minDiff) {
+      nearest = option
+      minDiff = diff
+    }
+  }
+
+  return nearest
+}
+
+function coerceNumericHours(value: unknown): number {
+  if (typeof value === 'number') return value
+  return Number.parseFloat(String(value))
+}
+
+function normalizeWeekendOvertimeAfterHours(
+  value: number | string | null | undefined,
+  fallback: number,
+): number {
+  if (value == null || value === '') return fallback
+
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return fallback
+
+  const snapped = Math.round(parsed * 2) / 2
+  const clamped = Math.min(15.5, Math.max(0, snapped))
+  return snapToNearestOption(clamped, WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS, fallback)
+}
+
+function normalizeWeekendOvertimeMultiplier(
+  value: number | string | null | undefined,
+  fallback: number,
+): number {
+  if (value == null || value === '') return fallback
+
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return fallback
+
+  const snapped = Math.round(parsed * 10) / 10
+  const clamped = Math.min(2.5, Math.max(1, snapped))
+  return snapToNearestOption(clamped, WEEKEND_OVERTIME_MULTIPLIER_OPTIONS, fallback)
 }
 
 function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
@@ -105,11 +192,14 @@ function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
 }
 
 function normalizeOvertimeMultiplier(
-  value: number | null | undefined,
+  value: number | string | null | undefined,
 ): OvertimeMultiplier {
-  if (value == null) return DEFAULT_OVERTIME_MULTIPLIER
+  if (value == null || value === '') return DEFAULT_OVERTIME_MULTIPLIER
 
-  const rounded = Math.round(value * 10) / 10
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return DEFAULT_OVERTIME_MULTIPLIER
+
+  const rounded = Math.round(parsed * 10) / 10
 
   if (OVERTIME_MULTIPLIER_OPTIONS.includes(rounded as OvertimeMultiplier)) {
     return rounded as OvertimeMultiplier
@@ -172,7 +262,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
   return {
     id: row.id,
     createdAt: row.created_at,
-    name: row.name,
+    name: resolveCompanyName(row),
     logoUrl: row.logo_url,
     address: row.address,
     city: row.city,
@@ -201,6 +291,24 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     pushNotifications: row.push_notifications ?? false,
     sessionTimeoutMinutes: row.session_timeout_minutes ?? 480,
     requireMfa: row.require_mfa ?? false,
+    saturdayOvertimeEnabled: row.saturday_overtime_enabled ?? false,
+    saturdayOvertimeAfterHours: normalizeWeekendOvertimeAfterHours(
+      row.saturday_overtime_after_hours,
+      DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
+    ),
+    saturdayOvertimeMultiplier: normalizeWeekendOvertimeMultiplier(
+      row.saturday_overtime_multiplier,
+      DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+    ),
+    sundayOvertimeEnabled: row.sunday_overtime_enabled ?? false,
+    sundayOvertimeAfterHours: normalizeWeekendOvertimeAfterHours(
+      row.sunday_overtime_after_hours,
+      DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
+    ),
+    sundayOvertimeMultiplier: normalizeWeekendOvertimeMultiplier(
+      row.sunday_overtime_multiplier,
+      DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+    ),
   }
 }
 
@@ -239,6 +347,12 @@ export function companySettingsToFormValues(
     pushNotifications: settings.pushNotifications,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
     requireMfa: settings.requireMfa,
+    saturdayOvertimeEnabled: settings.saturdayOvertimeEnabled,
+    saturdayOvertimeAfterHours: settings.saturdayOvertimeAfterHours,
+    saturdayOvertimeMultiplier: settings.saturdayOvertimeMultiplier,
+    sundayOvertimeEnabled: settings.sundayOvertimeEnabled,
+    sundayOvertimeAfterHours: settings.sundayOvertimeAfterHours,
+    sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
   }
 }
 
@@ -275,13 +389,17 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
     payload.default_break_minutes = input.defaultBreakMinutes
   }
   if (input.overtimeAfterHours !== undefined) {
-    payload.overtime_after_hours = input.overtimeAfterHours
+    payload.overtime_after_hours = normalizeOvertimeHours(
+      coerceNumericHours(input.overtimeAfterHours),
+    )
   }
   if (input.overtimeMode !== undefined) {
     payload.overtime_mode = input.overtimeMode
   }
   if (input.overtimeMultiplier !== undefined) {
-    payload.overtime_multiplier = input.overtimeMultiplier
+    payload.overtime_multiplier = normalizeOvertimeMultiplier(
+      coerceNumericHours(input.overtimeMultiplier),
+    )
   }
   if (input.currency !== undefined) {
     payload.currency = input.currency
@@ -310,22 +428,129 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
     payload.session_timeout_minutes = input.sessionTimeoutMinutes
   }
   if (input.requireMfa !== undefined) payload.require_mfa = input.requireMfa
+  if (input.saturdayOvertimeEnabled !== undefined) {
+    payload.saturday_overtime_enabled = input.saturdayOvertimeEnabled
+  }
+  if (input.saturdayOvertimeAfterHours !== undefined) {
+    payload.saturday_overtime_after_hours = normalizeWeekendOvertimeAfterHours(
+      coerceNumericHours(input.saturdayOvertimeAfterHours),
+      DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
+    )
+  }
+  if (input.saturdayOvertimeMultiplier !== undefined) {
+    payload.saturday_overtime_multiplier = normalizeWeekendOvertimeMultiplier(
+      coerceNumericHours(input.saturdayOvertimeMultiplier),
+      DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+    )
+  }
+  if (input.sundayOvertimeEnabled !== undefined) {
+    payload.sunday_overtime_enabled = input.sundayOvertimeEnabled
+  }
+  if (input.sundayOvertimeAfterHours !== undefined) {
+    payload.sunday_overtime_after_hours = normalizeWeekendOvertimeAfterHours(
+      coerceNumericHours(input.sundayOvertimeAfterHours),
+      DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
+    )
+  }
+  if (input.sundayOvertimeMultiplier !== undefined) {
+    payload.sunday_overtime_multiplier = normalizeWeekendOvertimeMultiplier(
+      coerceNumericHours(input.sundayOvertimeMultiplier),
+      DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+    )
+  }
 
   return payload
 }
 
-export async function fetchCompanySettings(): Promise<CompanySettings | null> {
-  if (!isSupabaseConfigured) {
-    return null
+const WEEKEND_OVERTIME_PAYLOAD_KEYS = [
+  'saturday_overtime_enabled',
+  'saturday_overtime_after_hours',
+  'saturday_overtime_multiplier',
+  'sunday_overtime_enabled',
+  'sunday_overtime_after_hours',
+  'sunday_overtime_multiplier',
+] as const
+
+async function updateCompanyRecord(
+  companyId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await requireSupabase()
+    .from('companies')
+    .update(payload)
+    .eq('id', companyId)
+
+  if (!error) return
+
+  if (!isMissingColumnError(error)) {
+    throw new CompanySettingsServiceError(error.message)
   }
 
-  const table = 'companies'
-  const { data, error } = await requireSupabase()
-    .from(table)
-    .select(companySettingsSelect)
+  const strippedPayload = { ...payload }
+  for (const key of WEEKEND_OVERTIME_PAYLOAD_KEYS) {
+    delete strippedPayload[key]
+  }
+
+  if (Object.keys(strippedPayload).length === 0) {
+    throw new CompanySettingsServiceError(error.message)
+  }
+
+  const { error: retryError } = await requireSupabase()
+    .from('companies')
+    .update(strippedPayload)
+    .eq('id', companyId)
+
+  if (retryError) {
+    throw new CompanySettingsServiceError(retryError.message)
+  }
+}
+
+function isMissingColumnError(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false
+
+  const message = error.message?.toLowerCase() ?? ''
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    (message.includes('column') &&
+      (message.includes('does not exist') ||
+        message.includes('not found') ||
+        message.includes('could not find')))
+  )
+}
+
+async function queryCompanyRow(select: string) {
+  return requireSupabase()
+    .from('companies')
+    .select(select)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+}
+
+async function fetchAlternateCompanyName(companyId: string): Promise<string | null> {
+  for (const column of ['company_name', 'organisation_name'] as const) {
+    const { data, error } = await requireSupabase()
+      .from('companies')
+      .select(column)
+      .eq('id', companyId)
+      .maybeSingle()
+
+    if (error) {
+      if (isMissingColumnError(error)) continue
+      break
+    }
+
+    const value = (data as Record<string, string | null> | null)?.[column]?.trim()
+    if (value) return value
+  }
+
+  return null
+}
+
+async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
+  const table = 'companies'
+  const { data, error } = await queryCompanyRow(companySettingsSelect)
 
   logSupabaseQuery({
     service: 'companySettingsService.fetchCompanySettings',
@@ -334,11 +559,64 @@ export async function fetchCompanySettings(): Promise<CompanySettings | null> {
     error,
   })
 
-  if (error) {
+  if (!error && data) {
+    return data as unknown as CompanyRow
+  }
+
+  if (error && !isMissingColumnError(error)) {
     throw new CompanySettingsServiceError(error.message)
   }
 
-  return data ? mapCompanySettingsRow(data as unknown as CompanyRow) : null
+  const { data: coreData, error: coreError } = await queryCompanyRow(companySettingsCoreSelect)
+
+  logSupabaseQuery({
+    service: 'companySettingsService.fetchCompanySettings.coreFallback',
+    table,
+    data: coreData ? [coreData] : [],
+    error: coreError,
+  })
+
+  if (coreError) {
+    throw new CompanySettingsServiceError(coreError.message)
+  }
+
+  if (!coreData) return null
+
+  let merged = { ...(coreData as unknown as Record<string, unknown>) }
+
+  const { data: weekendData, error: weekendError } = await queryCompanyRow(
+    companySettingsWeekendSelect,
+  )
+
+  if (!weekendError && weekendData) {
+    merged = { ...merged, ...(weekendData as unknown as Record<string, unknown>) }
+  }
+
+  return merged as unknown as CompanyRow
+}
+
+async function mapLoadedCompanyRow(row: CompanyRow): Promise<CompanySettings> {
+  const mapped = mapCompanySettingsRow(row)
+
+  if (mapped.name?.trim()) {
+    return mapped
+  }
+
+  const alternateName = await fetchAlternateCompanyName(row.id)
+  if (!alternateName) {
+    return mapped
+  }
+
+  return { ...mapped, name: alternateName }
+}
+
+export async function fetchCompanySettings(): Promise<CompanySettings | null> {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+
+  const row = await loadCompanySettingsRow()
+  return row ? mapLoadedCompanyRow(row) : null
 }
 
 export async function saveCompanySettings(
@@ -362,26 +640,27 @@ export async function updateCompanySettings(
   const existing = await fetchCompanySettings()
 
   if (existing) {
-    const { data, error } = await requireSupabase()
-      .from('companies')
-      .update(payload)
-      .eq('id', existing.id)
-      .select(companySettingsSelect)
-      .single()
+    await updateCompanyRecord(existing.id, payload)
 
-    if (error) throw new CompanySettingsServiceError(error.message)
-    return mapCompanySettingsRow(data as unknown as CompanyRow)
+    const refreshed = await fetchCompanySettings()
+    if (!refreshed) {
+      throw new CompanySettingsServiceError('Unable to reload company settings after save')
+    }
+    return refreshed
   }
 
   const merged: CompanySettingsInput = { ...DEFAULT_COMPANY_SETTINGS, ...input }
-  const { data, error } = await requireSupabase()
+  const { error: insertError } = await requireSupabase()
     .from('companies')
     .insert(toDbPayload(merged))
-    .select(companySettingsSelect)
-    .single()
 
-  if (error) throw new CompanySettingsServiceError(error.message)
-  return mapCompanySettingsRow(data as unknown as CompanyRow)
+  if (insertError) throw new CompanySettingsServiceError(insertError.message)
+
+  const created = await fetchCompanySettings()
+  if (!created) {
+    throw new CompanySettingsServiceError('Unable to load company settings after create')
+  }
+  return created
 }
 
 export const companySettingsService = {

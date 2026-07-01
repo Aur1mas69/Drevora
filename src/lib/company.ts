@@ -11,6 +11,21 @@ export function formatCompanyDisplayLocation(
 
 const COMPANY_NAME_FALLBACK = 'Company profile incomplete'
 
+type CompanyNameSource = {
+  name?: string | null
+  company_name?: string | null
+  organisation_name?: string | null
+}
+
+/** Resolve company name from the real DB column(s), preferring `name`. */
+export function resolveCompanyName(source: CompanyNameSource): string | null {
+  for (const value of [source.name, source.company_name, source.organisation_name]) {
+    const trimmed = value?.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
 export function getCompanyDisplayName(name: string | null | undefined): string {
   const trimmed = name?.trim()
   return trimmed || COMPANY_NAME_FALLBACK

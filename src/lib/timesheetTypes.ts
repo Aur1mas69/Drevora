@@ -11,6 +11,7 @@ export type TimesheetEntry = {
   finishTime: string | null
   totalMinutes: number
   overtimeMinutes: number
+  additionalHours: number
 }
 
 export type TimesheetEntryInput = {
@@ -21,6 +22,7 @@ export type TimesheetEntryInput = {
   finishTime: string | null
   totalMinutes: number
   overtimeMinutes: number
+  additionalHours: number
 }
 
 export type Timesheet = {
@@ -31,6 +33,7 @@ export type Timesheet = {
   weekLabel: string
   status: TimesheetStatus
   notes: string | null
+  bonusAmount: number
   createdAt: string
   updatedAt: string
   driverName: string

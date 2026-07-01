@@ -135,7 +135,7 @@ export function TimesheetsSummaryStrip({ stats, weekLabel }: TimesheetsSummarySt
         <p className={`text-xs font-semibold uppercase tracking-[0.1em] ${adminTextMuted}`}>
           Week summary
         </p>
-        <p className={`text-sm font-semibold ${adminHeading}`}>{weekLabel}</p>
+        <p className={`text-sm font-semibold ${adminHeading}`}>Week: {weekLabel}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">

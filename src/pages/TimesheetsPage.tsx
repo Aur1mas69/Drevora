@@ -196,8 +196,8 @@ export default function TimesheetsPage() {
       throw new TimesheetsServiceError('No timesheet open')
     }
 
-    const saved = await upsertTimesheetEntries(drawerState.timesheet.id, entries)
-    const refreshed = await fetchTimesheetById(saved.id)
+    await upsertTimesheetEntries(drawerState.timesheet.id, entries)
+    const refreshed = await fetchTimesheetById(drawerState.timesheet.id)
     replaceListItem(refreshed)
     setDrawerState((current) =>
       current ? { ...current, timesheet: refreshed } : current,

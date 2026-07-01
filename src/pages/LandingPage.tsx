@@ -7,7 +7,7 @@ function LandingPage() {
   return (
     <LandingPageContent
       onAdminLogin={() => navigate('/admin-login')}
-      onDriverLogin={() => navigate('/driver-login')}
+      onWorkerLogin={() => navigate('/worker-login')}
     />
   )
 }

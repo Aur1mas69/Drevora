@@ -1,373 +1,236 @@
-import { HeroBackground } from '@/components/landing/HeroBackground'
 import { LandingButton } from '@/components/landing/LandingButtons'
 import { Button } from '@/components/ui/button'
 import {
-  AlertTriangle,
   CalendarDays,
+  ChevronDown,
   ClipboardCheck,
   Clock,
   FileText,
-  Home,
+  HelpCircle,
   LayoutDashboard,
+  Package,
+  Settings,
   ShieldCheck,
-  Star,
+  Sparkles,
   Truck,
   Users,
 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 
 type LandingPageProps = {
   onAdminLogin: () => void
-  onDriverLogin?: () => void
+  onWorkerLogin: () => void
 }
 
 const navLinks = [
   { label: 'Features', href: '#features' },
-  { label: 'Vehicle Checks', href: '#features' },
-  { label: 'Timesheets', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
+  { label: 'FAQ', href: '#faq' },
   { label: 'Contact', href: '#contact' },
 ]
 
-const stats = [
-  { value: '120+', label: 'Vehicles Managed' },
-  { value: '24/7', label: 'Access Anywhere' },
-  { value: '30', label: 'Day Tracking History' },
-  { value: '100%', label: 'Digital Checks' },
+const trustHighlights = [
+  'Built for transport teams',
+  'Early Access available',
+  'Mobile-friendly workflows',
+  'Fleet, workers and compliance in one place',
 ]
 
-const features = [
+const drevoraModules = [
   {
-    icon: ClipboardCheck,
-    title: 'Vehicle Checks',
-    description:
-      'Create flexible inspection templates and let drivers complete checks from their phone.',
-  },
-  {
-    icon: CalendarDays,
-    title: 'Timesheets',
-    description: 'Track working hours, submissions and approvals in one place.',
+    icon: LayoutDashboard,
+    title: 'Dashboard',
+    description: 'See your daily operations, alerts and key fleet metrics in one place.',
   },
   {
     icon: Users,
+    title: 'Workers',
+    description: 'Manage workers, roles, contact details and availability.',
+  },
+  {
+    icon: Truck,
+    title: 'Vehicles',
+    description: 'Track vehicles, status, documents and fleet information.',
+  },
+  {
+    icon: Clock,
+    title: 'Timesheets',
+    description: 'Record hours, review work time and prepare payroll information.',
+  },
+  {
+    icon: CalendarDays,
     title: 'Holiday Requests',
-    description: 'Manage driver and staff holiday requests without paper forms.',
+    description: 'Let workers request holidays and managers approve or decline.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Vehicle Checks',
+    description: 'Create check templates and keep daily checks organised.',
   },
   {
     icon: FileText,
     title: 'Driver Reports',
     description:
-      'Let workers report vehicle, load, damage, site or delay issues directly to the office.',
+      'Drivers can report issues, damage, site problems or operational incidents.',
   },
   {
     icon: ShieldCheck,
-    title: 'Fleet Compliance',
-    description: 'Keep MOT, insurance, service and document reminders organised.',
+    title: 'Compliance',
+    description: 'Track important compliance items, documents and expiry dates.',
   },
   {
-    icon: Truck,
-    title: 'Vehicle Setup',
-    description:
-      'Set up vehicles manually now, with DVLA and What3Words options prepared for future integrations.',
+    icon: Package,
+    title: 'Consumables',
+    description: 'Track fuel, fluids, AdBlue, admixtures and other operating consumables.',
   },
-]
+] as const
 
-const pricingPlans = [
-  {
-    name: 'Starter',
-    description: 'For small teams getting organised',
-    features: [
-      'Up to 5 vehicles',
-      'Timesheets',
-      'Holiday requests',
-      'Basic vehicle checks',
-    ],
-    cta: 'Start with Starter',
-    popular: false,
-  },
-  {
-    name: 'Professional',
-    description: 'For growing fleets',
-    features: [
-      'Up to 25 vehicles',
-      'Advanced vehicle checks',
-      'Driver reports',
-      'Compliance alerts',
-      'Office dashboard',
-    ],
-    cta: 'Choose Professional',
-    popular: true,
-  },
-  {
-    name: 'Business',
-    description: 'For larger transport operations',
-    features: [
-      '25+ vehicles',
-      'Custom vehicle check templates',
-      'Multi-role access',
-      'Priority support',
-      'Future integrations ready',
-    ],
-    cta: 'Contact Us',
-    popular: false,
-    contact: true,
-  },
+const secondaryModules = [
+  { icon: Settings, title: 'Settings', muted: true, italic: false },
+  { icon: HelpCircle, title: 'FAQ / Help', muted: true, italic: false },
+  { icon: Sparkles, title: 'Future Features', muted: true, italic: true },
+] as const
+
+const earlyAccessFeatures = [
+  'Dashboard access',
+  'Workers',
+  'Vehicles',
+  'Timesheets',
+  'Holiday Requests',
+  'Vehicle Checks',
+  'Driver Reports',
+  'Compliance',
+  'Consumables',
+  'Basic settings',
+  'Updates during MVP',
 ]
 
 const howItWorksSteps = [
-  'Add your company and vehicles',
-  'Set up workers and office users',
-  'Choose vehicle check templates',
-  'Drivers complete daily tasks from their phone',
-  'Office team tracks everything from the dashboard',
+  {
+    title: 'Set up your company',
+    description: 'Add your company profile, vehicles and core fleet information.',
+  },
+  {
+    title: 'Add workers and roles',
+    description: 'Invite office users and prepare worker access for daily tasks.',
+  },
+  {
+    title: 'Drivers use mobile workflows',
+    description: 'Timesheets, checks and reports from any smartphone browser.',
+  },
+  {
+    title: 'Manage from the dashboard',
+    description: 'Track operations, compliance and approvals from one admin view.',
+  },
 ]
 
-function LogoMark() {
+const phoneFeatures = [
+  {
+    icon: Clock,
+    title: 'Submit timesheets in seconds',
+    description: 'Clock in and out with hours recorded digitally — no paper forms.',
+  },
+  {
+    icon: CalendarDays,
+    title: 'Request holidays',
+    description: 'Workers request time off; managers approve or decline in the platform.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Complete vehicle checks',
+    description: 'Daily checklists on mobile with defects and notes captured clearly.',
+  },
+  {
+    icon: FileText,
+    title: 'Report operational issues',
+    description: 'Drivers report damage, site problems or incidents with a clear audit trail.',
+  },
+]
+
+const faqItems = [
+  {
+    question: 'What is DREVORA?',
+    answer:
+      'DREVORA is a fleet, workers and transport operations platform.',
+  },
+  {
+    question: 'Who is DREVORA for?',
+    answer:
+      'It is built for transport companies, managers, office teams and drivers.',
+  },
+  {
+    question: 'Is DREVORA free?',
+    answer: 'Early Access is free for now during MVP.',
+  },
+  {
+    question: 'Can drivers use it on mobile?',
+    answer: 'Mobile-friendly driver workflows are being prepared and improved.',
+  },
+]
+
+function HeaderBrand() {
   return (
-    <img
-      src="/drevora-logo.png"
-      alt="DREVORA"
-      className="h-auto max-h-9 w-auto max-w-[160px] shrink-0 object-contain sm:max-w-[180px]"
-    />
+    <span className="text-lg font-extrabold tracking-tight text-white sm:text-xl">
+      DREV<span className="text-[#3B6FFF]">ORA</span>
+    </span>
   )
 }
 
-function HeroVisual() {
-  const floatingCards = [
-    {
-      icon: AlertTriangle,
-      title: 'MOT Alert',
-      subtitle: 'Expires in 7 days',
-      className: '-left-1 top-4 sm:left-0 sm:top-6',
-      iconTone: 'text-amber-500',
-    },
-    {
-      icon: ClipboardCheck,
-      title: 'Vehicle Check',
-      subtitle: 'Completed',
-      className: 'right-0 top-10 sm:top-12',
-      iconTone: 'text-emerald-500',
-    },
-    {
-      icon: Clock,
-      title: 'Timesheet',
-      subtitle: 'Submitted',
-      className: 'bottom-32 left-0 sm:bottom-36 sm:left-2',
-      iconTone: 'text-[#2563EB]',
-    },
-    {
-      icon: FileText,
-      title: 'Driver Report',
-      subtitle: 'New report',
-      className: 'right-0 bottom-28 sm:bottom-32',
-      iconTone: 'text-[#2563EB]',
-    },
-  ]
-
-  const kpis = [
-    { label: 'Vehicles', value: '120+' },
-    { label: 'Workers', value: '24' },
-    { label: 'MOT Alerts', value: '12' },
-    { label: 'Insurance Alerts', value: '5' },
-  ]
-
-  const motExpiry = [
-    { vehicle: 'FLT-08', date: '12 Apr' },
-    { vehicle: 'FLT-14', date: '18 Apr' },
-    { vehicle: 'FLT-21', date: '24 Apr' },
-  ]
-
-  const recentActivity = [
-    { text: 'Vehicle check completed', time: '2m ago' },
-    { text: 'Timesheet submitted', time: '14m ago' },
-    { text: 'MOT reminder sent', time: '1h ago' },
-  ]
-
+function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
-    <div className="relative mx-auto w-full max-w-[640px] lg:mx-0 lg:max-w-none lg:pl-2">
-      {floatingCards.map(({ icon: Icon, title, subtitle, className, iconTone }) => (
-        <div
-          key={title}
-          className={`absolute z-30 hidden max-w-[148px] rounded-xl border border-[#BFDBFE]/90 bg-white/95 px-3 py-2.5 shadow-[0_16px_40px_rgba(37,99,235,0.14)] backdrop-blur-md sm:block ${className}`}
-        >
-          <div className="flex items-start gap-2">
-            <Icon className={`mt-0.5 size-3.5 shrink-0 ${iconTone}`} strokeWidth={2.2} />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-[#0F172A]">{title}</p>
-              <p className="text-[9px] font-medium text-[#64748B]">{subtitle}</p>
-            </div>
+    <p className="text-[11px] font-bold tracking-[0.2em] text-[#3B6FFF] uppercase">
+      {children}
+    </p>
+  )
+}
+
+function DashboardMockup() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#1A2035] bg-[#0F1420] shadow-[0_32px_64px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center gap-2 border-b border-[#1A2035] bg-[#131829] px-3 py-2.5">
+        <div className="size-2 rounded-full bg-[#EF4444]" />
+        <div className="size-2 rounded-full bg-[#F59E0B]" />
+        <div className="size-2 rounded-full bg-[#22C55E]" />
+        <span className="ml-1 text-[11px] text-[#6B7A99]">drevora.app</span>
+      </div>
+      <div className="flex min-h-[280px] sm:min-h-[320px]">
+        <div className="flex w-12 shrink-0 flex-col items-center gap-1.5 border-r border-[#1A2035] bg-[#0A0D1A] py-3 sm:w-14">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#3B6FFF] to-[#7C5CFC] text-[10px] font-extrabold text-white">
+            D
           </div>
+          {drevoraModules.map(({ icon: Icon, title }, index) => (
+            <div
+              key={title}
+              title={title}
+              className={`flex size-8 items-center justify-center rounded-lg ${
+                index === 0
+                  ? 'bg-[#3B6FFF]/15 text-[#3B6FFF] ring-1 ring-[#3B6FFF]/30'
+                  : 'text-[#6B7A99]'
+              }`}
+            >
+              <Icon className="size-3.5" strokeWidth={2} />
+            </div>
+          ))}
         </div>
-      ))}
-
-      <div className="relative overflow-visible rounded-[24px] border border-[#BFDBFE]/90 bg-white/80 p-3 shadow-[0_32px_80px_rgba(37,99,235,0.18)] backdrop-blur-md sm:p-4">
-        <div className="overflow-hidden rounded-[18px] border border-[#E2E8F0]/90 bg-[#F8FAFC] shadow-inner">
-          <div className="flex items-center gap-2 border-b border-[#E2E8F0] bg-white/95 px-3 py-2.5">
-            <div className="size-2 rounded-full bg-[#EF4444]" />
-            <div className="size-2 rounded-full bg-[#F59E0B]" />
-            <div className="size-2 rounded-full bg-[#22C55E]" />
-            <span className="ml-1 text-[11px] font-medium text-[#64748B]">app.drevora.co.uk</span>
-          </div>
-
-          <div className="flex min-h-[340px] sm:min-h-[380px]">
-            <div className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-[#E2E8F0] bg-[#FCFDFF] py-4 sm:w-14">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#60A5FA] text-xs font-extrabold text-white">
-                D
-              </div>
-              {[LayoutDashboard, Users, Truck, ClipboardCheck, ShieldCheck].map((Icon, index) => (
-                <div
-                  key={index}
-                  className={`flex size-8 items-center justify-center rounded-lg ${
-                    index === 0
-                      ? 'bg-[#2563EB]/12 text-[#2563EB] ring-1 ring-[#BFDBFE]'
-                      : 'text-[#94A3B8]'
-                  }`}
-                >
-                  <Icon className="size-4" strokeWidth={2} />
-                </div>
-              ))}
-            </div>
-
-            <div className="min-w-0 flex-1 p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-bold text-[#0F172A]">Dashboard</p>
-                  <p className="text-[10px] text-[#64748B]">Fleet operations overview</p>
-                </div>
-                <span className="rounded-full bg-[#EFF6FF] px-2.5 py-1 text-[10px] font-semibold text-[#2563EB] ring-1 ring-[#BFDBFE]">
-                  Live
-                </span>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {kpis.map((kpi) => (
-                  <div
-                    key={kpi.label}
-                    className="rounded-xl border border-[#E2E8F0] bg-white px-2.5 py-2 shadow-sm sm:px-3 sm:py-2.5"
-                  >
-                    <p className="text-base font-extrabold leading-none text-[#2563EB] sm:text-lg">
-                      {kpi.value}
-                    </p>
-                    <p className="mt-1 text-[9px] font-medium text-[#64748B] sm:text-[10px]">
-                      {kpi.label}
-                    </p>
+        <div className="min-w-0 flex-1 p-3 sm:p-4">
+          <p className="text-sm font-bold text-white">DREVORA</p>
+          <p className="text-[10px] text-[#6B7A99]">Fleet & Team Management</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {drevoraModules.map(({ icon: Icon, title }) => (
+              <div
+                key={title}
+                className="rounded-lg border border-[#1A2035] bg-[#131829] px-2 py-2"
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#3B6FFF]/10 text-[#3B6FFF]">
+                    <Icon className="size-3" strokeWidth={2} />
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                <div className="rounded-xl border border-[#BFDBFE]/80 bg-gradient-to-br from-[#EFF6FF] to-white p-3">
-                  <p className="text-[10px] font-semibold text-[#0F172A] sm:text-xs">Fleet status</p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <div className="relative flex size-14 shrink-0 items-center justify-center sm:size-16">
-                      <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background:
-                            'conic-gradient(#2563EB 0deg 280deg, #E2E8F0 280deg 360deg)',
-                        }}
-                      />
-                      <div className="absolute inset-1.5 rounded-full bg-white" />
-                      <span className="relative text-xs font-bold text-[#2563EB]">78%</span>
-                    </div>
-                    <div className="min-w-0 space-y-1.5 text-[9px] sm:text-[10px]">
-                      <div className="flex justify-between gap-2">
-                        <span className="text-[#64748B]">Available</span>
-                        <span className="font-semibold text-[#0F172A]">86</span>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <span className="text-[#64748B]">Off road</span>
-                        <span className="font-semibold text-[#0F172A]">8</span>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <span className="text-[#64748B]">Workshop</span>
-                        <span className="font-semibold text-[#0F172A]">4</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
-                  <p className="text-[10px] font-semibold text-[#0F172A] sm:text-xs">MOT expiry</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {motExpiry.map((item) => (
-                      <li
-                        key={item.vehicle}
-                        className="flex items-center justify-between rounded-lg bg-[#F8FAFC] px-2 py-1.5 text-[9px] sm:text-[10px]"
-                      >
-                        <span className="font-semibold text-[#334155]">{item.vehicle}</span>
-                        <span className="text-[#64748B]">{item.date}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-[9px] font-medium leading-tight text-[#E8EDF5] sm:text-[10px]">
+                    {title}
+                  </p>
                 </div>
               </div>
-
-              <div className="mt-2 rounded-xl border border-[#E2E8F0] bg-white p-3">
-                <p className="text-[10px] font-semibold text-[#0F172A] sm:text-xs">Recent activity</p>
-                <ul className="mt-2 space-y-1.5">
-                  {recentActivity.map((item) => (
-                    <li
-                      key={item.text}
-                      className="flex items-center justify-between gap-2 text-[9px] sm:text-[10px]"
-                    >
-                      <span className="truncate text-[#475569]">{item.text}</span>
-                      <span className="shrink-0 text-[#94A3B8]">{item.time}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Phone mockup */}
-        <div
-          className="absolute -right-2 bottom-2 z-20 w-[34%] min-w-[118px] max-w-[156px] rotate-[8deg] rounded-[22px] border-[5px] border-[#0F172A] bg-[#0F172A] p-1 shadow-[0_28px_60px_rgba(15,23,42,0.32)] sm:-right-4 sm:bottom-0 sm:max-w-[168px]"
-        >
-          <div className="overflow-hidden rounded-[14px] bg-white">
-            <div className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-2">
-              <p className="text-[10px] font-bold text-[#0F172A]">Dashboard</p>
-            </div>
-            <div className="space-y-1.5 p-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { label: 'MOT Alerts', value: '3', tone: 'text-amber-600' },
-                  { label: 'Insurance', value: '2', tone: 'text-[#2563EB]' },
-                  { label: 'Off-Road', value: '4', tone: 'text-[#64748B]' },
-                  { label: 'Available', value: '18', tone: 'text-emerald-600' },
-                ].map((card) => (
-                  <div
-                    key={card.label}
-                    className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-1.5"
-                  >
-                    <p className={`text-xs font-extrabold leading-none ${card.tone}`}>{card.value}</p>
-                    <p className="mt-0.5 text-[7px] font-medium text-[#64748B]">{card.label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-1.5">
-                <p className="text-[8px] font-semibold text-[#0F172A]">Upcoming</p>
-                <div className="mt-1 space-y-1">
-                  {['MOT review', 'Insurance renewal'].map((event) => (
-                    <div
-                      key={event}
-                      className="rounded bg-[#EFF6FF] px-1.5 py-1 text-[7px] font-medium text-[#334155]"
-                    >
-                      {event}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-around border-t border-[#E2E8F0] bg-[#FCFDFF] px-2 py-1.5">
-              {[Home, Truck, ClipboardCheck, Users].map((Icon, index) => (
-                <Icon
-                  key={index}
-                  className={`size-3 ${index === 0 ? 'text-[#2563EB]' : 'text-[#94A3B8]'}`}
-                  strokeWidth={2}
-                />
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -375,7 +238,74 @@ function HeroVisual() {
   )
 }
 
-function LandingPage({ onAdminLogin }: LandingPageProps) {
+function PhoneMockup() {
+  return (
+    <div className="mx-auto w-full max-w-[220px]">
+      <div className="overflow-hidden rounded-[28px] border-[6px] border-[#1A2035] bg-[#0A0D1A] shadow-[0_24px_60px_rgba(0,0,0,0.7)]">
+        <div className="bg-[#04060D] px-4 py-1.5 text-center">
+          <div className="mx-auto h-1 w-10 rounded-full bg-[#222840]" />
+        </div>
+        <div className="bg-[#0F1420] px-3 pb-4 pt-3">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#3B6FFF]">
+            Worker portal
+          </p>
+          <p className="mt-0.5 text-[11px] font-semibold text-white">Daily tasks</p>
+          <p className="text-[8px] text-[#6B7A99]">Mobile-friendly workflows</p>
+          <div className="mt-3 space-y-1.5">
+            {['Timesheets', 'Vehicle Checks', 'Holiday Requests', 'Driver Reports'].map(
+              (item) => (
+                <div
+                  key={item}
+                  className="flex items-center justify-between rounded-lg border border-[#1A2035] bg-[#131829] px-2.5 py-2"
+                >
+                  <span className="text-[8px] font-medium text-[#E8EDF5]">{item}</span>
+                  <span className="text-[7px] text-[#3B6FFF]">Open</span>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HeroVisual() {
+  return (
+    <div className="relative mx-auto w-full max-w-[560px] lg:mx-0 lg:max-w-none">
+      <DashboardMockup />
+      <div className="absolute -right-2 bottom-0 z-10 hidden w-[38%] min-w-[120px] max-w-[168px] rotate-[6deg] sm:block lg:-right-4">
+        <PhoneMockup />
+      </div>
+    </div>
+  )
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="rounded-2xl border border-[#1A2035] bg-[#131829]">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+      >
+        <span className="text-sm font-semibold text-white">{question}</span>
+        <ChevronDown
+          className={`size-4 shrink-0 text-[#6B7A99] transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open ? (
+        <p className="border-t border-[#1A2035] px-5 pb-4 text-sm leading-relaxed text-[#6B7A99]">
+          {answer}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function LandingPage({ onAdminLogin, onWorkerLogin }: LandingPageProps) {
   function scrollToPricing() {
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -385,141 +315,304 @@ function LandingPage({ onAdminLogin }: LandingPageProps) {
   }
 
   return (
-    <div className="min-h-svh overflow-x-hidden bg-[#F8FBFF] text-[#0F172A] antialiased">
+    <div className="min-h-svh overflow-x-hidden bg-[#04060D] text-[#E8EDF5] antialiased">
       {/* Navigation */}
-      <header className="sticky top-0 z-50 border-b border-[#E2E8F0]/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <a href="#" className="shrink-0 no-underline">
-            <LogoMark />
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-[#1A2035] bg-[#04060D]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-[68px] max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-12">
+          <a href="#" className="shrink-0 no-underline" aria-label="DREVORA home">
+            <HeaderBrand />
           </a>
 
-          <nav className="hidden flex-1 items-center justify-center gap-6 lg:flex">
+          <nav className="hidden flex-1 items-center justify-center gap-7 lg:flex">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium text-[#475569] no-underline transition-colors hover:text-[#2563EB]"
+                className="text-sm text-[#6B7A99] no-underline transition-colors hover:text-[#E8EDF5]"
               >
                 {link.label}
               </a>
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
               variant="ghost"
-              onClick={onAdminLogin}
-              className="hidden h-9 rounded-xl text-sm font-semibold text-[#334155] hover:bg-[#EFF6FF] hover:text-[#2563EB] sm:inline-flex"
+              onClick={onWorkerLogin}
+              className="hidden h-9 rounded-lg border border-[#1A2035] px-3 text-xs font-medium text-[#6B7A99] hover:border-[#3B6FFF] hover:bg-transparent hover:text-[#3B6FFF] sm:inline-flex sm:text-sm"
             >
-              Login
+              Worker Login
             </Button>
             <LandingButton
               type="button"
+              motionVariant="ghost-dark"
               onClick={onAdminLogin}
-              className="h-9 px-4 text-sm sm:px-5"
+              className="hidden h-9 px-3 text-xs sm:inline-flex sm:text-sm"
             >
-              Get Started
+              Admin Login
+            </LandingButton>
+            <LandingButton
+              type="button"
+              motionVariant="primary-dark"
+              onClick={scrollToPricing}
+              className="h-9 px-3 text-xs sm:px-4 sm:text-sm"
+            >
+              Get Demo
             </LandingButton>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <HeroBackground />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-10">
-          <div className="grid items-center gap-10 py-12 md:gap-12 lg:grid-cols-12 lg:gap-8 lg:py-16 xl:gap-10">
-            <div className="min-w-0 lg:col-span-5 xl:col-span-5">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#BFDBFE] bg-white/90 px-3.5 py-1 text-xs font-semibold text-[#2563EB] shadow-sm">
-                Fleet management made simple
+      <section className="relative overflow-hidden pt-[68px]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[-200px] left-1/2 h-[600px] w-[1000px] -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(59,111,255,0.14)_0%,transparent_65%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-[-200px] bottom-[-100px] h-[600px] w-[600px] bg-[radial-gradient(ellipse,rgba(124,92,252,0.08)_0%,transparent_60%)]"
+        />
+
+        <div className="relative mx-auto max-w-[1200px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+            <div className="min-w-0">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#3B6FFF]/20 bg-[#3B6FFF]/8 px-4 py-1.5 text-xs font-medium text-[#3B6FFF]">
+                <span className="size-1.5 animate-pulse rounded-full bg-[#00C9A7] shadow-[0_0_8px_#00C9A7]" />
+                Built for transport teams
               </div>
-              <h1 className="text-[clamp(1.75rem,3.2vw,2.75rem)] leading-[1.14] font-extrabold tracking-tight text-[#0F172A]">
-                Manage your fleet, team and daily operations with DREVORA — all in one place.
+
+              <h1 className="text-[clamp(2rem,4.5vw,3.625rem)] leading-[1.05] font-extrabold tracking-[-0.04em] text-white">
+                Manage your fleet, team and daily operations with{' '}
+                <span className="bg-gradient-to-br from-[#3B6FFF] to-[#00C9A7] bg-clip-text text-transparent">
+                  DREVORA
+                </span>{' '}
+                — all in one place.
               </h1>
-              <p className="mt-4 text-lg font-semibold text-[#2563EB]">
+
+              <p className="mt-5 text-lg font-medium text-[#3B6FFF]">
                 Save time. Reduce paperwork. Keep your transport business moving.
               </p>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-[#475569]">
+
+              <p className="mt-4 max-w-[460px] text-base leading-relaxed text-[#6B7A99]">
                 DREVORA helps transport companies manage vehicles, workers, timesheets, holiday
                 requests, vehicle checks, driver reports and compliance from one simple platform.
               </p>
+
               <div className="mt-8 flex flex-wrap gap-3">
-                <LandingButton type="button" onClick={onAdminLogin} className="h-11 px-6">
-                  Get Started for Free
+                <LandingButton
+                  type="button"
+                  motionVariant="primary-dark"
+                  onClick={scrollToPricing}
+                  className="h-12 px-7 text-[15px]"
+                >
+                  Get Demo
                 </LandingButton>
                 <LandingButton
                   type="button"
-                  motionVariant="secondary"
-                  onClick={scrollToPricing}
-                  className="h-11 px-6"
+                  motionVariant="secondary-dark"
+                  onClick={onAdminLogin}
+                  className="h-12 px-7 text-[15px]"
                 >
-                  View Pricing
+                  Admin Login
+                </LandingButton>
+                <LandingButton
+                  type="button"
+                  motionVariant="secondary-dark"
+                  onClick={onWorkerLogin}
+                  className="h-12 px-7 text-[15px]"
+                >
+                  Worker Login
                 </LandingButton>
               </div>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <div className="flex -space-x-2">
-                  {['A', 'B', 'C', 'D'].map((initial) => (
-                    <span
-                      key={initial}
-                      className="flex size-8 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-[#93C5FD] to-[#2563EB] text-[10px] font-bold text-white shadow-sm"
-                    >
-                      {initial}
-                    </span>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-0.5 text-[#2563EB]">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Star key={index} className="size-3.5 fill-[#2563EB]" strokeWidth={0} />
-                    ))}
-                  </div>
-                  <p className="mt-1 text-sm font-medium text-[#64748B]">
-                    Trusted by modern transport teams
-                  </p>
-                </div>
+
+              <div className="mt-8 flex flex-wrap gap-2">
+                {trustHighlights.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-[#1A2035] bg-[#0F1420] px-3 py-1 text-xs text-[#6B7A99]"
+                  >
+                    {item}
+                  </span>
+                ))}
               </div>
             </div>
 
-            <div className="min-w-0 lg:col-span-7 xl:col-span-7">
+            <div className="min-w-0">
               <HeroVisual />
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="mx-auto mb-4 max-w-6xl overflow-hidden rounded-2xl border border-[#BFDBFE]/80 bg-white/85 pb-2 shadow-[0_20px_50px_rgba(37,99,235,0.08)] backdrop-blur-sm lg:mb-6">
-            <div className="grid grid-cols-2 divide-x divide-[#E2E8F0]/80 lg:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="px-4 py-5 text-center sm:px-6 sm:py-6">
-                  <p className="text-2xl font-extrabold text-[#2563EB] sm:text-[1.75rem]">
-                    {stat.value}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-[#64748B] sm:text-sm">{stat.label}</p>
-                </div>
-              ))}
+      {/* Trust bar */}
+      <div className="border-y border-[#1A2035] bg-[#0A0D1A]">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-2 lg:grid-cols-4">
+          {trustHighlights.map((item, index) => (
+            <div
+              key={item}
+              className={`px-6 py-8 text-center ${
+                index < trustHighlights.length - 1 ? 'lg:border-r lg:border-[#1A2035]' : ''
+              } ${index % 2 === 0 ? 'border-r border-[#1A2035] lg:border-r-[#1A2035]' : ''}`}
+            >
+              <p className="text-sm font-semibold text-white">{item}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Platform / modules */}
+      <section id="platform" className="border-b border-[#1A2035] bg-[#0A0D1A] px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1200px]">
+          <SectionEyebrow>The Platform</SectionEyebrow>
+          <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+            Everything in one dashboard
+          </h2>
+          <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[#6B7A99]">
+            Your admin panel gives you a complete view of your fleet, workers, compliance and
+            operations — from any device.
+          </p>
+
+          <div className="mt-14 grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <DashboardMockup />
+
+            <div>
+              <p className="text-[13px] font-semibold tracking-[0.15em] text-[#6B7A99] uppercase">
+                Dashboard Modules
+              </p>
+              <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {drevoraModules.map(({ icon: Icon, title }) => (
+                  <div
+                    key={title}
+                    className="flex items-center gap-2.5 rounded-[10px] border border-[#1A2035] bg-[#131829] px-3.5 py-3 text-[13px] font-medium text-[#E8EDF5] transition-colors hover:border-[#3B6FFF]/40 hover:bg-[#3B6FFF]/6"
+                  >
+                    <Icon className="size-4 shrink-0 text-[#3B6FFF]" strokeWidth={2} />
+                    {title}
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-4 h-px bg-[#1A2035]" />
+
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {secondaryModules.map(({ icon: Icon, title, muted, italic }) => (
+                  <div
+                    key={title}
+                    className={`flex items-center gap-2.5 rounded-[10px] border border-[#1A2035] bg-[#131829] px-3.5 py-3 text-[13px] font-medium text-[#E8EDF5] ${
+                      muted ? 'opacity-60' : ''
+                    } ${italic ? 'italic' : ''}`}
+                  >
+                    <Icon className="size-4 shrink-0 text-[#6B7A99]" strokeWidth={2} />
+                    {title}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="bg-gradient-to-b from-[#EFF6FF] to-[#F8FBFF] px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl">
-              Built for transport teams
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ icon: Icon, title, description }) => (
+      <section id="features" className="px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1200px]">
+          <SectionEyebrow>Core Features</SectionEyebrow>
+          <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+            Everything you need, all in one place
+          </h2>
+          <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[#6B7A99]">
+            Nine core modules built to streamline fleet operations and keep your team organised.
+          </p>
+
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {drevoraModules.map(({ icon: Icon, title, description }) => (
               <div
                 key={title}
-                className="rounded-2xl border border-[#E2E8F0]/80 bg-white/90 p-6 shadow-[0_8px_30px_rgba(37,99,235,0.06)] backdrop-blur-sm transition-shadow hover:shadow-[0_12px_40px_rgba(37,99,235,0.1)]"
+                className="group relative overflow-hidden rounded-2xl border border-[#1A2035] bg-[#131829] p-8 transition-all hover:-translate-y-0.5 hover:border-[#3B6FFF]/30"
               >
-                <div className="flex size-11 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
+                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#3B6FFF] to-[#7C5CFC] opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="flex size-12 items-center justify-center rounded-xl border border-[#3B6FFF]/15 bg-[#3B6FFF]/10 text-[#3B6FFF]">
                   <Icon className="size-5" strokeWidth={2} />
                 </div>
-                <h3 className="mt-4 text-lg font-bold text-[#0F172A]">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#64748B]">{description}</p>
+                <h3 className="mt-5 text-base font-semibold text-white">{title}</h3>
+                <p className="mt-2.5 text-sm leading-relaxed text-[#6B7A99]">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Driver / mobile */}
+      <section
+        id="mobile"
+        className="border-y border-[#1A2035] bg-[#0A0D1A] px-5 py-20 sm:px-8 lg:px-12"
+      >
+        <div className="mx-auto max-w-[1200px]">
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+            <div>
+              <SectionEyebrow>Driver App</SectionEyebrow>
+              <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+                Your drivers use their phones — nothing else needed
+              </h2>
+              <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[#6B7A99]">
+                Drivers open drevora.app on any smartphone. Mobile-friendly workflows for daily
+                tasks — no extra apps required during MVP.
+              </p>
+
+              <div className="mt-10 space-y-6">
+                {phoneFeatures.map(({ icon: Icon, title, description }) => (
+                  <div key={title} className="flex gap-4">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#3B6FFF]/15 bg-[#3B6FFF]/10 text-[#3B6FFF]">
+                      <Icon className="size-[18px]" strokeWidth={2} />
+                    </div>
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-white">{title}</h3>
+                      <p className="mt-1.5 text-[13px] leading-relaxed text-[#6B7A99]">
+                        {description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <div className="relative w-full max-w-[280px]">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-[radial-gradient(ellipse,rgba(59,111,255,0.12),transparent_70%)]"
+                />
+                <PhoneMockup />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1200px]">
+          <SectionEyebrow>How It Works</SectionEyebrow>
+          <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+            Get started step by step
+          </h2>
+          <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[#6B7A99]">
+            Set up your company, add your team and start managing daily transport operations from
+            one platform.
+          </p>
+
+          <div className="relative mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-5 right-[12%] left-[12%] hidden h-px bg-gradient-to-r from-transparent via-[#1A2035] to-transparent lg:block"
+            />
+            {howItWorksSteps.map((step, index) => (
+              <div key={step.title} className="relative text-center">
+                <div className="relative z-10 mx-auto flex size-10 items-center justify-center rounded-full border border-[#1A2035] bg-[#131829] text-sm font-extrabold text-[#3B6FFF]">
+                  {index + 1}
+                </div>
+                <h3 className="mt-5 text-sm font-semibold text-white">{step.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-[#6B7A99]">{step.description}</p>
               </div>
             ))}
           </div>
@@ -527,174 +620,160 @@ function LandingPage({ onAdminLogin }: LandingPageProps) {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
+      <section
+        id="pricing"
+        className="border-y border-[#1A2035] bg-[#0A0D1A] px-5 py-20 sm:px-8 lg:px-12"
+      >
+        <div className="mx-auto max-w-[1200px]">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl">
-              Simple pricing for growing transport businesses
+            <SectionEyebrow>Pricing</SectionEyebrow>
+            <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+              Pricing
             </h2>
+            <p className="mt-4 text-base text-[#6B7A99]">
+              Start using DREVORA for free while we finish the MVP.
+            </p>
           </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {pricingPlans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm ${
-                  plan.popular
-                    ? 'border-[#2563EB] shadow-[0_16px_48px_rgba(37,99,235,0.12)] ring-1 ring-[#2563EB]/20'
-                    : 'border-[#E2E8F0]'
-                }`}
+
+          <div className="mx-auto mt-12 max-w-md">
+            <div className="relative rounded-2xl border border-[#3B6FFF] bg-gradient-to-b from-[#3B6FFF]/8 to-[#131829] p-8">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#3B6FFF] px-3.5 py-1 text-[11px] font-bold tracking-wide text-white uppercase">
+                MVP
+              </span>
+              <p className="text-xs font-semibold tracking-[0.15em] text-[#6B7A99] uppercase">
+                Early Access
+              </p>
+              <p className="mt-3 text-4xl font-extrabold text-white">FREE for now</p>
+              <p className="mt-3 text-sm text-[#6B7A99]">
+                For transport companies that want to test DREVORA during MVP development.
+              </p>
+              <ul className="mt-6 space-y-2">
+                {earlyAccessFeatures.map((feature) => (
+                  <li key={feature} className="flex gap-2.5 text-[13px] text-[#6B7A99]">
+                    <span className="font-bold text-[#00C9A7]">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <LandingButton
+                type="button"
+                motionVariant="primary-dark"
+                onClick={scrollToContact}
+                className="mt-8 h-11 w-full"
               >
-                {plan.popular ? (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#2563EB] px-3 py-1 text-[11px] font-bold tracking-wide text-white uppercase">
-                    Most Popular
-                  </span>
-                ) : null}
-                <h3 className="text-xl font-extrabold text-[#0F172A]">{plan.name}</h3>
-                <p className="mt-2 text-sm text-[#64748B]">{plan.description}</p>
-                <ul className="mt-6 flex-1 space-y-2.5">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-2 text-sm text-[#334155]">
-                      <span className="mt-0.5 text-[#2563EB]">✓</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <LandingButton
-                  type="button"
-                  motionVariant={plan.popular ? 'primary' : 'secondary'}
-                  onClick={plan.contact ? scrollToContact : onAdminLogin}
-                  className="mt-8 h-11 w-full"
-                >
-                  {plan.cta}
-                </LandingButton>
-              </div>
-            ))}
+                Get Demo
+              </LandingButton>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="bg-[#EFF6FF] px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl">
-              How DREVORA works
+      {/* FAQ */}
+      <section id="faq" className="px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[720px]">
+          <div className="text-center">
+            <SectionEyebrow>FAQ</SectionEyebrow>
+            <h2 className="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+              Common questions
             </h2>
           </div>
-          <ol className="mx-auto mt-12 grid max-w-3xl gap-4">
-            {howItWorksSteps.map((step, index) => (
-              <li
-                key={step}
-                className="flex items-start gap-4 rounded-2xl border border-[#BFDBFE]/60 bg-white/90 px-5 py-4 shadow-sm"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-sm font-bold text-white">
-                  {index + 1}
-                </span>
-                <p className="pt-1.5 text-base font-medium text-[#334155]">{step}</p>
-              </li>
+          <div className="mt-10 space-y-3">
+            {faqItems.map((item) => (
+              <FaqItem key={item.question} question={item.question} answer={item.answer} />
             ))}
-          </ol>
+          </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section
-        id="contact"
-        className="bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] px-4 py-20 text-center sm:px-6 lg:px-8"
-      >
-        <div className="mx-auto max-w-3xl">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            Ready to reduce paperwork in your transport business?
-          </h2>
-          <p className="mt-4 text-lg text-[#BFDBFE]">
-            Start with manual setup today and grow into a smarter fleet management system over time.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <LandingButton
-              type="button"
-              motionVariant="primary-on-dark"
-              onClick={onAdminLogin}
-              className="h-11 px-6"
-            >
-              Get Started
-            </LandingButton>
-            <LandingButton
-              type="button"
-              motionVariant="secondary-light"
-              onClick={onAdminLogin}
-              className="h-11 px-6"
-            >
-              Login
-            </LandingButton>
+      <section id="contact" className="px-5 py-16 sm:px-8 lg:px-12">
+        <div className="relative mx-auto max-w-[1200px] overflow-hidden rounded-3xl border border-[#3B6FFF]/20 bg-gradient-to-br from-[#3B6FFF]/12 to-[#7C5CFC]/8 px-6 py-16 text-center sm:px-12">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-[-100px] left-1/2 h-[300px] w-[500px] -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(59,111,255,0.15),transparent_70%)]"
+          />
+          <div className="relative">
+            <h2 className="text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.1] font-extrabold tracking-[-0.04em] text-white">
+              Ready to reduce paperwork in your transport business?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-base text-[#6B7A99]">
+              Start with Early Access today. Explore the platform and help shape DREVORA during MVP
+              development.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <LandingButton
+                type="button"
+                motionVariant="primary-dark"
+                onClick={scrollToPricing}
+                className="h-12 px-8 text-[15px]"
+              >
+                Get Demo
+              </LandingButton>
+              <LandingButton
+                type="button"
+                motionVariant="secondary-dark"
+                onClick={onAdminLogin}
+                className="h-12 px-8 text-[15px]"
+              >
+                Admin Login
+              </LandingButton>
+              <LandingButton
+                type="button"
+                motionVariant="secondary-dark"
+                onClick={onWorkerLogin}
+                className="h-12 px-8 text-[15px]"
+              >
+                Worker Login
+              </LandingButton>
+            </div>
+            <p className="mt-4 text-[13px] text-[#6B7A99]">
+              Early Access is free during MVP · No payment required
+            </p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#E2E8F0] bg-white px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
-            <div className="lg:col-span-2">
-              <LogoMark />
-              <p className="mt-4 max-w-sm text-sm leading-relaxed text-[#64748B]">
-                All-in-one transport management platform for modern fleet and operations teams.
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-[#0F172A]">Product</p>
-              <ul className="mt-3 space-y-2 text-sm">
-                {['Features', 'Vehicle Checks', 'Timesheets', 'Pricing'].map((item) => (
-                  <li key={item}>
-                    <a
-                      href={item === 'Pricing' ? '#pricing' : '#features'}
-                      className="text-[#64748B] no-underline hover:text-[#2563EB]"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-[#0F172A]">Company</p>
-              <ul className="mt-3 space-y-2 text-sm">
-                {[
-                  { label: 'About', href: '#features' },
-                  { label: 'Contact', href: '#contact' },
-                  { label: 'Support', href: 'mailto:support@drevora.app' },
-                ].map((item) => (
-                  <li key={item.label}>
-                    <a
-                      href={item.href}
-                      className="text-[#64748B] no-underline hover:text-[#2563EB]"
-                    >
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-[#0F172A]">Legal</p>
-              <ul className="mt-3 space-y-2 text-sm">
-                {['Privacy Policy', 'Terms'].map((item) => (
-                  <li key={item}>
-                    <a href="#" className="text-[#64748B] no-underline hover:text-[#2563EB]">
-                      {item}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <footer className="border-t border-[#1A2035] px-5 py-10 sm:px-8 lg:px-12">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
+          <div>
+            <HeaderBrand />
+            <p className="mt-1 text-[13px] text-[#6B7A99]">Fleet & Team Management</p>
           </div>
 
-          <div className="mt-10 border-t border-[#E2E8F0] pt-6 text-center text-sm text-[#64748B]">
-            © 2026 DREVORA. All rights reserved.
-          </div>
+          <nav className="flex flex-wrap items-center justify-center gap-5 sm:justify-end">
+            <button
+              type="button"
+              onClick={onAdminLogin}
+              className="cursor-pointer border-none bg-transparent p-0 text-[13px] text-[#6B7A99] no-underline hover:text-[#E8EDF5]"
+            >
+              Admin Login
+            </button>
+            <button
+              type="button"
+              onClick={onWorkerLogin}
+              className="cursor-pointer border-none bg-transparent p-0 text-[13px] text-[#6B7A99] no-underline hover:text-[#E8EDF5]"
+            >
+              Worker Login
+            </button>
+            <a
+              href="#faq"
+              className="text-[13px] text-[#6B7A99] no-underline hover:text-[#E8EDF5]"
+            >
+              FAQ / Help
+            </a>
+            <a
+              href="#pricing"
+              className="text-[13px] text-[#6B7A99] no-underline hover:text-[#E8EDF5]"
+            >
+              Pricing
+            </a>
+          </nav>
         </div>
+
+        <p className="mx-auto mt-8 max-w-[1200px] text-center text-[13px] text-[#222840]">
+          © 2026 DREVORA. All rights reserved.
+        </p>
       </footer>
     </div>
   )

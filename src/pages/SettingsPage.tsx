@@ -31,14 +31,17 @@ import {
   DEFAULT_COMPANY_SETTINGS,
   OVERTIME_MULTIPLIER_OPTIONS,
   OVERTIME_AFTER_HOURS_OPTIONS,
+  WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
+  WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   formatOvertimeMultiplierLabel,
   formatOvertimeAfterHoursLabel,
+  formatWeekendOvertimeAfterHoursLabel,
+  formatWeekendOvertimeMultiplierLabel,
   THEME_OPTIONS,
   type CompanyTheme,
   type CompanyCurrency,
   type CompanySettingsInput,
   type CompanySettingsTab,
-  type OvertimeAfterHours,
   type OvertimeMultiplier,
 } from '@/lib/companySettingsTypes'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
@@ -77,18 +80,21 @@ function SettingsPage() {
   const [savedForm, setSavedForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const hasHydratedRef = useRef(false)
+  const isDirtyRef = useRef(false)
 
   const isDirty = !formsEqual(form, savedForm)
 
   useUnsavedChangesWarning(isDirty)
 
   useEffect(() => {
-    if (!settings || hasHydratedRef.current) return
+    isDirtyRef.current = isDirty
+  }, [isDirty])
+
+  useEffect(() => {
+    if (!settings || isDirtyRef.current) return
     const values = companySettingsService.companySettingsToFormValues(settings)
     setForm(values)
     setSavedForm(values)
-    hasHydratedRef.current = true
   }, [settings])
 
   const showToast = useCallback((message: string) => {
@@ -106,8 +112,10 @@ function SettingsPage() {
     setSaveError(null)
 
     try {
-      await updateSettings(form)
-      setSavedForm(form)
+      const updated = await updateSettings(form)
+      const values = companySettingsService.companySettingsToFormValues(updated)
+      setForm(values)
+      setSavedForm(values)
       showToast('Settings saved')
     } catch (error) {
       console.error('Failed to save company settings:', error)
@@ -395,13 +403,13 @@ function SettingsPage() {
                       value={form.overtimeAfterHours}
                       onChange={(event) =>
                         updateForm({
-                          overtimeAfterHours: Number(event.target.value) as OvertimeAfterHours,
+                          overtimeAfterHours: Number.parseFloat(event.target.value),
                         })
                       }
                       className={settingsSelectClassName}
                     >
                       {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                        <option key={hours} value={hours}>
+                        <option key={hours.toFixed(1)} value={hours}>
                           {formatOvertimeAfterHoursLabel(hours)}
                         </option>
                       ))}
@@ -472,6 +480,111 @@ function SettingsPage() {
                       ))}
                     </select>
                   </SettingsField>
+                </SettingsSection>
+
+                <SettingsSection
+                  title="Weekend Overtime Rules"
+                  description="Weekend rules override standard overtime rules for Saturday and Sunday."
+                >
+                  <SettingsToggle
+                    label="Enable Saturday overtime rule"
+                    description="Use Saturday-specific overtime threshold and multiplier."
+                    checked={form.saturdayOvertimeEnabled}
+                    onChange={(checked) => updateForm({ saturdayOvertimeEnabled: checked })}
+                  />
+
+                  {form.saturdayOvertimeEnabled ? (
+                    <>
+                      <SettingsField
+                        label="Saturday overtime starts after"
+                        hint="Hours worked after this threshold can be treated as overtime on Saturdays."
+                      >
+                        <select
+                          value={form.saturdayOvertimeAfterHours}
+                          onChange={(event) =>
+                            updateForm({
+                              saturdayOvertimeAfterHours: Number(event.target.value),
+                            })
+                          }
+                          className={settingsSelectClassName}
+                        >
+                          {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
+                            <option key={`sat-${hours.toFixed(1)}`} value={hours}>
+                              {formatWeekendOvertimeAfterHoursLabel(hours)}
+                            </option>
+                          ))}
+                        </select>
+                      </SettingsField>
+
+                      <SettingsField label="Saturday overtime multiplier">
+                        <select
+                          value={form.saturdayOvertimeMultiplier}
+                          onChange={(event) =>
+                            updateForm({
+                              saturdayOvertimeMultiplier: Number(event.target.value),
+                            })
+                          }
+                          className={settingsSelectClassName}
+                        >
+                          {WEEKEND_OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                            <option key={`sat-mult-${option.toFixed(1)}`} value={option}>
+                              {formatWeekendOvertimeMultiplierLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </SettingsField>
+                    </>
+                  ) : null}
+
+                  <SettingsToggle
+                    label="Enable Sunday overtime rule"
+                    description="Use Sunday-specific overtime threshold and multiplier."
+                    checked={form.sundayOvertimeEnabled}
+                    onChange={(checked) => updateForm({ sundayOvertimeEnabled: checked })}
+                  />
+
+                  {form.sundayOvertimeEnabled ? (
+                    <>
+                      <SettingsField
+                        label="Sunday overtime starts after"
+                        hint="Hours worked after this threshold can be treated as overtime on Sundays."
+                      >
+                        <select
+                          value={form.sundayOvertimeAfterHours}
+                          onChange={(event) =>
+                            updateForm({
+                              sundayOvertimeAfterHours: Number(event.target.value),
+                            })
+                          }
+                          className={settingsSelectClassName}
+                        >
+                          {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
+                            <option key={`sun-${hours.toFixed(1)}`} value={hours}>
+                              {formatWeekendOvertimeAfterHoursLabel(hours)}
+                            </option>
+                          ))}
+                        </select>
+                      </SettingsField>
+
+                      <SettingsField label="Sunday overtime multiplier">
+                        <select
+                          value={form.sundayOvertimeMultiplier}
+                          onChange={(event) =>
+                            updateForm({
+                              sundayOvertimeMultiplier: Number(event.target.value),
+                            })
+                          }
+                          className={settingsSelectClassName}
+                        >
+                          {WEEKEND_OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                            <option key={`sun-mult-${option.toFixed(1)}`} value={option}>
+                              {formatWeekendOvertimeMultiplierLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </SettingsField>
+                    </>
+                  ) : null}
                 </SettingsSection>
                 </div>
               </>
