@@ -12,6 +12,15 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/timesheetUtils'
+import {
+  adminHeading,
+  adminTableHeadText,
+  adminTableHeader,
+  adminTableRow,
+  adminTableShellSm,
+  adminText,
+  adminTextMuted,
+} from '@/lib/adminUiStyles'
 import { Check, Eye, Pencil, Trash2 } from 'lucide-react'
 
 type TimesheetsDataTableProps = {
@@ -85,11 +94,11 @@ export function TimesheetsDataTable({
   const someSelected = timesheets.some((sheet) => selectedIds.has(sheet.id))
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+    <div className={adminTableShellSm}>
       <div className="max-h-[calc(100vh-22rem)] overflow-auto">
         <table className="w-full min-w-[920px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-[#F4F8FF] shadow-[0_1px_0_rgba(75,120,220,0.10)]">
-            <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <thead className={adminTableHeader}>
+            <tr className={adminTableHeadText}>
               <th className="w-10 px-2 py-2">
                 <input
                   type="checkbox"
@@ -99,7 +108,7 @@ export function TimesheetsDataTable({
                   }}
                   onChange={(event) => onToggleSelectAll(event.target.checked)}
                   aria-label="Select all on page"
-                  className="size-3.5 rounded border-slate-300"
+                  className="size-3.5 rounded border-slate-300 dark:border-slate-600"
                 />
               </th>
               <th className="px-2 py-2">Worker</th>
@@ -114,34 +123,31 @@ export function TimesheetsDataTable({
           </thead>
           <tbody>
             {timesheets.map((sheet) => (
-              <tr
-                key={sheet.id}
-                className={`border-t border-[rgba(75,120,220,0.06)] ${cellText} transition-colors hover:bg-[#F8FBFF]/70`}
-              >
+              <tr key={sheet.id} className={`${adminTableRow} ${cellText}`}>
                 <td className={`px-2 ${rowPadding}`}>
                   <input
                     type="checkbox"
                     checked={selectedIds.has(sheet.id)}
                     onChange={() => onToggleSelect(sheet.id)}
                     aria-label={`Select ${sheet.driverName}`}
-                    className="size-3.5 rounded border-slate-300"
+                    className="size-3.5 rounded border-slate-300 dark:border-slate-600"
                   />
                 </td>
                 <td className="px-2 py-1.5">
                   <button
                     type="button"
                     onClick={() => onEdit(sheet)}
-                    className="text-left font-semibold text-[#2A376F] hover:text-[#2563EB]"
+                    className={`text-left font-semibold ${adminHeading} hover:text-[#2563EB] dark:hover:text-blue-300`}
                   >
                     {sheet.driverName}
                   </button>
                 </td>
-                <td className="px-2 py-1.5 text-slate-600">{sheet.driverRole ?? '—'}</td>
-                <td className="px-2 py-1.5 text-slate-600">{sheet.vehicleRegistration}</td>
-                <td className="px-2 py-1.5 font-semibold tabular-nums text-[#2A376F]">
+                <td className={`px-2 py-1.5 ${adminText}`}>{sheet.driverRole ?? '—'}</td>
+                <td className={`px-2 py-1.5 ${adminText}`}>{sheet.vehicleRegistration}</td>
+                <td className={`px-2 py-1.5 font-semibold tabular-nums ${adminHeading}`}>
                   {formatHours(sheet.workedHours)}
                 </td>
-                <td className="px-2 py-1.5 tabular-nums text-slate-600">
+                <td className={`px-2 py-1.5 tabular-nums ${adminText}`}>
                   {formatHours(sheet.overtimeHours)}
                 </td>
                 <td className="px-2 py-1.5">
@@ -151,7 +157,7 @@ export function TimesheetsDataTable({
                     {getStatusLabel(sheet.status)}
                   </span>
                 </td>
-                <td className="px-2 py-1.5 text-[11px] text-slate-500">
+                <td className={`px-2 py-1.5 text-[11px] ${adminTextMuted}`}>
                   {formatDateTime(sheet.updatedAt)}
                 </td>
                 <TableActionsCell className={`${rowPadding}`}>

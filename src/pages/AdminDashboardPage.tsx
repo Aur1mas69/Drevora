@@ -27,16 +27,16 @@ import {
 } from '@/services/dashboardService'
 
 const glassCard =
-  'rounded-[20px] border border-white/80 bg-white/95 shadow-[0_24px_64px_rgba(59,130,246,0.11)] ring-1 ring-blue-100/70 backdrop-blur-sm'
+  'rounded-[20px] border border-white/80 bg-white/95 shadow-[0_24px_64px_rgba(59,130,246,0.11)] ring-1 ring-blue-100/70 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20 dark:ring-white/5 dark:backdrop-blur-xl'
 
 const hoverLift =
-  'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_72px_rgba(59,130,246,0.14)]'
+  'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_72px_rgba(59,130,246,0.14)] dark:hover:shadow-black/30'
 
 const fleetKpiCardBase =
-  'overflow-hidden rounded-[13px] border border-[rgba(75,120,220,0.10)] shadow-[0_8px_24px_rgba(40,80,140,0.05)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(40,80,140,0.09)]'
+  'overflow-hidden rounded-[13px] border border-[rgba(75,120,220,0.10)] shadow-[0_8px_24px_rgba(40,80,140,0.05)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(40,80,140,0.09)] dark:border-white/10 dark:shadow-black/20 dark:backdrop-blur-xl dark:hover:shadow-black/30'
 
 const fleetOverviewPanel =
-  'overflow-hidden rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-[#EAF2FF]/70 p-2 shadow-[0_8px_24px_rgba(40,80,140,0.05)]'
+  'overflow-hidden rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-[#EAF2FF]/70 p-2 shadow-[0_8px_24px_rgba(40,80,140,0.05)] dark:border-white/10 dark:bg-slate-900/50 dark:shadow-black/20 dark:backdrop-blur-xl'
 
 function getOperationsStatus(stats: DashboardStats): {
   message: string
@@ -113,10 +113,10 @@ function DashboardSection({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-[-0.03em] text-slate-950 sm:text-xl">
+          <h2 className="text-lg font-semibold tracking-[-0.03em] text-slate-950 sm:text-xl dark:text-slate-100">
             {title}
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">{subtitle}</p>
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{subtitle}</p>
         </div>
         {action}
       </div>
@@ -153,10 +153,10 @@ function KpiCard({
           <Icon className="size-4" strokeWidth={1.85} aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#2A376F]">
+          <p className="text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#2A376F] dark:text-slate-100">
             {value}
           </p>
-          <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-slate-500">
+          <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-slate-500 dark:text-slate-400">
             {label}
           </p>
           <p className="sr-only">{detail}</p>
@@ -171,7 +171,7 @@ function KpiCard({
     </CardContent>
   )
 
-  const cardClassName = `${fleetKpiCardBase} ${surfaceClass} border-0 py-0 ring-0`
+  const cardClassName = `${fleetKpiCardBase} ${surfaceClass} border-0 py-0 ring-0 dark:bg-slate-900/70`
 
   if (to) {
     return (
@@ -229,10 +229,13 @@ function LiveStatusStrip({ stats }: { stats: DashboardStats }) {
   }
 
   const toneStyles = {
-    green: 'bg-emerald-50/90 text-emerald-800 ring-emerald-100',
-    orange: 'bg-amber-50/90 text-amber-800 ring-amber-100',
-    red: 'bg-rose-50/90 text-rose-800 ring-rose-100',
-    neutral: 'bg-white/90 text-slate-700 ring-blue-100',
+    green:
+      'bg-emerald-50/90 text-emerald-800 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-900/60',
+    orange:
+      'bg-amber-50/90 text-amber-800 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900/60',
+    red: 'bg-rose-50/90 text-rose-800 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900/60',
+    neutral:
+      'bg-white/90 text-slate-700 ring-blue-100 dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:backdrop-blur-xl',
   }
 
   return (
@@ -276,7 +279,7 @@ function VehicleAlertStatusCard({
   return (
     <Link
       to={to}
-      className={`group flex flex-col justify-between rounded-[18px] border border-[rgba(222,222,222,0.9)] bg-gradient-to-br from-white to-[#F8FBFF] p-5 ring-1 ring-blue-100/70 ${hoverLift}`}
+      className={`group flex flex-col justify-between rounded-[18px] border border-[rgba(222,222,222,0.9)] bg-gradient-to-br from-white to-[#F8FBFF] p-5 ring-1 ring-blue-100/70 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-800/70 dark:ring-white/5 dark:backdrop-blur-xl dark:shadow-black/20 ${hoverLift}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className={`flex size-10 items-center justify-center rounded-[14px] ring-1 ${accent}`}>
@@ -288,10 +291,12 @@ function VehicleAlertStatusCard({
         </span>
       </div>
       <div className="mt-5">
-        <p className="text-sm font-semibold text-slate-600">{title}</p>
-        <p className="mt-2 text-[2rem] font-semibold leading-none tracking-[-0.06em] text-slate-950">
+        <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{title}</p>
+        <p className="mt-2 text-[2rem] font-semibold leading-none tracking-[-0.06em] text-slate-950 dark:text-slate-100">
           {count}{' '}
-          <span className="w-[66px] text-base font-medium tracking-normal text-[#4B535D]">{unit}</span>
+          <span className="w-[66px] text-base font-medium tracking-normal text-[#4B535D] dark:text-slate-400">
+            {unit}
+          </span>
         </p>
       </div>
     </Link>
@@ -299,7 +304,7 @@ function VehicleAlertStatusCard({
 }
 
 const vehicleAlertsGridCard =
-  'rounded-[20px] border border-white/80 bg-white/95 shadow-[0_0_0_0.93px_rgba(0,0,0,0.15),0_24px_64px_rgba(59,130,246,0.11)] backdrop-blur-sm'
+  'rounded-[20px] border border-white/80 bg-white/95 shadow-[0_0_0_0.93px_rgba(0,0,0,0.15),0_24px_64px_rgba(59,130,246,0.11)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20 dark:backdrop-blur-xl'
 
 function VehicleAlertsGrid({ alerts }: { alerts: DashboardStats['availabilityAlerts'] }) {
   return (
@@ -309,7 +314,7 @@ function VehicleAlertsGrid({ alerts }: { alerts: DashboardStats['availabilityAle
           title="Off Road Today"
           count={alerts.offRoadToday}
           unit="Vehicles"
-          accent="bg-rose-50 text-rose-600 ring-rose-100"
+          accent="bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60"
           icon={AlertTriangle}
           to="/vehicles"
         />
@@ -317,7 +322,7 @@ function VehicleAlertsGrid({ alerts }: { alerts: DashboardStats['availabilityAle
           title="Maintenance Today"
           count={alerts.maintenanceToday}
           unit="Vehicles"
-          accent="bg-amber-50 text-amber-700 ring-amber-100"
+          accent="bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60"
           icon={Wrench}
           to="/vehicles"
         />
@@ -325,7 +330,7 @@ function VehicleAlertsGrid({ alerts }: { alerts: DashboardStats['availabilityAle
           title="Going Off Road Soon"
           count={alerts.goingOffRoadSoon}
           unit="Vehicles"
-          accent="bg-orange-50 text-orange-700 ring-orange-100"
+          accent="bg-orange-50 text-orange-700 ring-orange-100 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60"
           icon={CalendarClock}
           to="/vehicles"
         />
@@ -333,7 +338,7 @@ function VehicleAlertsGrid({ alerts }: { alerts: DashboardStats['availabilityAle
           title="Documents Expiring Soon"
           count={alerts.documentsExpiringSoon}
           unit="Vehicles"
-          accent="bg-[#EAF4FF] text-[#2563EB] ring-blue-100"
+          accent="bg-[#EAF4FF] text-[#2563EB] ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60"
           icon={Shield}
           to="/compliance"
         />
@@ -348,8 +353,8 @@ function ActivityTimeline({ activity }: { activity: DashboardRecentActivity[] })
   return (
     <div className={`${glassCard} p-6 sm:p-7`}>
       {activity.length === 0 ? (
-        <div className="flex min-h-[240px] items-center justify-center rounded-[16px] bg-gradient-to-br from-[#F8FBFF] to-white ring-1 ring-blue-100/60">
-          <p className="text-sm font-semibold text-slate-500">No recent activity yet.</p>
+        <div className="flex min-h-[240px] items-center justify-center rounded-[16px] bg-gradient-to-br from-[#F8FBFF] to-white ring-1 ring-blue-100/60 dark:from-slate-800/60 dark:to-slate-900/60 dark:ring-white/10">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">No recent activity yet.</p>
         </div>
       ) : (
         <ul className="space-y-0">
@@ -358,17 +363,17 @@ function ActivityTimeline({ activity }: { activity: DashboardRecentActivity[] })
               <div className="flex gap-4 py-4">
                 <div className="flex flex-col items-center">
                   <span
-                    className={`size-2.5 shrink-0 rounded-full ${getTimelineDotClass(item)} ring-4 ring-white`}
+                    className={`size-2.5 shrink-0 rounded-full ${getTimelineDotClass(item)} ring-4 ring-white dark:ring-slate-900/70`}
                   />
                   {index < activity.length - 1 ? (
-                    <div className="mt-2 w-px flex-1 bg-gradient-to-b from-blue-200/70 to-transparent" />
+                    <div className="mt-2 w-px flex-1 bg-gradient-to-b from-blue-200/70 to-transparent dark:from-slate-600/50" />
                   ) : null}
                 </div>
                 <div className="min-w-0 flex-1 pb-1">
-                  <p className="text-sm font-semibold leading-6 text-slate-800">
+                  <p className="text-sm font-semibold leading-6 text-slate-800 dark:text-slate-100">
                     {getTimelineTitle(item)}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-slate-400">
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">
                     {formatRelativeDateTime(item.createdAt)}
                   </p>
                 </div>
@@ -376,7 +381,7 @@ function ActivityTimeline({ activity }: { activity: DashboardRecentActivity[] })
               {index < activity.length - 1 ? (
                 <div
                   aria-hidden="true"
-                  className="ml-[4.5px] h-px w-[calc(100%-1.125rem)] bg-gradient-to-r from-blue-100/80 via-blue-50/40 to-transparent"
+                  className="ml-[4.5px] h-px w-[calc(100%-1.125rem)] bg-gradient-to-r from-blue-100/80 via-blue-50/40 to-transparent dark:from-white/10 dark:via-white/5"
                 />
               ) : null}
             </li>
@@ -401,14 +406,14 @@ function QuickActionCard({
   return (
     <Link
       to={to}
-      className={`group flex flex-col items-start rounded-[20px] border border-white/80 bg-white/95 p-6 ring-1 ring-blue-100/70 ${hoverLift}`}
+      className={`group flex flex-col items-start rounded-[20px] border border-white/80 bg-white/95 p-6 ring-1 ring-blue-100/70 dark:border-white/10 dark:bg-slate-900/70 dark:ring-white/5 dark:backdrop-blur-xl dark:shadow-black/20 ${hoverLift}`}
     >
       <div
         className={`flex size-14 items-center justify-center rounded-[18px] bg-gradient-to-br ${gradient} text-white shadow-[0_14px_32px_rgba(59,130,246,0.18)] ring-1 ring-white/40 transition-transform duration-200 ease-out group-hover:scale-[1.02]`}
       >
         <Icon className="size-6" strokeWidth={1.85} />
       </div>
-      <p className="mt-5 text-base font-semibold tracking-[-0.02em] text-slate-900">
+      <p className="mt-5 text-base font-semibold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
         {label}
       </p>
       <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#2563EB] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -486,27 +491,27 @@ function OperationsPanel({
   return (
     <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
       <div className={`${glassCard} overflow-hidden`}>
-        <div className="border-b border-blue-100/70 bg-gradient-to-r from-[#F8FBFF] to-white px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3B82F6]">
+        <div className="border-b border-blue-100/70 bg-gradient-to-r from-[#F8FBFF] to-white px-5 py-4 dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/70">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3B82F6] dark:text-blue-400">
             Operations
           </p>
-          <h3 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-slate-950">
+          <h3 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-slate-950 dark:text-slate-100">
             Live Panel
           </h3>
         </div>
-        <div className="divide-y divide-blue-50/80 p-5">
+        <div className="divide-y divide-blue-50/80 p-5 dark:divide-white/10">
           {panelSections.map((section) => (
             <div key={section.title} className="py-4 first:pt-0 last:pb-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-500">
                 {section.title}
               </p>
               <ul className="mt-3 space-y-2">
                 {section.items.map((item) => (
                   <li
                     key={item}
-                    className="flex items-start gap-2 text-sm font-medium leading-5 text-slate-600"
+                    className="flex items-start gap-2 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300"
                   >
-                    <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#93C5FD]" />
+                    <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#93C5FD] dark:bg-blue-400/80" />
                     {item}
                   </li>
                 ))}
@@ -527,12 +532,12 @@ function DashboardSkeleton() {
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className="h-[72px] animate-pulse rounded-[13px] border border-[rgba(75,120,220,0.10)] bg-[#EEF4FF]/80"
+              className="h-[72px] animate-pulse rounded-[13px] border border-[rgba(75,120,220,0.10)] bg-[#EEF4FF]/80 dark:border-white/10 dark:bg-slate-800/60"
             />
           ))}
         </div>
       </div>
-      <div className={`${glassCard} h-14 animate-pulse bg-white/80`} />
+      <div className={`${glassCard} h-14 animate-pulse bg-white/80 dark:bg-slate-800/60`} />
     </div>
   )
 }
@@ -540,13 +545,13 @@ function DashboardSkeleton() {
 function OnboardingCard() {
   return (
     <div className={`${glassCard} px-6 py-14 text-center sm:px-10`}>
-      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF4FF] to-[#DCEEFF] text-[#3B82F6] ring-1 ring-blue-100">
+      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF4FF] to-[#DCEEFF] text-[#3B82F6] ring-1 ring-blue-100 dark:from-slate-800/80 dark:to-slate-900/80 dark:text-blue-400 dark:ring-white/10">
         <Users className="size-8" strokeWidth={1.9} />
       </div>
-      <p className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+      <p className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
         Welcome to DREVORA
       </p>
-      <p className="mt-2 text-sm font-medium text-slate-500">
+      <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
         Set up your company operations to unlock the command centre.
       </p>
       <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -562,7 +567,7 @@ function OnboardingCard() {
         <Button
           asChild
           variant="outline"
-          className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold ring-1 ring-blue-100"
+          className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold ring-1 ring-blue-100 dark:bg-slate-800/70 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-slate-800/90"
         >
           <Link to="/vehicles">
             <Plus className="size-4" />
@@ -700,7 +705,7 @@ function AdminDashboardPage() {
                     <Button
                       asChild
                       variant="outline"
-                      className="h-9 rounded-[12px] border-0 bg-white/90 px-3.5 text-sm font-semibold ring-1 ring-blue-100"
+                      className="h-9 rounded-[12px] border-0 bg-white/90 px-3.5 text-sm font-semibold ring-1 ring-blue-100 dark:bg-slate-800/70 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-slate-800/90"
                     >
                       <Link to="/vehicles">View fleet</Link>
                     </Button>

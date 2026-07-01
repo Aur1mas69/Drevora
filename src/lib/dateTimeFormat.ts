@@ -1,4 +1,5 @@
 import type { CompanyDateFormat, CompanyWeekStarts, OvertimeAfterHours } from '@/lib/companySettingsTypes'
+import { DEFAULT_OVERTIME_AFTER_HOURS } from '@/lib/companySettingsTypes'
 
 export type CompanyTimeFormat = '24-hour' | '12-hour'
 
@@ -13,7 +14,7 @@ export const COMPANY_TIME_FORMAT_OPTIONS: {
 ]
 export const DEFAULT_DATE_FORMAT: CompanyDateFormat = 'DMY'
 export const DEFAULT_WEEK_STARTS: CompanyWeekStarts = 'monday'
-export const DEFAULT_OVERTIME_AFTER_HOURS: OvertimeAfterHours = 8
+export { DEFAULT_OVERTIME_AFTER_HOURS }
 
 export type DateTimeFormatOptions = {
   timeFormat?: CompanyTimeFormat

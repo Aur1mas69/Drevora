@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { adminHeading } from '@/lib/adminUiStyles'
 import { Bell, Check, Download, XCircle } from 'lucide-react'
 
 type TimesheetsBulkActionsBarProps = {
@@ -23,8 +24,8 @@ export function TimesheetsBulkActionsBar({
   if (selectedCount === 0) return null
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#2563EB]/20 bg-[#EEF4FF] px-3 py-2">
-      <p className="text-xs font-semibold text-[#2A376F]">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#2563EB]/20 bg-[#EEF4FF] px-3 py-2 dark:border-blue-500/30 dark:bg-slate-800/70">
+      <p className={`text-xs font-semibold ${adminHeading}`}>
         {selectedCount} selected
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -44,7 +45,7 @@ export function TimesheetsBulkActionsBar({
           variant="ghost"
           disabled={isBusy}
           onClick={onRejectSelected}
-          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
         >
           <XCircle className="mr-1 size-3.5" />
           Reject
@@ -55,7 +56,7 @@ export function TimesheetsBulkActionsBar({
           variant="ghost"
           disabled={isBusy}
           onClick={onReminderSelected}
-          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-slate-700 hover:bg-white"
+          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700/50"
         >
           <Bell className="mr-1 size-3.5" />
           Send reminder
@@ -67,7 +68,6 @@ export function TimesheetsBulkActionsBar({
           disabled
           onClick={onExportSelected}
           className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-slate-400"
-          title="Export coming soon"
         >
           <Download className="mr-1 size-3.5" />
           Export
@@ -78,7 +78,7 @@ export function TimesheetsBulkActionsBar({
           variant="ghost"
           disabled={isBusy}
           onClick={onClearSelection}
-          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-slate-600 hover:bg-white"
+          className="h-8 rounded-[10px] px-2.5 text-xs font-semibold text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700/50"
         >
           Clear
         </Button>

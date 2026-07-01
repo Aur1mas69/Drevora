@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import type { ComplianceProfileTab } from '@/lib/complianceTypes'
+import { adminTabActive, adminTabInactive } from '@/lib/adminUiStyles'
 
 const PROFILE_TABS: { id: ComplianceProfileTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -18,7 +19,7 @@ export function ComplianceProfileTabBar({
   onTabChange,
 }: ComplianceProfileTabBarProps) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-[18px] bg-[#EAF4FF] p-1 ring-1 ring-blue-100">
+    <div className="flex flex-wrap gap-1 rounded-[18px] bg-[#EAF4FF] p-1 ring-1 ring-blue-100 dark:bg-slate-800/60 dark:ring-white/10">
       {PROFILE_TABS.map((tab) => (
         <Button
           key={tab.id}
@@ -26,9 +27,7 @@ export function ComplianceProfileTabBar({
           variant="ghost"
           onClick={() => onTabChange(tab.id)}
           className={`h-10 rounded-[14px] px-3.5 text-sm font-semibold transition-all duration-[250ms] ease-out ${
-            activeTab === tab.id
-              ? 'bg-white text-[#2563EB] shadow-sm ring-1 ring-blue-100'
-              : 'text-slate-500 hover:bg-white/60 hover:text-slate-900'
+            activeTab === tab.id ? adminTabActive : adminTabInactive
           }`}
         >
           {tab.label}

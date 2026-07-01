@@ -12,6 +12,15 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
+import {
+  adminHeading,
+  adminTableHeadText,
+  adminTableHeader,
+  adminTableRow,
+  adminTableShellSm,
+  adminText,
+  adminTextStrong,
+} from '@/lib/adminUiStyles'
 import { Check, Eye, Pencil, Trash2, X } from 'lucide-react'
 
 type HolidayRequestsDataTableProps = {
@@ -77,11 +86,11 @@ export function HolidayRequestsDataTable({
   const cellText = compactTables ? 'text-[11px]' : 'text-xs'
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+    <div className={adminTableShellSm}>
       <div className="max-h-[calc(100vh-24rem)] overflow-auto">
         <table className="w-full min-w-[980px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-[#F4F8FF] shadow-[0_1px_0_rgba(75,120,220,0.10)]">
-            <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <thead className={adminTableHeader}>
+            <tr className={adminTableHeadText}>
               <th className="px-3 py-2">Worker</th>
               <th className="px-3 py-2">Role</th>
               <th className="px-3 py-2">Start Date</th>
@@ -94,23 +103,20 @@ export function HolidayRequestsDataTable({
           </thead>
           <tbody>
             {requests.map((request) => (
-              <tr
-                key={request.id}
-                className={`border-t border-[rgba(75,120,220,0.06)] ${cellText} transition-colors hover:bg-[#F8FBFF]/70`}
-              >
-                <td className={`px-3 ${rowPadding} font-medium text-[#2A376F]`}>
+              <tr key={request.id} className={`${adminTableRow} ${cellText}`}>
+                <td className={`px-3 ${rowPadding} font-medium ${adminHeading}`}>
                   {request.workerName}
                 </td>
-                <td className={`px-3 ${rowPadding} text-slate-600`}>
+                <td className={`px-3 ${rowPadding} ${adminText}`}>
                   {request.workerRole ?? '—'}
                 </td>
-                <td className={`px-3 ${rowPadding} tabular-nums text-slate-700`}>
+                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
                   {formatDate(request.startDate)}
                 </td>
-                <td className={`px-3 ${rowPadding} tabular-nums text-slate-700`}>
+                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
                   {formatDate(request.endDate)}
                 </td>
-                <td className={`px-3 ${rowPadding} tabular-nums font-medium text-slate-700`}>
+                <td className={`px-3 ${rowPadding} tabular-nums font-medium ${adminTextStrong}`}>
                   {request.totalDays}
                 </td>
                 <td className={`px-3 ${rowPadding}`}>
@@ -120,7 +126,7 @@ export function HolidayRequestsDataTable({
                     {getStatusLabel(request.status)}
                   </span>
                 </td>
-                <td className={`max-w-[200px] truncate px-3 ${rowPadding} text-slate-600`}>
+                <td className={`max-w-[200px] truncate px-3 ${rowPadding} ${adminText}`}>
                   {request.reason?.trim() || '—'}
                 </td>
                 <TableActionsCell className={rowPadding}>

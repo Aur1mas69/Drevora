@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const logoPath = path.join(__dirname, '../src/assets/drevora-logo.png')
+const logoPath = path.join(__dirname, '../public/drevora-logo.png')
 const publicDir = path.join(__dirname, '../public')
 
 const BACKGROUND = { r: 11, g: 16, b: 35, alpha: 1 }

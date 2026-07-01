@@ -7,6 +7,15 @@ import {
 } from '@/components/ui/RowActionsMenu'
 import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
 import { getResultBadgeClass, getStatusBadgeClass } from '@/lib/vehicleCheckUtils'
+import {
+  adminHeading,
+  adminTableHeadText,
+  adminTableHeader,
+  adminTableRow,
+  adminTableShellSm,
+  adminText,
+  adminTextStrong,
+} from '@/lib/adminUiStyles'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 
 type VehicleChecksDataTableProps = {
@@ -45,11 +54,11 @@ export function VehicleChecksDataTable({
   const cellText = compactTables ? 'text-[11px]' : 'text-xs'
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+    <div className={adminTableShellSm}>
       <div className="max-h-[calc(100vh-24rem)] overflow-auto">
         <table className="w-full min-w-[920px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-[#F4F8FF] shadow-[0_1px_0_rgba(75,120,220,0.10)]">
-            <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <thead className={adminTableHeader}>
+            <tr className={adminTableHeadText}>
               <th className="px-3 py-2">Vehicle</th>
               <th className="px-3 py-2">Fleet No</th>
               <th className="px-3 py-2">Driver</th>
@@ -61,18 +70,15 @@ export function VehicleChecksDataTable({
           </thead>
           <tbody>
             {checks.map((check) => (
-              <tr
-                key={check.id}
-                className={`border-t border-[rgba(75,120,220,0.06)] ${cellText} transition-colors hover:bg-[#F8FBFF]/70`}
-              >
-                <td className={`px-3 ${rowPadding} font-medium text-[#2A376F]`}>
+              <tr key={check.id} className={`${adminTableRow} ${cellText}`}>
+                <td className={`px-3 ${rowPadding} font-medium ${adminHeading}`}>
                   {check.vehicleRegistration}
                 </td>
-                <td className={`px-3 ${rowPadding} tabular-nums text-slate-600`}>
+                <td className={`px-3 ${rowPadding} tabular-nums ${adminText}`}>
                   {check.fleetNumber ?? '—'}
                 </td>
-                <td className={`px-3 ${rowPadding} text-slate-700`}>{check.workerName}</td>
-                <td className={`px-3 ${rowPadding} tabular-nums text-slate-700`}>
+                <td className={`px-3 ${rowPadding} ${adminTextStrong}`}>{check.workerName}</td>
+                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
                   {formatDate(check.inspectionDate)}
                 </td>
                 <td className={`px-3 ${rowPadding}`}>

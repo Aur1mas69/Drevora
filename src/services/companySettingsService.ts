@@ -11,8 +11,13 @@ import {
   type OvertimeMode,
   type OvertimeMultiplier,
   type RoundTimeMinutes,
+  type CompanyCurrency,
   DEFAULT_OVERTIME_MULTIPLIER,
+  DEFAULT_CURRENCY,
+  DEFAULT_OVERTIME_AFTER_HOURS,
   OVERTIME_MULTIPLIER_OPTIONS,
+  OVERTIME_AFTER_HOURS_OPTIONS,
+  CURRENCY_OPTIONS,
 } from '@/lib/companySettingsTypes'
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
@@ -41,6 +46,7 @@ type CompanyRow = {
   overtime_after_hours: number | null
   overtime_mode: string | null
   overtime_multiplier: number | null
+  currency: string | null
   round_time_minutes: number | null
   require_manager_approval: boolean | null
   holiday_year_start: string | null
@@ -70,7 +76,8 @@ function normalizeWeekStarts(value: string | null | undefined): CompanyWeekStart
 }
 
 function normalizeTheme(value: string | null | undefined): CompanyTheme {
-  if (value === 'dark' || value === 'auto') return value
+  if (value === 'dark') return 'dark'
+  if (value === 'system' || value === 'auto') return 'system'
   return 'light'
 }
 
@@ -80,8 +87,17 @@ function normalizeBreakMinutes(value: number | null | undefined): DefaultBreakMi
 }
 
 function normalizeOvertimeHours(value: number | null | undefined): OvertimeAfterHours {
-  if (value === 9 || value === 10) return value
-  return 8
+  if (value == null) return DEFAULT_OVERTIME_AFTER_HOURS
+
+  const rounded = Math.round(value)
+  if (
+    rounded >= OVERTIME_AFTER_HOURS_OPTIONS[0] &&
+    rounded <= OVERTIME_AFTER_HOURS_OPTIONS[OVERTIME_AFTER_HOURS_OPTIONS.length - 1]
+  ) {
+    return rounded as OvertimeAfterHours
+  }
+
+  return DEFAULT_OVERTIME_AFTER_HOURS
 }
 
 function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
@@ -91,10 +107,31 @@ function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
 function normalizeOvertimeMultiplier(
   value: number | null | undefined,
 ): OvertimeMultiplier {
-  if (value != null && OVERTIME_MULTIPLIER_OPTIONS.includes(value as OvertimeMultiplier)) {
-    return value as OvertimeMultiplier
+  if (value == null) return DEFAULT_OVERTIME_MULTIPLIER
+
+  const rounded = Math.round(value * 10) / 10
+
+  if (OVERTIME_MULTIPLIER_OPTIONS.includes(rounded as OvertimeMultiplier)) {
+    return rounded as OvertimeMultiplier
   }
-  return DEFAULT_OVERTIME_MULTIPLIER
+
+  let nearest: OvertimeMultiplier = DEFAULT_OVERTIME_MULTIPLIER
+  let minDiff = Math.abs(nearest - rounded)
+
+  for (const option of OVERTIME_MULTIPLIER_OPTIONS) {
+    const diff = Math.abs(option - rounded)
+    if (diff < minDiff) {
+      nearest = option
+      minDiff = diff
+    }
+  }
+
+  return nearest
+}
+
+function normalizeCurrency(value: string | null | undefined): CompanyCurrency {
+  const allowed = CURRENCY_OPTIONS.map((option) => option.value)
+  return allowed.includes(value as CompanyCurrency) ? (value as CompanyCurrency) : DEFAULT_CURRENCY
 }
 
 function normalizeRoundTime(value: number | null | undefined): RoundTimeMinutes {
@@ -153,6 +190,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     overtimeAfterHours: normalizeOvertimeHours(row.overtime_after_hours),
     overtimeMode: normalizeOvertimeMode(row.overtime_mode),
     overtimeMultiplier: normalizeOvertimeMultiplier(row.overtime_multiplier),
+    currency: normalizeCurrency(row.currency),
     roundTimeMinutes: normalizeRoundTime(row.round_time_minutes),
     requireTimesheetApproval: row.require_manager_approval ?? true,
     holidayYearStart: row.holiday_year_start?.trim() || '01-01',
@@ -190,6 +228,7 @@ export function companySettingsToFormValues(
     overtimeAfterHours: settings.overtimeAfterHours,
     overtimeMode: settings.overtimeMode,
     overtimeMultiplier: settings.overtimeMultiplier,
+    currency: settings.currency,
     roundTimeMinutes: settings.roundTimeMinutes,
     requireTimesheetApproval: settings.requireTimesheetApproval,
     holidayYearStart: settings.holidayYearStart,
@@ -243,6 +282,9 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   }
   if (input.overtimeMultiplier !== undefined) {
     payload.overtime_multiplier = input.overtimeMultiplier
+  }
+  if (input.currency !== undefined) {
+    payload.currency = input.currency
   }
   if (input.roundTimeMinutes !== undefined) {
     payload.round_time_minutes = input.roundTimeMinutes

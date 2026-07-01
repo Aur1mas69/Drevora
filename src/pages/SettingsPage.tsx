@@ -17,16 +17,29 @@ import {
   settingsSelectClassName,
 } from '@/components/settings/SettingsControls'
 import { FutureVehicleOptionsCard } from '@/components/settings/FutureVehicleOptionsCard'
+import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { adminCard, adminSkeletonPulse } from '@/lib/adminUiStyles'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import {
   COMPANY_SETTINGS_TABS,
+  CURRENCY_OPTIONS,
   DEFAULT_COMPANY_SETTINGS,
+  OVERTIME_MULTIPLIER_OPTIONS,
+  OVERTIME_AFTER_HOURS_OPTIONS,
+  formatOvertimeMultiplierLabel,
+  formatOvertimeAfterHoursLabel,
+  THEME_OPTIONS,
+  type CompanyTheme,
+  type CompanyCurrency,
   type CompanySettingsInput,
   type CompanySettingsTab,
+  type OvertimeAfterHours,
+  type OvertimeMultiplier,
 } from '@/lib/companySettingsTypes'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
 import { companySettingsService } from '@/services/companySettingsService'
@@ -130,7 +143,7 @@ function SettingsPage() {
       <AdminLayout premiumBackground>
         <div className="space-y-4">
           <div className="h-10 w-64 animate-pulse rounded-[16px] bg-[#EEF4FF]" />
-          <div className="h-96 animate-pulse rounded-[20px] bg-[#EEF4FF]" />
+          <div className={`h-96 rounded-[20px] ${adminSkeletonPulse}`} />
         </div>
       </AdminLayout>
     )
@@ -143,10 +156,10 @@ function SettingsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
             Administration
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#2A376F]">
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
             Company Settings
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
             Global application preferences used by dashboard, workers, vehicles, timesheets,
             compliance and reports.
           </p>
@@ -154,10 +167,10 @@ function SettingsPage() {
 
         <SettingsTabs tabs={COMPANY_SETTINGS_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
-        <Card className="rounded-[20px] border border-[rgba(75,120,220,0.10)] bg-white/95 py-0 shadow-[0_8px_24px_rgba(40,80,140,0.05)] ring-1 ring-blue-100/70">
+        <Card className={`${adminCard} border border-[rgba(75,120,220,0.10)] dark:border-white/10`}>
           <CardContent className="p-6 sm:p-8">
             {saveError ? (
-              <div className="mb-6 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
+              <div className="mb-6 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
                 {saveError}
               </div>
             ) : null}
@@ -345,80 +358,123 @@ function SettingsPage() {
             ) : null}
 
             {activeTab === 'timesheets' ? (
-              <SettingsSection
-                title="Timesheets"
-                description="Working time rules for payroll and approval workflows."
-              >
-                <SettingsRadioGroup
-                  legend="Default Break"
-                  name="defaultBreakMinutes"
-                  value={form.defaultBreakMinutes}
-                  onChange={(value) => updateForm({ defaultBreakMinutes: value })}
-                  options={[
-                    { value: 30, label: '30 min' },
-                    { value: 45, label: '45 min' },
-                    { value: 60, label: '60 min' },
-                  ]}
-                />
+              <>
+                <SettingsSection
+                  title="Timesheets"
+                  description="Working time rules for payroll and approval workflows."
+                >
+                  <SettingsRadioGroup
+                    legend="Default Break"
+                    name="defaultBreakMinutes"
+                    value={form.defaultBreakMinutes}
+                    onChange={(value) => updateForm({ defaultBreakMinutes: value })}
+                    options={[
+                      { value: 30, label: '30 min' },
+                      { value: 45, label: '45 min' },
+                      { value: 60, label: '60 min' },
+                    ]}
+                  />
 
-                <SettingsRadioGroup
-                  legend="Overtime Mode"
-                  hint="Manual lets managers enter overtime per day. Automatic calculates overtime from the daily threshold."
-                  name="overtimeMode"
-                  value={form.overtimeMode}
-                  onChange={(value) => updateForm({ overtimeMode: value })}
-                  options={[
-                    { value: 'Manual', label: 'Manual' },
-                    { value: 'Automatic', label: 'Automatic' },
-                  ]}
-                />
+                  <SettingsRadioGroup
+                    legend="Overtime Mode"
+                    hint="Manual lets managers enter overtime per day. Automatic calculates overtime from the daily threshold."
+                    name="overtimeMode"
+                    value={form.overtimeMode}
+                    onChange={(value) => updateForm({ overtimeMode: value })}
+                    options={[
+                      { value: 'Manual', label: 'Manual' },
+                      { value: 'Automatic', label: 'Automatic' },
+                    ]}
+                  />
 
-                <SettingsRadioGroup
-                  legend="Overtime Multiplier"
-                  hint="Payroll = normal hours + (overtime hours × multiplier). Overtime hours are part of worked time, not extra."
-                  name="overtimeMultiplier"
-                  value={form.overtimeMultiplier}
-                  onChange={(value) => updateForm({ overtimeMultiplier: value })}
-                  options={[
-                    { value: 1, label: '1×' },
-                    { value: 1.25, label: '1.25×' },
-                    { value: 1.5, label: '1.5×' },
-                    { value: 1.75, label: '1.75×' },
-                    { value: 2, label: '2×' },
-                  ]}
-                />
+                  <SettingsField
+                    label="Overtime After"
+                    hint="Hours worked after this threshold can be treated as overtime."
+                  >
+                    <select
+                      value={form.overtimeAfterHours}
+                      onChange={(event) =>
+                        updateForm({
+                          overtimeAfterHours: Number(event.target.value) as OvertimeAfterHours,
+                        })
+                      }
+                      className={settingsSelectClassName}
+                    >
+                      {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
+                        <option key={hours} value={hours}>
+                          {formatOvertimeAfterHoursLabel(hours)}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingsField>
 
-                <SettingsRadioGroup
-                  legend="Overtime After"
-                  name="overtimeAfterHours"
-                  value={form.overtimeAfterHours}
-                  onChange={(value) => updateForm({ overtimeAfterHours: value })}
-                  options={[
-                    { value: 8, label: '8 hours' },
-                    { value: 9, label: '9 hours' },
-                    { value: 10, label: '10 hours' },
-                  ]}
-                />
+                  <SettingsToggle
+                    label="Require Manager Approval"
+                    description="Submitted timesheets must be approved before payroll."
+                    checked={form.requireTimesheetApproval}
+                    onChange={(checked) => updateForm({ requireTimesheetApproval: checked })}
+                  />
 
-                <SettingsToggle
-                  label="Require Manager Approval"
-                  description="Submitted timesheets must be approved before payroll."
-                  checked={form.requireTimesheetApproval}
-                  onChange={(checked) => updateForm({ requireTimesheetApproval: checked })}
-                />
+                  <SettingsRadioGroup
+                    legend="Round Time"
+                    name="roundTimeMinutes"
+                    value={form.roundTimeMinutes}
+                    onChange={(value) => updateForm({ roundTimeMinutes: value })}
+                    options={[
+                      { value: 0, label: 'None' },
+                      { value: 5, label: '5 min' },
+                      { value: 15, label: '15 min' },
+                    ]}
+                  />
+                </SettingsSection>
 
-                <SettingsRadioGroup
-                  legend="Round Time"
-                  name="roundTimeMinutes"
-                  value={form.roundTimeMinutes}
-                  onChange={(value) => updateForm({ roundTimeMinutes: value })}
-                  options={[
-                    { value: 0, label: 'None' },
-                    { value: 5, label: '5 min' },
-                    { value: 15, label: '15 min' },
-                  ]}
-                />
-              </SettingsSection>
+                <div className="mt-8 border-t border-blue-100/80 pt-8">
+                <SettingsSection
+                  title="Timesheet Rules"
+                  description="Payroll multiplier and currency used for timesheet calculations."
+                >
+                  <SettingsField
+                    label="Overtime multiplier"
+                    hint="Payroll = normal hours + (overtime hours × multiplier). Overtime hours are part of worked time, not extra."
+                  >
+                    <select
+                      value={form.overtimeMultiplier}
+                      onChange={(event) =>
+                        updateForm({
+                          overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                        })
+                      }
+                      className={settingsSelectClassName}
+                    >
+                      {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {formatOvertimeMultiplierLabel(option)}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingsField>
+
+                  <SettingsField
+                    label="Currency"
+                    hint="Default currency for payroll and timesheet totals."
+                  >
+                    <select
+                      value={form.currency}
+                      onChange={(event) =>
+                        updateForm({ currency: event.target.value as CompanyCurrency })
+                      }
+                      className={settingsSelectClassName}
+                    >
+                      {CURRENCY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingsField>
+                </SettingsSection>
+                </div>
+              </>
             ) : null}
 
             {activeTab === 'holidays' ? (
@@ -459,17 +515,25 @@ function SettingsPage() {
                 title="Appearance"
                 description="Visual preferences across admin modules."
               >
-                <SettingsRadioGroup
-                  legend="Theme"
-                  name="theme"
-                  value={form.theme}
-                  onChange={(value) => updateForm({ theme: value })}
-                  options={[
-                    { value: 'light', label: 'Light' },
-                    { value: 'dark', label: 'Dark' },
-                    { value: 'auto', label: 'Auto' },
-                  ]}
-                />
+                <SettingsField
+                  label="Theme"
+                  hint="Choose light, dark, or match your device system preference."
+                  span="full"
+                >
+                  <select
+                    value={form.theme}
+                    onChange={(event) =>
+                      updateForm({ theme: event.target.value as CompanyTheme })
+                    }
+                    className={settingsSelectClassName}
+                  >
+                    {THEME_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </SettingsField>
 
                 <SettingsToggle
                   label="Compact Tables"
@@ -501,37 +565,38 @@ function SettingsPage() {
             {activeTab === 'security' ? (
               <SettingsSection
                 title="Security"
-                description="Session and authentication policies."
+                description="Account authentication and session policies."
               >
-                <SettingsField
-                  label="Session Timeout"
-                  hint="Minutes of inactivity before automatic sign-out."
-                >
-                  <Input
-                    type="number"
-                    min={15}
-                    max={1440}
-                    value={form.sessionTimeoutMinutes}
-                    onChange={(event) =>
-                      handleNumberChange(
-                        'sessionTimeoutMinutes',
-                        Number(event.target.value) || 480,
-                      )
-                    }
-                    className={settingsFieldClassName}
-                  />
-                </SettingsField>
+                <div className="space-y-4 sm:col-span-2">
+                  <ChangePasswordCard />
+                  <TwoFactorAuthComingLaterCard />
+                </div>
 
-                <SettingsToggle
-                  label="Require MFA"
-                  description="Multi-factor authentication for admin accounts."
-                  checked={form.requireMfa}
-                  onChange={(checked) => updateForm({ requireMfa: checked })}
-                />
+                <div className="mt-4 border-t border-blue-100/80 pt-6 sm:col-span-2">
+                  <SettingsField
+                    label="Session Timeout"
+                    hint="Minutes of inactivity before automatic sign-out."
+                    span="full"
+                  >
+                    <Input
+                      type="number"
+                      min={15}
+                      max={1440}
+                      value={form.sessionTimeoutMinutes}
+                      onChange={(event) =>
+                        handleNumberChange(
+                          'sessionTimeoutMinutes',
+                          Number(event.target.value) || 480,
+                        )
+                      }
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+                </div>
               </SettingsSection>
             ) : null}
 
-            <p className="mt-8 border-t border-blue-100/80 pt-4 text-xs text-slate-500">
+            <p className="mt-8 border-t border-blue-100/80 pt-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
               {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
             </p>
           </CardContent>

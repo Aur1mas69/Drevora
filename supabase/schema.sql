@@ -202,15 +202,23 @@ create table if not exists public.companies (
   require_mfa boolean not null default false,
   overtime_mode text not null default 'Manual',
   overtime_multiplier numeric not null default 1.5,
+  currency text not null default 'GBP',
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
-  constraint companies_theme_check check (theme in ('light', 'dark', 'auto')),
+  constraint companies_theme_check check (theme in ('light', 'dark', 'system')),
   constraint companies_default_break_check check (default_break_minutes in (30, 45, 60)),
-  constraint companies_overtime_after_check check (overtime_after_hours in (8, 9, 10)),
+  constraint companies_overtime_after_hours_check check (
+    overtime_after_hours >= 5 and overtime_after_hours <= 15
+  ),
   constraint companies_round_time_check check (round_time_minutes in (0, 5, 15)),
   constraint companies_overtime_mode_check check (overtime_mode in ('Manual', 'Automatic')),
-  constraint companies_overtime_multiplier_check check (overtime_multiplier in (1, 1.25, 1.5, 1.75, 2))
+  constraint companies_overtime_multiplier_check check (
+    overtime_multiplier >= 1.1
+    and overtime_multiplier <= 2.5
+    and mod((overtime_multiplier * 10)::numeric, 1) = 0
+  ),
+  constraint companies_currency_check check (currency in ('GBP', 'EUR', 'USD', 'RUB'))
 );
 
 create index if not exists companies_created_at_idx on public.companies (created_at);

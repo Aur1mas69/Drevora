@@ -17,6 +17,18 @@ import {
 } from '@/lib/vehiclePlanning'
 import { VehicleStatusBadge } from '@/components/vehicles/VehicleStatusBadge'
 import { Button } from '@/components/ui/button'
+import {
+  adminHeading,
+  adminSkeletonPulse,
+  adminTableFooter,
+  adminTableHeadText,
+  adminTableHeader,
+  adminTableRow,
+  adminTableShell,
+  adminText,
+  adminTextMuted,
+  adminTextStrong,
+} from '@/lib/adminUiStyles'
 import type { Driver } from '@/services/driversService'
 import {
   getVehicleStatusForDate,
@@ -48,7 +60,7 @@ function DocumentDateCell({ expiry }: { expiry: string | null }) {
       ? 'text-rose-700'
       : status === 'warning'
         ? 'text-amber-700'
-        : 'text-slate-700'
+        : 'text-slate-700 dark:text-slate-300'
 
   return (
     <span className={`whitespace-nowrap text-sm font-medium ${toneClass}`}>
@@ -67,7 +79,7 @@ function NextEventCell({
   const nextEvent = getNextPlanningEvent(vehicle)
 
   if (!nextEvent) {
-    return <span className="text-sm text-slate-400">None scheduled</span>
+    return <span className={`text-sm ${adminTextMuted}`}>None scheduled</span>
   }
 
   const daysUntil = getDaysUntilDate(nextEvent.startDate)
@@ -156,11 +168,11 @@ export function VehiclesDataTable({
   const rangeEnd = Math.min(startIndex + VEHICLES_PAGE_SIZE, total)
 
   return (
-    <div className="overflow-hidden rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
+    <div className={adminTableShell}>
       <div className="max-h-[min(720px,70vh)] overflow-auto">
         <table className="w-full min-w-[1100px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-[#F4F8FF] shadow-[0_1px_0_rgba(75,120,220,0.10)]">
-            <tr className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+          <thead className={adminTableHeader}>
+            <tr className={adminTableHeadText}>
               <th className="px-4 py-3.5">Registration</th>
               <th className="px-4 py-3.5">Fleet #</th>
               <th className="px-4 py-3.5">Type</th>
@@ -177,23 +189,23 @@ export function VehiclesDataTable({
             {pageVehicles.map((vehicle) => (
               <tr
                 key={vehicle.id}
-                className="border-t border-[rgba(70,110,220,0.06)] transition-colors hover:bg-[#F8FBFF]"
+                className={adminTableRow}
               >
                 <td className="px-4 py-3.5">
-                  <span className="text-sm font-semibold text-[#2A376F]">
+                  <span className={`text-sm font-semibold ${adminHeading}`}>
                     {vehicle.registration}
                   </span>
                 </td>
-                <td className="px-4 py-3.5 text-sm font-medium tabular-nums text-slate-700">
+                <td className={`px-4 py-3.5 text-sm font-medium tabular-nums ${adminTextStrong}`}>
                   {vehicle.fleetNumber ?? '—'}
                 </td>
-                <td className="px-4 py-3.5 text-sm text-slate-600">
+                <td className={`px-4 py-3.5 text-sm ${adminText}`}>
                   {vehicle.vehicleType ?? '—'}
                 </td>
-                <td className="max-w-[180px] truncate px-4 py-3.5 text-sm text-slate-600">
+                <td className={`max-w-[180px] truncate px-4 py-3.5 text-sm ${adminText}`}>
                   {getVehicleName(vehicle)}
                 </td>
-                <td className="max-w-[160px] truncate px-4 py-3.5 text-sm text-slate-600">
+                <td className={`max-w-[160px] truncate px-4 py-3.5 text-sm ${adminText}`}>
                   {getDriverLabel(vehicle, drivers)}
                 </td>
                 <td className="px-4 py-3.5">
@@ -224,8 +236,8 @@ export function VehiclesDataTable({
         </table>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-[rgba(70,110,220,0.08)] bg-[#FAFCFF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-slate-600">
+      <div className={`flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${adminTableFooter}`}>
+        <p className={`text-sm font-medium ${adminText}`}>
           Showing {rangeStart}–{rangeEnd} of {total} vehicle{total === 1 ? '' : 's'}
         </p>
         <div className="flex items-center gap-2">
@@ -240,7 +252,7 @@ export function VehiclesDataTable({
             <ChevronLeft className="size-4" />
             Previous
           </Button>
-          <span className="px-2 text-sm font-medium text-slate-600">
+          <span className={`px-2 text-sm font-medium ${adminText}`}>
             Page {safePage} of {totalPages}
           </span>
           <Button
@@ -262,12 +274,12 @@ export function VehiclesDataTable({
 
 export function VehiclesTableSkeleton() {
   return (
-    <div className="overflow-hidden rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white p-4 shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
+    <div className={`${adminTableShell} p-4`}>
       <div className="space-y-2">
         {Array.from({ length: 8 }).map((_, index) => (
           <div
             key={index}
-            className="h-11 animate-pulse rounded-[10px] bg-[#EEF4FF]"
+            className={`h-11 rounded-[10px] ${adminSkeletonPulse}`}
           />
         ))}
       </div>

@@ -247,6 +247,31 @@ body {
     linear-gradient(180deg, #7a9ec4 0%, #6888ae 46%, #5a7898 100%);
 }
 
+.dark .drevora-app-shell {
+  background-color: #0f172a;
+  background-image:
+    radial-gradient(ellipse 130% 90% at 12% -8%, rgba(59, 130, 246, 0.12) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 80% at 50% 42%, rgba(30, 41, 59, 0.9) 0%, transparent 62%),
+    radial-gradient(ellipse 90% 70% at 88% 108%, rgba(37, 99, 235, 0.08) 0%, transparent 55%),
+    linear-gradient(180deg, #0f172a 0%, #111827 46%, #0b1220 100%);
+}
+
+.dark .drevora-app-shell__orb--top-left {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.dark .drevora-app-shell__orb--center {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.dark .drevora-app-shell__orb--bottom-right {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.dark .drevora-app-shell main [data-slot='card']:is(.bg-white, .bg-white\/95, .bg-white\/80, .bg-white\/72) {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drevora-app-shell {
     transition: none;

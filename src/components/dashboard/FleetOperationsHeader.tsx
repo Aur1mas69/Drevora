@@ -1,5 +1,6 @@
 import { WeatherHeroBackground } from '@/components/dashboard/WeatherHeroBackground'
 import type { FleetOperationsHeaderState } from '@/hooks/useFleetOperationsHeader'
+import { hasCompanyDisplayName } from '@/lib/company'
 import { isNightHours } from '@/services/weatherService'
 import { useMemo } from 'react'
 
@@ -120,7 +121,7 @@ export function FleetOperationsHeader({
   weatherDisplay,
   isProfileLoading,
 }: FleetOperationsHeaderProps) {
-  const hasCompany = Boolean(companyName?.trim())
+  const hasCompany = hasCompanyDisplayName(companyName)
 
   const isNight = useMemo(
     () => isNightHours(now, companyTimezone),
@@ -165,7 +166,7 @@ export function FleetOperationsHeader({
                     className="text-[2.5rem] font-bold leading-[1.05] tracking-[-0.03em] text-[#10275f]/65 sm:text-[2.75rem] lg:text-[3.25rem]"
                     style={{ textShadow: HERO_TEXT_SHADOW }}
                   >
-                    Company not set
+                    Company profile incomplete
                   </h1>
                 )}
 

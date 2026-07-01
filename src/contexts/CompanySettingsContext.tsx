@@ -17,6 +17,7 @@ import type {
   OvertimeMultiplier,
 } from '@/lib/companySettingsTypes'
 import { DEFAULT_OVERTIME_MULTIPLIER } from '@/lib/companySettingsTypes'
+import { applyDocumentTheme, subscribeToSystemTheme } from '@/lib/theme'
 import { applyGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import {
   companySettingsService,
@@ -61,20 +62,6 @@ type CompanySettingsContextValue = {
 
 const CompanySettingsContext = createContext<CompanySettingsContextValue | null>(null)
 
-function applyTheme(theme: CompanyTheme): void {
-  const root = document.documentElement
-  root.dataset.theme = theme
-
-  if (theme === 'dark') {
-    root.classList.add('dark')
-  } else if (theme === 'light') {
-    root.classList.remove('dark')
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    root.classList.toggle('dark', prefersDark)
-  }
-}
-
 export function CompanySettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<CompanySettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -90,15 +77,15 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
 
       if (loaded) {
         applyGlobalCompanySettings(loaded)
-        applyTheme(loaded.theme)
+        applyDocumentTheme(loaded.theme)
       } else {
         applyGlobalCompanySettings(null)
-        applyTheme('light')
+        applyDocumentTheme('light')
       }
     } catch {
       setSettings(null)
       applyGlobalCompanySettings(null)
-      applyTheme('light')
+      applyDocumentTheme('light')
     } finally {
       setIsLoading(false)
     }
@@ -118,15 +105,11 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!settings || settings.theme !== 'auto') return
+    if (!settings || settings.theme !== 'system') return
 
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    function handleChange() {
-      applyTheme('auto')
-    }
-
-    media.addEventListener('change', handleChange)
-    return () => media.removeEventListener('change', handleChange)
+    return subscribeToSystemTheme(() => {
+      applyDocumentTheme('system')
+    })
   }, [settings?.theme])
 
   const updateSettings = useCallback(async (patch: Partial<CompanySettingsInput>) => {
@@ -136,7 +119,7 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
       const updated = await companySettingsService.updateCompanySettings(patch)
       setSettings(updated)
       applyGlobalCompanySettings(updated)
-      applyTheme(updated.theme)
+      applyDocumentTheme(updated.theme)
       window.dispatchEvent(new Event(COMPANY_UPDATED_EVENT))
       return updated
     } catch (error) {

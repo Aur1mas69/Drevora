@@ -1,5 +1,12 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  adminGlassToolbar,
+  adminPanel,
+  adminSearchInput,
+  adminSelectSm,
+  adminText,
+} from '@/lib/adminUiStyles'
 import type { TimesheetsSortField, TimesheetsSortDirection } from '@/lib/timesheetTypes'
 import type {
   TimesheetRoleFilter,
@@ -11,10 +18,9 @@ import type { DriverRole } from '@/services/driversService'
 import { ChevronDown, Filter, Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-const selectClassName =
-  'h-9 w-full rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-white/90 px-2.5 text-xs font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+const selectClassName = adminSelectSm
 
-const labelClassName = 'text-[11px] font-semibold text-slate-600'
+const labelClassName = `text-[11px] font-semibold ${adminText}`
 
 const DRIVER_ROLES: DriverRole[] = [
   'Driver',
@@ -179,7 +185,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
   }
 
   return (
-    <div className="rounded-[16px] border border-white/60 bg-white/80 px-3 py-2.5 shadow-[0_4px_20px_rgba(40,80,140,0.08)] backdrop-blur-md sm:px-4">
+    <div className={`${adminGlassToolbar} px-3 py-2.5 sm:px-4`}>
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -188,7 +194,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search worker…"
-            className="h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]/90 pl-9 text-sm shadow-sm"
+            className={`${adminSearchInput} pl-9 text-sm shadow-sm`}
           />
         </div>
 
@@ -202,7 +208,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
               className={`h-10 rounded-[12px] px-3 text-xs font-semibold transition-all duration-150 ${
                 activeFilterCount > 0
                   ? 'bg-[#2563EB] text-white shadow-[0_4px_14px_rgba(37,99,235,0.28)] hover:bg-[#1d4ed8]'
-                  : 'border border-[rgba(75,120,220,0.18)] bg-white/90 text-slate-700 shadow-sm hover:bg-[#F8FBFF]'
+                  : 'border border-[rgba(75,120,220,0.18)] bg-white/90 text-slate-700 shadow-sm hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/50'
               }`}
             >
               <Filter className="mr-1.5 size-3.5" strokeWidth={2.2} />
@@ -218,7 +224,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
               <div
                 role="dialog"
                 aria-label="Timesheet filters"
-                className="absolute right-0 z-50 mt-2 w-[min(340px,calc(100vw-2rem))] origin-top-right animate-in fade-in slide-in-from-top-1 rounded-[16px] border border-white/70 bg-white/95 p-4 shadow-[0_16px_40px_rgba(40,80,140,0.16)] backdrop-blur-xl duration-150"
+                className={`absolute right-0 z-50 mt-2 w-[min(340px,calc(100vw-2rem))] origin-top-right animate-in fade-in slide-in-from-top-1 p-4 duration-150 ${adminPanel}`}
               >
                 <div className="space-y-3">
                   <label className="block space-y-1.5">
@@ -338,7 +344,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
                   </label>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-2 border-t border-[rgba(75,120,220,0.08)] pt-3">
+                <div className="mt-4 flex items-center justify-between gap-2 border-t border-[rgba(75,120,220,0.08)] pt-3 dark:border-white/10">
                   <Button
                     type="button"
                     variant="ghost"

@@ -8,9 +8,12 @@ import {
   ClipboardCheck,
   Download,
   FileBarChart,
+  HelpCircle,
   Key,
   LayoutDashboard,
+  Package,
   Plug,
+  Rocket,
   ScrollText,
   Settings,
   Shield,
@@ -26,10 +29,12 @@ export type AdminNavItem = {
   to: string
   icon: LucideIcon
   end?: boolean
+  /** Visible in sidebar but not navigable until the module exists. */
+  comingLater?: boolean
 }
 
-/** Primary MVP sidebar navigation. */
-export const adminNavigationItems: AdminNavItem[] = [
+/** Daily-operation modules shown above the sidebar divider. */
+export const adminMainNavigationItems: AdminNavItem[] = [
   { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },
   { label: 'Workers', to: '/drivers', icon: Users },
   { label: 'Vehicles', to: '/vehicles', icon: Truck },
@@ -38,7 +43,25 @@ export const adminNavigationItems: AdminNavItem[] = [
   { label: 'Vehicle Checks', to: '/admin/vehicle-checks', icon: ShieldCheck },
   { label: 'Driver Reports', to: '/admin/driver-reports', icon: FileBarChart },
   { label: 'Compliance', to: '/compliance', icon: Shield },
+  { label: 'Consumables', to: '/consumables', icon: Package },
+]
+
+/** Settings and support modules shown below the sidebar divider. */
+export const adminSecondaryNavigationItems: AdminNavItem[] = [
   { label: 'Settings', to: '/admin/settings', icon: Settings },
+  { label: 'FAQ / Help', to: '/admin/faq', icon: HelpCircle },
+  {
+    label: 'Future Features',
+    to: '/admin/future-features',
+    icon: Rocket,
+    comingLater: true,
+  },
+]
+
+/** Full sidebar navigation in display order (main, then secondary). */
+export const adminNavigationItems: AdminNavItem[] = [
+  ...adminMainNavigationItems,
+  ...adminSecondaryNavigationItems,
 ]
 
 /** Hidden from sidebar; routes remain for future modules. */
@@ -66,7 +89,9 @@ export const activeAdminRoutes = new Set([
   '/admin/holidays',
   '/admin/vehicle-checks',
   '/compliance',
+  '/consumables',
   '/admin/settings',
+  '/admin/faq',
 ])
 
 export const comingSoonAdminRoutes = new Set([

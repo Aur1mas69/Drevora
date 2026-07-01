@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, LogOut, Menu, Sparkles, X } from 'lucide-react'
+import { Bell, LogOut, Menu, X } from 'lucide-react'
 import { AuthServiceError } from '@/services/authService'
-import { adminNavigationItems } from '@/lib/adminNavigation'
+import {
+  adminMainNavigationItems,
+  adminSecondaryNavigationItems,
+  type AdminNavItem,
+} from '@/lib/adminNavigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { Button } from '@/components/ui/button'
+import { getCompanyDisplayName } from '@/lib/company'
 import { requireSupabase } from '@/lib/supabase'
 
 function sidebarNavLinkClass(isActive: boolean): string {
   return `flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-200 ease-out ${
     isActive
       ? 'bg-gradient-to-b from-[#4F8DFF] to-[#2F73FF] text-white shadow-[0_10px_28px_rgba(47,115,255,0.32)]'
-      : 'text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950'
+      : 'text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100'
   }`
 }
 
@@ -56,27 +61,53 @@ function AppBackground() {
 
 function SidebarBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-0' : 'px-2'}`}>
-      <div
-        className={`flex shrink-0 items-center justify-center rounded-[1.2rem] bg-[#EAF4FF] text-[#3B82F6] shadow-sm shadow-blue-100 ring-1 ring-white ${
-          compact ? 'size-10' : 'size-[52px]'
+    <div className={compact ? 'min-w-0 shrink px-1' : 'px-5 py-5'}>
+      <span
+        className={`inline-block bg-gradient-to-r from-[#4F8DFF] to-[#6366F1] bg-clip-text font-extrabold uppercase tracking-[0.18em] text-transparent ${
+          compact ? 'text-lg' : 'text-xl'
         }`}
       >
-        <Sparkles className={compact ? 'size-5' : 'size-6'} strokeWidth={1.9} />
-      </div>
-      <div className="min-w-0">
-        <p
-          className={`truncate font-semibold tracking-[-0.04em] text-slate-950 ${
-            compact ? 'text-lg' : 'text-xl'
-          }`}
-        >
-          DREVORA
-        </p>
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-          Admin
-        </p>
-      </div>
+        DREVORA
+      </span>
     </div>
+  )
+}
+
+function AdminSidebarNavItem({
+  item,
+  onNavigate,
+}: {
+  item: AdminNavItem
+  onNavigate?: () => void
+}) {
+  const { label, icon: Icon, to, end, comingLater } = item
+
+  if (comingLater) {
+    return (
+      <div
+        aria-disabled="true"
+        title="Coming later"
+        className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left text-[13px] font-medium text-slate-400"
+      >
+        <Icon className="size-[18px] shrink-0 opacity-60" strokeWidth={1.9} />
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
+          Soon
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onNavigate}
+      className={({ isActive }) => sidebarNavLinkClass(isActive)}
+    >
+      <Icon className="size-[18px] shrink-0" strokeWidth={1.9} />
+      <span className="truncate">{label}</span>
+    </NavLink>
   )
 }
 
@@ -91,17 +122,18 @@ function AdminSidebarNav({
     <nav
       className={`min-h-0 flex-1 space-y-1 pr-1 ${scrollable ? 'overflow-y-auto' : ''}`}
     >
-      {adminNavigationItems.map(({ label, icon: Icon, to, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) => sidebarNavLinkClass(isActive)}
-        >
-          <Icon className="size-[18px] shrink-0" strokeWidth={1.9} />
-          <span className="truncate">{label}</span>
-        </NavLink>
+      {adminMainNavigationItems.map((item) => (
+        <AdminSidebarNavItem key={item.to} item={item} onNavigate={onNavigate} />
+      ))}
+
+      <div
+        className="mt-6 mb-3 border-t border-[#D7E8FF]/90 dark:border-slate-700"
+        role="separator"
+        aria-hidden="true"
+      />
+
+      {adminSecondaryNavigationItems.map((item) => (
+        <AdminSidebarNavItem key={item.to} item={item} onNavigate={onNavigate} />
       ))}
     </nav>
   )
@@ -139,15 +171,15 @@ function useAdminLogout() {
 
 function SidebarFooter() {
   return (
-    <div className="mt-auto shrink-0 border-t border-[#D7E8FF]/70 px-2 pt-4 pb-2">
-      <div className="overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-[#F8FBFF]/90 px-3 py-3 shadow-sm shadow-blue-100/40">
+    <div className="mt-auto shrink-0 border-t border-[#D7E8FF]/70 px-2 pt-4 pb-2 dark:border-slate-800">
+      <div className="overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-[#F8FBFF]/90 px-3 py-3 shadow-sm shadow-blue-100/40 dark:border-slate-700 dark:bg-slate-800/90 dark:shadow-none">
         <img
           src="/sidebar/support-truck-driver.png"
           alt=""
           className="mx-auto h-14 w-full max-w-[168px] object-contain object-center"
         />
-        <p className="mt-2 text-[13px] font-semibold text-slate-800">Support</p>
-        <p className="mt-0.5 text-xs font-medium text-slate-500">Need help?</p>
+        <p className="mt-2 text-[13px] font-semibold text-slate-800 dark:text-slate-100">Support</p>
+        <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Need help?</p>
         <a
           href="mailto:support@drevora.app"
           className="mt-1.5 inline-block text-[12px] font-semibold text-[#2563EB] transition-colors hover:text-[#1d4ed8]"
@@ -243,7 +275,7 @@ function AccountMenu() {
         <div
           role="menu"
           aria-label="Account menu"
-          className="absolute top-full right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-white/98 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm"
+          className="absolute top-full right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-white/98 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/98"
         >
           {email ? (
             <div className="border-b border-[#EEF4FF] px-2.5 py-2">
@@ -278,7 +310,7 @@ function AccountMenu() {
 
 function Sidebar() {
   return (
-    <aside className="relative z-10 hidden w-[240px] shrink-0 flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 px-3 py-6 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-svh lg:max-h-svh">
+    <aside className="relative z-10 hidden w-[240px] shrink-0 flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 px-3 py-6 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:sticky lg:top-0 lg:flex lg:h-svh lg:max-h-svh">
       <SidebarBrand />
       <div className="mt-8 flex min-h-0 flex-1 flex-col overflow-hidden">
         <AdminSidebarNav scrollable />
@@ -296,7 +328,7 @@ function MobileNavHeader({
   menuOpen: boolean
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-4 shadow-sm shadow-blue-100/30 backdrop-blur-xl lg:hidden">
+    <header className="fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-4 shadow-sm shadow-blue-100/30 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:hidden">
       <SidebarBrand compact />
       <div className="flex shrink-0 items-center gap-2">
         <Button
@@ -307,7 +339,7 @@ function MobileNavHeader({
           aria-expanded={menuOpen}
           aria-controls="admin-mobile-nav-drawer"
           onClick={onOpenMenu}
-          className="size-10 shrink-0 rounded-[1rem] bg-white/90 text-slate-600 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md"
+          className="size-10 shrink-0 rounded-[1rem] bg-white/90 text-slate-600 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
         >
           <Menu className="size-5" strokeWidth={2} />
         </Button>
@@ -364,12 +396,12 @@ function MobileNavDrawer({
         role="dialog"
         aria-modal={open}
         aria-label="Admin navigation"
-        className={`fixed inset-y-0 left-0 z-[110] flex w-[min(240px,88vw)] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 px-3 py-5 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-transform duration-300 ease-out lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-[110] flex w-[min(240px,88vw)] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="mb-4 flex items-start justify-between gap-2 px-1">
-          <SidebarBrand compact />
+          <SidebarBrand />
           <Button
             type="button"
             variant="ghost"
@@ -382,7 +414,7 @@ function MobileNavDrawer({
           </Button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-5">
           <AdminSidebarNav onNavigate={onClose} scrollable />
           <SidebarFooter />
         </div>
@@ -395,8 +427,8 @@ function MobileNavDrawer({
 function TopBar() {
   const [now, setNow] = useState(() => new Date())
   const [displayName, setDisplayName] = useState('there')
-  const [companyName, setCompanyName] = useState('Company not set')
-  const { formatOperationsDateTime } = useCompanySettings()
+  const { settings, formatOperationsDateTime } = useCompanySettings()
+  const companyName = getCompanyDisplayName(settings?.name)
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -421,17 +453,8 @@ function TopBar() {
           : typeof metadata.name === 'string'
             ? metadata.name
             : undefined
-      const company =
-        typeof metadata.company_name === 'string'
-          ? metadata.company_name
-          : typeof metadata.company === 'string'
-            ? metadata.company
-            : undefined
 
       setDisplayName(getDisplayName(data.user.email, fullName))
-      if (company?.trim()) {
-        setCompanyName(company.trim())
-      }
     }
 
     void loadHeaderProfile()
@@ -440,12 +463,12 @@ function TopBar() {
   return (
     <header className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <p className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.15rem]">
+        <p className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.15rem] dark:text-slate-100">
           {getGreeting(now)}, {displayName}
         </p>
-        <div className="mt-2 space-y-1 text-sm font-medium leading-5 text-slate-500">
-          <p className="font-semibold text-slate-800">{companyName}</p>
-          <p className="text-[13px] text-slate-400">{formatOperationsDateTime(now)}</p>
+        <div className="mt-2 space-y-1 text-sm font-medium leading-5 text-slate-500 dark:text-slate-400">
+          <p className="font-semibold text-slate-800 dark:text-slate-200">{companyName}</p>
+          <p className="text-[13px] text-slate-400 dark:text-slate-500">{formatOperationsDateTime(now)}</p>
         </div>
       </div>
 
@@ -454,7 +477,7 @@ function TopBar() {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-[1rem] bg-white/90 text-slate-500 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md"
+          className="size-10 rounded-[1rem] bg-white/90 text-slate-500 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
         >
           <Bell className="size-[18px]" />
         </Button>
@@ -491,7 +514,7 @@ function AdminLayout({
 
   return (
     <div
-      className={`drevora-app-shell relative min-h-svh overflow-x-clip text-slate-950 ${moodClass}`}
+      className={`drevora-app-shell relative min-h-svh overflow-x-clip text-slate-950 dark:text-slate-100 ${moodClass}`}
     >
       <AppBackground />
       <div className="relative flex w-full items-start">

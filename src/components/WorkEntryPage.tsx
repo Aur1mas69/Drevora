@@ -1,5 +1,4 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import drevoraLogo from '@/assets/drevora-logo.png'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -151,18 +150,11 @@ function WorkEntryPage() {
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <img
-              src={drevoraLogo}
+              src="/drevora-logo.png"
               alt="DREVORA"
-              className="h-8 w-auto shrink-0 object-contain"
+              className="h-8 w-auto max-w-[140px] shrink-0 object-contain"
             />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-[0.15em]">
-                DREVORA
-              </p>
-              <p className="truncate text-xs text-slate-400">
-                Driver work entry
-              </p>
-            </div>
+            <p className="truncate text-xs text-slate-400">Driver work entry</p>
           </div>
           <Button
             variant="ghost"

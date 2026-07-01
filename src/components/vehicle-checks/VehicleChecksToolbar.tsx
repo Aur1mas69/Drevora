@@ -1,11 +1,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { VehicleCheckStatusFilter } from '@/lib/vehicleCheckTypes'
+import { adminFilterPanel, adminSearchInput, adminSelectSm } from '@/lib/adminUiStyles'
 import type { Vehicle } from '@/services/vehiclesService'
 import { Filter, Plus, Search, X } from 'lucide-react'
-
-const selectClassName =
-  'h-9 w-full min-w-[128px] rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
 
 type VehicleChecksToolbarProps = {
   searchTerm: string
@@ -41,7 +39,7 @@ export function VehicleChecksToolbar({
   )
 
   return (
-    <div className="space-y-3 rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white p-3 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+    <div className={adminFilterPanel}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative min-w-0 flex-1 lg:max-w-sm">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
@@ -50,7 +48,7 @@ export function VehicleChecksToolbar({
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search registration or fleet no…"
-            className="h-9 rounded-[10px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] pl-8 text-sm"
+            className={`${adminSearchInput} h-9 pl-8 text-sm`}
           />
         </div>
 
@@ -64,7 +62,7 @@ export function VehicleChecksToolbar({
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5 text-slate-400">
           <Filter className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">Filters</span>
@@ -73,7 +71,7 @@ export function VehicleChecksToolbar({
         <select
           value={vehicleFilter}
           onChange={(event) => onVehicleFilterChange(event.target.value)}
-          className={selectClassName}
+          className={adminSelectSm}
           aria-label="Filter by vehicle"
         >
           <option value="all">All vehicles</option>
@@ -90,7 +88,7 @@ export function VehicleChecksToolbar({
           onChange={(event) =>
             onStatusFilterChange(event.target.value as VehicleCheckStatusFilter)
           }
-          className={selectClassName}
+          className={adminSelectSm}
           aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
@@ -103,7 +101,7 @@ export function VehicleChecksToolbar({
           type="date"
           value={inspectionDate}
           onChange={(event) => onInspectionDateChange(event.target.value)}
-          className="h-9 w-[140px] rounded-[10px] border-[rgba(75,120,220,0.12)] bg-white px-2 text-xs"
+          className={`${adminSelectSm} w-[140px] px-2`}
           aria-label="Filter by inspection date"
         />
 
@@ -112,7 +110,7 @@ export function VehicleChecksToolbar({
             type="button"
             variant="ghost"
             onClick={onClearFilters}
-            className="h-9 rounded-[10px] px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            className="h-9 rounded-[10px] px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/50"
           >
             <X className="mr-1 size-3.5" />
             Clear

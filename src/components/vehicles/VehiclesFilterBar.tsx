@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  adminFilterPanel,
+  adminSearchInput,
+  adminSelect,
+  adminText,
+} from '@/lib/adminUiStyles'
 import type { DocumentFilter } from '@/lib/vehiclePageUtils'
 import { vehicleStatuses } from '@/lib/vehicleForm'
 import type { Driver } from '@/services/driversService'
@@ -32,8 +38,7 @@ const documentFilterOptions: DocumentFilter[] = [
   'Expired',
 ]
 
-const selectClassName =
-  'h-10 w-full min-w-[140px] rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+const selectClassName = adminSelect
 
 export function VehiclesFilterBar({
   searchTerm,
@@ -52,7 +57,7 @@ export function VehiclesFilterBar({
   hasActiveFilters,
 }: VehiclesFilterBarProps) {
   return (
-    <div className="rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white p-4 shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
+    <div className={adminFilterPanel}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative min-w-0 flex-1 xl:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -61,7 +66,7 @@ export function VehiclesFilterBar({
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search registration, fleet #, make/model, or driver…"
-            className="h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] pl-10 text-sm"
+            className={`${adminSearchInput} pl-10`}
           />
         </div>
 
@@ -130,13 +135,13 @@ export function VehiclesFilterBar({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-blue-50 pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-blue-50 pt-3 dark:border-white/10">
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={onExportCsv}
-          className="h-9 rounded-[10px] border-[rgba(75,120,220,0.12)] bg-white text-sm font-semibold text-[#2563EB] hover:bg-[#EEF4FF]"
+          className="h-9 rounded-[10px] border-[rgba(75,120,220,0.12)] bg-white text-sm font-semibold text-[#2563EB] hover:bg-[#EEF4FF] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300 dark:hover:bg-slate-800/90"
         >
           <Download className="size-3.5" />
           Export CSV
@@ -147,7 +152,7 @@ export function VehiclesFilterBar({
             variant="ghost"
             size="sm"
             onClick={onClearFilters}
-            className="h-9 rounded-[10px] text-sm font-semibold text-slate-600 hover:bg-[#EEF4FF] hover:text-[#2563EB]"
+            className={`h-9 rounded-[10px] text-sm font-semibold ${adminText} hover:bg-[#EEF4FF] hover:text-[#2563EB] dark:hover:bg-slate-800/70 dark:hover:text-blue-300`}
           >
             <X className="size-3.5" />
             Clear Filters

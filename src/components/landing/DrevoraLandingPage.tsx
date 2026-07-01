@@ -121,24 +121,13 @@ const howItWorksSteps = [
   'Office team tracks everything from the dashboard',
 ]
 
-function LogoMark({ compact = false }: { compact?: boolean }) {
+function LogoMark() {
   return (
-    <div className="flex items-center gap-2.5">
-      <div
-        className={`flex items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#60A5FA] font-extrabold text-white ${
-          compact ? 'size-8 text-sm' : 'size-9 text-base'
-        }`}
-      >
-        D
-      </div>
-      <span
-        className={`font-extrabold tracking-tight text-[#0F172A] ${
-          compact ? 'text-lg' : 'text-xl'
-        }`}
-      >
-        DREVORA
-      </span>
-    </div>
+    <img
+      src="/drevora-logo.png"
+      alt="DREVORA"
+      className="h-auto max-h-9 w-auto max-w-[160px] shrink-0 object-contain sm:max-w-[180px]"
+    />
   )
 }
 

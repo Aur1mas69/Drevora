@@ -12,6 +12,11 @@ import { Plus, Truck } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
 import {
+  adminEmptyState,
+  adminHeading,
+  adminTextMuted,
+} from '@/lib/adminUiStyles'
+import {
   AvailabilityDetailsModal,
   DeleteAvailabilityModal,
   EditAvailabilityModal,
@@ -506,11 +511,11 @@ function VehiclesPage() {
                 onOpenAvailabilityEvent={openAvailabilityFromNextEvent}
               />
             ) : (
-              <div className="rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white px-5 py-12 text-center shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
-                <p className="text-lg font-semibold text-[#2A376F]">
+              <div className={`${adminEmptyState} py-12`}>
+                <p className={`text-lg font-semibold ${adminHeading}`}>
                   No vehicles match your filters
                 </p>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className={`mt-2 text-sm ${adminTextMuted}`}>
                   Try adjusting your search or filter criteria.
                 </p>
                 <Button
@@ -546,11 +551,11 @@ function VehiclesPage() {
         {isLoading ? <VehiclesTableSkeleton /> : null}
 
         {!isLoading && loadError ? (
-          <div className="rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white px-5 py-12 text-center shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
-            <p className="text-lg font-semibold text-[#2A376F]">
+          <div className={`${adminEmptyState} py-12`}>
+            <p className={`text-lg font-semibold ${adminHeading}`}>
               Unable to load vehicles
             </p>
-            <p className="mt-2 text-sm text-slate-500">{loadError}</p>
+            <p className={`mt-2 text-sm ${adminTextMuted}`}>{loadError}</p>
             <Button
               type="button"
               onClick={loadVehicles}
@@ -562,14 +567,14 @@ function VehiclesPage() {
         ) : null}
 
         {!isLoading && !loadError && vehicles.length === 0 ? (
-          <div className="rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-white px-5 py-14 text-center shadow-[0_4px_16px_rgba(40,80,140,0.05)]">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#EEF4FF] text-[#2563EB]">
+          <div className={`${adminEmptyState} py-14`}>
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#EEF4FF] text-[#2563EB] dark:bg-slate-800/70 dark:text-blue-300">
               <Truck className="size-6" />
             </div>
-            <p className="mt-4 text-lg font-semibold text-[#2A376F]">
+            <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
               No vehicles yet
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className={`mt-2 text-sm ${adminTextMuted}`}>
               Add your first vehicle to start managing your fleet.
             </p>
             <Button

@@ -27,13 +27,13 @@ type RowActionsMenuProps = {
 function getToneClass(tone: RowActionTone = 'default'): string {
   switch (tone) {
     case 'danger':
-      return 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50'
+      return 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 dark:focus:bg-rose-950/50'
     case 'success':
-      return 'text-emerald-700 hover:bg-emerald-50 focus:bg-emerald-50'
+      return 'text-emerald-700 hover:bg-emerald-50 focus:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/50 dark:focus:bg-emerald-950/50'
     case 'warning':
-      return 'text-amber-700 hover:bg-amber-50 focus:bg-amber-50'
+      return 'text-amber-700 hover:bg-amber-50 focus:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/50 dark:focus:bg-amber-950/50'
     default:
-      return 'text-[#2A376F] hover:bg-[#F4F8FF] focus:bg-[#F4F8FF]'
+      return 'text-[#2A376F] hover:bg-[#F4F8FF] focus:bg-[#F4F8FF] dark:text-slate-200 dark:hover:bg-slate-800/70 dark:focus:bg-slate-800/70'
   }
 }
 
@@ -245,7 +245,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
             return next
           })
         }}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-500 outline-none transition-colors hover:bg-[#EEF4FF] hover:text-[#2563EB] focus-visible:ring-2 focus-visible:ring-blue-100"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-500 outline-none transition-colors hover:bg-[#EEF4FF] hover:text-[#2563EB] focus-visible:ring-2 focus-visible:ring-blue-100 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-blue-300 dark:focus-visible:ring-white/10"
       >
         <MoreHorizontal className="size-4" aria-hidden="true" />
       </button>
@@ -256,7 +256,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
           id={menuId}
           role="menu"
           aria-label="Row actions"
-          className={`absolute z-50 min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm ${menuPositionClass} ${menuHorizontalClass}`}
+          className={`absolute z-50 min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`}
         >
           {visibleActions.map((action, index) => renderAction(action, index))}
         </div>

@@ -1,11 +1,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { HolidayRequestStatusFilter } from '@/lib/holidayRequestTypes'
+import { adminFilterPanel, adminSearchInput, adminSelectSm } from '@/lib/adminUiStyles'
 import type { Driver } from '@/services/driversService'
 import { Filter, Plus, Search, X } from 'lucide-react'
-
-const selectClassName =
-  'h-9 w-full min-w-[128px] rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
 
 type HolidayRequestsToolbarProps = {
   searchTerm: string
@@ -45,7 +43,7 @@ export function HolidayRequestsToolbar({
   )
 
   return (
-    <div className="space-y-3 rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white p-3 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+    <div className={adminFilterPanel}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative min-w-0 flex-1 lg:max-w-sm">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
@@ -54,7 +52,7 @@ export function HolidayRequestsToolbar({
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search worker or reason…"
-            className="h-9 rounded-[10px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] pl-8 text-sm"
+            className={`${adminSearchInput} h-9 pl-8 text-sm`}
           />
         </div>
 
@@ -70,7 +68,7 @@ export function HolidayRequestsToolbar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5 text-slate-400">
           <Filter className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">Filters</span>
@@ -81,7 +79,7 @@ export function HolidayRequestsToolbar({
           onChange={(event) =>
             onStatusFilterChange(event.target.value as HolidayRequestStatusFilter)
           }
-          className={selectClassName}
+          className={adminSelectSm}
           aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
@@ -94,7 +92,7 @@ export function HolidayRequestsToolbar({
         <select
           value={workerFilter}
           onChange={(event) => onWorkerFilterChange(event.target.value)}
-          className={selectClassName}
+          className={adminSelectSm}
           aria-label="Filter by worker"
         >
           <option value="all">All workers</option>
@@ -109,7 +107,7 @@ export function HolidayRequestsToolbar({
           type="date"
           value={dateFrom}
           onChange={(event) => onDateFromChange(event.target.value)}
-          className="h-9 w-[140px] rounded-[10px] border-[rgba(75,120,220,0.12)] bg-white px-2 text-xs"
+          className={`${adminSelectSm} w-[140px] px-2`}
           aria-label="Date from"
         />
         <span className="text-xs text-slate-400">to</span>
@@ -117,7 +115,7 @@ export function HolidayRequestsToolbar({
           type="date"
           value={dateTo}
           onChange={(event) => onDateToChange(event.target.value)}
-          className="h-9 w-[140px] rounded-[10px] border-[rgba(75,120,220,0.12)] bg-white px-2 text-xs"
+          className={`${adminSelectSm} w-[140px] px-2`}
           aria-label="Date to"
         />
 
@@ -126,7 +124,7 @@ export function HolidayRequestsToolbar({
             type="button"
             variant="ghost"
             onClick={onClearFilters}
-            className="h-9 rounded-[10px] px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            className="h-9 rounded-[10px] px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/50"
           >
             <X className="mr-1 size-3.5" />
             Clear

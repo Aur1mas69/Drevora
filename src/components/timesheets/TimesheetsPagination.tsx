@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { TIMESHEET_PAGE_SIZE_OPTIONS } from '@/lib/timesheetTypes'
+import {
+  adminHeading,
+  adminSelectXs,
+  adminTableFooter,
+  adminTextMuted,
+} from '@/lib/adminUiStyles'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type TimesheetsPaginationProps = {
@@ -22,18 +28,20 @@ export function TimesheetsPagination({
   const to = Math.min(page * pageSize, totalCount)
 
   return (
-    <div className="flex flex-col gap-2 border-t border-[rgba(75,120,220,0.08)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-medium text-slate-500">
+    <div
+      className={`flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between ${adminTableFooter}`}
+    >
+      <p className={`text-xs font-medium ${adminTextMuted}`}>
         Showing {from}–{to} of {totalCount}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        <label className={`flex items-center gap-1.5 text-xs font-medium ${adminTextMuted}`}>
           Rows
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="h-8 rounded-[8px] border border-[rgba(75,120,220,0.12)] bg-white px-2 text-xs font-medium text-slate-700"
+            className={adminSelectXs}
           >
             {TIMESHEET_PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -55,7 +63,7 @@ export function TimesheetsPagination({
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-[#2A376F]">
+          <span className={`min-w-[4.5rem] text-center text-xs font-semibold tabular-nums ${adminHeading}`}>
             {page} / {totalPages}
           </span>
           <Button

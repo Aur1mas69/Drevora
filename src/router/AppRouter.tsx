@@ -10,6 +10,7 @@ import AdminDashboardPage from '@/pages/AdminDashboardPage'
 import AdminLoginPage from '@/pages/AdminLoginPage'
 import AdminComingSoonPage from '@/pages/admin/AdminComingSoonPage'
 import CompliancePage from '@/pages/CompliancePage'
+import ConsumablesPage from '@/pages/ConsumablesPage'
 import VehicleComplianceProfilePage from '@/pages/VehicleComplianceProfilePage'
 import WorkerComplianceProfilePage from '@/pages/WorkerComplianceProfilePage'
 import DashboardPage from '@/pages/DashboardPage'
@@ -20,6 +21,7 @@ import HistoryPage from '@/pages/HistoryPage'
 import LandingPage from '@/pages/LandingPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProfilePage from '@/pages/ProfilePage'
+import FaqHelpPage from '@/pages/FaqHelpPage'
 import SettingsPage from '@/pages/SettingsPage'
 import HolidayRequestsPage from '@/pages/HolidayRequestsPage'
 import VehicleChecksPage from '@/pages/VehicleChecksPage'
@@ -122,6 +124,14 @@ function AppRouter() {
           }
         />
         <Route
+          path="/consumables"
+          element={
+            <RequireAuthPage>
+              <ConsumablesPage />
+            </RequireAuthPage>
+          }
+        />
+        <Route
           path="/vehicles"
           element={
             <RequireAuthPage>
@@ -153,6 +163,17 @@ function AppRouter() {
             </RequireAuthPage>
           }
         />
+        <Route
+          path="/admin/faq"
+          element={
+            <RequireAuthPage>
+              <FaqHelpPage />
+            </RequireAuthPage>
+          }
+        />
+        <Route path="/admin/help" element={<Navigate to="/admin/faq" replace />} />
+        <Route path="/help" element={<Navigate to="/admin/faq" replace />} />
+        <Route path="/faq" element={<Navigate to="/admin/faq" replace />} />
         <Route
           path="/admin/holidays"
           element={

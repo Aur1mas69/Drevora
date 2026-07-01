@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import drevoraLogo from '@/assets/drevora-logo.png'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -79,14 +78,16 @@ function LoginPage({
         <Card className="w-full gap-0 border-white/10 bg-white py-0 shadow-2xl shadow-black/40 ring-0">
           <CardHeader className="items-center space-y-4 px-8 pt-10 pb-6 text-center">
             <img
-              src={drevoraLogo}
+              src="/drevora-logo.png"
               alt="DREVORA"
               className="mx-auto h-auto w-full max-w-[180px] object-contain"
             />
             <div className="space-y-1">
-              <CardTitle className="text-2xl font-semibold tracking-[0.2em] text-[#0B1023]">
-                {title}
-              </CardTitle>
+              {title !== 'DREVORA' ? (
+                <CardTitle className="text-2xl font-semibold tracking-[0.2em] text-[#0B1023]">
+                  {title}
+                </CardTitle>
+              ) : null}
               <CardDescription className="text-sm text-slate-500">
                 {description}
               </CardDescription>

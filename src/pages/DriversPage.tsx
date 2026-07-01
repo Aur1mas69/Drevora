@@ -19,6 +19,22 @@ import {
   type RowAction,
 } from '@/components/ui/RowActionsMenu'
 import {
+  adminCard,
+  adminFilterChip,
+  adminGlassToolbar,
+  adminHeadingLg,
+  adminPanel,
+  adminSearchInputLg,
+  adminSelect,
+  adminSkeletonPulse,
+  adminTableDivide,
+  adminTableHeadText,
+  adminTableHeaderAlt,
+  adminTableRowAlt,
+  adminText,
+  adminTextMuted,
+} from '@/lib/adminUiStyles'
+import {
   driversService,
   type CreateDriverInput,
   type Driver,
@@ -54,13 +70,13 @@ function ActiveFilterChip({
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <span className="inline-flex items-center gap-2 rounded-full bg-[#EAF4FF] px-3 py-1.5 text-sm font-semibold text-[#2563EB] ring-1 ring-blue-100">
+      <span className={adminFilterChip}>
         {label}
         <button
           type="button"
           onClick={onClear}
           aria-label={`Clear filter: ${label}`}
-          className="flex size-5 items-center justify-center rounded-full text-[#2563EB] transition-colors hover:bg-white/80"
+          className="flex size-5 items-center justify-center rounded-full text-[#2563EB] transition-colors hover:bg-white/80 dark:text-blue-300 dark:hover:bg-slate-700/80"
         >
           <X className="size-3.5" />
         </button>
@@ -93,10 +109,10 @@ const initialDriverForm: CreateDriverForm = {
 }
 
 const statusClassMap: Record<DriverStatus, string> = {
-  Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  'Off Duty': 'bg-slate-100 text-slate-600 ring-slate-200',
-  Holiday: 'bg-orange-50 text-orange-700 ring-orange-200',
-  Suspended: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+  'Off Duty': 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+  Holiday: 'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
+  Suspended: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
 }
 
 function getDriverName(driver: Driver): string {
@@ -197,7 +213,7 @@ function DriversToolbar({
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search workers"
-            className="h-11 rounded-[16px] border-0 bg-white pl-10 pr-4 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out placeholder:text-slate-400 focus-visible:ring-3 focus-visible:ring-blue-200"
+            className={`${adminSearchInputLg} pl-10 pr-4`}
           />
         </div>
 
@@ -206,17 +222,17 @@ function DriversToolbar({
             type="button"
             variant="outline"
             onClick={onFilterToggle}
-            className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#EAF4FF] hover:text-[#2563EB] hover:shadow-md"
+            className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#EAF4FF] hover:text-[#2563EB] hover:shadow-md dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-slate-800/90 dark:hover:text-blue-300"
           >
             <Filter className="size-4" />
             Filter
           </Button>
 
           {isFilterOpen ? (
-            <div className="absolute right-0 z-20 mt-3 w-[260px] rounded-[20px] bg-white p-4 shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100">
+            <div className={`absolute right-0 z-20 mt-3 w-[260px] p-4 ${adminPanel} shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100 dark:ring-white/10`}>
               <div className="space-y-3">
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
                     Status
                   </span>
                   <select
@@ -224,7 +240,7 @@ function DriversToolbar({
                     onChange={(event) =>
                       onStatusFilterChange(event.target.value as StatusFilter)
                     }
-                    className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
                   >
                     <option value="All">All statuses</option>
                     {driverStatuses.map((status) => (
@@ -236,13 +252,13 @@ function DriversToolbar({
                 </label>
 
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
                     Company
                   </span>
                   <select
                     value={companyFilter}
                     onChange={(event) => onCompanyFilterChange(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
                   >
                     <option value="All">All companies</option>
                     {companyOptions.map((company) => (
@@ -305,12 +321,12 @@ function DriversTable({
   onDeleteDriver: (driver: Driver) => void
 }) {
   return (
-    <Card className="overflow-hidden rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+    <Card className={adminCard}>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse">
             <thead>
-              <tr className="bg-[#F6FAFF] text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <tr className={`${adminTableHeaderAlt} text-left ${adminTableHeadText}`}>
                 <th className="px-6 py-4">Avatar</th>
                 <th className="px-6 py-4">Worker</th>
                 <th className="px-6 py-4">Role</th>
@@ -319,14 +335,14 @@ function DriversTable({
                 <TableActionsHeader className="px-6 py-4" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-50">
+            <tbody className={adminTableDivide}>
               {drivers.map((driver) => (
                 <tr
                   key={driver.id}
-                  className="group transition-all duration-[250ms] ease-out hover:bg-[#F8FBFF]"
+                  className={`group ${adminTableRowAlt}`}
                 >
                   <td className="px-6 py-5">
-                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[15px] bg-[#EAF4FF] text-sm font-semibold text-[#2563EB] shadow-sm ring-1 ring-blue-100 transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5">
+                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[15px] bg-[#EAF4FF] text-sm font-semibold text-[#2563EB] shadow-sm ring-1 ring-blue-100 transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5 dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10">
                       {driver.avatarUrl ? (
                         <img
                           src={driver.avatarUrl}
@@ -340,20 +356,20 @@ function DriversTable({
                   </td>
                   <td className="px-6 py-5">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className={`text-sm font-semibold ${adminHeadingLg}`}>
                         {getDriverName(driver)}
                       </p>
                       <div>
-                        <p className="mt-1 text-xs font-medium text-slate-400">
+                        <p className={`mt-1 text-xs font-medium ${adminTextMuted}`}>
                           {driver.email}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-5 text-sm font-medium text-slate-600">
+                  <td className={`px-6 py-5 text-sm font-medium ${adminText}`}>
                     {driver.role}
                   </td>
-                  <td className="px-6 py-5 text-sm font-medium text-slate-600">
+                  <td className={`px-6 py-5 text-sm font-medium ${adminText}`}>
                     {getWorkerAssignment(driver)}
                   </td>
                   <td className="px-6 py-5">
@@ -378,19 +394,19 @@ function DriversTable({
 
 function DriversLoadingSkeleton() {
   return (
-    <Card className="overflow-hidden rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+    <Card className={adminCard}>
       <CardContent className="space-y-4 p-6">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
-            className="flex animate-pulse items-center gap-4 rounded-2xl bg-[#F8FBFF] p-4"
+            className={`flex items-center gap-4 rounded-2xl p-4 ${adminSkeletonPulse} bg-[#F8FBFF] dark:bg-slate-800/60`}
           >
-            <div className="size-11 rounded-[15px] bg-blue-100" />
+            <div className="size-11 rounded-[15px] bg-blue-100 dark:bg-slate-700/60" />
             <div className="flex-1 space-y-2">
-              <div className="h-3 w-40 rounded-full bg-blue-100" />
-              <div className="h-3 w-64 max-w-full rounded-full bg-blue-50" />
+              <div className="h-3 w-40 rounded-full bg-blue-100 dark:bg-slate-700/60" />
+              <div className="h-3 w-64 max-w-full rounded-full bg-blue-50 dark:bg-slate-700/40" />
             </div>
-            <div className="hidden h-8 w-24 rounded-full bg-blue-100 sm:block" />
+            <div className="hidden h-8 w-24 rounded-full bg-blue-100 dark:bg-slate-700/60 sm:block" />
           </div>
         ))}
       </CardContent>
@@ -406,12 +422,12 @@ function DriversErrorState({
   message: string
 }) {
   return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+    <Card className={adminCard}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-        <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+        <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           Unable to load workers.
         </p>
-        <p className="mt-2 max-w-md text-sm font-medium text-slate-500">{message}</p>
+        <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>{message}</p>
         <Button
           type="button"
           onClick={onRetry}
@@ -426,9 +442,9 @@ function DriversErrorState({
 
 function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
   return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+    <Card className={adminCard}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+        <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           No workers yet
         </p>
         <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
@@ -875,15 +891,15 @@ function DriversPage() {
   return (
     <AdminLayout>
       <section className="space-y-5">
-        <div className="flex flex-col gap-4 rounded-[20px] bg-white/72 p-5 shadow-[0_18px_45px_rgba(59,130,246,0.07)] ring-1 ring-white/80 backdrop-blur sm:p-6">
+        <div className={`flex flex-col gap-4 ${adminGlassToolbar}`}>
           <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6] dark:text-blue-400">
               Worker Management
             </p>
-            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.4rem]">
+            <h1 className={`text-3xl font-semibold tracking-[-0.045em] sm:text-[2.4rem] ${adminHeadingLg}`}>
               Workers
             </h1>
-            <p className="max-w-2xl text-sm font-medium leading-6 text-slate-500">
+            <p className={`max-w-2xl text-sm font-medium leading-6 ${adminTextMuted}`}>
               Manage workers, roles, licences and compliance.
             </p>
           </div>
@@ -927,12 +943,12 @@ function DriversPage() {
               onDeleteDriver={openDeleteDriverModal}
             />
           ) : (
-            <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+            <Card className={adminCard}>
               <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-                <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+                <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
                   No matching records found.
                 </p>
-                <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
+                <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>
                   Try adjusting the search or filters.
                 </p>
               </CardContent>

@@ -118,9 +118,26 @@ export async function getCurrentSession(): Promise<AuthSession | null> {
   }
 }
 
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new AuthServiceError(
+      'Password update is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const { error } = await requireSupabase().auth.updateUser({
+    password: newPassword,
+  })
+
+  if (error) {
+    throw new AuthServiceError(error.message)
+  }
+}
+
 export const authService = {
   signIn,
   signOut,
   getCurrentUser,
   getCurrentSession,
+  updatePassword,
 }

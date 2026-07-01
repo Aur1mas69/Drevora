@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import drevoraLogo from '@/assets/drevora-logo.png'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -34,7 +33,7 @@ function ComingSoonPage() {
         <Card className="w-full max-w-[520px] gap-0 border-white/10 bg-[#121829]/90 py-0 text-center text-white shadow-2xl shadow-black/40 ring-0 backdrop-blur-sm">
           <CardHeader className="items-center px-6 pt-10 pb-6 sm:px-10">
             <img
-              src={drevoraLogo}
+              src="/drevora-logo.png"
               alt="DREVORA"
               className="mb-8 h-auto w-full max-w-[220px] object-contain"
             />

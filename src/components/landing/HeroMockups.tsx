@@ -1,4 +1,3 @@
-import drevoraLogo from '@/assets/drevora-logo.png'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   AlertTriangle,
@@ -121,11 +120,12 @@ function DashboardMockup() {
       >
         <div className="flex">
           <aside className="w-[72px] shrink-0 bg-[#0F2744] px-2 py-4">
-            <div className="mb-4 flex flex-col items-center gap-1">
-              <img src={drevoraLogo} alt="" className="size-5 object-contain" />
-              <span className="text-[7px] font-bold tracking-wider text-white/90">
-                DREVORA
-              </span>
+            <div className="mb-4 flex justify-center px-0.5">
+              <img
+                src="/drevora-logo.png"
+                alt=""
+                className="h-auto w-full max-w-[52px] object-contain brightness-0 invert"
+              />
             </div>
             {['Dashboard', 'Workers', 'Vehicles', 'Compliance', 'Reports'].map(
               (item, index) => (

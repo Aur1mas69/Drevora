@@ -14,6 +14,18 @@ import {
   recalculateEntryInputs,
   summarizeTimesheetEntries,
 } from '@/lib/timesheetUtils'
+import {
+  adminHeading,
+  adminInnerSoft,
+  adminSearchInput,
+  adminTableHeadText,
+  adminTableHeader,
+  adminTableRow,
+  adminTableShellSm,
+  adminText,
+  adminTextMuted,
+  adminTextStrong,
+} from '@/lib/adminUiStyles'
 import { Pencil, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -28,8 +40,7 @@ type TimesheetDrawerProps = {
   onSubmit?: (entries: TimesheetEntryInput[]) => Promise<void>
 }
 
-const inputClassName =
-  'h-8 rounded-[8px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-2 text-xs tabular-nums'
+const inputClassName = `${adminSearchInput} h-8 px-2 text-xs tabular-nums`
 
 export function TimesheetDrawer({
   timesheet,
@@ -149,25 +160,25 @@ export function TimesheetDrawer({
       />
 
       <aside
-        className="relative flex h-full w-full max-w-2xl flex-col border-l border-[rgba(75,120,220,0.12)] bg-white shadow-[-20px_0_60px_rgba(15,23,42,0.12)]"
+        className="relative flex h-full w-full max-w-2xl flex-col border-l border-[rgba(75,120,220,0.12)] bg-white shadow-[-20px_0_60px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 dark:backdrop-blur-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="timesheet-drawer-title"
       >
-        <div className="border-b border-[rgba(75,120,220,0.08)] px-4 py-3">
+        <div className="border-b border-[rgba(75,120,220,0.08)] px-4 py-3 dark:border-white/10">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.08em] ${adminTextMuted}`}>
                 {isEditable ? 'Edit timesheet' : 'View timesheet'}
                 {isEditable ? ' · Ctrl+S to save' : ''}
               </p>
               <h2
                 id="timesheet-drawer-title"
-                className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#2A376F]"
+                className={`mt-1 text-xl font-semibold tracking-[-0.03em] ${adminHeading}`}
               >
                 {timesheet.driverName}
               </h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
+              <p className={`mt-1 text-sm font-medium ${adminTextMuted}`}>
                 {timesheet.weekLabel}
               </p>
             </div>
@@ -177,17 +188,17 @@ export function TimesheetDrawer({
               size="icon"
               onClick={onClose}
               disabled={isSaving}
-              className="size-9 shrink-0 rounded-[12px] text-slate-500 hover:bg-slate-50"
+              className="size-9 shrink-0 rounded-[12px] text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/50"
             >
               <X className="size-4" />
             </Button>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-[#F8FBFF] px-2.5 py-1 font-medium text-slate-600 ring-1 ring-[rgba(75,120,220,0.08)]">
+            <span className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-[rgba(75,120,220,0.08)] ${adminInnerSoft} ${adminText}`}>
               {timesheet.driverRole ?? 'Worker'}
             </span>
-            <span className="rounded-full bg-[#F8FBFF] px-2.5 py-1 font-medium text-slate-600 ring-1 ring-[rgba(75,120,220,0.08)]">
+            <span className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-[rgba(75,120,220,0.08)] ${adminInnerSoft} ${adminText}`}>
               Vehicle: {timesheet.vehicleRegistration}
             </span>
             <span
@@ -195,15 +206,15 @@ export function TimesheetDrawer({
             >
               {getStatusLabel(timesheet.status)}
             </span>
-            <span className="rounded-full bg-[#F8FBFF] px-2.5 py-1 font-medium text-slate-600 ring-1 ring-[rgba(75,120,220,0.08)]">
+            <span className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-[rgba(75,120,220,0.08)] ${adminInnerSoft} ${adminText}`}>
               OT mode: {overtimeMode}
             </span>
             {canEdit ? (
               <span
                 className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ${
                   isEditable
-                    ? 'bg-blue-50 text-blue-700 ring-blue-100'
-                    : 'bg-slate-100 text-slate-500 ring-slate-200'
+                    ? 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60'
+                    : 'bg-slate-100 text-slate-500 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-400 dark:ring-white/10'
                 }`}
               >
                 {isEditable ? 'Editing' : 'Read-only'}
@@ -213,16 +224,16 @@ export function TimesheetDrawer({
         </div>
 
         {saveError ? (
-          <div className="mx-4 mt-3 rounded-[10px] bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-rose-100">
+          <div className="mx-4 mt-3 rounded-[10px] bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60">
             {saveError}
           </div>
         ) : null}
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <div className="overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.10)]">
+          <div className={`overflow-hidden ${adminTableShellSm}`}>
             <table className="w-full border-collapse text-left text-xs">
-              <thead className="sticky top-0 bg-[#F4F8FF]">
-                <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <thead className={adminTableHeader}>
+                <tr className={adminTableHeadText}>
                   <th className="px-2 py-2">Day</th>
                   <th className="px-2 py-2">Start</th>
                   <th className="px-2 py-2">Break</th>
@@ -235,9 +246,9 @@ export function TimesheetDrawer({
                 {displayEntries.map((entry, index) => (
                   <tr
                     key={entry.dayDate}
-                    className="border-t border-[rgba(75,120,220,0.08)]"
+                    className={adminTableRow}
                   >
-                    <td className="px-2 py-1.5 font-medium text-slate-700">
+                    <td className={`px-2 py-1.5 font-medium ${adminTextStrong}`}>
                       {formatDayLabel(entry.dayDate)}
                     </td>
                     <td className="px-2 py-1.5">
@@ -253,7 +264,7 @@ export function TimesheetDrawer({
                           data-field="start"
                         />
                       ) : (
-                        <span className="tabular-nums text-slate-600">
+                        <span className={`tabular-nums ${adminText}`}>
                           {formatTime(entry.startTime)}
                         </span>
                       )}
@@ -275,7 +286,7 @@ export function TimesheetDrawer({
                           data-field="break"
                         />
                       ) : (
-                        <span className="tabular-nums text-slate-600">
+                        <span className={`tabular-nums ${adminText}`}>
                           {formatBreak(entry.breakMinutes)}
                         </span>
                       )}
@@ -293,12 +304,12 @@ export function TimesheetDrawer({
                           data-field="finish"
                         />
                       ) : (
-                        <span className="tabular-nums text-slate-600">
+                        <span className={`tabular-nums ${adminText}`}>
                           {formatTime(entry.finishTime)}
                         </span>
                       )}
                     </td>
-                    <td className="px-2 py-1.5 font-semibold tabular-nums text-[#2A376F]">
+                    <td className={`px-2 py-1.5 font-semibold tabular-nums ${adminHeading}`}>
                       {formatHoursFromMinutes(entry.totalMinutes)}
                     </td>
                     <td className="px-2 py-1.5">
@@ -324,7 +335,7 @@ export function TimesheetDrawer({
                           data-field="overtime"
                         />
                       ) : (
-                        <span className="tabular-nums text-amber-700">
+                        <span className="tabular-nums text-amber-700 dark:text-amber-300">
                           {entry.overtimeMinutes > 0
                             ? formatHoursFromMinutes(entry.overtimeMinutes)
                             : '—'}
@@ -338,7 +349,7 @@ export function TimesheetDrawer({
           </div>
         </div>
 
-        <div className="border-t border-[rgba(75,120,220,0.08)] bg-[#F8FBFF] px-4 py-3">
+        <div className={`border-t border-[rgba(75,120,220,0.08)] px-4 py-3 dark:border-white/10 ${adminInnerSoft}`}>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <SummaryItem label="Worked Hours" value={summary.workedHours} />
             <SummaryItem label="Break" value={summary.breakHours} />
@@ -361,7 +372,7 @@ export function TimesheetDrawer({
                 type="button"
                 onClick={onEdit}
                 disabled={isSaving}
-                className="h-8 rounded-[10px] bg-white px-3 text-xs font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF]"
+                className="h-8 rounded-[10px] bg-white px-3 text-xs font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF] dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10 dark:hover:bg-slate-700/50"
               >
                 <Pencil className="mr-1.5 size-3.5" />
                 Edit
@@ -374,7 +385,7 @@ export function TimesheetDrawer({
                   type="button"
                   disabled={isSaving}
                   onClick={() => void handleSaveDraft()}
-                  className="h-8 rounded-[10px] bg-white px-3 text-xs font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF]"
+                  className="h-8 rounded-[10px] bg-white px-3 text-xs font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF] dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10 dark:hover:bg-slate-700/50"
                 >
                   {isSaving ? 'Saving…' : 'Save draft'}
                 </Button>
@@ -397,9 +408,9 @@ export function TimesheetDrawer({
 
 function SummaryItem({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[10px] bg-white px-2.5 py-2 ring-1 ring-[rgba(75,120,220,0.08)]">
-      <p className="text-[10px] font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#2A376F]">
+    <div className="rounded-[10px] bg-white px-2.5 py-2 ring-1 ring-[rgba(75,120,220,0.08)] dark:bg-slate-800/70 dark:ring-white/10">
+      <p className={`text-[10px] font-medium ${adminTextMuted}`}>{label}</p>
+      <p className={`mt-0.5 text-sm font-semibold tabular-nums ${adminHeading}`}>
         {value.toFixed(1)}h
       </p>
     </div>

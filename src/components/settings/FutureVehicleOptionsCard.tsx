@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock3 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { adminCard, adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 
 const futureVehicleOptions = [
   { label: 'Manual vehicle entry', status: 'active' as const },
@@ -11,16 +12,16 @@ const futureVehicleOptions = [
 
 export function FutureVehicleOptionsCard() {
   return (
-    <Card className="mt-6 rounded-[20px] border border-[rgba(75,120,220,0.10)] bg-white/95 py-0 shadow-[0_8px_24px_rgba(40,80,140,0.05)] ring-1 ring-blue-100/70">
+    <Card className={`mt-6 border border-[rgba(75,120,220,0.10)] ${adminCard}`}>
       <CardContent className="p-6 sm:p-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
             Fleet roadmap
           </p>
-          <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+          <h2 className={`mt-2 text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
             Future Vehicle Options
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          <p className={`mt-2 max-w-2xl text-sm leading-6 ${adminTextMuted}`}>
             Vehicle setup capabilities planned for DREVORA. Only manual entry is available in the
             MVP.
           </p>
