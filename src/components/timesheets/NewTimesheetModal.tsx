@@ -1,7 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TimesheetWeekLabel } from '@/components/timesheets/TimesheetWeekLabel'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
+import { getDefaultWeekStartMonday, normalizeWeekStartForCompany } from '@/lib/timesheetUtils'
+import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type { Driver } from '@/services/driversService'
-import { getDefaultWeekStartMonday, formatWeekLabel, normalizeWeekStartForCompany } from '@/lib/timesheetUtils'
 import { Users, User, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -47,9 +51,22 @@ export function NewTimesheetModal({
   onCreateSingle,
   onCreateBulk,
 }: NewTimesheetModalProps) {
+  const { settings } = useCompanySettings()
   const [mode, setMode] = useState<NewTimesheetMode>('single')
   const [driverId, setDriverId] = useState('')
   const [weekStart, setWeekStart] = useState(getDefaultWeekStartMonday())
+
+  const weekDisplay = useMemo(() => {
+    const weekSettings = settings
+      ? {
+          timesheetWeekStartDay: settings.timesheetWeekStartDay,
+          timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
+          timesheetWeekResetDay: settings.timesheetWeekResetDay,
+        }
+      : DEFAULT_TIMESHEET_WEEK_SETTINGS
+
+    return formatTimesheetWeekDisplay(weekStart, weekSettings)
+  }, [settings, weekStart])
 
   const activeDrivers = useMemo(
     () => drivers.filter((driver) => driver.status === 'Working'),
@@ -97,8 +114,8 @@ export function NewTimesheetModal({
             >
               New Timesheet
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Vehicle assignment is optional — workers may use different vehicles during the week.
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Create a timesheet for a worker and week. Hours and daily notes are entered after creation.
             </p>
           </div>
           <Button
@@ -201,9 +218,14 @@ export function NewTimesheetModal({
               required
               disabled={isSaving}
             />
-            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-              Week: {formatWeekLabel(weekStart)}
-            </p>
+            <div className="mt-1.5">
+              <TimesheetWeekLabel
+                weekTitle={weekDisplay.weekTitle}
+                weekRangeLabel={weekDisplay.weekRangeLabel}
+                titleClassName="text-xs font-semibold text-slate-700 dark:text-slate-200"
+                rangeClassName="text-xs text-slate-500 dark:text-slate-400"
+              />
+            </div>
           </label>
 
           <div className="flex justify-end gap-2 pt-1">

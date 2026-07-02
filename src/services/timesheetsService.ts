@@ -1,14 +1,14 @@
-import { getSetting } from '@/lib/companySettingsGlobals'
+import { getGlobalPaidBreaks, getSetting, getTimesheetWeekSettings } from '@/lib/companySettingsGlobals'
 import {
   buildWeekDates,
   calculateEntryTotalMinutes,
   computeTimesheetSummaryStats,
-  formatWeekLabel,
   normalizeWeekStartForCompany,
   sortTimesheetListItems,
   summarizeTimesheetEntries,
   summarizeTimesheetEntriesFromTotals,
 } from '@/lib/timesheetUtils'
+import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type {
   BulkCreateTimesheetsInput,
   CreateTimesheetInput,
@@ -48,6 +48,7 @@ type TimesheetEntryRow = {
   overtime_minutes: number | null
   payroll_minutes: number | null
   additional_hours?: number | null
+  daily_comment?: string | null
 }
 
 type TimesheetRow = {
@@ -70,7 +71,7 @@ type EntryTotalsRow = {
   total_minutes: number | null
   break_minutes: number | null
   overtime_minutes: number | null
-  payroll_minutes: number | null
+  additional_hours?: number | null
 }
 
 const timesheetEntrySelect = `
@@ -82,7 +83,8 @@ const timesheetEntrySelect = `
     finish_time,
     total_minutes,
     overtime_minutes,
-    additional_hours
+    additional_hours,
+    daily_comment
   `
 
 const timesheetEntrySelectCore = `
@@ -92,7 +94,10 @@ const timesheetEntrySelectCore = `
     start_time,
     break_minutes,
     finish_time,
-    total_minutes
+    total_minutes,
+    overtime_minutes,
+    additional_hours,
+    daily_comment
   `
 
 const timesheetDetailSelect = `
@@ -185,6 +190,45 @@ function normalizeAdditionalHours(value: number | null | undefined): number {
   return Math.max(0, hours)
 }
 
+function normalizeDailyComment(value: string | null | undefined): string {
+  return value?.trim() ?? ''
+}
+
+/** Maps React entry input (dailyComment) to timesheet_entries row (daily_comment). */
+function buildTimesheetEntryDbRow(timesheetId: string, entry: TimesheetEntryInput) {
+  return {
+    timesheet_id: timesheetId,
+    day_date: entry.dayDate,
+    start_time: mapInsertTime(entry.startTime),
+    break_minutes: entry.breakMinutes,
+    finish_time: mapInsertTime(entry.finishTime),
+    total_minutes: calculateEntryTotalMinutes(entry, {
+      paidBreaks: getGlobalPaidBreaks(),
+    }),
+    overtime_minutes: entry.overtimeMinutes ?? 0,
+    additional_hours: normalizeAdditionalHours(entry.additionalHours),
+    daily_comment: normalizeDailyComment(entry.dailyComment) || null,
+  }
+}
+
+function buildEmptyTimesheetEntryDbRow(
+  timesheetId: string,
+  dayDate: string,
+  defaultBreakMinutes: number,
+) {
+  return {
+    timesheet_id: timesheetId,
+    day_date: dayDate,
+    start_time: null,
+    break_minutes: defaultBreakMinutes,
+    finish_time: null,
+    total_minutes: 0,
+    overtime_minutes: 0,
+    additional_hours: 0,
+    daily_comment: null,
+  }
+}
+
 function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
   const totalMinutes = row.total_minutes ?? 0
   const overtimeMinutes = row.overtime_minutes ?? 0
@@ -199,6 +243,7 @@ function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
     totalMinutes,
     overtimeMinutes,
     additionalHours: normalizeAdditionalHours(row.additional_hours),
+    dailyComment: normalizeDailyComment(row.daily_comment),
   }
 }
 
@@ -208,6 +253,7 @@ function mapListRow(
     workedMinutes: number
     breakMinutes: number
     overtimeMinutes: number
+    additionalHours: number
   },
 ): TimesheetListItem {
   const driver = normalizeJoinRow(row.drivers)
@@ -218,14 +264,28 @@ function mapListRow(
 
   const summary = totals
     ? summarizeTimesheetEntriesFromTotals(totals)
-    : { workedHours: 0, breakHours: 0, overtimeHours: 0 }
+    : {
+        workedHours: 0,
+        breakHours: 0,
+        overtimeHours: 0,
+        additionalHours: 0,
+        totalHours: 0,
+      }
+
+  const weekDisplay = formatTimesheetWeekDisplay(
+    row.week_start,
+    getTimesheetWeekSettings(),
+  )
 
   return {
     id: row.id,
     driverId: row.driver_id,
     vehicleId: row.vehicle_id,
     weekStart: row.week_start,
-    weekLabel: formatWeekLabel(row.week_start),
+    weekLabel: weekDisplay.weekRangeLabel,
+    weekNumber: weekDisplay.weekNumber,
+    weekTitle: weekDisplay.weekTitle,
+    weekRangeLabel: weekDisplay.weekRangeLabel,
     status: normalizeStatus(row.status),
     notes: row.notes,
     bonusAmount: normalizeBonusAmount(row.bonus_amount),
@@ -253,6 +313,8 @@ function mapTimesheetRow(row: TimesheetRow): Timesheet {
     workedHours: totals.workedHours,
     breakHours: totals.breakHours,
     overtimeHours: totals.overtimeHours,
+    additionalHours: totals.additionalHours,
+    totalHours: totals.totalHours,
   }
 }
 
@@ -269,6 +331,7 @@ function isMissingTimesheetEntryColumnError(
   return (
     message.includes('overtime_minutes') ||
     message.includes('additional_hours') ||
+    message.includes('daily_comment') ||
     error.code === '42703'
   )
 }
@@ -282,6 +345,7 @@ async function fetchEntryTotalsByTimesheetIds(
       workedMinutes: number
       breakMinutes: number
       overtimeMinutes: number
+      additionalHours: number
     }
   >
 > {
@@ -291,13 +355,14 @@ async function fetchEntryTotalsByTimesheetIds(
       workedMinutes: number
       breakMinutes: number
       overtimeMinutes: number
+      additionalHours: number
     }
   >()
   if (timesheetIds.length === 0) return totals
 
   const { data, error } = await requireSupabase()
     .from('timesheet_entries')
-    .select('timesheet_id, total_minutes, break_minutes, overtime_minutes')
+    .select('timesheet_id, total_minutes, break_minutes, overtime_minutes, additional_hours')
     .in('timesheet_id', timesheetIds)
 
   logSupabaseQuery({
@@ -316,12 +381,14 @@ async function fetchEntryTotalsByTimesheetIds(
       workedMinutes: 0,
       breakMinutes: 0,
       overtimeMinutes: 0,
+      additionalHours: 0,
     }
     const totalMinutes = row.total_minutes ?? 0
     const overtimeMinutes = row.overtime_minutes ?? 0
     current.workedMinutes += totalMinutes
     current.breakMinutes += row.break_minutes ?? 0
     current.overtimeMinutes += overtimeMinutes
+    current.additionalHours += Number(row.additional_hours ?? 0)
     totals.set(row.timesheet_id, current)
   }
 
@@ -336,6 +403,7 @@ function applyListTotals(
       workedMinutes: number
       breakMinutes: number
       overtimeMinutes: number
+      additionalHours: number
     }
   >,
 ): TimesheetListItem[] {
@@ -556,14 +624,10 @@ async function insertTimesheetWithEntries(
   }
 
   const weekDates = buildWeekDates(weekStart)
-  const entryRows = weekDates.map((dayDate) => ({
-    timesheet_id: created.id,
-    day_date: dayDate,
-    start_time: null,
-    break_minutes: getSetting('defaultBreakMinutes') ?? 30,
-    finish_time: null,
-    total_minutes: 0,
-  }))
+  const defaultBreakMinutes = getSetting('defaultBreakMinutes') ?? 30
+  const entryRows = weekDates.map((dayDate) =>
+    buildEmptyTimesheetEntryDbRow(created.id, dayDate, defaultBreakMinutes),
+  )
 
   const { error: entriesError } = await requireSupabase().from('timesheet_entries').insert(entryRows)
 
@@ -696,20 +760,7 @@ export async function upsertTimesheetEntries(
   const supabase = requireSupabase()
 
   for (const entry of entries) {
-    const totalMinutes = calculateEntryTotalMinutes(entry)
-    const overtimeMinutes = entry.overtimeMinutes ?? 0
-    const additionalHours = normalizeAdditionalHours(entry.additionalHours)
-
-    const row = {
-      timesheet_id: timesheetId,
-      day_date: entry.dayDate,
-      start_time: mapInsertTime(entry.startTime),
-      break_minutes: entry.breakMinutes,
-      finish_time: mapInsertTime(entry.finishTime),
-      total_minutes: totalMinutes,
-      overtime_minutes: overtimeMinutes,
-      additional_hours: additionalHours,
-    }
+    const row = buildTimesheetEntryDbRow(timesheetId, entry)
 
     if (entry.id) {
       const { error } = await supabase

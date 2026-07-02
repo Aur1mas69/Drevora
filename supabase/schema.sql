@@ -189,6 +189,7 @@ create table if not exists public.companies (
   default_vehicle_status text not null default 'Available',
   default_driver_role text not null default 'Driver',
   default_break_minutes integer not null default 30,
+  paid_breaks boolean not null default false,
   overtime_after_hours numeric not null default 10.5,
   round_time_minutes integer not null default 0,
   require_manager_approval boolean not null default true,
@@ -209,6 +210,9 @@ create table if not exists public.companies (
   sunday_overtime_enabled boolean not null default false,
   sunday_overtime_after_hours numeric not null default 0.0,
   sunday_overtime_multiplier numeric not null default 2.0,
+  timesheet_week_start_day text not null default 'monday',
+  timesheet_week_reset_month integer not null default 4,
+  timesheet_week_reset_day integer not null default 5,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
@@ -246,6 +250,15 @@ create table if not exists public.companies (
     sunday_overtime_multiplier >= 1.0
     and sunday_overtime_multiplier <= 2.5
     and (sunday_overtime_multiplier * 10) = floor(sunday_overtime_multiplier * 10)
+  ),
+  constraint companies_timesheet_week_start_day_check check (
+    timesheet_week_start_day in ('monday', 'sunday')
+  ),
+  constraint companies_timesheet_week_reset_month_check check (
+    timesheet_week_reset_month >= 1 and timesheet_week_reset_month <= 12
+  ),
+  constraint companies_timesheet_week_reset_day_check check (
+    timesheet_week_reset_day >= 1 and timesheet_week_reset_day <= 31
   )
 );
 
@@ -279,7 +292,8 @@ create table if not exists public.timesheet_entries (
   total_minutes integer not null default 0,
   overtime_minutes integer not null default 0,
   payroll_minutes integer not null default 0,
-  additional_hours numeric not null default 0
+  additional_hours numeric not null default 0,
+  daily_comment text
 );
 
 alter table public.timesheets
@@ -301,7 +315,8 @@ alter table public.timesheet_entries
   add column if not exists total_minutes integer default 0,
   add column if not exists overtime_minutes integer not null default 0,
   add column if not exists payroll_minutes integer not null default 0,
-  add column if not exists additional_hours numeric not null default 0;
+  add column if not exists additional_hours numeric not null default 0,
+  add column if not exists daily_comment text;
 
 create index if not exists timesheets_driver_id_idx on public.timesheets (driver_id);
 create index if not exists timesheets_vehicle_id_idx on public.timesheets (vehicle_id);

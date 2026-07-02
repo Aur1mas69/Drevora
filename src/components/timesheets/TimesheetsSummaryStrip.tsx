@@ -1,3 +1,4 @@
+import { TimesheetWeekLabel } from '@/components/timesheets/TimesheetWeekLabel'
 import type { TimesheetSummaryStats } from '@/lib/timesheetTypes'
 import {
   adminHeading,
@@ -15,7 +16,8 @@ import {
 
 type TimesheetsSummaryStripProps = {
   stats: TimesheetSummaryStats
-  weekLabel: string
+  weekTitle: string
+  weekRangeLabel: string
 }
 
 type KpiCardConfig = {
@@ -123,7 +125,11 @@ function KpiCard({ card, stats }: { card: KpiCardConfig; stats: TimesheetSummary
   )
 }
 
-export function TimesheetsSummaryStrip({ stats, weekLabel }: TimesheetsSummaryStripProps) {
+export function TimesheetsSummaryStrip({
+  stats,
+  weekTitle,
+  weekRangeLabel,
+}: TimesheetsSummaryStripProps) {
   const visibleCards = kpiCards.filter((card) => {
     if (!card.hideWhenZero) return true
     return card.getValue(stats) > 0
@@ -135,7 +141,14 @@ export function TimesheetsSummaryStrip({ stats, weekLabel }: TimesheetsSummarySt
         <p className={`text-xs font-semibold uppercase tracking-[0.1em] ${adminTextMuted}`}>
           Week summary
         </p>
-        <p className={`text-sm font-semibold ${adminHeading}`}>Week: {weekLabel}</p>
+        <div className={`text-right text-sm ${adminHeading}`}>
+          <TimesheetWeekLabel
+            weekTitle={weekTitle}
+            weekRangeLabel={weekRangeLabel}
+            titleClassName={`font-semibold ${adminHeading}`}
+            rangeClassName={`text-xs ${adminTextMuted}`}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">

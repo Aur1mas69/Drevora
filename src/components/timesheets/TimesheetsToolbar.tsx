@@ -8,12 +8,7 @@ import {
   adminText,
 } from '@/lib/adminUiStyles'
 import type { TimesheetsSortField, TimesheetsSortDirection } from '@/lib/timesheetTypes'
-import type {
-  TimesheetRoleFilter,
-  TimesheetStatusFilter,
-  TimesheetVehicleFilter,
-} from '@/lib/timesheetUtils'
-import type { Vehicle } from '@/services/vehiclesService'
+import type { TimesheetRoleFilter, TimesheetStatusFilter } from '@/lib/timesheetUtils'
 import type { DriverRole } from '@/services/driversService'
 import { ChevronDown, Filter, Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -39,7 +34,6 @@ type FilterDraft = {
   weekFilter: string
   statusFilter: TimesheetStatusFilter
   roleFilter: TimesheetRoleFilter
-  vehicleFilter: TimesheetVehicleFilter
   sortBy: TimesheetsSortField
   sortDir: TimesheetsSortDirection
 }
@@ -54,9 +48,6 @@ type TimesheetsToolbarProps = {
   weekFilter: string
   onWeekFilterChange: (value: string) => void
   weekOptions: { value: string; label: string }[]
-  vehicleFilter: TimesheetVehicleFilter
-  onVehicleFilterChange: (value: TimesheetVehicleFilter) => void
-  vehicles: Vehicle[]
   sortBy: TimesheetsSortField
   onSortByChange: (value: TimesheetsSortField) => void
   sortDir: TimesheetsSortDirection
@@ -69,12 +60,10 @@ type TimesheetsToolbarProps = {
 function countActivePanelFilters(
   statusFilter: TimesheetStatusFilter,
   roleFilter: TimesheetRoleFilter,
-  vehicleFilter: TimesheetVehicleFilter,
 ): number {
   let count = 0
   if (statusFilter !== 'all') count += 1
   if (roleFilter !== 'all') count += 1
-  if (vehicleFilter !== 'all') count += 1
   return count
 }
 
@@ -83,7 +72,6 @@ function buildDraftFromProps(props: TimesheetsToolbarProps): FilterDraft {
     weekFilter: props.weekFilter,
     statusFilter: props.statusFilter,
     roleFilter: props.roleFilter,
-    vehicleFilter: props.vehicleFilter,
     sortBy: props.sortBy,
     sortDir: props.sortDir,
   }
@@ -100,9 +88,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     weekFilter,
     onWeekFilterChange,
     weekOptions,
-    vehicleFilter,
-    onVehicleFilterChange,
-    vehicles,
     sortBy,
     onSortByChange,
     sortDir,
@@ -116,8 +101,8 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
   const filterRootRef = useRef<HTMLDivElement>(null)
 
   const activeFilterCount = useMemo(
-    () => countActivePanelFilters(statusFilter, roleFilter, vehicleFilter),
-    [roleFilter, statusFilter, vehicleFilter],
+    () => countActivePanelFilters(statusFilter, roleFilter),
+    [roleFilter, statusFilter],
   )
 
   useEffect(() => {
@@ -126,19 +111,10 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
       weekFilter,
       statusFilter,
       roleFilter,
-      vehicleFilter,
       sortBy,
       sortDir,
     })
-  }, [
-    isFilterOpen,
-    weekFilter,
-    statusFilter,
-    roleFilter,
-    vehicleFilter,
-    sortBy,
-    sortDir,
-  ])
+  }, [isFilterOpen, weekFilter, statusFilter, roleFilter, sortBy, sortDir])
 
   useEffect(() => {
     if (!isFilterOpen) return
@@ -167,7 +143,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     onWeekFilterChange(draft.weekFilter)
     onStatusFilterChange(draft.statusFilter)
     onRoleFilterChange(draft.roleFilter)
-    onVehicleFilterChange(draft.vehicleFilter)
     onSortByChange(draft.sortBy)
     onSortDirChange(draft.sortDir)
     setIsFilterOpen(false)
@@ -179,7 +154,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
       ...current,
       statusFilter: 'all',
       roleFilter: 'all',
-      vehicleFilter: 'all',
     }))
     setIsFilterOpen(false)
   }
@@ -280,28 +254,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
                       {DRIVER_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {role}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block space-y-1.5">
-                    <span className={labelClassName}>Vehicle</span>
-                    <select
-                      value={draft.vehicleFilter}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          vehicleFilter: event.target.value as TimesheetVehicleFilter,
-                        }))
-                      }
-                      className={selectClassName}
-                    >
-                      <option value="all">All vehicles</option>
-                      <option value="unassigned">No vehicle</option>
-                      {vehicles.map((vehicle) => (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.registration}
                         </option>
                       ))}
                     </select>

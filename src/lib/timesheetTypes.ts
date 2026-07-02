@@ -12,6 +12,8 @@ export type TimesheetEntry = {
   totalMinutes: number
   overtimeMinutes: number
   additionalHours: number
+  /** Persisted as timesheet_entries.daily_comment */
+  dailyComment: string
 }
 
 export type TimesheetEntryInput = {
@@ -23,6 +25,8 @@ export type TimesheetEntryInput = {
   totalMinutes: number
   overtimeMinutes: number
   additionalHours: number
+  /** Persisted as timesheet_entries.daily_comment */
+  dailyComment: string
 }
 
 export type Timesheet = {
@@ -31,6 +35,9 @@ export type Timesheet = {
   vehicleId: string | null
   weekStart: string
   weekLabel: string
+  weekNumber: number
+  weekTitle: string
+  weekRangeLabel: string
   status: TimesheetStatus
   notes: string | null
   bonusAmount: number
@@ -44,6 +51,8 @@ export type Timesheet = {
   workedHours: number
   breakHours: number
   overtimeHours: number
+  additionalHours: number
+  totalHours: number
 }
 
 export type TimesheetListItem = Omit<Timesheet, 'entries'> & {

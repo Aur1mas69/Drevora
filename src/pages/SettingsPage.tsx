@@ -16,8 +16,8 @@ import {
   settingsFieldClassName,
   settingsSelectClassName,
 } from '@/components/settings/SettingsControls'
-import { FutureVehicleOptionsCard } from '@/components/settings/FutureVehicleOptionsCard'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
 import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,26 +27,14 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import {
   COMPANY_SETTINGS_TABS,
-  CURRENCY_OPTIONS,
   DEFAULT_COMPANY_SETTINGS,
-  OVERTIME_MULTIPLIER_OPTIONS,
-  OVERTIME_AFTER_HOURS_OPTIONS,
-  WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
-  WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
-  formatOvertimeMultiplierLabel,
-  formatOvertimeAfterHoursLabel,
-  formatWeekendOvertimeAfterHoursLabel,
-  formatWeekendOvertimeMultiplierLabel,
   THEME_OPTIONS,
   type CompanyTheme,
-  type CompanyCurrency,
   type CompanySettingsInput,
   type CompanySettingsTab,
-  type OvertimeMultiplier,
 } from '@/lib/companySettingsTypes'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
 import { companySettingsService } from '@/services/companySettingsService'
-import type { VehicleStatus } from '@/services/vehiclesService'
 
 const timezoneOptions = [
   'Europe/London',
@@ -57,16 +45,6 @@ const timezoneOptions = [
   'Europe/Madrid',
   'Europe/Warsaw',
   'UTC',
-]
-
-const vehicleStatusOptions: VehicleStatus[] = [
-  'Available',
-  'Assigned',
-  'Workshop',
-  'Maintenance',
-  'Out of Service',
-  'Off Road',
-  'Reserved',
 ]
 
 function formsEqual(left: CompanySettingsInput, right: CompanySettingsInput): boolean {
@@ -327,267 +305,8 @@ function SettingsPage() {
               </SettingsSection>
             ) : null}
 
-            {activeTab === 'fleet' ? (
-              <>
-                <SettingsSection
-                  title="Fleet"
-                  description="Defaults applied when creating vehicles."
-                >
-                  <SettingsField label="Fleet Number Prefix" span="full">
-                    <Input
-                      name="fleetNumberPrefix"
-                      value={form.fleetNumberPrefix}
-                      onChange={handleTextChange}
-                      placeholder="FLT-"
-                      className={settingsFieldClassName}
-                    />
-                  </SettingsField>
-
-                  <SettingsField label="Default Vehicle Status">
-                    <select
-                      value={form.defaultVehicleStatus}
-                      onChange={(event) =>
-                        updateForm({
-                          defaultVehicleStatus: event.target.value as VehicleStatus,
-                        })
-                      }
-                      className={settingsSelectClassName}
-                    >
-                      {vehicleStatusOptions.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </SettingsField>
-                </SettingsSection>
-                <FutureVehicleOptionsCard />
-              </>
-            ) : null}
-
             {activeTab === 'timesheets' ? (
-              <>
-                <SettingsSection
-                  title="Timesheets"
-                  description="Working time rules for payroll and approval workflows."
-                >
-                  <SettingsRadioGroup
-                    legend="Default Break"
-                    name="defaultBreakMinutes"
-                    value={form.defaultBreakMinutes}
-                    onChange={(value) => updateForm({ defaultBreakMinutes: value })}
-                    options={[
-                      { value: 30, label: '30 min' },
-                      { value: 45, label: '45 min' },
-                      { value: 60, label: '60 min' },
-                    ]}
-                  />
-
-                  <SettingsRadioGroup
-                    legend="Overtime Mode"
-                    hint="Manual lets managers enter overtime per day. Automatic calculates overtime from the daily threshold."
-                    name="overtimeMode"
-                    value={form.overtimeMode}
-                    onChange={(value) => updateForm({ overtimeMode: value })}
-                    options={[
-                      { value: 'Manual', label: 'Manual' },
-                      { value: 'Automatic', label: 'Automatic' },
-                    ]}
-                  />
-
-                  <SettingsField
-                    label="Overtime After"
-                    hint="Hours worked after this threshold can be treated as overtime."
-                  >
-                    <select
-                      value={form.overtimeAfterHours}
-                      onChange={(event) =>
-                        updateForm({
-                          overtimeAfterHours: Number.parseFloat(event.target.value),
-                        })
-                      }
-                      className={settingsSelectClassName}
-                    >
-                      {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                        <option key={hours.toFixed(1)} value={hours}>
-                          {formatOvertimeAfterHoursLabel(hours)}
-                        </option>
-                      ))}
-                    </select>
-                  </SettingsField>
-
-                  <SettingsToggle
-                    label="Require Manager Approval"
-                    description="Submitted timesheets must be approved before payroll."
-                    checked={form.requireTimesheetApproval}
-                    onChange={(checked) => updateForm({ requireTimesheetApproval: checked })}
-                  />
-
-                  <SettingsRadioGroup
-                    legend="Round Time"
-                    name="roundTimeMinutes"
-                    value={form.roundTimeMinutes}
-                    onChange={(value) => updateForm({ roundTimeMinutes: value })}
-                    options={[
-                      { value: 0, label: 'None' },
-                      { value: 5, label: '5 min' },
-                      { value: 15, label: '15 min' },
-                    ]}
-                  />
-                </SettingsSection>
-
-                <div className="mt-8 border-t border-blue-100/80 pt-8">
-                <SettingsSection
-                  title="Timesheet Rules"
-                  description="Payroll multiplier and currency used for timesheet calculations."
-                >
-                  <SettingsField
-                    label="Overtime multiplier"
-                    hint="Payroll = normal hours + (overtime hours × multiplier). Overtime hours are part of worked time, not extra."
-                  >
-                    <select
-                      value={form.overtimeMultiplier}
-                      onChange={(event) =>
-                        updateForm({
-                          overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
-                        })
-                      }
-                      className={settingsSelectClassName}
-                    >
-                      {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {formatOvertimeMultiplierLabel(option)}
-                        </option>
-                      ))}
-                    </select>
-                  </SettingsField>
-
-                  <SettingsField
-                    label="Currency"
-                    hint="Default currency for payroll and timesheet totals."
-                  >
-                    <select
-                      value={form.currency}
-                      onChange={(event) =>
-                        updateForm({ currency: event.target.value as CompanyCurrency })
-                      }
-                      className={settingsSelectClassName}
-                    >
-                      {CURRENCY_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </SettingsField>
-                </SettingsSection>
-
-                <SettingsSection
-                  title="Weekend Overtime Rules"
-                  description="Weekend rules override standard overtime rules for Saturday and Sunday."
-                >
-                  <SettingsToggle
-                    label="Enable Saturday overtime rule"
-                    description="Use Saturday-specific overtime threshold and multiplier."
-                    checked={form.saturdayOvertimeEnabled}
-                    onChange={(checked) => updateForm({ saturdayOvertimeEnabled: checked })}
-                  />
-
-                  {form.saturdayOvertimeEnabled ? (
-                    <>
-                      <SettingsField
-                        label="Saturday overtime starts after"
-                        hint="Hours worked after this threshold can be treated as overtime on Saturdays."
-                      >
-                        <select
-                          value={form.saturdayOvertimeAfterHours}
-                          onChange={(event) =>
-                            updateForm({
-                              saturdayOvertimeAfterHours: Number(event.target.value),
-                            })
-                          }
-                          className={settingsSelectClassName}
-                        >
-                          {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                            <option key={`sat-${hours.toFixed(1)}`} value={hours}>
-                              {formatWeekendOvertimeAfterHoursLabel(hours)}
-                            </option>
-                          ))}
-                        </select>
-                      </SettingsField>
-
-                      <SettingsField label="Saturday overtime multiplier">
-                        <select
-                          value={form.saturdayOvertimeMultiplier}
-                          onChange={(event) =>
-                            updateForm({
-                              saturdayOvertimeMultiplier: Number(event.target.value),
-                            })
-                          }
-                          className={settingsSelectClassName}
-                        >
-                          {WEEKEND_OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                            <option key={`sat-mult-${option.toFixed(1)}`} value={option}>
-                              {formatWeekendOvertimeMultiplierLabel(option)}
-                            </option>
-                          ))}
-                        </select>
-                      </SettingsField>
-                    </>
-                  ) : null}
-
-                  <SettingsToggle
-                    label="Enable Sunday overtime rule"
-                    description="Use Sunday-specific overtime threshold and multiplier."
-                    checked={form.sundayOvertimeEnabled}
-                    onChange={(checked) => updateForm({ sundayOvertimeEnabled: checked })}
-                  />
-
-                  {form.sundayOvertimeEnabled ? (
-                    <>
-                      <SettingsField
-                        label="Sunday overtime starts after"
-                        hint="Hours worked after this threshold can be treated as overtime on Sundays."
-                      >
-                        <select
-                          value={form.sundayOvertimeAfterHours}
-                          onChange={(event) =>
-                            updateForm({
-                              sundayOvertimeAfterHours: Number(event.target.value),
-                            })
-                          }
-                          className={settingsSelectClassName}
-                        >
-                          {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                            <option key={`sun-${hours.toFixed(1)}`} value={hours}>
-                              {formatWeekendOvertimeAfterHoursLabel(hours)}
-                            </option>
-                          ))}
-                        </select>
-                      </SettingsField>
-
-                      <SettingsField label="Sunday overtime multiplier">
-                        <select
-                          value={form.sundayOvertimeMultiplier}
-                          onChange={(event) =>
-                            updateForm({
-                              sundayOvertimeMultiplier: Number(event.target.value),
-                            })
-                          }
-                          className={settingsSelectClassName}
-                        >
-                          {WEEKEND_OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                            <option key={`sun-mult-${option.toFixed(1)}`} value={option}>
-                              {formatWeekendOvertimeMultiplierLabel(option)}
-                            </option>
-                          ))}
-                        </select>
-                      </SettingsField>
-                    </>
-                  ) : null}
-                </SettingsSection>
-                </div>
-              </>
+              <TimesheetSettingsPanel form={form} onChange={updateForm} />
             ) : null}
 
             {activeTab === 'holidays' ? (

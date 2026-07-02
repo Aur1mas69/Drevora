@@ -20,6 +20,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'default_vehicle_status',
   'default_driver_role',
   'default_break_minutes',
+  'paid_breaks',
   'overtime_after_hours',
   'overtime_mode',
   'overtime_multiplier',
@@ -40,6 +41,9 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'sunday_overtime_enabled',
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
+  'timesheet_week_start_day',
+  'timesheet_week_reset_month',
+  'timesheet_week_reset_day',
 ] as const
 
 export type CompanySettingsColumn = (typeof COMPANY_SETTINGS_COLUMNS)[number]
@@ -63,6 +67,7 @@ export const COMPANY_SETTINGS_CORE_COLUMNS = [
   'default_vehicle_status',
   'default_driver_role',
   'default_break_minutes',
+  'paid_breaks',
   'overtime_after_hours',
   'overtime_mode',
   'overtime_multiplier',
@@ -89,6 +94,13 @@ export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
   'sunday_overtime_multiplier',
 ] as const
 
+/** Timesheet week numbering columns — optional until migration is applied. */
+export const COMPANY_SETTINGS_WEEK_NUMBERING_COLUMNS = [
+  'timesheet_week_start_day',
+  'timesheet_week_reset_month',
+  'timesheet_week_reset_day',
+] as const
+
 /** PostgREST select list — must stay a string literal for Supabase client typing. */
 export const companySettingsCoreSelect = `
   id,
@@ -108,6 +120,7 @@ export const companySettingsCoreSelect = `
   default_vehicle_status,
   default_driver_role,
   default_break_minutes,
+  paid_breaks,
   overtime_after_hours,
   overtime_mode,
   overtime_multiplier,
@@ -133,6 +146,12 @@ export const companySettingsWeekendSelect = `
   sunday_overtime_multiplier
 ` as const
 
+export const companySettingsWeekNumberingSelect = `
+  timesheet_week_start_day,
+  timesheet_week_reset_month,
+  timesheet_week_reset_day
+` as const
+
 /** Full select including weekend overtime (requires latest migration). */
 export const companySettingsSelect = `
   id,
@@ -152,6 +171,7 @@ export const companySettingsSelect = `
   default_vehicle_status,
   default_driver_role,
   default_break_minutes,
+  paid_breaks,
   overtime_after_hours,
   overtime_mode,
   overtime_multiplier,
@@ -171,5 +191,8 @@ export const companySettingsSelect = `
   saturday_overtime_multiplier,
   sunday_overtime_enabled,
   sunday_overtime_after_hours,
-  sunday_overtime_multiplier
+  sunday_overtime_multiplier,
+  timesheet_week_start_day,
+  timesheet_week_reset_month,
+  timesheet_week_reset_day
 ` as const

@@ -8,9 +8,12 @@ import {
 import { DEFAULT_CURRENCY, type CompanyCurrency } from '@/lib/companySettingsTypes'
 import {
   DEFAULT_TIMESHEET_OVERTIME_RULES,
+  DEFAULT_TIMESHEET_WEEK_SETTINGS,
   type TimesheetOvertimeRules,
+  type TimesheetWeekSettings,
 } from '@/lib/companySettingsTypes'
 import { getGlobalOvertimeMultiplier, getSetting } from '@/lib/companySettingsGlobals'
+import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type { OvertimeMode } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
@@ -26,7 +29,6 @@ import type { DriverRole } from '@/services/driversService'
 
 export type TimesheetStatusFilter = TimesheetStatus | 'all'
 export type TimesheetRoleFilter = DriverRole | 'all'
-export type TimesheetVehicleFilter = string | 'all' | 'unassigned'
 
 export function countWorkedDays(entries: Pick<TimesheetEntry, 'totalMinutes'>[]): number {
   return entries.filter((entry) => entry.totalMinutes > 0).length
@@ -119,6 +121,7 @@ export function summarizeTimesheetEntries(
   }>,
   options: SummarizeTimesheetEntriesOptions = {},
 ): {
+  workedMinutes: number
   workedHours: number
   breakHours: number
   overtimeHours: number
@@ -159,7 +162,8 @@ export function summarizeTimesheetEntries(
   }
 
   return {
-    workedHours: roundHoursOneDecimal(workedMinutes / 60),
+    workedMinutes,
+    workedHours: Math.round((workedMinutes / 60) * 100) / 100,
     breakHours: roundHoursOneDecimal(breakMinutes / 60),
     overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
     additionalHours: roundHoursOneDecimal(additionalHoursTotal),
@@ -178,23 +182,35 @@ export function parseTimeToMinutes(value: string | null): number | null {
   return hours * 60 + minutes
 }
 
-export function calculateEntryTotalMinutes(input: {
-  startTime: string | null
-  breakMinutes: number
-  finishTime: string | null
-}): number {
+export function calculateEntryTotalMinutes(
+  input: {
+    startTime: string | null
+    breakMinutes: number
+    finishTime: string | null
+  },
+  options: { paidBreaks?: boolean } = {},
+): number {
   const start = parseTimeToMinutes(input.startTime)
   const finish = parseTimeToMinutes(input.finishTime)
   if (start === null || finish === null || finish <= start) return 0
-  return Math.max(0, finish - start - input.breakMinutes)
+
+  const spanMinutes = finish - start
+  if (options.paidBreaks) {
+    return Math.max(0, spanMinutes)
+  }
+
+  return Math.max(0, spanMinutes - input.breakMinutes)
 }
 
-export function calculateEntryTotalHours(input: {
-  startTime: string | null
-  breakMinutes: number
-  finishTime: string | null
-}): number {
-  return Math.round((calculateEntryTotalMinutes(input) / 60) * 100) / 100
+export function calculateEntryTotalHours(
+  input: {
+    startTime: string | null
+    breakMinutes: number
+    finishTime: string | null
+  },
+  options: { paidBreaks?: boolean } = {},
+): number {
+  return Math.round((calculateEntryTotalMinutes(input, options) / 60) * 100) / 100
 }
 
 
@@ -202,11 +218,18 @@ export function summarizeTimesheetEntriesFromTotals(totals: {
   workedMinutes: number
   breakMinutes: number
   overtimeMinutes: number
+  additionalHours?: number
 }) {
+  const workedHours = Math.round((totals.workedMinutes / 60) * 100) / 100
+  const overtimeHours = Math.round((totals.overtimeMinutes / 60) * 100) / 100
+  const additionalHours = roundHoursOneDecimal(totals.additionalHours ?? 0)
+
   return {
-    workedHours: Math.round((totals.workedMinutes / 60) * 100) / 100,
+    workedHours,
     breakHours: Math.round((totals.breakMinutes / 60) * 100) / 100,
-    overtimeHours: Math.round((totals.overtimeMinutes / 60) * 100) / 100,
+    overtimeHours,
+    additionalHours,
+    totalHours: roundHoursOneDecimal(workedHours + overtimeHours + additionalHours),
   }
 }
 
@@ -259,7 +282,10 @@ export function sortTimesheetListItems(
   })
 }
 
-export function buildRecentWeekOptions(count = 8): { value: string; label: string }[] {
+export function buildRecentWeekOptions(
+  count = 8,
+  settings: TimesheetWeekSettings = DEFAULT_TIMESHEET_WEEK_SETTINGS,
+): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = []
   const current = normalizeWeekStartForCompany(formatLocalDateString(new Date()))
   const start = parseLocalDate(current)
@@ -268,7 +294,11 @@ export function buildRecentWeekOptions(count = 8): { value: string; label: strin
     const weekStart = new Date(start)
     weekStart.setDate(start.getDate() - index * 7)
     const value = formatLocalDateString(weekStart)
-    options.push({ value, label: formatWeekLabel(value) })
+    const display = formatTimesheetWeekDisplay(value, settings)
+    options.push({
+      value,
+      label: `${display.weekTitle} · ${display.weekRangeLabel}`,
+    })
   }
 
   return options
@@ -282,12 +312,19 @@ export function formatTimesheetUpdatedAt(
 }
 
 export function formatHours(value: number): string {
-  return `${value.toFixed(1)}h`
+  if (value <= 0) return '—'
+  return formatHoursFromMinutes(Math.round(value * 60))
 }
 
 export function formatHoursFromMinutes(minutes: number): string {
   if (minutes <= 0) return '—'
-  return formatHours(minutes / 60)
+
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+
+  if (remainder === 0) return `${hours}h`
+  if (hours === 0) return `${remainder}m`
+  return `${hours}h ${remainder}m`
 }
 
 export function getStatusLabel(status: TimesheetStatus): string {
@@ -330,7 +367,9 @@ export function filterTimesheets(
       sheet.driverName.toLowerCase().includes(query) ||
       sheet.fleetNo.toLowerCase().includes(query) ||
       sheet.weekLabel.toLowerCase().includes(query) ||
-      sheet.vehicleRegistration.toLowerCase().includes(query)
+      sheet.weekTitle.toLowerCase().includes(query) ||
+      String(sheet.weekNumber).includes(query) ||
+      sheet.driverRole?.toLowerCase().includes(query)
     )
   })
 }
@@ -463,6 +502,7 @@ export function prepareEntryInputs(
         totalMinutes: existing.totalMinutes,
         overtimeMinutes: existing.overtimeMinutes ?? 0,
         additionalHours: existing.additionalHours ?? 0,
+        dailyComment: existing.dailyComment ?? '',
       }
     }
 
@@ -474,6 +514,7 @@ export function prepareEntryInputs(
       totalMinutes: 0,
       overtimeMinutes: 0,
       additionalHours: 0,
+      dailyComment: '',
     }
   })
 }
@@ -481,6 +522,7 @@ export function prepareEntryInputs(
 export type RecalculateEntryOptions = {
   overtimeMode?: OvertimeMode
   overtimeRules?: Partial<TimesheetOvertimeRules>
+  paidBreaks?: boolean
 }
 
 export function recalculateEntryInputs(
@@ -489,9 +531,10 @@ export function recalculateEntryInputs(
 ): TimesheetEntryInput[] {
   const overtimeMode = options.overtimeMode ?? 'Manual'
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
+  const paidBreaks = options.paidBreaks ?? false
 
   return entries.map((entry) => {
-    const totalMinutes = calculateEntryTotalMinutes(entry)
+    const totalMinutes = calculateEntryTotalMinutes(entry, { paidBreaks })
     const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
     const overtimeMinutes =
       overtimeMode === 'Automatic'

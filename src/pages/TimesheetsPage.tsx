@@ -6,7 +6,8 @@ import { TimesheetsEmptyState } from '@/components/timesheets/TimesheetsEmptySta
 import { TimesheetsPagination } from '@/components/timesheets/TimesheetsPagination'
 import { TimesheetsSummaryStrip } from '@/components/timesheets/TimesheetsSummaryStrip'
 import { TimesheetsToolbar } from '@/components/timesheets/TimesheetsToolbar'
-import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
   TimesheetEntryInput,
@@ -19,12 +20,10 @@ import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
 import {
   buildRecentWeekOptions,
   canEditTimesheet,
-  formatWeekLabel,
   getDefaultWeekStartMonday,
   normalizeWeekStartForCompany,
   type TimesheetRoleFilter,
   type TimesheetStatusFilter,
-  type TimesheetVehicleFilter,
 } from '@/lib/timesheetUtils'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import {
@@ -40,7 +39,8 @@ import {
   TimesheetsServiceError,
   upsertTimesheetEntries,
 } from '@/services/timesheetsService'
-import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
+import AdminLayout from '@/layouts/AdminLayout'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type DrawerState = {
@@ -49,6 +49,7 @@ type DrawerState = {
 }
 
 export default function TimesheetsPage() {
+  const { settings } = useCompanySettings()
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<TimesheetSummaryStats>({
@@ -60,14 +61,12 @@ export default function TimesheetsPage() {
     drafts: 0,
   })
   const [drivers, setDrivers] = useState<Driver[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<TimesheetStatusFilter>('all')
   const [roleFilter, setRoleFilter] = useState<TimesheetRoleFilter>('all')
-  const [vehicleFilter, setVehicleFilter] = useState<TimesheetVehicleFilter>('all')
   const [weekFilter, setWeekFilter] = useState(getDefaultWeekStartMonday())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_TIMESHEET_PAGE_SIZE)
@@ -82,14 +81,28 @@ export default function TimesheetsPage() {
   const [isBulkBusy, setIsBulkBusy] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const weekOptions = useMemo(() => buildRecentWeekOptions(12), [])
-  const weekLabel = useMemo(() => formatWeekLabel(weekFilter), [weekFilter])
+  const weekSettings = useMemo(
+    () =>
+      settings
+        ? {
+            timesheetWeekStartDay: settings.timesheetWeekStartDay,
+            timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
+            timesheetWeekResetDay: settings.timesheetWeekResetDay,
+          }
+        : DEFAULT_TIMESHEET_WEEK_SETTINGS,
+    [settings],
+  )
+
+  const weekOptions = useMemo(() => buildRecentWeekOptions(12, weekSettings), [weekSettings])
+  const weekDisplay = useMemo(
+    () => formatTimesheetWeekDisplay(weekFilter, weekSettings),
+    [weekFilter, weekSettings],
+  )
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     statusFilter !== 'all' ||
-    roleFilter !== 'all' ||
-    vehicleFilter !== 'all'
+    roleFilter !== 'all'
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -103,15 +116,11 @@ export default function TimesheetsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, statusFilter, roleFilter, vehicleFilter, weekFilter, sortBy, sortDir, pageSize])
+  }, [debouncedSearch, statusFilter, roleFilter, weekFilter, sortBy, sortDir, pageSize])
 
   const loadReferenceData = useCallback(async () => {
-    const [loadedDrivers, loadedVehicles] = await Promise.all([
-      fetchDrivers(),
-      fetchVehicles(),
-    ])
+    const loadedDrivers = await fetchDrivers()
     setDrivers(loadedDrivers)
-    setVehicles(loadedVehicles)
   }, [])
 
   const loadTimesheets = useCallback(async () => {
@@ -124,7 +133,6 @@ export default function TimesheetsPage() {
         status: statusFilter,
         role: roleFilter,
         weekStart: weekFilter,
-        vehicleId: vehicleFilter,
         page,
         pageSize,
         sortBy,
@@ -154,7 +162,6 @@ export default function TimesheetsPage() {
     sortBy,
     sortDir,
     statusFilter,
-    vehicleFilter,
     weekFilter,
   ])
 
@@ -257,7 +264,7 @@ export default function TimesheetsPage() {
 
   async function handleDelete(timesheet: TimesheetListItem) {
     const confirmed = window.confirm(
-      `Delete timesheet for ${timesheet.driverName} (${timesheet.weekLabel})? This cannot be undone.`,
+      `Delete timesheet for ${timesheet.driverName} (${timesheet.weekTitle})? This cannot be undone.`,
     )
     if (!confirmed) return
 
@@ -440,7 +447,11 @@ export default function TimesheetsPage() {
           </p>
         </div>
 
-        <TimesheetsSummaryStrip stats={stats} weekLabel={weekLabel} />
+        <TimesheetsSummaryStrip
+          stats={stats}
+          weekTitle={weekDisplay.weekTitle}
+          weekRangeLabel={weekDisplay.weekRangeLabel}
+        />
 
         <TimesheetsToolbar
           searchTerm={searchTerm}
@@ -452,9 +463,6 @@ export default function TimesheetsPage() {
           weekFilter={weekFilter}
           onWeekFilterChange={setWeekFilter}
           weekOptions={weekOptions}
-          vehicleFilter={vehicleFilter}
-          onVehicleFilterChange={setVehicleFilter}
-          vehicles={vehicles}
           sortBy={sortBy}
           onSortByChange={setSortBy}
           sortDir={sortDir}
@@ -465,7 +473,6 @@ export default function TimesheetsPage() {
             setDebouncedSearch('')
             setStatusFilter('all')
             setRoleFilter('all')
-            setVehicleFilter('all')
           }}
           onNewTimesheet={() => {
             setCreateError(null)
@@ -500,7 +507,8 @@ export default function TimesheetsPage() {
           </div>
         ) : showWeekEmptyState ? (
           <TimesheetsEmptyState
-            weekLabel={weekLabel}
+            weekTitle={weekDisplay.weekTitle}
+            weekRangeLabel={weekDisplay.weekRangeLabel}
             onCreateWeekly={() => void handleCreateWeeklyFromEmpty()}
             onCreateSingle={() => setIsNewModalOpen(true)}
             isCreating={isSaving}
@@ -509,7 +517,7 @@ export default function TimesheetsPage() {
           <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center">
             <p className="text-sm font-semibold text-[#2A376F]">No matching timesheets</p>
             <p className="mt-1 text-sm text-slate-500">
-              Adjust filters or search to find records for {weekLabel}.
+              Adjust filters or search to find records for {weekDisplay.weekTitle}.
             </p>
           </div>
         ) : (

@@ -3,9 +3,11 @@ import {
   companySettingsCoreSelect,
   companySettingsSelect,
   companySettingsWeekendSelect,
+  companySettingsWeekNumberingSelect,
 } from '@/lib/companySettingsColumns'
 import {
   DEFAULT_COMPANY_SETTINGS,
+  DEFAULT_TIMESHEET_WEEK_SETTINGS,
   type CompanyDateFormat,
   type CompanySettings,
   type CompanySettingsInput,
@@ -17,6 +19,7 @@ import {
   type OvertimeMultiplier,
   type RoundTimeMinutes,
   type CompanyCurrency,
+  type TimesheetWeekStartDay,
   DEFAULT_OVERTIME_MULTIPLIER,
   DEFAULT_CURRENCY,
   DEFAULT_OVERTIME_AFTER_HOURS,
@@ -56,6 +59,7 @@ type CompanyRow = {
   default_vehicle_status: string | null
   default_driver_role: string | null
   default_break_minutes: number | null
+  paid_breaks: boolean | null
   overtime_after_hours: number | null
   overtime_mode: string | null
   overtime_multiplier: number | null
@@ -76,6 +80,9 @@ type CompanyRow = {
   sunday_overtime_enabled: boolean | null
   sunday_overtime_after_hours: number | null
   sunday_overtime_multiplier: number | null
+  timesheet_week_start_day: string | null
+  timesheet_week_reset_month: number | null
+  timesheet_week_reset_day: number | null
 }
 
 export class CompanySettingsServiceError extends Error {
@@ -103,6 +110,34 @@ function normalizeTheme(value: string | null | undefined): CompanyTheme {
 function normalizeBreakMinutes(value: number | null | undefined): DefaultBreakMinutes {
   if (value === 45 || value === 60) return value
   return 30
+}
+
+function normalizePaidBreaks(value: boolean | null | undefined): boolean {
+  return value === true
+}
+
+function normalizeTimesheetWeekStartDay(
+  value: string | null | undefined,
+): TimesheetWeekStartDay {
+  return value === 'sunday' ? 'sunday' : 'monday'
+}
+
+function normalizeTimesheetWeekResetMonth(value: number | null | undefined): number {
+  if (value == null || value < 1 || value > 12) {
+    return DEFAULT_TIMESHEET_WEEK_SETTINGS.timesheetWeekResetMonth
+  }
+  return value
+}
+
+function normalizeTimesheetWeekResetDay(
+  value: number | null | undefined,
+  month: number = DEFAULT_TIMESHEET_WEEK_SETTINGS.timesheetWeekResetMonth,
+): number {
+  const maxDay = new Date(2026, month, 0).getDate()
+  if (value == null || value < 1 || value > maxDay) {
+    return Math.min(DEFAULT_TIMESHEET_WEEK_SETTINGS.timesheetWeekResetDay, maxDay)
+  }
+  return value
 }
 
 function normalizeOvertimeHours(
@@ -277,6 +312,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     defaultVehicleStatus: normalizeVehicleStatus(row.default_vehicle_status),
     defaultDriverRole: normalizeDriverRole(row.default_driver_role),
     defaultBreakMinutes: normalizeBreakMinutes(row.default_break_minutes),
+    paidBreaks: normalizePaidBreaks(row.paid_breaks),
     overtimeAfterHours: normalizeOvertimeHours(row.overtime_after_hours),
     overtimeMode: normalizeOvertimeMode(row.overtime_mode),
     overtimeMultiplier: normalizeOvertimeMultiplier(row.overtime_multiplier),
@@ -309,6 +345,12 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       row.sunday_overtime_multiplier,
       DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
     ),
+    timesheetWeekStartDay: normalizeTimesheetWeekStartDay(row.timesheet_week_start_day),
+    timesheetWeekResetMonth: normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
+    timesheetWeekResetDay: normalizeTimesheetWeekResetDay(
+      row.timesheet_week_reset_day,
+      normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
+    ),
   }
 }
 
@@ -333,6 +375,7 @@ export function companySettingsToFormValues(
     defaultVehicleStatus: settings.defaultVehicleStatus,
     defaultDriverRole: settings.defaultDriverRole,
     defaultBreakMinutes: settings.defaultBreakMinutes,
+    paidBreaks: settings.paidBreaks,
     overtimeAfterHours: settings.overtimeAfterHours,
     overtimeMode: settings.overtimeMode,
     overtimeMultiplier: settings.overtimeMultiplier,
@@ -353,6 +396,9 @@ export function companySettingsToFormValues(
     sundayOvertimeEnabled: settings.sundayOvertimeEnabled,
     sundayOvertimeAfterHours: settings.sundayOvertimeAfterHours,
     sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
+    timesheetWeekStartDay: settings.timesheetWeekStartDay,
+    timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
+    timesheetWeekResetDay: settings.timesheetWeekResetDay,
   }
 }
 
@@ -387,6 +433,9 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   }
   if (input.defaultBreakMinutes !== undefined) {
     payload.default_break_minutes = input.defaultBreakMinutes
+  }
+  if (input.paidBreaks !== undefined) {
+    payload.paid_breaks = normalizePaidBreaks(input.paidBreaks)
   }
   if (input.overtimeAfterHours !== undefined) {
     payload.overtime_after_hours = normalizeOvertimeHours(
@@ -458,6 +507,22 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
       DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
     )
   }
+  if (input.timesheetWeekStartDay !== undefined) {
+    payload.timesheet_week_start_day = normalizeTimesheetWeekStartDay(input.timesheetWeekStartDay)
+  }
+  if (input.timesheetWeekResetMonth !== undefined) {
+    payload.timesheet_week_reset_month = normalizeTimesheetWeekResetMonth(
+      input.timesheetWeekResetMonth,
+    )
+  }
+  if (input.timesheetWeekResetDay !== undefined) {
+    const month =
+      input.timesheetWeekResetMonth ?? DEFAULT_TIMESHEET_WEEK_SETTINGS.timesheetWeekResetMonth
+    payload.timesheet_week_reset_day = normalizeTimesheetWeekResetDay(
+      input.timesheetWeekResetDay,
+      month,
+    )
+  }
 
   return payload
 }
@@ -469,6 +534,12 @@ const WEEKEND_OVERTIME_PAYLOAD_KEYS = [
   'sunday_overtime_enabled',
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
+] as const
+
+const TIMESHEET_WEEK_NUMBERING_PAYLOAD_KEYS = [
+  'timesheet_week_start_day',
+  'timesheet_week_reset_month',
+  'timesheet_week_reset_day',
 ] as const
 
 async function updateCompanyRecord(
@@ -488,6 +559,9 @@ async function updateCompanyRecord(
 
   const strippedPayload = { ...payload }
   for (const key of WEEKEND_OVERTIME_PAYLOAD_KEYS) {
+    delete strippedPayload[key]
+  }
+  for (const key of TIMESHEET_WEEK_NUMBERING_PAYLOAD_KEYS) {
     delete strippedPayload[key]
   }
 
@@ -590,6 +664,14 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
 
   if (!weekendError && weekendData) {
     merged = { ...merged, ...(weekendData as unknown as Record<string, unknown>) }
+  }
+
+  const { data: weekNumberingData, error: weekNumberingError } = await queryCompanyRow(
+    companySettingsWeekNumberingSelect,
+  )
+
+  if (!weekNumberingError && weekNumberingData) {
+    merged = { ...merged, ...(weekNumberingData as unknown as Record<string, unknown>) }
   }
 
   return merged as unknown as CompanyRow

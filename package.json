@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs"
+    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
+    "verify:paid-breaks": "npx tsx scripts/verify-paid-breaks.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

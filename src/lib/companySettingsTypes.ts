@@ -4,6 +4,20 @@ import type { VehicleStatus } from '@/services/vehiclesService'
 
 export type CompanyDateFormat = 'DMY' | 'MDY' | 'YMD'
 export type CompanyWeekStarts = 'monday' | 'sunday'
+export type TimesheetWeekStartDay = 'monday' | 'sunday'
+
+export type TimesheetWeekSettings = {
+  timesheetWeekStartDay: TimesheetWeekStartDay
+  timesheetWeekResetMonth: number
+  timesheetWeekResetDay: number
+}
+
+export const DEFAULT_TIMESHEET_WEEK_SETTINGS: TimesheetWeekSettings = {
+  timesheetWeekStartDay: 'monday',
+  timesheetWeekResetMonth: 4,
+  timesheetWeekResetDay: 5,
+}
+
 export type CompanyTheme = 'light' | 'dark' | 'system'
 export type DefaultBreakMinutes = 30 | 45 | 60
 export type OvertimeAfterHours = number
@@ -137,6 +151,7 @@ export type CompanySettings = {
   defaultVehicleStatus: VehicleStatus
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
+  paidBreaks: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
   overtimeMultiplier: OvertimeMultiplier
@@ -157,6 +172,9 @@ export type CompanySettings = {
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
+  timesheetWeekStartDay: TimesheetWeekStartDay
+  timesheetWeekResetMonth: number
+  timesheetWeekResetDay: number
 }
 
 export type CompanySettingsInput = {
@@ -175,6 +193,7 @@ export type CompanySettingsInput = {
   defaultVehicleStatus: VehicleStatus
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
+  paidBreaks: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
   overtimeMultiplier: OvertimeMultiplier
@@ -195,6 +214,9 @@ export type CompanySettingsInput = {
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
+  timesheetWeekStartDay: TimesheetWeekStartDay
+  timesheetWeekResetMonth: number
+  timesheetWeekResetDay: number
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
@@ -213,6 +235,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   defaultVehicleStatus: 'Available',
   defaultDriverRole: 'Driver',
   defaultBreakMinutes: 30,
+  paidBreaks: false,
   overtimeAfterHours: 10.5,
   overtimeMode: 'Manual',
   overtimeMultiplier: 1.5,
@@ -233,12 +256,12 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   sundayOvertimeEnabled: false,
   sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
 }
 
 export type CompanySettingsTab =
   | 'general'
   | 'regional'
-  | 'fleet'
   | 'timesheets'
   | 'holidays'
   | 'appearance'
@@ -251,7 +274,6 @@ export const COMPANY_SETTINGS_TABS: {
 }[] = [
   { id: 'general', label: 'General' },
   { id: 'regional', label: 'Regional' },
-  { id: 'fleet', label: 'Fleet' },
   { id: 'timesheets', label: 'Timesheets' },
   { id: 'holidays', label: 'Holidays' },
   { id: 'appearance', label: 'Appearance' },

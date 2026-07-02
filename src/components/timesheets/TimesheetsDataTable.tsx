@@ -1,4 +1,3 @@
-import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
   RowActionsMenu,
   TableActionsCell,
@@ -21,6 +20,7 @@ import {
   adminText,
   adminTextMuted,
 } from '@/lib/adminUiStyles'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { Check, Eye, Pencil, Trash2 } from 'lucide-react'
 
 type TimesheetsDataTableProps = {
@@ -76,6 +76,10 @@ function TimesheetRowActions({
   return <RowActionsMenu actions={actions} />
 }
 
+function formatTimesheetTableWeekLabel(weekNumber: number): string {
+  return `Week ${weekNumber}`
+}
+
 export function TimesheetsDataTable({
   timesheets,
   selectedIds,
@@ -86,7 +90,7 @@ export function TimesheetsDataTable({
   onApprove,
   onDelete,
 }: TimesheetsDataTableProps) {
-  const { formatDateTime, compactTables } = useCompanySettings()
+  const { compactTables } = useCompanySettings()
   const rowPadding = compactTables ? 'py-1' : 'py-1.5'
   const cellText = compactTables ? 'text-[11px]' : 'text-xs'
   const allSelected =
@@ -96,10 +100,10 @@ export function TimesheetsDataTable({
   return (
     <div className={adminTableShellSm}>
       <div className="max-h-[calc(100vh-22rem)] overflow-auto">
-        <table className="w-full min-w-[920px] border-collapse text-left">
+        <table className="w-full min-w-[980px] border-collapse text-left">
           <thead className={adminTableHeader}>
             <tr className={adminTableHeadText}>
-              <th className="w-10 px-2 py-2">
+              <th className="w-10 px-2.5 py-2.5">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -111,20 +115,21 @@ export function TimesheetsDataTable({
                   className="size-3.5 rounded border-slate-300 dark:border-slate-600"
                 />
               </th>
-              <th className="px-2 py-2">Worker</th>
-              <th className="px-2 py-2">Role</th>
-              <th className="px-2 py-2">Vehicle</th>
-              <th className="px-2 py-2">Hours</th>
-              <th className="px-2 py-2">OT</th>
-              <th className="px-2 py-2">Status</th>
-              <th className="px-2 py-2">Updated</th>
+              <th className="px-2.5 py-2.5">Worker</th>
+              <th className="px-2.5 py-2.5">Week</th>
+              <th className="px-2.5 py-2.5">Date range</th>
+              <th className="px-2.5 py-2.5">Status</th>
+              <th className="px-2.5 py-2.5 text-right">Worked</th>
+              <th className="px-2.5 py-2.5 text-right">OT</th>
+              <th className="px-2.5 py-2.5 text-right">Add. hrs</th>
+              <th className="px-2.5 py-2.5 text-right">Total</th>
               <TableActionsHeader />
             </tr>
           </thead>
           <tbody>
             {timesheets.map((sheet) => (
               <tr key={sheet.id} className={`${adminTableRow} ${cellText}`}>
-                <td className={`px-2 ${rowPadding}`}>
+                <td className={`px-2.5 ${rowPadding}`}>
                   <input
                     type="checkbox"
                     checked={selectedIds.has(sheet.id)}
@@ -133,7 +138,7 @@ export function TimesheetsDataTable({
                     className="size-3.5 rounded border-slate-300 dark:border-slate-600"
                   />
                 </td>
-                <td className="px-2 py-1.5">
+                <td className="px-2.5 py-2">
                   <button
                     type="button"
                     onClick={() => onEdit(sheet)}
@@ -142,25 +147,30 @@ export function TimesheetsDataTable({
                     {sheet.driverName}
                   </button>
                 </td>
-                <td className={`px-2 py-1.5 ${adminText}`}>{sheet.driverRole ?? '—'}</td>
-                <td className={`px-2 py-1.5 ${adminText}`}>{sheet.vehicleRegistration}</td>
-                <td className={`px-2 py-1.5 font-semibold tabular-nums ${adminHeading}`}>
-                  {formatHours(sheet.workedHours)}
+                <td className={`px-2.5 py-2 font-semibold ${adminHeading}`}>
+                  {formatTimesheetTableWeekLabel(sheet.weekNumber)}
                 </td>
-                <td className={`px-2 py-1.5 tabular-nums ${adminText}`}>
-                  {formatHours(sheet.overtimeHours)}
-                </td>
-                <td className="px-2 py-1.5">
+                <td className={`px-2.5 py-2 ${adminTextMuted}`}>{sheet.weekRangeLabel}</td>
+                <td className="px-2.5 py-2">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getStatusBadgeClass(sheet.status)}`}
                   >
                     {getStatusLabel(sheet.status)}
                   </span>
                 </td>
-                <td className={`px-2 py-1.5 text-[11px] ${adminTextMuted}`}>
-                  {formatDateTime(sheet.updatedAt)}
+                <td className={`px-2.5 py-2 text-right font-semibold tabular-nums ${adminHeading}`}>
+                  {formatHours(sheet.workedHours)}
                 </td>
-                <TableActionsCell className={`${rowPadding}`}>
+                <td className={`px-2.5 py-2 text-right tabular-nums ${adminText}`}>
+                  {formatHours(sheet.overtimeHours)}
+                </td>
+                <td className={`px-2.5 py-2 text-right tabular-nums ${adminText}`}>
+                  {formatHours(sheet.additionalHours)}
+                </td>
+                <td className={`px-2.5 py-2 text-right font-semibold tabular-nums text-[#2563EB] dark:text-blue-300`}>
+                  {formatHours(sheet.totalHours)}
+                </td>
+                <TableActionsCell className={rowPadding}>
                   <TimesheetRowActions
                     sheet={sheet}
                     onView={() => onView(sheet)}
