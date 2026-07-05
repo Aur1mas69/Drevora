@@ -9,6 +9,7 @@ import MainLayout from '@/layouts/MainLayout'
 import AdminDashboardPage from '@/pages/AdminDashboardPage'
 import AdminLoginPage from '@/pages/AdminLoginPage'
 import AdminComingSoonPage from '@/pages/admin/AdminComingSoonPage'
+import ContactsPage from '@/pages/ContactsPage'
 import CompliancePage from '@/pages/CompliancePage'
 import ConsumablesPage from '@/pages/ConsumablesPage'
 import VehicleComplianceProfilePage from '@/pages/VehicleComplianceProfilePage'
@@ -102,13 +103,14 @@ function AppRouter() {
           }
         />
         <Route
-          path="/compliance"
+          path="/documents"
           element={
             <RequireAuthPage>
               <CompliancePage />
             </RequireAuthPage>
           }
         />
+        <Route path="/compliance" element={<Navigate to="/documents" replace />} />
         <Route
           path="/compliance/workers/:workerId"
           element={
@@ -122,6 +124,14 @@ function AppRouter() {
           element={
             <RequireAuthPage>
               <VehicleComplianceProfilePage />
+            </RequireAuthPage>
+          }
+        />
+        <Route
+          path="/contacts"
+          element={
+            <RequireAuthPage>
+              <ContactsPage />
             </RequireAuthPage>
           }
         />
@@ -192,10 +202,10 @@ function AppRouter() {
             </RequireAuthPage>
           }
         />
-        <Route path="/admin/compliance/licences" element={<Navigate to="/compliance" replace />} />
-        <Route path="/admin/compliance/cpc" element={<Navigate to="/compliance" replace />} />
-        <Route path="/admin/compliance/tachograph-cards" element={<Navigate to="/compliance" replace />} />
-        <Route path="/admin/compliance/documents" element={<Navigate to="/compliance" replace />} />
+        <Route path="/admin/compliance/licences" element={<Navigate to="/documents" replace />} />
+        <Route path="/admin/compliance/cpc" element={<Navigate to="/documents" replace />} />
+        <Route path="/admin/compliance/tachograph-cards" element={<Navigate to="/documents" replace />} />
+        <Route path="/admin/compliance/documents" element={<Navigate to="/documents" replace />} />
         <Route
           path="/admin/driver-reports"
           element={

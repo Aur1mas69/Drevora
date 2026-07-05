@@ -1,6 +1,7 @@
 import {
   formatClockTime,
   formatDateTimeFromIso,
+  formatTimeFromDate,
   getGlobalOvertimeAfterHours,
   getGlobalTimeFormat,
   type CompanyTimeFormat,
@@ -12,7 +13,11 @@ import {
   type TimesheetOvertimeRules,
   type TimesheetWeekSettings,
 } from '@/lib/companySettingsTypes'
-import { getGlobalOvertimeMultiplier, getSetting } from '@/lib/companySettingsGlobals'
+import {
+  getGlobalOvertimeMultiplier,
+  getSetting,
+  getTimesheetWeekSettings,
+} from '@/lib/companySettingsGlobals'
 import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type { OvertimeMode } from '@/lib/companySettingsTypes'
 import type {
@@ -83,7 +88,19 @@ export function entryHasStartAndFinish(entry: {
 }): boolean {
   const start = parseTimeToMinutes(entry.startTime)
   const finish = parseTimeToMinutes(entry.finishTime)
-  return start !== null && finish !== null && finish > start
+  return start !== null && finish !== null
+}
+
+function calculateShiftSpanMinutes(startMinutes: number, finishMinutes: number): number {
+  if (finishMinutes < startMinutes) {
+    return finishMinutes + 24 * 60 - startMinutes
+  }
+
+  if (finishMinutes === startMinutes) {
+    return 0
+  }
+
+  return finishMinutes - startMinutes
 }
 
 export function roundHoursOneDecimal(value: number): number {
@@ -123,6 +140,7 @@ export function summarizeTimesheetEntries(
 ): {
   workedMinutes: number
   workedHours: number
+  breakMinutes: number
   breakHours: number
   overtimeHours: number
   additionalHours: number
@@ -164,6 +182,7 @@ export function summarizeTimesheetEntries(
   return {
     workedMinutes,
     workedHours: Math.round((workedMinutes / 60) * 100) / 100,
+    breakMinutes,
     breakHours: roundHoursOneDecimal(breakMinutes / 60),
     overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
     additionalHours: roundHoursOneDecimal(additionalHoursTotal),
@@ -192,9 +211,9 @@ export function calculateEntryTotalMinutes(
 ): number {
   const start = parseTimeToMinutes(input.startTime)
   const finish = parseTimeToMinutes(input.finishTime)
-  if (start === null || finish === null || finish <= start) return 0
+  if (start === null || finish === null) return 0
 
-  const spanMinutes = finish - start
+  const spanMinutes = calculateShiftSpanMinutes(start, finish)
   if (options.paidBreaks) {
     return Math.max(0, spanMinutes)
   }
@@ -221,7 +240,7 @@ export function summarizeTimesheetEntriesFromTotals(totals: {
   additionalHours?: number
 }) {
   const workedHours = Math.round((totals.workedMinutes / 60) * 100) / 100
-  const overtimeHours = Math.round((totals.overtimeMinutes / 60) * 100) / 100
+  const overtimeHours = roundHoursOneDecimal(totals.overtimeMinutes / 60)
   const additionalHours = roundHoursOneDecimal(totals.additionalHours ?? 0)
 
   return {
@@ -229,7 +248,16 @@ export function summarizeTimesheetEntriesFromTotals(totals: {
     breakHours: Math.round((totals.breakMinutes / 60) * 100) / 100,
     overtimeHours,
     additionalHours,
-    totalHours: roundHoursOneDecimal(workedHours + overtimeHours + additionalHours),
+    totalHours: roundHoursOneDecimal(
+      calculateEntryPaidEquivalentHours(
+        {
+          totalMinutes: totals.workedMinutes,
+          overtimeMinutes: totals.overtimeMinutes,
+          additionalHours: totals.additionalHours ?? 0,
+        },
+        getGlobalOvertimeMultiplier(),
+      ),
+    ),
   }
 }
 
@@ -257,6 +285,35 @@ export function computeTimesheetSummaryStats(
   }
 }
 
+export function getTimesheetSortDate(item: {
+  submittedAt: string | null
+  updatedAt: string
+  createdAt: string
+  weekStart: string
+}): string {
+  return item.submittedAt ?? item.updatedAt ?? item.createdAt ?? `${item.weekStart}T00:00:00.000Z`
+}
+
+function compareTimesheetSortDateValues(
+  left: {
+    submittedAt: string | null
+    updatedAt: string
+    createdAt: string
+    weekStart: string
+  },
+  right: {
+    submittedAt: string | null
+    updatedAt: string
+    createdAt: string
+    weekStart: string
+  },
+  direction: number,
+): number {
+  const leftTime = new Date(getTimesheetSortDate(left)).getTime()
+  const rightTime = new Date(getTimesheetSortDate(right)).getTime()
+  return (leftTime - rightTime) * direction
+}
+
 export function sortTimesheetListItems(
   items: TimesheetListItem[],
   sortBy: TimesheetsSortField,
@@ -268,12 +325,17 @@ export function sortTimesheetListItems(
     switch (sortBy) {
       case 'driverName':
         return left.driverName.localeCompare(right.driverName) * direction
-      case 'weekStart':
-        return left.weekStart.localeCompare(right.weekStart) * direction
+      case 'weekStart': {
+        const weekCompare = left.weekStart.localeCompare(right.weekStart) * direction
+        if (weekCompare !== 0) return weekCompare
+        return compareTimesheetSortDateValues(left, right, direction)
+      }
       case 'status':
         return left.status.localeCompare(right.status) * direction
       case 'workedHours':
         return (left.workedHours - right.workedHours) * direction
+      case 'createdAt':
+        return compareTimesheetSortDateValues(left, right, direction)
       case 'updatedAt':
         return left.updatedAt.localeCompare(right.updatedAt) * direction
       default:
@@ -309,6 +371,34 @@ export function formatTimesheetUpdatedAt(
   timeFormat: CompanyTimeFormat = getGlobalTimeFormat(),
 ): string {
   return formatDateTimeFromIso(iso, { timeFormat })
+}
+
+export function formatTimesheetSubmittedAt(
+  iso: string | null | undefined,
+  options?: { separator?: 'dot' | 'comma'; timeFormat?: CompanyTimeFormat },
+): string | null {
+  if (!iso) return null
+
+  const date = new Date(iso)
+  const datePart = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+  const timePart = formatTimeFromDate(date, {
+    timeFormat: options?.timeFormat ?? getGlobalTimeFormat(),
+  })
+  const separator = options?.separator === 'comma' ? ', ' : ' · '
+
+  return `${datePart}${separator}${timePart}`
+}
+
+export function formatSubmittedAtDisplay(
+  iso: string | null | undefined,
+  status: TimesheetStatus,
+): string {
+  if (status === 'Draft' || !iso) return '—'
+  return formatTimesheetSubmittedAt(iso) ?? '—'
 }
 
 export function formatHours(value: number): string {
@@ -391,7 +481,8 @@ export function buildWeekOptions(timesheets: Timesheet[]): { value: string; labe
 export function normalizeWeekStartForCompany(dateValue: string): string {
   const date = parseLocalDate(dateValue)
   const day = date.getDay()
-  const diff = day === 0 ? -6 : 1 - day
+  const startDay = getTimesheetWeekSettings().timesheetWeekStartDay
+  const diff = startDay === 'sunday' ? -day : day === 0 ? -6 : 1 - day
   date.setDate(date.getDate() + diff)
   return formatLocalDateString(date)
 }
@@ -470,9 +561,14 @@ export function formatDayLabel(dayDate: string): string {
 }
 
 export function formatBreak(minutes: number): string {
-  if (minutes <= 0) return '—'
-  if (minutes % 60 === 0) return `${minutes / 60}h`
-  return `${minutes}m`
+  if (minutes <= 0) return '0m'
+
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+
+  if (remainder === 0) return `${hours}h`
+  if (hours === 0) return `${minutes}m`
+  return `${hours}h ${remainder}m`
 }
 
 export function formatTimeDisplay(
@@ -549,6 +645,24 @@ export function recalculateEntryInputs(
   })
 }
 
+/** View mode: recalculate worked minutes only; keep overtime_minutes from DB. */
+export function applyViewModeEntryTotals(
+  entries: TimesheetEntryInput[],
+  options: Pick<RecalculateEntryOptions, 'paidBreaks'> = {},
+): TimesheetEntryInput[] {
+  const paidBreaks = options.paidBreaks ?? false
+
+  return entries.map((entry) => ({
+    ...entry,
+    totalMinutes: calculateEntryTotalMinutes(entry, { paidBreaks }),
+  }))
+}
+
 export function canEditTimesheet(status: TimesheetStatus): boolean {
-  return status === 'Draft' || status === 'Rejected'
+  return (
+    status === 'Draft' ||
+    status === 'Rejected' ||
+    status === 'Submitted' ||
+    status === 'Approved'
+  )
 }

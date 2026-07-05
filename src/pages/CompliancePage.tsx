@@ -228,10 +228,10 @@ export default function CompliancePage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.15rem]">
-              Transport Compliance Centre
+              Documents
             </p>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">
-              Enterprise compliance dashboard for your entire workforce and fleet.
+              Manage company, worker and vehicle documents in one place.
             </p>
           </div>
           <ComplianceCentreTabBar activeTab={activeTab} onTabChange={handleTabChange} />

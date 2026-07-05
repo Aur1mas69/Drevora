@@ -43,7 +43,8 @@ alter table public.drivers
   add column if not exists assigned_vehicle text,
   add column if not exists role text default 'Driver',
   add column if not exists status text default 'Off Duty',
-  add column if not exists avatar_url text;
+  add column if not exists avatar_url text,
+  add column if not exists worker_code text;
 
 update public.drivers
 set role = 'Driver'
@@ -53,6 +54,9 @@ create index if not exists drivers_status_idx on public.drivers (status);
 create index if not exists drivers_company_idx on public.drivers (company);
 create index if not exists drivers_email_idx on public.drivers (email);
 create index if not exists drivers_role_idx on public.drivers (role);
+
+create unique index if not exists drivers_company_worker_code_unique_idx
+  on public.drivers (coalesce(company, ''), worker_code);
 
 
 -- -----------------------------------------------------------------------------
@@ -67,6 +71,105 @@ alter table public.drivers
   add column if not exists medical_expiry date,
   add column if not exists adr_expiry date,
   add column if not exists hiab_expiry date;
+
+alter table public.drivers
+  add column if not exists licence_categories text[],
+  add column if not exists tacho_card_number text,
+  add column if not exists default_vehicle_id uuid references public.vehicles (id) on delete set null,
+  add column if not exists start_date date,
+  add column if not exists emergency_contact_name text,
+  add column if not exists emergency_contact_phone text,
+  add column if not exists emergency_contact_relationship text;
+
+alter table public.drivers
+  add column if not exists employment_type text;
+
+create index if not exists drivers_default_vehicle_id_idx
+  on public.drivers (default_vehicle_id);
+
+create or replace function public.generate_worker_code()
+returns text
+language plpgsql
+volatile
+as $$
+declare
+  letters constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  digits constant text := '23456789';
+  chars text[] := array[]::text[];
+  result text;
+begin
+  chars := array[
+    substr(letters, 1 + floor(random() * length(letters))::int, 1),
+    substr(digits, 1 + floor(random() * length(digits))::int, 1)
+  ];
+
+  while coalesce(array_length(chars, 1), 0) < 5 loop
+    if random() < 0.5 then
+      chars := array_append(
+        chars,
+        substr(letters, 1 + floor(random() * length(letters))::int, 1)
+      );
+    else
+      chars := array_append(
+        chars,
+        substr(digits, 1 + floor(random() * length(digits))::int, 1)
+      );
+    end if;
+  end loop;
+
+  select string_agg(ch, '' order by random())
+  into result
+  from unnest(chars) as ch;
+
+  return result;
+end;
+$$;
+
+create or replace function public.generate_unique_worker_code(p_company text)
+returns text
+language plpgsql
+volatile
+as $$
+declare
+  candidate text;
+  attempts int := 0;
+begin
+  loop
+    candidate := public.generate_worker_code();
+    if not exists (
+      select 1
+      from public.drivers d
+      where coalesce(d.company, '') = coalesce(p_company, '')
+        and d.worker_code = candidate
+    ) then
+      return candidate;
+    end if;
+    attempts := attempts + 1;
+    if attempts >= 100 then
+      raise exception 'Could not generate unique worker_code for company after 100 attempts';
+    end if;
+  end loop;
+end;
+$$;
+
+create or replace function public.drivers_set_worker_code()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.worker_code is null or btrim(new.worker_code) = '' then
+    new.worker_code := public.generate_unique_worker_code(new.company);
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists drivers_set_worker_code_trigger on public.drivers;
+
+create trigger drivers_set_worker_code_trigger
+  before insert on public.drivers
+  for each row
+  execute function public.drivers_set_worker_code();
 
 
 -- -----------------------------------------------------------------------------
@@ -279,7 +382,13 @@ create table if not exists public.timesheets (
   week_start date not null,
   status text not null default 'Draft',
   notes text,
-  bonus_amount numeric not null default 0
+  bonus_amount numeric not null default 0,
+  deleted_at timestamptz,
+  deleted_by uuid,
+  delete_reason text,
+  submitted_at timestamptz,
+  approved_at timestamptz,
+  rejected_at timestamptz
 );
 
 create table if not exists public.timesheet_entries (
@@ -293,7 +402,10 @@ create table if not exists public.timesheet_entries (
   overtime_minutes integer not null default 0,
   payroll_minutes integer not null default 0,
   additional_hours numeric not null default 0,
-  daily_comment text
+  daily_comment text,
+  deleted_at timestamptz,
+  deleted_by uuid,
+  delete_reason text
 );
 
 alter table public.timesheets
@@ -304,7 +416,13 @@ alter table public.timesheets
   add column if not exists week_start date,
   add column if not exists status text default 'Draft',
   add column if not exists notes text,
-  add column if not exists bonus_amount numeric not null default 0;
+  add column if not exists bonus_amount numeric not null default 0,
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid,
+  add column if not exists delete_reason text,
+  add column if not exists submitted_at timestamptz,
+  add column if not exists approved_at timestamptz,
+  add column if not exists rejected_at timestamptz;
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -316,19 +434,31 @@ alter table public.timesheet_entries
   add column if not exists overtime_minutes integer not null default 0,
   add column if not exists payroll_minutes integer not null default 0,
   add column if not exists additional_hours numeric not null default 0,
-  add column if not exists daily_comment text;
+  add column if not exists daily_comment text,
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid,
+  add column if not exists delete_reason text;
 
 create index if not exists timesheets_driver_id_idx on public.timesheets (driver_id);
 create index if not exists timesheets_vehicle_id_idx on public.timesheets (vehicle_id);
 create index if not exists timesheets_week_start_idx on public.timesheets (week_start);
 create index if not exists timesheets_status_idx on public.timesheets (status);
+create index if not exists idx_timesheets_not_deleted
+  on public.timesheets (week_start, deleted_at);
+create index if not exists idx_timesheets_submitted_at
+  on public.timesheets (submitted_at);
+create index if not exists idx_timesheets_status_submitted_at
+  on public.timesheets (status, submitted_at);
 create unique index if not exists timesheets_driver_week_unique_idx
-  on public.timesheets (driver_id, week_start);
+  on public.timesheets (driver_id, week_start)
+  where deleted_at is null;
 
 create index if not exists timesheet_entries_timesheet_id_idx
   on public.timesheet_entries (timesheet_id);
 create index if not exists timesheet_entries_day_date_idx
   on public.timesheet_entries (day_date);
+create index if not exists idx_timesheet_entries_not_deleted
+  on public.timesheet_entries (timesheet_id, deleted_at);
 create unique index if not exists timesheet_entries_timesheet_day_unique_idx
   on public.timesheet_entries (timesheet_id, day_date);
 
@@ -507,6 +637,145 @@ create index if not exists vehicle_compliance_records_status_idx
 
 alter table public.vehicle_compliance_records disable row level security;
 grant select, insert, update, delete on public.vehicle_compliance_records to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- Consumables
+-- Fuel, fluids, AdBlue, oils and other vehicle-related consumables.
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.consumables (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid references public.vehicles (id) on delete set null,
+  worker_id uuid references public.drivers (id) on delete set null,
+  consumable_type text not null,
+  item_name text,
+  quantity numeric not null,
+  unit text not null default 'L',
+  cost numeric,
+  supplier text,
+  site text,
+  odometer numeric,
+  receipt_url text,
+  notes text,
+  entry_date date not null,
+  entry_time time,
+  created_by uuid,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  deleted_at timestamptz,
+  deleted_by uuid,
+  delete_reason text,
+  constraint consumables_type_check check (
+    consumable_type in (
+      'Diesel',
+      'Petrol',
+      'AdBlue',
+      'Engine Oil',
+      'Coolant',
+      'Screenwash',
+      'Hydraulic Oil',
+      'Grease',
+      'Admixture',
+      'Concrete Additive',
+      'Other'
+    )
+  ),
+  constraint consumables_unit_check check (
+    unit in ('L', 'ml', 'kg', 'pcs', 'other')
+  ),
+  constraint consumables_quantity_non_negative check (quantity >= 0),
+  constraint consumables_cost_non_negative check (cost is null or cost >= 0),
+  constraint consumables_odometer_non_negative check (odometer is null or odometer >= 0)
+);
+
+create index if not exists consumables_entry_date_idx
+  on public.consumables (entry_date);
+
+create index if not exists consumables_type_idx
+  on public.consumables (consumable_type);
+
+create index if not exists consumables_vehicle_id_idx
+  on public.consumables (vehicle_id);
+
+create index if not exists consumables_worker_id_idx
+  on public.consumables (worker_id);
+
+create index if not exists consumables_not_deleted_idx
+  on public.consumables (entry_date, deleted_at);
+
+alter table public.consumables disable row level security;
+grant select, insert, update, delete on public.consumables to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- Dashboard notes / plans
+-- Quick operational reminders on the admin dashboard.
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.dashboard_notes (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete cascade,
+  created_by uuid,
+  note text not null,
+  status text not null default 'open',
+  priority text,
+  due_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint dashboard_notes_status_check check (status in ('open', 'done')),
+  constraint dashboard_notes_note_not_empty check (char_length(trim(note)) > 0)
+);
+
+create index if not exists dashboard_notes_company_id_idx
+  on public.dashboard_notes (company_id);
+
+create index if not exists dashboard_notes_status_idx
+  on public.dashboard_notes (status);
+
+create index if not exists dashboard_notes_due_date_idx
+  on public.dashboard_notes (due_date)
+  where due_date is not null;
+
+create index if not exists dashboard_notes_company_status_idx
+  on public.dashboard_notes (company_id, status);
+
+create index if not exists dashboard_notes_company_updated_idx
+  on public.dashboard_notes (company_id, updated_at desc);
+
+create or replace function public.drevora_current_company_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select c.id
+  from public.companies c
+  order by c.created_at asc nulls last
+  limit 1;
+$$;
+
+create or replace function public.drevora_set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists dashboard_notes_set_updated_at on public.dashboard_notes;
+
+create trigger dashboard_notes_set_updated_at
+  before update on public.dashboard_notes
+  for each row
+  execute function public.drevora_set_updated_at();
+
+alter table public.dashboard_notes enable row level security;
+grant select, insert, update, delete on public.dashboard_notes to anon, authenticated;
+
 
 -- -----------------------------------------------------------------------------
 -- Next steps

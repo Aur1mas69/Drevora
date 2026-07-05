@@ -65,6 +65,46 @@ export function computeOverallResult(items: Pick<VehicleCheckItemInput, 'result'
   return 'Pass'
 }
 
+function normalizeVehicleCheckItemResults(
+  itemResults: { result: string }[] | { result: string } | null | undefined,
+): { result: string }[] {
+  if (!itemResults) return []
+  return Array.isArray(itemResults) ? itemResults : [itemResults]
+}
+
+export function vehicleCheckHasIssue(
+  overallResult: string,
+  itemResults: { result: string }[] | { result: string } | null | undefined,
+): boolean {
+  const items = normalizeVehicleCheckItemResults(itemResults)
+
+  return (
+    overallResult === 'Fail' ||
+    overallResult === 'Advisory' ||
+    items.some((item) => item.result === 'Fail' || item.result === 'Advisory')
+  )
+}
+
+export type VehicleCheckActivitySeverity = 'success' | 'warning' | 'danger'
+
+export function getVehicleCheckActivitySeverity(
+  overallResult: string,
+  itemResults: { result: string }[] | { result: string } | null | undefined,
+): VehicleCheckActivitySeverity {
+  const items = normalizeVehicleCheckItemResults(itemResults)
+
+  const hasFail =
+    overallResult === 'Fail' || items.some((item) => item.result === 'Fail')
+  if (hasFail) return 'danger'
+
+  const hasAdvisory =
+    overallResult === 'Advisory' ||
+    items.some((item) => item.result === 'Advisory')
+  if (hasAdvisory) return 'warning'
+
+  return 'success'
+}
+
 export function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
 }

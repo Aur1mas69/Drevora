@@ -1,15 +1,11 @@
 import { TimesheetWeekLabel } from '@/components/timesheets/TimesheetWeekLabel'
 import type { TimesheetSummaryStats } from '@/lib/timesheetTypes'
-import {
-  adminHeading,
-  adminMetricCard,
-  adminTextMuted,
-} from '@/lib/adminUiStyles'
+import type { TimesheetStatusFilter } from '@/lib/timesheetUtils'
 import type { LucideIcon } from 'lucide-react'
 import {
   CheckCircle2,
   ClipboardList,
-  Clock3,
+  FilePenLine,
   Send,
   XCircle,
 } from 'lucide-react'
@@ -18,110 +14,148 @@ type TimesheetsSummaryStripProps = {
   stats: TimesheetSummaryStats
   weekTitle: string
   weekRangeLabel: string
+  statusFilter: TimesheetStatusFilter
+  onStatusFilterChange: (value: TimesheetStatusFilter) => void
 }
 
 type KpiCardConfig = {
   key: string
   title: string
-  subtitle: string
+  helper: string
   icon: LucideIcon
+  statusFilterValue: TimesheetStatusFilter
   getValue: (stats: TimesheetSummaryStats) => number
-  badgeClass: string
-  glowClass: string
-  hideWhenZero?: boolean
+  accentBorder: string
+  iconWrapClass: string
+  iconClass: string
+  titleClassName: string
+  activeClassName: string
 }
 
-const cardClassName = `${adminMetricCard} transition-all duration-200 ease-out hover:-translate-y-0.5 dark:bg-slate-900/70`
+const cardBaseBg =
+  'bg-gradient-to-br from-[#F5FAFF] to-[#D3E9FC] dark:from-slate-900/70 dark:to-slate-900/70'
+const cardIdleBorder = 'border-[#BDDDFB] dark:border-white/10'
+const cardHover =
+  'hover:-translate-y-0.5 hover:border-[#BFE3F5] hover:from-[#E8F3FE] hover:to-[#D3E9FC] hover:shadow-md hover:shadow-[#BDDDFB]/40 dark:hover:bg-slate-800/80'
 
 const kpiCards: KpiCardConfig[] = [
   {
     key: 'total',
     title: 'Total',
-    subtitle: 'Weekly timesheets',
+    helper: 'All weekly timesheets',
     icon: ClipboardList,
+    statusFilterValue: 'all',
     getValue: (stats) => stats.total,
-    badgeClass:
-      'bg-blue-100 text-blue-600 ring-blue-200/60 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60',
-    glowClass: 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.55)]',
+    accentBorder: 'border-l-[#218EE7]',
+    iconWrapClass: 'bg-[#D3E9FC] ring-[#BFE3F5]',
+    iconClass: 'text-[#218EE7]',
+    titleClassName: 'text-[#0B68BE]',
+    activeClassName:
+      'border-[#218EE7] from-[#E8F3FE] to-[#D3E9FC] shadow-[0_0_0_1px_rgba(33,142,231,0.35),0_8px_24px_rgba(33,142,231,0.18)] ring-2 ring-[#218EE7]/30',
   },
   {
     key: 'submitted',
     title: 'Submitted',
-    subtitle: 'Waiting review',
+    helper: 'Waiting for review',
     icon: Send,
+    statusFilterValue: 'Submitted',
     getValue: (stats) => stats.pendingApproval,
-    badgeClass:
-      'bg-sky-100 text-sky-600 ring-sky-200/60 dark:bg-sky-950/50 dark:text-sky-300 dark:ring-sky-900/60',
-    glowClass: 'bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.55)]',
+    accentBorder: 'border-l-[#218EE7]',
+    iconWrapClass: 'bg-[#D3E9FC] ring-[#BFE3F5]',
+    iconClass: 'text-[#218EE7]',
+    titleClassName: 'text-[#0B68BE]',
+    activeClassName:
+      'border-[#218EE7] from-[#E8F3FE] to-[#D3E9FC] shadow-[0_0_0_1px_rgba(33,142,231,0.35),0_8px_24px_rgba(33,142,231,0.18)] ring-2 ring-[#218EE7]/30',
   },
   {
-    key: 'pending',
-    title: 'Pending',
-    subtitle: 'Drafts',
-    icon: Clock3,
+    key: 'drafts',
+    title: 'Drafts',
+    helper: 'Not submitted yet',
+    icon: FilePenLine,
+    statusFilterValue: 'Draft',
     getValue: (stats) => stats.drafts,
-    badgeClass:
-      'bg-orange-100 text-orange-600 ring-orange-200/60 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
-    glowClass: 'bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.55)]',
+    accentBorder: 'border-l-amber-400',
+    iconWrapClass: 'bg-amber-50 ring-amber-100',
+    iconClass: 'text-amber-600',
+    titleClassName: 'text-[#0D477F]',
+    activeClassName:
+      'border-amber-400 from-[#E8F3FE] to-[#D3E9FC] shadow-[0_0_0_1px_rgba(251,191,36,0.45),0_8px_24px_rgba(251,191,36,0.14)] ring-2 ring-amber-400/35',
   },
   {
     key: 'approved',
     title: 'Approved',
-    subtitle: 'Signed off',
+    helper: 'Signed off',
     icon: CheckCircle2,
+    statusFilterValue: 'Approved',
     getValue: (stats) => stats.approved,
-    badgeClass:
-      'bg-green-100 text-green-600 ring-green-200/60 dark:bg-green-950/50 dark:text-green-300 dark:ring-green-900/60',
-    glowClass: 'bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.55)]',
+    accentBorder: 'border-l-emerald-500',
+    iconWrapClass: 'bg-emerald-50 ring-emerald-100',
+    iconClass: 'text-emerald-600',
+    titleClassName: 'text-[#0D477F]',
+    activeClassName:
+      'border-emerald-400 from-[#E8F3FE] to-[#D3E9FC] shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_8px_24px_rgba(16,185,129,0.12)] ring-2 ring-emerald-500/30',
   },
   {
     key: 'rejected',
     title: 'Rejected',
-    subtitle: 'Needs correction',
+    helper: 'Needs correction',
     icon: XCircle,
+    statusFilterValue: 'Rejected',
     getValue: (stats) => stats.rejected,
-    badgeClass:
-      'bg-red-100 text-red-600 ring-red-200/60 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-900/60',
-    glowClass: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.55)]',
-    hideWhenZero: true,
+    accentBorder: 'border-l-red-500',
+    iconWrapClass: 'bg-red-50 ring-red-100',
+    iconClass: 'text-red-600',
+    titleClassName: 'text-[#0D477F]',
+    activeClassName:
+      'border-red-400 from-[#E8F3FE] to-[#D3E9FC] shadow-[0_0_0_1px_rgba(239,68,68,0.35),0_8px_24px_rgba(239,68,68,0.12)] ring-2 ring-red-500/30',
   },
 ]
 
-function KpiCard({ card, stats }: { card: KpiCardConfig; stats: TimesheetSummaryStats }) {
+function KpiCard({
+  card,
+  stats,
+  isActive,
+  onSelect,
+}: {
+  card: KpiCardConfig
+  stats: TimesheetSummaryStats
+  isActive: boolean
+  onSelect: () => void
+}) {
   const Icon = card.icon
   const value = card.getValue(stats)
   const isZero = value === 0
 
   return (
-    <article
-      className={`${cardClassName} ${isZero ? 'opacity-60 hover:opacity-100' : ''}`}
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isActive}
+      aria-label={`Filter by ${card.title}: ${value} timesheet${value === 1 ? '' : 's'}`}
+      className={`group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-l-4 p-4 text-left shadow-sm shadow-[#BDDDFB]/25 backdrop-blur-xl transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7] focus-visible:ring-offset-2 dark:shadow-none dark:focus-visible:ring-offset-slate-950 ${cardBaseBg} ${card.accentBorder} ${
+        isActive ? card.activeClassName : `${cardIdleBorder} ${cardHover}`
+      } ${isZero && !isActive ? 'opacity-75 hover:opacity-100' : ''}`}
     >
-      <div className="flex items-start gap-3">
-        <div className="relative shrink-0">
-          <span
-            aria-hidden="true"
-            className={`absolute -left-0.5 top-1/2 size-2 -translate-y-1/2 rounded-full ${card.glowClass}`}
-          />
-          <div
-            className={`flex size-10 items-center justify-center rounded-full ring-1 transition-transform duration-200 ease-out group-hover:scale-110 ${card.badgeClass}`}
-          >
-            <Icon className="size-[18px]" strokeWidth={2.1} />
-          </div>
+      <div className="flex items-start gap-3.5">
+        <div
+          className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ring-1 ${card.iconWrapClass} dark:bg-slate-800/70 dark:ring-white/10`}
+        >
+          <Icon className={`size-5 ${card.iconClass} dark:text-slate-200`} strokeWidth={2.1} />
         </div>
 
-        <div className="min-w-0 flex-1 pt-0.5">
-          <p className={`text-[1.65rem] font-bold leading-none tracking-[-0.04em] ${adminHeading}`}>
+        <div className="min-w-0 flex-1">
+          <p className="text-3xl font-bold leading-none tracking-[-0.04em] text-[#113C69] dark:text-slate-50 sm:text-4xl">
             {value}
           </p>
-          <p className={`mt-2 text-[11px] font-semibold leading-tight ${adminHeading} opacity-80`}>
+          <p className={`mt-2.5 text-sm font-semibold dark:text-slate-200 ${card.titleClassName}`}>
             {card.title}
           </p>
-          <p className={`mt-0.5 text-[10px] font-medium leading-snug ${adminTextMuted}`}>
-            {card.subtitle}
+          <p className="mt-1 text-xs leading-snug text-[#3D7A9C] dark:text-slate-400">
+            {card.helper}
           </p>
         </div>
       </div>
-    </article>
+    </button>
   )
 }
 
@@ -129,31 +163,34 @@ export function TimesheetsSummaryStrip({
   stats,
   weekTitle,
   weekRangeLabel,
+  statusFilter,
+  onStatusFilterChange,
 }: TimesheetsSummaryStripProps) {
-  const visibleCards = kpiCards.filter((card) => {
-    if (!card.hideWhenZero) return true
-    return card.getValue(stats) > 0
-  })
-
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className={`text-xs font-semibold uppercase tracking-[0.1em] ${adminTextMuted}`}>
+    <section className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#3D7A9C] dark:text-slate-400">
           Week summary
         </p>
-        <div className={`text-right text-sm ${adminHeading}`}>
+        <div className="text-left sm:text-right">
           <TimesheetWeekLabel
             weekTitle={weekTitle}
             weekRangeLabel={weekRangeLabel}
-            titleClassName={`font-semibold ${adminHeading}`}
-            rangeClassName={`text-xs ${adminTextMuted}`}
+            titleClassName="text-sm font-semibold text-[#113C69] dark:text-slate-100"
+            rangeClassName="text-xs text-[#3D7A9C] dark:text-slate-400"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        {visibleCards.map((card) => (
-          <KpiCard key={card.key} card={card} stats={stats} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {kpiCards.map((card) => (
+          <KpiCard
+            key={card.key}
+            card={card}
+            stats={stats}
+            isActive={statusFilter === card.statusFilterValue}
+            onSelect={() => onStatusFilterChange(card.statusFilterValue)}
+          />
         ))}
       </div>
     </section>

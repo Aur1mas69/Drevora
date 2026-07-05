@@ -18,8 +18,11 @@ import {
   TableActionsHeader,
   type RowAction,
 } from '@/components/ui/RowActionsMenu'
+import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
+import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
+import { WorkerComplianceBadge } from '@/components/workers/WorkerComplianceBadge'
+import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import {
-  adminCard,
   adminFilterChip,
   adminGlassToolbar,
   adminHeadingLg,
@@ -27,20 +30,21 @@ import {
   adminSearchInputLg,
   adminSelect,
   adminSkeletonPulse,
-  adminTableDivide,
-  adminTableHeadText,
-  adminTableHeaderAlt,
-  adminTableRowAlt,
-  adminText,
   adminTextMuted,
 } from '@/lib/adminUiStyles'
+import { getWorkerDefaultVehicleLabel } from '@/lib/workerProfileUtils'
 import {
   driversService,
+  emptyCreateDriverInput,
+  getDriverFormValues,
   type CreateDriverInput,
   type Driver,
   type DriverRole,
   type DriverStatus,
+  type LicenceCategory,
 } from '@/services/driversService'
+import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
+import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type StatusFilter = DriverStatus | 'All'
 type CreateDriverForm = CreateDriverInput
@@ -88,25 +92,18 @@ function ActiveFilterChip({
 const workerRoles: DriverRole[] = [
   'Admin',
   'Driver',
+  'Mechanic',
+  'Transport Manager',
+  'Office Staff',
+  'Warehouse',
   'Yardman',
   'Cleaner',
   'Supervisor',
-  'Mechanic',
-  'Transport Manager',
   'Planner',
-  'Office Staff',
   'Other',
 ]
 
-const initialDriverForm: CreateDriverForm = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  company: '',
-  role: 'Driver',
-  status: 'Off Duty',
-}
+const initialDriverForm: CreateDriverInput = emptyCreateDriverInput
 
 const statusClassMap: Record<DriverStatus, string> = {
   Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
@@ -115,28 +112,44 @@ const statusClassMap: Record<DriverStatus, string> = {
   Suspended: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
 }
 
+const roleClassMap: Record<DriverRole, string> = {
+  Admin: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:ring-violet-900/60',
+  Driver: 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/70 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60',
+  Yardman: 'bg-cyan-50 text-cyan-700 ring-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-300 dark:ring-cyan-900/60',
+  Cleaner: 'bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60',
+  Supervisor: 'bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:ring-purple-900/60',
+  Mechanic: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60',
+  'Transport Manager': 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/60',
+  Planner: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:ring-sky-900/60',
+  'Office Staff': 'bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+  Warehouse: 'bg-[#EEF6FF] text-[#3D7A9C] ring-[#C5DFFB]/70 dark:bg-cyan-950/50 dark:text-cyan-300 dark:ring-cyan-900/60',
+  Other: 'bg-[#F1F5F9] text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+}
+
+const workersPrimaryButtonClass =
+  'h-11 rounded-2xl border border-[#89CFF0]/70 bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 font-semibold text-white shadow-[0_8px_24px_rgba(33,142,231,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFE3F5] hover:from-[#1A7FD4] hover:to-[#095FA8] hover:shadow-[0_12px_32px_rgba(33,142,231,0.28)] active:translate-y-0 active:scale-[0.98] active:shadow-[0_6px_18px_rgba(33,142,231,0.18)]'
+
+const workersTableCardClass =
+  'overflow-hidden rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/92 shadow-[0_8px_24px_rgba(33,142,231,0.1),0_0_0_1px_rgba(197,223,251,0.35)] ring-1 ring-[#C5DFFB]/45 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10'
+
+const workersSearchInputClass =
+  `${adminSearchInputLg} pl-10 pr-4 transition-all duration-200 hover:ring-[#BFE3F5] focus-visible:border-[#89CFF0] focus-visible:ring-[#BFE3F5]/70`
+
+const workersFilterButtonClass =
+  'h-11 shrink-0 rounded-2xl border border-[#D3E9FC] bg-white/90 px-4 font-semibold text-[#113C69] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFE3F5] hover:bg-[#F5FAFF] hover:text-[#0B68BE] hover:shadow-[0_8px_20px_rgba(33,142,231,0.12)] focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 active:translate-y-0 active:scale-[0.98] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/90'
+
 function getDriverName(driver: Driver): string {
   return `${driver.firstName} ${driver.lastName}`.trim()
 }
 
-function getDriverInitials(driver: Driver): string {
-  return `${driver.firstName.charAt(0)}${driver.lastName.charAt(0)}`.toUpperCase()
-}
-
-function getWorkerAssignment(driver: Driver): string {
-  return driver.assignment ?? 'Not Assigned'
-}
-
-function getDriverFormValues(driver: Driver): CreateDriverForm {
-  return {
-    firstName: driver.firstName,
-    lastName: driver.lastName,
-    email: driver.email,
-    phone: driver.phone ?? '',
-    company: driver.company,
-    role: driver.role,
-    status: driver.status,
-  }
+function resetAvatarFormState(setters: {
+  setAvatarFile: (file: File | null) => void
+  setRemoveAvatar: (value: boolean) => void
+  setAvatarError: (value: string | null) => void
+}) {
+  setters.setAvatarFile(null)
+  setters.setRemoveAvatar(false)
+  setters.setAvatarError(null)
 }
 
 function validateDriverForm(form: CreateDriverForm): DriverFormErrors {
@@ -144,13 +157,13 @@ function validateDriverForm(form: CreateDriverForm): DriverFormErrors {
 
   if (!form.firstName.trim()) errors.firstName = 'First name is required.'
   if (!form.lastName.trim()) errors.lastName = 'Last name is required.'
-  if (!form.email.trim()) {
-    errors.email = 'Email is required.'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+  if (!form.role.trim()) errors.role = 'Role is required.'
+  if (
+    form.email.trim() &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+  ) {
     errors.email = 'Enter a valid email address.'
   }
-  if (!form.phone.trim()) errors.phone = 'Phone is required.'
-  if (!form.company.trim()) errors.company = 'Company is required.'
 
   return errors
 }
@@ -165,10 +178,14 @@ function DriverStatusBadge({ status }: { status: DriverStatus }) {
   )
 }
 
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null
-
-  return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>
+function WorkerRoleBadge({ role }: { role: DriverRole }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${roleClassMap[role] ?? roleClassMap.Other}`}
+    >
+      {role}
+    </span>
+  )
 }
 
 function DriversToolbar({
@@ -199,30 +216,30 @@ function DriversToolbar({
       <Button
         type="button"
         onClick={onAddDriver}
-        className="h-11 rounded-[16px] bg-[#3B82F6] px-4 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] hover:shadow-[0_18px_34px_rgba(59,130,246,0.3)]"
+        className={workersPrimaryButtonClass}
       >
         <Plus className="size-4" />
         Add Worker
       </Button>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
         <div className="relative min-w-0 sm:w-[280px]">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
           <Input
             type="search"
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search workers"
-            className={`${adminSearchInputLg} pl-10 pr-4`}
+            className={workersSearchInputClass}
           />
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <Button
             type="button"
             variant="outline"
             onClick={onFilterToggle}
-            className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#EAF4FF] hover:text-[#2563EB] hover:shadow-md dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-slate-800/90 dark:hover:text-blue-300"
+            className={workersFilterButtonClass}
           >
             <Filter className="size-4" />
             Filter
@@ -308,7 +325,7 @@ function DriverRowActions({
     },
   ]
 
-  return <RowActionsMenu actions={actions} />
+  return <RowActionsMenu actions={actions} appearance="workers" />
 }
 
 function DriversTable({
@@ -321,66 +338,71 @@ function DriversTable({
   onDeleteDriver: (driver: Driver) => void
 }) {
   return (
-    <Card className={adminCard}>
+    <Card className={workersTableCardClass}>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] border-collapse">
+          <table className="w-full min-w-[1180px] border-collapse">
             <thead>
-              <tr className={`${adminTableHeaderAlt} text-left ${adminTableHeadText}`}>
+              <tr className="border-b border-[#D3E9FC] bg-[#F5FAFF]/90 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0B68BE] dark:bg-slate-800/70 dark:text-blue-300">
                 <th className="px-6 py-4">Avatar</th>
+                <th className="px-6 py-4">Worker ID</th>
                 <th className="px-6 py-4">Worker</th>
                 <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Department / Assignment</th>
+                <th className="px-6 py-4">Default Vehicle</th>
+                <th className="px-6 py-4">Compliance</th>
                 <th className="px-6 py-4">Status</th>
                 <TableActionsHeader className="px-6 py-4" />
               </tr>
             </thead>
-            <tbody className={adminTableDivide}>
+            <tbody>
               {drivers.map((driver) => (
                 <tr
                   key={driver.id}
-                  className={`group ${adminTableRowAlt}`}
+                  className="group border-b border-[#D3E9FC]/55 transition-all duration-200 last:border-b-0 hover:bg-[#F5FAFF]/95 hover:shadow-[inset_0_0_0_1px_rgba(191,227,245,0.45),0_4px_14px_rgba(33,142,231,0.06)] dark:hover:bg-slate-800/40"
                 >
-                  <td className="px-6 py-5">
-                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[15px] bg-[#EAF4FF] text-sm font-semibold text-[#2563EB] shadow-sm ring-1 ring-blue-100 transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5 dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10">
-                      {driver.avatarUrl ? (
-                        <img
-                          src={driver.avatarUrl}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        getDriverInitials(driver)
-                      )}
-                    </div>
+                  <td className="px-6 py-4">
+                    <WorkerAvatar
+                      firstName={driver.firstName}
+                      lastName={driver.lastName}
+                      avatarUrl={driver.avatarUrl}
+                      size="sm"
+                    />
                   </td>
-                  <td className="px-6 py-5">
-                    <div>
-                      <p className={`text-sm font-semibold ${adminHeadingLg}`}>
+                  <td className="px-6 py-4">
+                    <WorkerCodeBadge code={driver.workerCode} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold tracking-[-0.01em] text-[#113C69] dark:text-slate-100">
                         {getDriverName(driver)}
                       </p>
-                      <div>
-                        <p className={`mt-1 text-xs font-medium ${adminTextMuted}`}>
-                          {driver.email}
-                        </p>
-                      </div>
+                      <p className="mt-1 truncate text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
+                        {driver.email}
+                      </p>
                     </div>
                   </td>
-                  <td className={`px-6 py-5 text-sm font-medium ${adminText}`}>
-                    {driver.role}
+                  <td className="px-6 py-4">
+                    <WorkerRoleBadge role={driver.role} />
                   </td>
-                  <td className={`px-6 py-5 text-sm font-medium ${adminText}`}>
-                    {getWorkerAssignment(driver)}
+                  <td className="px-6 py-4">
+                    <p className="max-w-[180px] truncate text-sm font-medium text-[#3D7A9C] dark:text-slate-300">
+                      {getWorkerDefaultVehicleLabel(driver)}
+                    </p>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
+                    <WorkerComplianceBadge driver={driver} />
+                  </td>
+                  <td className="px-6 py-4">
                     <DriverStatusBadge status={driver.status} />
                   </td>
-                  <TableActionsCell className="px-6 py-5">
-                    <DriverRowActions
-                      driver={driver}
-                      onEdit={() => onEditDriver(driver)}
-                      onDelete={() => onDeleteDriver(driver)}
-                    />
+                  <TableActionsCell className="px-4 py-4">
+                    <div className="rounded-lg opacity-70 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100 [&_button[aria-haspopup=menu]]:group-hover:bg-[rgba(59,130,246,0.08)] [&_button[aria-haspopup=menu]]:group-hover:text-[#0B68BE] [&_button[aria-haspopup=menu]]:group-hover:ring-1 [&_button[aria-haspopup=menu]]:group-hover:ring-[rgba(147,197,253,0.45)]">
+                      <DriverRowActions
+                        driver={driver}
+                        onEdit={() => onEditDriver(driver)}
+                        onDelete={() => onDeleteDriver(driver)}
+                      />
+                    </div>
                   </TableActionsCell>
                 </tr>
               ))}
@@ -394,7 +416,7 @@ function DriversTable({
 
 function DriversLoadingSkeleton() {
   return (
-    <Card className={adminCard}>
+    <Card className={workersTableCardClass}>
       <CardContent className="space-y-4 p-6">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
@@ -422,7 +444,7 @@ function DriversErrorState({
   message: string
 }) {
   return (
-    <Card className={adminCard}>
+    <Card className={workersTableCardClass}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
         <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           Unable to load workers.
@@ -431,7 +453,7 @@ function DriversErrorState({
         <Button
           type="button"
           onClick={onRetry}
-          className="mt-6 h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB]"
+          className={`mt-6 ${workersPrimaryButtonClass}`}
         >
           Retry
         </Button>
@@ -442,7 +464,7 @@ function DriversErrorState({
 
 function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
   return (
-    <Card className={adminCard}>
+    <Card className={workersTableCardClass}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
         <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           No workers yet
@@ -453,173 +475,13 @@ function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
         <Button
           type="button"
           onClick={onAddDriver}
-          className="mt-6 h-11 rounded-[16px] bg-[#3B82F6] px-4 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] hover:shadow-[0_18px_34px_rgba(59,130,246,0.3)]"
+          className={`mt-6 ${workersPrimaryButtonClass}`}
         >
           <Plus className="size-4" />
           Add First Worker
         </Button>
       </CardContent>
     </Card>
-  )
-}
-
-function AddDriverModal({
-  eyebrow,
-  title,
-  submitLabel,
-  form,
-  errors,
-  submitError,
-  isSubmitting,
-  onChange,
-  onClose,
-  onSubmit,
-}: {
-  eyebrow: string
-  title: string
-  submitLabel: string
-  form: CreateDriverForm
-  errors: DriverFormErrors
-  submitError: string | null
-  isSubmitting: boolean
-  onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
-  onClose: () => void
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100">
-        <form onSubmit={onSubmit} className="p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
-                {eyebrow}
-              </p>
-              <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-                {title}
-              </h2>
-            </div>
-          </div>
-
-          {submitError ? (
-            <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
-              {submitError}
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">First Name</span>
-              <Input
-                name="firstName"
-                value={form.firstName}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.firstName} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Last Name</span>
-              <Input
-                name="lastName"
-                value={form.lastName}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.lastName} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Email</span>
-              <Input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.email} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Phone</span>
-              <Input
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.phone} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Company</span>
-              <Input
-                name="company"
-                value={form.company}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.company} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Role</span>
-              <select
-                name="role"
-                value={form.role}
-                onChange={onChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-              >
-                {workerRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-              <FieldError message={errors.role} />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Status</span>
-              <select
-                name="status"
-                value={form.status}
-                onChange={onChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-              >
-                {driverStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-          </div>
-
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] disabled:translate-y-0 disabled:opacity-70"
-            >
-              {isSubmitting ? 'Saving...' : submitLabel}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
   )
 }
 
@@ -684,6 +546,7 @@ function DriversPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [drivers, setDrivers] = useState<Driver[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -700,6 +563,10 @@ function DriversPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false)
 
   const loadDrivers = useCallback(async () => {
     setIsLoading(true)
@@ -722,6 +589,12 @@ function DriversPage() {
   useEffect(() => {
     void loadDrivers()
   }, [loadDrivers])
+
+  useEffect(() => {
+    void vehiclesService.fetchVehicles().then(setVehicles).catch(() => {
+      setVehicles([])
+    })
+  }, [])
 
   useEffect(() => {
     if (!toastMessage) return
@@ -760,6 +633,7 @@ function DriversPage() {
           driver.email,
           driver.company,
           driver.role,
+          driver.workerCode ?? '',
           driver.assignment ?? '',
         ].some((value) => value.toLowerCase().includes(query))
 
@@ -797,6 +671,7 @@ function DriversPage() {
     setFormErrors({})
     setCreateError(null)
     setEditingDriver(null)
+    resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
     setIsModalOpen(true)
   }
 
@@ -805,6 +680,7 @@ function DriversPage() {
     setFormErrors({})
     setCreateError(null)
     setEditingDriver(driver)
+    resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
     setIsModalOpen(true)
   }
 
@@ -814,10 +690,11 @@ function DriversPage() {
   }
 
   function closeAddDriverModal() {
-    if (isCreating) return
+    if (isCreating || isAvatarUploading) return
 
     setIsModalOpen(false)
     setEditingDriver(null)
+    resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
   }
 
   function handleFormChange(
@@ -835,6 +712,13 @@ function DriversPage() {
     }))
   }
 
+  function handleLicenceCategoriesChange(categories: LicenceCategory[]) {
+    setForm((currentForm) => ({
+      ...currentForm,
+      licenceCategories: categories,
+    }))
+  }
+
   async function handleSaveDriver(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -847,24 +731,63 @@ function DriversPage() {
     }
 
     setIsCreating(true)
+    setAvatarError(null)
 
     try {
+      let savedWorker: Driver
+
       if (editingDriver) {
-        await driversService.updateDriver(editingDriver.id, form)
+        savedWorker = await driversService.updateDriver(editingDriver.id, form)
       } else {
-        await driversService.createDriver(form)
+        savedWorker = await driversService.createDriver(form)
       }
+
+      if (avatarFile || removeAvatar) {
+        setIsAvatarUploading(true)
+        try {
+          savedWorker = await saveWorkerAvatarForDriver(
+            savedWorker,
+            avatarFile,
+            removeAvatar,
+          )
+        } catch (avatarUploadError) {
+          if (import.meta.env.DEV) {
+            console.error('[DriversPage] avatar upload failed:', avatarUploadError)
+          }
+          setAvatarError(
+            'Worker saved, but the avatar upload failed. Try again from Edit Worker.',
+          )
+          setToastMessage(
+            editingDriver
+              ? 'Worker updated, but avatar upload failed.'
+              : 'Worker created, but avatar upload failed.',
+          )
+          await loadDrivers()
+          return
+        } finally {
+          setIsAvatarUploading(false)
+        }
+      }
+
       setIsModalOpen(false)
       setEditingDriver(null)
       setForm(initialDriverForm)
+      resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
       await loadDrivers()
       setToastMessage(
         editingDriver
           ? 'Worker updated successfully.'
-          : 'Worker created successfully.',
+          : savedWorker.workerCode
+            ? `Worker created successfully. Worker ID: ${savedWorker.workerCode}.`
+            : 'Worker created successfully.',
       )
     } catch (error) {
-      setCreateError('Unable to save worker. Please check the details and try again.')
+      if (import.meta.env.DEV) {
+        console.error('[DriversPage] save worker failed:', error)
+      }
+      setCreateError(
+        'Unable to save worker. Please check required fields or database setup.',
+      )
     } finally {
       setIsCreating(false)
     }
@@ -943,7 +866,7 @@ function DriversPage() {
               onDeleteDriver={openDeleteDriverModal}
             />
           ) : (
-            <Card className={adminCard}>
+            <Card className={workersTableCardClass}>
               <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
                 <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
                   No matching records found.
@@ -958,7 +881,7 @@ function DriversPage() {
       </section>
 
       {isModalOpen ? (
-        <AddDriverModal
+        <WorkerFormModal
           eyebrow={editingDriver ? 'Edit Worker' : 'New Worker'}
           title={editingDriver ? 'Edit Worker' : 'Add Worker'}
           submitLabel={editingDriver ? 'Save Changes' : 'Create Worker'}
@@ -966,7 +889,30 @@ function DriversPage() {
           errors={formErrors}
           submitError={createError}
           isSubmitting={isCreating}
+          workerCode={editingDriver?.workerCode}
+          avatarUrl={editingDriver?.avatarUrl}
+          pendingAvatarFile={avatarFile}
+          removeAvatar={removeAvatar}
+          isAvatarUploading={isAvatarUploading}
+          avatarError={avatarError}
+          onAvatarFileSelect={(file) => {
+            setAvatarFile(file)
+            if (file) setRemoveAvatar(false)
+          }}
+          onRemoveAvatar={() => {
+            setRemoveAvatar(true)
+            setAvatarFile(null)
+            setAvatarError(null)
+          }}
+          onClearPendingAvatar={() => {
+            setAvatarFile(null)
+            setAvatarError(null)
+          }}
+          vehicles={vehicles}
+          workerRoles={workerRoles}
+          driverStatuses={driverStatuses}
           onChange={handleFormChange}
+          onLicenceCategoriesChange={handleLicenceCategoriesChange}
           onClose={closeAddDriverModal}
           onSubmit={handleSaveDriver}
         />

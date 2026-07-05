@@ -22,9 +22,28 @@ type MenuPlacement = {
 type RowActionsMenuProps = {
   actions: RowAction[]
   align?: 'start' | 'center' | 'end'
+  appearance?: 'default' | 'workers'
 }
 
-function getToneClass(tone: RowActionTone = 'default'): string {
+function getToneClass(
+  tone: RowActionTone = 'default',
+  appearance: RowActionsMenuProps['appearance'] = 'default',
+): string {
+  if (appearance === 'workers') {
+    const base =
+      'text-[#113C69] transition-colors duration-150 dark:text-slate-200'
+    switch (tone) {
+      case 'danger':
+        return `${base} text-rose-600 hover:bg-[rgba(239,68,68,0.08)] focus:bg-[rgba(239,68,68,0.08)] dark:text-rose-400 dark:hover:bg-rose-950/40 dark:focus:bg-rose-950/40`
+      case 'success':
+        return `${base} text-emerald-700 hover:bg-[rgba(16,185,129,0.08)] focus:bg-[rgba(16,185,129,0.08)]`
+      case 'warning':
+        return `${base} text-amber-700 hover:bg-[rgba(245,158,11,0.08)] focus:bg-[rgba(245,158,11,0.08)]`
+      default:
+        return `${base} hover:bg-[rgba(59,130,246,0.08)] focus:bg-[rgba(59,130,246,0.08)] dark:hover:bg-slate-800/50 dark:focus:bg-slate-800/50`
+    }
+  }
+
   switch (tone) {
     case 'danger':
       return 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 dark:focus:bg-rose-950/50'
@@ -59,7 +78,11 @@ export function TableActionsCell({
   )
 }
 
-export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProps) {
+export function RowActionsMenu({
+  actions,
+  align = 'center',
+  appearance = 'default',
+}: RowActionsMenuProps) {
   const menuId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -194,7 +217,10 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
 
   function renderAction(action: RowAction, index: number) {
     const Icon = action.icon
-    const className = `flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-xs font-semibold outline-none transition-colors ${getToneClass(action.tone)}`
+    const itemClassName =
+      appearance === 'workers'
+        ? `flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold outline-none ${getToneClass(action.tone, appearance)}`
+        : `flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-xs font-semibold outline-none transition-colors ${getToneClass(action.tone, appearance)}`
 
     if (action.to) {
       return (
@@ -204,7 +230,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
           role="menuitem"
           data-menu-index={index}
           tabIndex={focusedIndex === index ? 0 : -1}
-          className={className}
+          className={itemClassName}
           onClick={() => closeMenu()}
         >
           {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
@@ -220,7 +246,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
         role="menuitem"
         data-menu-index={index}
         tabIndex={focusedIndex === index ? 0 : -1}
-        className={className}
+        className={itemClassName}
         onClick={() => handleSelect(action)}
       >
         {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
@@ -228,6 +254,16 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
       </button>
     )
   }
+
+  const menuPanelClass =
+    appearance === 'workers'
+      ? `absolute z-[60] min-w-[160px] overflow-hidden rounded-2xl border border-[rgba(147,197,253,0.45)] bg-gradient-to-br from-white/98 to-[#F8FBFF]/98 p-1.5 shadow-[0_8px_24px_rgba(33,142,231,0.12)] backdrop-blur-sm dark:border-white/10 dark:from-slate-900/98 dark:to-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`
+      : `absolute z-50 min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`
+
+  const triggerClassName =
+    appearance === 'workers'
+      ? 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#5499BF] outline-none transition-colors duration-150 hover:bg-[rgba(59,130,246,0.08)] hover:text-[#0B68BE] focus-visible:ring-2 focus-visible:ring-[rgba(147,197,253,0.45)] dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-blue-300'
+      : 'inline-flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-500 outline-none transition-colors hover:bg-[#EEF4FF] hover:text-[#2563EB] focus-visible:ring-2 focus-visible:ring-blue-100 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-blue-300 dark:focus-visible:ring-white/10'
 
   return (
     <div ref={rootRef} className={`relative flex ${wrapperAlign}`}>
@@ -245,7 +281,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
             return next
           })
         }}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] text-slate-500 outline-none transition-colors hover:bg-[#EEF4FF] hover:text-[#2563EB] focus-visible:ring-2 focus-visible:ring-blue-100 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-blue-300 dark:focus-visible:ring-white/10"
+        className={triggerClassName}
       >
         <MoreHorizontal className="size-4" aria-hidden="true" />
       </button>
@@ -256,7 +292,7 @@ export function RowActionsMenu({ actions, align = 'center' }: RowActionsMenuProp
           id={menuId}
           role="menu"
           aria-label="Row actions"
-          className={`absolute z-50 min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`}
+          className={menuPanelClass}
         >
           {visibleActions.map((action, index) => renderAction(action, index))}
         </div>

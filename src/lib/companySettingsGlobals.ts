@@ -47,3 +47,7 @@ export function getTimesheetWeekNumberingSettings(): TimesheetWeekSettings {
 export function getSetting<K extends keyof CompanySettings>(key: K): CompanySettings[K] | null {
   return globalSettings?.[key] ?? null
 }
+
+export function getCompanyTimezone(): string {
+  return globalSettings?.timezone?.trim() || 'Europe/London'
+}

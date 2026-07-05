@@ -188,7 +188,7 @@ export default function VehicleComplianceProfilePage() {
         <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
           <p className="text-lg font-semibold text-slate-950">{errorMessage ?? 'Vehicle not found'}</p>
           <Button asChild className="mt-6 h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white hover:bg-[#2563EB]">
-            <Link to="/compliance">Back to Compliance</Link>
+            <Link to="/documents">Back to Documents</Link>
           </Button>
         </div>
       </AdminLayout>
@@ -200,11 +200,11 @@ export default function VehicleComplianceProfilePage() {
     <AdminLayout>
       <section className="rounded-[28px] bg-white/75 p-5 shadow-[0_24px_70px_rgba(59,130,246,0.10)] ring-1 ring-white/70 backdrop-blur-xl sm:p-6">
         <Link
-          to="/compliance"
+          to="/documents"
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#2563EB] hover:text-[#1d4ed8]"
         >
           <ArrowLeft className="size-4" />
-          Back to Compliance Centre
+          Back to Documents Centre
         </Link>
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">

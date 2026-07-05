@@ -25,8 +25,10 @@ function addDays(date: Date, days: number): Date {
 }
 
 function daysBetween(start: Date, end: Date): number {
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate())
   const msPerDay = 24 * 60 * 60 * 1000
-  return Math.round((end.getTime() - start.getTime()) / msPerDay)
+  return (endUtc - startUtc) / msPerDay
 }
 
 export function getTimesheetWeekStartDate(

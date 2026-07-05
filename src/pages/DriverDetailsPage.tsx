@@ -4,7 +4,6 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
-  type ReactNode,
 } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -17,19 +16,26 @@ import {
   Phone,
   ShieldCheck,
   Trash2,
-  UserRound,
 } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   driversService,
+  getDriverFormValues,
   type CreateDriverInput,
   type Driver,
   type DriverRole,
   type DriverStatus,
+  type LicenceCategory,
 } from '@/services/driversService'
+import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
+import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
+import { WorkerComplianceBadge } from '@/components/workers/WorkerComplianceBadge'
+import { WorkerProfileOverview } from '@/components/workers/WorkerProfileOverview'
+import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
+import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
+import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type DriverDetailsTab =
   | 'Overview'
@@ -66,13 +72,14 @@ const driverStatuses: DriverStatus[] = [
 const workerRoles: DriverRole[] = [
   'Admin',
   'Driver',
+  'Mechanic',
+  'Transport Manager',
+  'Office Staff',
+  'Warehouse',
   'Yardman',
   'Cleaner',
   'Supervisor',
-  'Mechanic',
-  'Transport Manager',
   'Planner',
-  'Office Staff',
   'Other',
 ]
 
@@ -80,20 +87,14 @@ function getDriverName(driver: Driver): string {
   return `${driver.firstName} ${driver.lastName}`.trim()
 }
 
-function getDriverInitials(driver: Driver): string {
-  return `${driver.firstName.charAt(0)}${driver.lastName.charAt(0)}`.toUpperCase()
-}
-
-function getDriverFormValues(driver: Driver): DriverForm {
-  return {
-    firstName: driver.firstName,
-    lastName: driver.lastName,
-    email: driver.email,
-    phone: driver.phone ?? '',
-    company: driver.company,
-    role: driver.role,
-    status: driver.status,
-  }
+function resetAvatarFormState(setters: {
+  setAvatarFile: (file: File | null) => void
+  setRemoveAvatar: (value: boolean) => void
+  setAvatarError: (value: string | null) => void
+}) {
+  setters.setAvatarFile(null)
+  setters.setRemoveAvatar(false)
+  setters.setAvatarError(null)
 }
 
 function validateDriverForm(form: DriverForm): DriverFormErrors {
@@ -101,200 +102,24 @@ function validateDriverForm(form: DriverForm): DriverFormErrors {
 
   if (!form.firstName.trim()) errors.firstName = 'First name is required.'
   if (!form.lastName.trim()) errors.lastName = 'Last name is required.'
-  if (!form.email.trim()) {
-    errors.email = 'Email is required.'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+  if (!form.role.trim()) errors.role = 'Role is required.'
+  if (
+    form.email.trim() &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+  ) {
     errors.email = 'Enter a valid email address.'
   }
-  if (!form.phone.trim()) errors.phone = 'Phone is required.'
-  if (!form.company.trim()) errors.company = 'Company is required.'
 
   return errors
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return 'Not set'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(value.includes('T') ? value : `${value}T00:00:00`))
 }
 
 function DriverStatusBadge({ status }: { status: DriverStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassMap[status]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClassMap[status]}`}
     >
       {status}
     </span>
-  )
-}
-
-function DetailItem({
-  label,
-  value,
-}: {
-  label: string
-  value: string | ReactNode
-}) {
-  return (
-    <div className="rounded-2xl bg-[#F8FBFF] px-4 py-3.5 ring-1 ring-blue-50">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-        {label}
-      </p>
-      <div className="mt-2 text-sm font-semibold text-slate-800">{value}</div>
-    </div>
-  )
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null
-
-  return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>
-}
-
-function EditDriverModal({
-  form,
-  errors,
-  submitError,
-  isSubmitting,
-  onChange,
-  onClose,
-  onSubmit,
-}: {
-  form: DriverForm
-  errors: DriverFormErrors
-  submitError: string | null
-  isSubmitting: boolean
-  onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
-  onClose: () => void
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100">
-        <form onSubmit={onSubmit} className="p-5 sm:p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
-            Edit Worker
-          </p>
-          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-            Edit Worker
-          </h2>
-
-          {submitError ? (
-            <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
-              {submitError}
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">First Name</span>
-              <Input
-                name="firstName"
-                value={form.firstName}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.firstName} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Last Name</span>
-              <Input
-                name="lastName"
-                value={form.lastName}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.lastName} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Email</span>
-              <Input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.email} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Phone</span>
-              <Input
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.phone} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Company</span>
-              <Input
-                name="company"
-                value={form.company}
-                onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-              />
-              <FieldError message={errors.company} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Role</span>
-              <select
-                name="role"
-                value={form.role}
-                onChange={onChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-              >
-                {workerRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-              <FieldError message={errors.role} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Status</span>
-              <select
-                name="status"
-                value={form.status}
-                onChange={onChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-              >
-                {driverStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] disabled:translate-y-0 disabled:opacity-70"
-            >
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
   )
 }
 
@@ -362,15 +187,15 @@ function EmptyTabState({
   message: string
 }) {
   return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="flex size-12 items-center justify-center rounded-[18px] bg-[#EAF4FF] text-[#3B82F6] ring-1 ring-blue-100">
-          <Icon className="size-6" strokeWidth={1.9} />
+    <Card className="mx-auto max-w-6xl rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 py-0 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35">
+      <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
+        <div className="flex size-11 items-center justify-center rounded-xl bg-[#E8F3FE] text-[#0B68BE] ring-1 ring-[#C5DFFB]/60">
+          <Icon className="size-5" strokeWidth={1.9} />
         </div>
-        <p className="mt-4 text-lg font-semibold tracking-[-0.02em] text-slate-950">
+        <p className="mt-3 text-base font-semibold tracking-[-0.02em] text-[#113C69]">
           {message}
         </p>
-        <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
+        <p className="mt-1.5 max-w-md text-sm font-medium text-slate-500">
           This section will connect to the worker profile as the module is built.
         </p>
       </CardContent>
@@ -378,78 +203,30 @@ function EmptyTabState({
   )
 }
 
-function OverviewTab({ driver }: { driver: Driver }) {
-  return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="p-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-[14px] bg-[#EAF4FF] text-[#3B82F6] ring-1 ring-blue-100">
-            <UserRound className="size-5" strokeWidth={1.9} />
-          </div>
-          <h2 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-            Overview
-          </h2>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <DetailItem label="First Name" value={driver.firstName} />
-          <DetailItem label="Last Name" value={driver.lastName} />
-          <DetailItem label="Email" value={driver.email} />
-          <DetailItem label="Phone" value={driver.phone ?? 'Not set'} />
-          <DetailItem label="Company" value={driver.company} />
-          <DetailItem label="Role" value={driver.role} />
-          <DetailItem
-            label="Department / Assignment"
-            value={driver.assignment ?? 'Not Assigned'}
-          />
-          <DetailItem
-            label="Status"
-            value={<DriverStatusBadge status={driver.status} />}
-          />
-          <DetailItem label="Created Date" value={formatDate(driver.createdAt)} />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
 function DriverDetailsSkeleton() {
   return (
-    <section className="space-y-5">
-      <Card className="rounded-[20px] border-0 bg-white/72 py-0 shadow-[0_18px_45px_rgba(59,130,246,0.07)] ring-1 ring-white/80">
-        <CardContent className="animate-pulse p-6">
-          <div className="mb-6 h-10 w-36 rounded-[16px] bg-blue-100" />
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="size-24 rounded-[24px] bg-blue-100" />
-            <div className="flex-1 space-y-3">
-              <div className="h-5 w-52 rounded-full bg-blue-100" />
-              <div className="h-3 w-72 max-w-full rounded-full bg-blue-50" />
-              <div className="h-8 w-24 rounded-full bg-blue-100" />
+    <section className="mx-auto max-w-6xl space-y-4">
+      <Card className="rounded-2xl border border-[#D3E9FC] bg-[#FAFCFF] py-0">
+        <CardContent className="animate-pulse p-5">
+          <div className="mb-4 h-9 w-36 rounded-xl bg-blue-100" />
+          <div className="flex items-center gap-4">
+            <div className="size-16 rounded-2xl bg-blue-100" />
+            <div className="flex-1 space-y-2">
+              <div className="h-6 w-48 rounded-full bg-blue-100" />
+              <div className="h-4 w-64 max-w-full rounded-full bg-blue-50" />
+              <div className="h-6 w-32 rounded-full bg-blue-100" />
             </div>
           </div>
         </CardContent>
       </Card>
-
-      <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-        <CardContent className="space-y-5 p-6">
-          <div className="flex gap-2 overflow-hidden">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-10 w-28 animate-pulse rounded-[16px] bg-blue-50"
-              />
-            ))}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-20 animate-pulse rounded-2xl bg-[#F8FBFF]"
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-44 animate-pulse rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF]"
+          />
+        ))}
+      </div>
     </section>
   )
 }
@@ -484,6 +261,7 @@ function DriverDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [driver, setDriver] = useState<Driver | null>(null)
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [activeTab, setActiveTab] = useState<DriverDetailsTab>('Overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [form, setForm] = useState<DriverForm | null>(null)
@@ -496,6 +274,10 @@ function DriverDetailsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false)
 
   const loadDriver = useCallback(async () => {
     if (!id) {
@@ -522,6 +304,12 @@ function DriverDetailsPage() {
   }, [loadDriver])
 
   useEffect(() => {
+    void vehiclesService.fetchVehicles().then(setVehicles).catch(() => {
+      setVehicles([])
+    })
+  }, [])
+
+  useEffect(() => {
     if (!toastMessage) return
 
     const timeoutId = window.setTimeout(() => {
@@ -537,6 +325,7 @@ function DriverDetailsPage() {
     setForm(getDriverFormValues(driver))
     setFormErrors({})
     setSaveError(null)
+    resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
     setIsEditModalOpen(true)
   }
 
@@ -559,6 +348,17 @@ function DriverDetailsPage() {
     }))
   }
 
+  function handleLicenceCategoriesChange(categories: LicenceCategory[]) {
+    setForm((currentForm) =>
+      currentForm
+        ? {
+            ...currentForm,
+            licenceCategories: categories,
+          }
+        : currentForm,
+    )
+  }
+
   async function handleSaveDriver(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -573,15 +373,46 @@ function DriverDetailsPage() {
     }
 
     setIsSaving(true)
+    setAvatarError(null)
 
     try {
-      const updatedDriver = await driversService.updateDriver(driver.id, form)
+      let updatedDriver = await driversService.updateDriver(driver.id, form)
+
+      if (avatarFile || removeAvatar) {
+        setIsAvatarUploading(true)
+        try {
+          updatedDriver = await saveWorkerAvatarForDriver(
+            updatedDriver,
+            avatarFile,
+            removeAvatar,
+          )
+        } catch (avatarUploadError) {
+          if (import.meta.env.DEV) {
+            console.error('[DriverDetailsPage] avatar upload failed:', avatarUploadError)
+          }
+          setAvatarError(
+            'Worker updated, but the avatar upload failed. Try again.',
+          )
+          setDriver(updatedDriver)
+          setToastMessage('Worker updated, but avatar upload failed.')
+          return
+        } finally {
+          setIsAvatarUploading(false)
+        }
+      }
+
       setDriver(updatedDriver)
       setIsEditModalOpen(false)
       setForm(null)
+      resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
       setToastMessage('Worker updated successfully.')
-    } catch {
-      setSaveError('Unable to save worker. Please check the details and try again.')
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('[DriverDetailsPage] save worker failed:', error)
+      }
+      setSaveError(
+        'Unable to save worker. Please check required fields or database setup.',
+      )
     } finally {
       setIsSaving(false)
     }
@@ -646,14 +477,14 @@ function DriverDetailsPage() {
 
   return (
     <AdminLayout>
-      <section className="space-y-5">
-        <Card className="rounded-[20px] border-0 bg-white/72 py-0 shadow-[0_18px_45px_rgba(59,130,246,0.07)] ring-1 ring-white/80 backdrop-blur">
-          <CardContent className="p-5 sm:p-6">
-            <div className="mb-6">
+      <section className="mx-auto max-w-6xl space-y-4">
+        <Card className="rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 py-0 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35">
+          <CardContent className="p-4 sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <Button
                 asChild
                 variant="outline"
-                className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+                className="h-9 rounded-xl border border-[#D3E9FC] bg-white/90 px-3 text-sm font-semibold text-[#113C69] shadow-sm transition-all duration-200 hover:bg-[#F5FAFF] hover:text-[#0B68BE]"
               >
                 <Link to="/drivers">
                   <ArrowLeft className="size-4" />
@@ -662,46 +493,55 @@ function DriverDetailsPage() {
               </Button>
             </div>
 
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-[#EAF4FF] text-2xl font-semibold text-[#2563EB] shadow-sm ring-1 ring-blue-100">
-                  {driver.avatarUrl ? (
-                    <img
-                      src={driver.avatarUrl}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    getDriverInitials(driver)
-                  )}
-                </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <WorkerAvatar
+                  firstName={driver.firstName}
+                  lastName={driver.lastName}
+                  avatarUrl={driver.avatarUrl}
+                  size="lg"
+                />
 
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.4rem]">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="truncate text-2xl font-semibold tracking-[-0.03em] text-[#113C69] sm:text-3xl">
                       {getDriverName(driver)}
                     </h1>
-                    <DriverStatusBadge status={driver.status} />
+                    <WorkerCodeBadge
+                      code={driver.workerCode}
+                      emptyLabel="No Worker ID"
+                    />
                   </div>
 
-                  <div className="mt-3 grid gap-2 text-sm font-medium text-slate-500 sm:grid-cols-2 xl:grid-cols-3">
-                    <span className="inline-flex items-center gap-2">
-                      <Mail className="size-4 text-slate-400" />
-                      {driver.email}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <DriverStatusBadge status={driver.status} />
+                    <WorkerComplianceBadge driver={driver} />
+                  </div>
+
+                  <div className="mt-2.5 flex flex-col gap-1.5 text-sm font-medium text-[#3D7A9C] sm:flex-row sm:flex-wrap sm:gap-x-4">
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <Mail className="size-3.5 shrink-0 text-[#5499BF]" />
+                      <span className="truncate">
+                        {driver.email || (
+                          <span className="text-slate-400">Not set</span>
+                        )}
+                      </span>
                     </span>
                     <span className="inline-flex items-center gap-2">
-                      <Phone className="size-4 text-slate-400" />
-                      {driver.phone ?? 'Not set'}
+                      <Phone className="size-3.5 shrink-0 text-[#5499BF]" />
+                      {driver.phone ?? (
+                        <span className="text-slate-400">Not set</span>
+                      )}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                 <Button
                   type="button"
                   onClick={openEditModal}
-                  className="h-11 rounded-[16px] bg-[#3B82F6] px-4 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB]"
+                  className="h-10 rounded-xl bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.2)] transition-all duration-200 hover:-translate-y-0.5"
                 >
                   <Pencil className="size-4" />
                   Edit Worker
@@ -714,7 +554,7 @@ function DriverDetailsPage() {
                   }}
                   disabled={isDeleting}
                   variant="outline"
-                  className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-rose-600 shadow-sm ring-1 ring-rose-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-rose-50 hover:text-rose-700 disabled:translate-y-0 disabled:opacity-70"
+                  className="h-10 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70"
                 >
                   <Trash2 className="size-4" />
                   {isDeleting ? 'Deleting...' : 'Delete Worker'}
@@ -723,25 +563,25 @@ function DriverDetailsPage() {
             </div>
 
             {deleteError ? (
-              <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
+              <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
                 {deleteError}
               </div>
             ) : null}
           </CardContent>
         </Card>
 
-        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-          <CardContent className="p-3">
-            <div className="flex gap-2 overflow-x-auto">
+        <Card className="rounded-2xl border border-[#D3E9FC] bg-white/90 py-0 shadow-sm ring-1 ring-[#C5DFFB]/30">
+          <CardContent className="p-2">
+            <div className="flex gap-1.5 overflow-x-auto">
               {tabs.map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`shrink-0 rounded-[16px] px-4 py-2.5 text-sm font-semibold transition-all duration-[250ms] ease-out ${
+                  className={`shrink-0 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 ${
                     activeTab === tab
-                      ? 'bg-[#DCEEFF] text-[#2563EB] shadow-[0_10px_24px_rgba(59,130,246,0.18)]'
-                      : 'text-slate-500 hover:-translate-y-0.5 hover:bg-[#F6FAFF] hover:text-slate-950'
+                      ? 'bg-[#E8F3FE] text-[#0B68BE] shadow-sm ring-1 ring-[#C5DFFB]/60'
+                      : 'text-slate-500 hover:bg-[#F5FAFF] hover:text-[#113C69]'
                   }`}
                 >
                   {tab}
@@ -751,7 +591,7 @@ function DriverDetailsPage() {
           </CardContent>
         </Card>
 
-        {activeTab === 'Overview' ? <OverviewTab driver={driver} /> : null}
+        {activeTab === 'Overview' ? <WorkerProfileOverview driver={driver} /> : null}
         {activeTab === 'Timesheets' ? (
           <EmptyTabState icon={ClipboardCheck} message="No timesheets yet" />
         ) : null}
@@ -767,16 +607,43 @@ function DriverDetailsPage() {
       </section>
 
       {isEditModalOpen && form ? (
-        <EditDriverModal
+        <WorkerFormModal
+          eyebrow="Edit Worker"
+          title="Edit Worker"
+          submitLabel="Save Changes"
           form={form}
           errors={formErrors}
           submitError={saveError}
           isSubmitting={isSaving}
+          workerCode={driver.workerCode}
+          avatarUrl={driver.avatarUrl}
+          pendingAvatarFile={avatarFile}
+          removeAvatar={removeAvatar}
+          isAvatarUploading={isAvatarUploading}
+          avatarError={avatarError}
+          onAvatarFileSelect={(file) => {
+            setAvatarFile(file)
+            if (file) setRemoveAvatar(false)
+          }}
+          onRemoveAvatar={() => {
+            setRemoveAvatar(true)
+            setAvatarFile(null)
+            setAvatarError(null)
+          }}
+          onClearPendingAvatar={() => {
+            setAvatarFile(null)
+            setAvatarError(null)
+          }}
+          vehicles={vehicles}
+          workerRoles={workerRoles}
+          driverStatuses={driverStatuses}
           onChange={handleFormChange}
+          onLicenceCategoriesChange={handleLicenceCategoriesChange}
           onClose={() => {
-            if (isSaving) return
+            if (isSaving || isAvatarUploading) return
             setIsEditModalOpen(false)
             setForm(null)
+            resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
           }}
           onSubmit={handleSaveDriver}
         />

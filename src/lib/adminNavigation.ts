@@ -3,11 +3,13 @@ import {
   Archive,
   BarChart3,
   Bell,
+  BookUser,
   Building2,
   CalendarDays,
   ClipboardCheck,
   Download,
   FileBarChart,
+  FileText,
   HelpCircle,
   Key,
   LayoutDashboard,
@@ -16,7 +18,6 @@ import {
   Rocket,
   ScrollText,
   Settings,
-  Shield,
   ShieldCheck,
   Terminal,
   Truck,
@@ -29,6 +30,8 @@ export type AdminNavItem = {
   to: string
   icon: LucideIcon
   end?: boolean
+  /** Additional path prefixes that should mark this item active. */
+  matchPaths?: string[]
   /** Visible in sidebar but not navigable until the module exists. */
   comingLater?: boolean
 }
@@ -42,7 +45,13 @@ export const adminMainNavigationItems: AdminNavItem[] = [
   { label: 'Holiday Requests', to: '/admin/holidays', icon: CalendarDays },
   { label: 'Vehicle Checks', to: '/admin/vehicle-checks', icon: ShieldCheck },
   { label: 'Driver Reports', to: '/admin/driver-reports', icon: FileBarChart },
-  { label: 'Compliance', to: '/compliance', icon: Shield },
+  {
+    label: 'Documents',
+    to: '/documents',
+    icon: FileText,
+    matchPaths: ['/documents', '/compliance'],
+  },
+  { label: 'Contacts', to: '/contacts', icon: BookUser },
   { label: 'Consumables', to: '/consumables', icon: Package },
 ]
 
@@ -50,12 +59,6 @@ export const adminMainNavigationItems: AdminNavItem[] = [
 export const adminSecondaryNavigationItems: AdminNavItem[] = [
   { label: 'Settings', to: '/admin/settings', icon: Settings },
   { label: 'FAQ / Help', to: '/admin/faq', icon: HelpCircle },
-  {
-    label: 'Future Features',
-    to: '/admin/future-features',
-    icon: Rocket,
-    comingLater: true,
-  },
 ]
 
 /** Full sidebar navigation in display order (main, then secondary). */
@@ -66,6 +69,12 @@ export const adminNavigationItems: AdminNavItem[] = [
 
 /** Hidden from sidebar; routes remain for future modules. */
 export const hiddenAdminNavigationItems: AdminNavItem[] = [
+  {
+    label: 'Future Features',
+    to: '/admin/future-features',
+    icon: Rocket,
+    comingLater: true,
+  },
   { label: 'Reports', to: '/admin/reports', icon: FileBarChart, end: true },
   { label: 'Analytics', to: '/admin/reports/analytics', icon: BarChart3 },
   { label: 'Exports', to: '/admin/reports/exports', icon: Download },
@@ -88,7 +97,8 @@ export const activeAdminRoutes = new Set([
   '/admin/timesheets',
   '/admin/holidays',
   '/admin/vehicle-checks',
-  '/compliance',
+  '/documents',
+  '/contacts',
   '/consumables',
   '/admin/settings',
   '/admin/faq',
@@ -103,6 +113,9 @@ export function isComingSoonRoute(path: string): boolean {
   if (activeAdminRoutes.has(path)) return false
   if (path.startsWith('/drivers/') || path.startsWith('/vehicles/')) return false
   if (path.startsWith('/compliance/workers/') || path.startsWith('/compliance/vehicles/')) {
+    return false
+  }
+  if (path.startsWith('/documents/workers/') || path.startsWith('/documents/vehicles/')) {
     return false
   }
   return comingSoonAdminRoutes.has(path)

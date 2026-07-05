@@ -34,7 +34,7 @@ import {
   getVehicleStatusForDate,
   type Vehicle,
 } from '@/services/vehiclesService'
-import { ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Droplets, Eye, Pencil, Trash2 } from 'lucide-react'
 
 export const VEHICLES_PAGE_SIZE = 25
 
@@ -121,6 +121,12 @@ function VehicleRowActions({
       label: 'View',
       icon: Eye,
       to: `/vehicles/${vehicle.id}`,
+    },
+    {
+      id: 'consumables',
+      label: 'View consumables',
+      icon: Droplets,
+      to: `/vehicles/${vehicle.id}?tab=consumables`,
     },
     {
       id: 'edit',

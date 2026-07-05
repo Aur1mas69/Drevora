@@ -43,6 +43,9 @@ export type Timesheet = {
   bonusAmount: number
   createdAt: string
   updatedAt: string
+  submittedAt: string | null
+  approvedAt: string | null
+  rejectedAt: string | null
   driverName: string
   driverRole: DriverRole | null
   fleetNo: string
@@ -73,6 +76,7 @@ export type TimesheetsSortField =
   | 'weekStart'
   | 'status'
   | 'workedHours'
+  | 'createdAt'
   | 'updatedAt'
 
 export type TimesheetsSortDirection = 'asc' | 'desc'
@@ -102,6 +106,11 @@ export type CreateTimesheetInput = {
   vehicleId?: string | null
   weekStart: string
   notes?: string | null
+}
+
+export type CreateTimesheetResult = {
+  timesheet: Timesheet
+  created: boolean
 }
 
 export type BulkCreateTimesheetsInput = {

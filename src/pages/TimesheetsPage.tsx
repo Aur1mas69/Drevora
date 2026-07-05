@@ -1,3 +1,4 @@
+import { DeleteTimesheetModal } from '@/components/timesheets/DeleteTimesheetModal'
 import { NewTimesheetModal } from '@/components/timesheets/NewTimesheetModal'
 import { TimesheetDrawer } from '@/components/timesheets/TimesheetDrawer'
 import { TimesheetsBulkActionsBar } from '@/components/timesheets/TimesheetsBulkActionsBar'
@@ -19,7 +20,6 @@ import type {
 import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
 import {
   buildRecentWeekOptions,
-  canEditTimesheet,
   getDefaultWeekStartMonday,
   normalizeWeekStartForCompany,
   type TimesheetRoleFilter,
@@ -30,11 +30,11 @@ import {
   approveTimesheet,
   bulkApproveTimesheets,
   bulkCreateTimesheets,
-  bulkRejectTimesheets,
   createTimesheet,
   deleteTimesheet,
   fetchTimesheetById,
   fetchTimesheetsPage,
+  rejectTimesheet,
   submitTimesheet,
   TimesheetsServiceError,
   upsertTimesheetEntries,
@@ -70,8 +70,8 @@ export default function TimesheetsPage() {
   const [weekFilter, setWeekFilter] = useState(getDefaultWeekStartMonday())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_TIMESHEET_PAGE_SIZE)
-  const [sortBy, setSortBy] = useState<TimesheetsSortField>('driverName')
-  const [sortDir, setSortDir] = useState<TimesheetsSortDirection>('asc')
+  const [sortBy, setSortBy] = useState<TimesheetsSortField>('createdAt')
+  const [sortDir, setSortDir] = useState<TimesheetsSortDirection>('desc')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [drawerState, setDrawerState] = useState<DrawerState | null>(null)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
@@ -79,7 +79,11 @@ export default function TimesheetsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [drawerSaveError, setDrawerSaveError] = useState<string | null>(null)
   const [isBulkBusy, setIsBulkBusy] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TimesheetListItem | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const weekSettings = useMemo(
     () =>
@@ -262,25 +266,39 @@ export default function TimesheetsPage() {
     }
   }
 
-  async function handleDelete(timesheet: TimesheetListItem) {
-    const confirmed = window.confirm(
-      `Delete timesheet for ${timesheet.driverName} (${timesheet.weekTitle})? This cannot be undone.`,
-    )
-    if (!confirmed) return
+  function handleDelete(timesheet: TimesheetListItem) {
+    setDeleteError(null)
+    setDeleteTarget(timesheet)
+  }
+
+  function handleCancelDelete() {
+    if (isDeleting) return
+    setDeleteTarget(null)
+    setDeleteError(null)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget || isDeleting) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
 
     try {
-      await deleteTimesheet(timesheet.id)
-      if (drawerState?.timesheet.id === timesheet.id) {
+      await deleteTimesheet(deleteTarget.id)
+      if (drawerState?.timesheet.id === deleteTarget.id) {
         setDrawerState(null)
       }
+      setDeleteTarget(null)
       showToast('Timesheet deleted')
       void loadTimesheets()
     } catch (error) {
-      showToast(
+      const message =
         error instanceof TimesheetsServiceError
           ? error.message
-          : 'Failed to delete timesheet',
-      )
+          : 'Failed to delete timesheet'
+      setDeleteError(message)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -299,28 +317,51 @@ export default function TimesheetsPage() {
     }
   }
 
+  async function handleReject(timesheet: TimesheetListItem) {
+    try {
+      const updated = await rejectTimesheet(timesheet.id)
+      replaceListItem(updated)
+      showToast(`${timesheet.driverName} rejected`)
+      void loadTimesheets()
+    } catch (error) {
+      showToast(
+        error instanceof TimesheetsServiceError
+          ? error.message
+          : 'Failed to reject timesheet',
+      )
+    }
+  }
+
   function handleView(timesheet: TimesheetListItem) {
     void openTimesheet(timesheet.id, 'view')
   }
 
   function handleEdit(timesheet: TimesheetListItem) {
-    void openTimesheet(
-      timesheet.id,
-      canEditTimesheet(timesheet.status) ? 'edit' : 'view',
-    )
+    void openTimesheet(timesheet.id, 'edit')
   }
 
   async function handleCreateSingle(driverId: string, weekStart: string) {
     setIsSaving(true)
     setCreateError(null)
     try {
-      const created = await createTimesheet({ driverId, weekStart })
+      const result = await createTimesheet({ driverId, weekStart })
+
+      if (result.created) {
+        setIsNewModalOpen(false)
+        setCreateError(null)
+        setWeekFilter(result.timesheet.weekStart)
+        showToast('Timesheet created')
+        void loadTimesheets()
+        setDrawerState({ timesheet: result.timesheet, mode: 'edit' })
+        return
+      }
+
+      setWeekFilter(result.timesheet.weekStart)
+      void loadTimesheets()
       setIsNewModalOpen(false)
       setCreateError(null)
-      setWeekFilter(created.weekStart)
-      showToast('Timesheet created')
-      void loadTimesheets()
-      setDrawerState({ timesheet: created, mode: 'edit' })
+      setDrawerState({ timesheet: result.timesheet, mode: 'edit' })
+      showToast('A timesheet already exists for this worker and week. Opened the existing record.')
     } catch (error) {
       const message =
         error instanceof TimesheetsServiceError
@@ -353,11 +394,17 @@ export default function TimesheetsPage() {
       setIsNewModalOpen(false)
       setCreateError(null)
       setWeekFilter(normalizeWeekStartForCompany(weekStart))
-      showToast(
-        `Created ${result.created} timesheet${result.created === 1 ? '' : 's'}${
-          result.skipped > 0 ? ` · ${result.skipped} skipped` : ''
-        }`,
-      )
+      if (result.created === 0 && result.skipped > 0) {
+        showToast(
+          `Skipped ${result.skipped} existing timesheet${result.skipped === 1 ? '' : 's'}.`,
+        )
+      } else if (result.skipped > 0) {
+        showToast(
+          `Created ${result.created} timesheet${result.created === 1 ? '' : 's'}. Skipped ${result.skipped} existing timesheet${result.skipped === 1 ? '' : 's'}.`,
+        )
+      } else {
+        showToast(`Created ${result.created} timesheet${result.created === 1 ? '' : 's'}.`)
+      }
       void loadTimesheets()
     } catch (error) {
       const message =
@@ -390,11 +437,24 @@ export default function TimesheetsPage() {
     setSelectedIds(checked ? new Set(items.map((item) => item.id)) : new Set())
   }
 
+  const selectedSubmittedCount = useMemo(
+    () =>
+      items.filter((item) => selectedIds.has(item.id) && item.status === 'Submitted')
+        .length,
+    [items, selectedIds],
+  )
+
   async function handleBulkApprove() {
     setIsBulkBusy(true)
     try {
       const count = await bulkApproveTimesheets([...selectedIds])
-      showToast(`Approved ${count} timesheet${count === 1 ? '' : 's'}`)
+      if (count === 0) {
+        showToast('No submitted timesheets selected')
+      } else if (count < selectedIds.size) {
+        showToast(`Approved ${count} submitted timesheet${count === 1 ? '' : 's'}`)
+      } else {
+        showToast(`Approved ${count} timesheet${count === 1 ? '' : 's'}`)
+      }
       void loadTimesheets()
     } catch (error) {
       showToast(
@@ -407,29 +467,40 @@ export default function TimesheetsPage() {
     }
   }
 
-  async function handleBulkReject() {
-    setIsBulkBusy(true)
+  async function handleBulkExport() {
+    if (selectedIds.size === 0) {
+      showToast('Select at least one timesheet to export.')
+      return
+    }
+
+    setIsExporting(true)
     try {
-      const count = await bulkRejectTimesheets([...selectedIds])
-      showToast(`Rejected ${count} timesheet${count === 1 ? '' : 's'}`)
-      void loadTimesheets()
+      const ids = [...selectedIds]
+      const timesheets = await Promise.all(ids.map((id) => fetchTimesheetById(id)))
+
+      if (timesheets.length === 0) {
+        showToast('No timesheets to export.')
+        return
+      }
+
+      const { exportTimesheetsToPdf } = await import('@/lib/timesheetPdfExport')
+      await exportTimesheetsToPdf(timesheets)
+      showToast(
+        timesheets.length === 1
+          ? 'Exported timesheet to PDF'
+          : `Exported ${timesheets.length} timesheets to ZIP`,
+      )
     } catch (error) {
       showToast(
         error instanceof TimesheetsServiceError
           ? error.message
-          : 'Bulk reject failed',
+          : error instanceof Error
+            ? error.message
+            : 'Failed to export timesheets',
       )
     } finally {
-      setIsBulkBusy(false)
+      setIsExporting(false)
     }
-  }
-
-  function handleBulkReminder() {
-    showToast(`Reminder queued for ${selectedIds.size} worker${selectedIds.size === 1 ? '' : 's'} (coming soon)`)
-  }
-
-  function handleBulkExport() {
-    showToast('Export coming soon')
   }
 
   const showWeekEmptyState =
@@ -451,6 +522,8 @@ export default function TimesheetsPage() {
           stats={stats}
           weekTitle={weekDisplay.weekTitle}
           weekRangeLabel={weekDisplay.weekRangeLabel}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
         />
 
         <TimesheetsToolbar
@@ -482,11 +555,11 @@ export default function TimesheetsPage() {
 
         <TimesheetsBulkActionsBar
           selectedCount={selectedIds.size}
+          submittedCount={selectedSubmittedCount}
           isBusy={isBulkBusy}
+          isExporting={isExporting}
           onApproveSelected={() => void handleBulkApprove()}
-          onRejectSelected={() => void handleBulkReject()}
-          onReminderSelected={handleBulkReminder}
-          onExportSelected={handleBulkExport}
+          onExportSelected={() => void handleBulkExport()}
           onClearSelection={() => setSelectedIds(new Set())}
         />
 
@@ -530,7 +603,8 @@ export default function TimesheetsPage() {
               onView={handleView}
               onEdit={handleEdit}
               onApprove={(timesheet) => void handleApprove(timesheet)}
-              onDelete={(timesheet) => void handleDelete(timesheet)}
+              onReject={(timesheet) => void handleReject(timesheet)}
+              onDelete={handleDelete}
             />
             <TimesheetsPagination
               page={page}
@@ -573,6 +647,16 @@ export default function TimesheetsPage() {
         onCreateSingle={(driverId, weekStart) => void handleCreateSingle(driverId, weekStart)}
         onCreateBulk={(mode, weekStart) => void handleCreateBulk(mode, weekStart)}
       />
+
+      {deleteTarget ? (
+        <DeleteTimesheetModal
+          timesheet={deleteTarget}
+          errorMessage={deleteError}
+          isDeleting={isDeleting}
+          onCancel={handleCancelDelete}
+          onConfirm={() => void handleConfirmDelete()}
+        />
+      ) : null}
 
       {toastMessage ? (
         <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">

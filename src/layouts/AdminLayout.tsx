@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, LogOut, Menu, X } from 'lucide-react'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import {
+  Bell,
+  HelpCircle,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from 'lucide-react'
 import { AuthServiceError } from '@/services/authService'
 import {
   adminMainNavigationItems,
@@ -10,16 +18,20 @@ import {
 } from '@/lib/adminNavigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed'
 import { Button } from '@/components/ui/button'
 import { getCompanyDisplayName } from '@/lib/company'
 import { requireSupabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 
-function sidebarNavLinkClass(isActive: boolean): string {
-  return `flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-200 ease-out ${
+function sidebarNavLinkClass(isActive: boolean, collapsed: boolean): string {
+  return cn(
+    'flex w-full items-center rounded-[14px] text-left text-[13px] font-medium transition-all duration-200 ease-out',
+    collapsed ? 'justify-center px-2 py-2.5' : 'gap-2.5 px-3 py-2.5',
     isActive
       ? 'bg-gradient-to-b from-[#4F8DFF] to-[#2F73FF] text-white shadow-[0_10px_28px_rgba(47,115,255,0.32)]'
-      : 'text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100'
-  }`
+      : 'text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100',
+  )
 }
 
 function getGreeting(date = new Date()): string {
@@ -59,7 +71,52 @@ function AppBackground() {
   )
 }
 
-function SidebarBrand({ compact = false }: { compact?: boolean }) {
+function SidebarNavTooltip({
+  label,
+  show,
+  children,
+}: {
+  label: string
+  show: boolean
+  children: ReactNode
+}) {
+  if (!show) {
+    return children
+  }
+
+  return (
+    <div className="group/sidebar-tip relative">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute top-1/2 left-[calc(100%+0.65rem)] z-[60] -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#113C69] px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-[0_8px_24px_rgba(17,60,105,0.28)] ring-1 ring-[#218EE7]/35 transition-opacity duration-150 group-hover/sidebar-tip:opacity-100 group-focus-within/sidebar-tip:opacity-100"
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function SidebarBrand({
+  compact = false,
+  collapsed = false,
+}: {
+  compact?: boolean
+  collapsed?: boolean
+}) {
+  if (collapsed) {
+    return (
+      <div className="flex justify-center px-1 py-1">
+        <span
+          aria-label="DREVORA"
+          className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F8DFF] to-[#6366F1] text-sm font-extrabold text-white shadow-[0_8px_20px_rgba(47,115,255,0.28)]"
+        >
+          D
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className={compact ? 'min-w-0 shrink px-1' : 'px-5 py-5'}>
       <span
@@ -73,69 +130,145 @@ function SidebarBrand({ compact = false }: { compact?: boolean }) {
   )
 }
 
+function isAdminNavItemActive(pathname: string, item: AdminNavItem): boolean {
+  const prefixes = item.matchPaths ?? [item.to]
+
+  return prefixes.some((prefix) => {
+    if (item.end) {
+      return pathname === prefix
+    }
+
+    return pathname === prefix || pathname.startsWith(`${prefix}/`)
+  })
+}
+
 function AdminSidebarNavItem({
   item,
+  collapsed = false,
   onNavigate,
 }: {
   item: AdminNavItem
+  collapsed?: boolean
   onNavigate?: () => void
 }) {
-  const { label, icon: Icon, to, end, comingLater } = item
+  const location = useLocation()
+  const { label, icon: Icon, to, comingLater } = item
+  const isActive = isAdminNavItemActive(location.pathname, item)
+  const tooltipLabel = comingLater ? `${label} (Coming soon)` : label
 
   if (comingLater) {
-    return (
+    const content = (
       <div
         aria-disabled="true"
-        title="Coming later"
-        className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left text-[13px] font-medium text-slate-400"
+        title={collapsed ? undefined : 'Coming later'}
+        className={cn(
+          'flex w-full cursor-not-allowed items-center rounded-[14px] text-left text-[13px] font-medium text-slate-400',
+          collapsed ? 'justify-center px-2 py-2.5' : 'gap-2.5 px-3 py-2.5',
+        )}
       >
         <Icon className="size-[18px] shrink-0 opacity-60" strokeWidth={1.9} />
-        <span className="min-w-0 truncate">{label}</span>
-        <span className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
-          Soon
-        </span>
+        {!collapsed ? (
+          <>
+            <span className="min-w-0 truncate">{label}</span>
+            <span className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
+              Soon
+            </span>
+          </>
+        ) : null}
       </div>
+    )
+
+    return (
+      <SidebarNavTooltip label={tooltipLabel} show={collapsed}>
+        {content}
+      </SidebarNavTooltip>
     )
   }
 
-  return (
+  const content = (
     <NavLink
       to={to}
-      end={end}
+      end={item.end}
       onClick={onNavigate}
-      className={({ isActive }) => sidebarNavLinkClass(isActive)}
+      className={sidebarNavLinkClass(isActive, collapsed)}
+      aria-current={isActive ? 'page' : undefined}
+      aria-label={collapsed ? label : undefined}
     >
       <Icon className="size-[18px] shrink-0" strokeWidth={1.9} />
-      <span className="truncate">{label}</span>
+      {!collapsed ? <span className="truncate">{label}</span> : null}
     </NavLink>
+  )
+
+  return (
+    <SidebarNavTooltip label={tooltipLabel} show={collapsed}>
+      {content}
+    </SidebarNavTooltip>
   )
 }
 
-function AdminSidebarNav({
+function AdminSidebarMainNav({
+  collapsed = false,
   onNavigate,
-  scrollable = false,
 }: {
+  collapsed?: boolean
   onNavigate?: () => void
-  scrollable?: boolean
+}) {
+  return (
+    <nav className="shrink-0 space-y-1 pr-1" aria-label="Main navigation">
+      {adminMainNavigationItems.map((item) => (
+        <AdminSidebarNavItem
+          key={item.to}
+          item={item}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+        />
+      ))}
+    </nav>
+  )
+}
+
+function AdminSidebarLowerNav({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
 }) {
   return (
     <nav
-      className={`min-h-0 flex-1 space-y-1 pr-1 ${scrollable ? 'overflow-y-auto' : ''}`}
+      className={cn(
+        'space-y-1 border-t border-[#D3E9FC] pr-1 dark:border-slate-700',
+        collapsed ? 'pt-3' : 'pt-4',
+      )}
+      aria-label="Settings and support"
     >
-      {adminMainNavigationItems.map((item) => (
-        <AdminSidebarNavItem key={item.to} item={item} onNavigate={onNavigate} />
-      ))}
-
-      <div
-        className="mt-6 mb-3 border-t border-[#D7E8FF]/90 dark:border-slate-700"
-        role="separator"
-        aria-hidden="true"
-      />
-
       {adminSecondaryNavigationItems.map((item) => (
-        <AdminSidebarNavItem key={item.to} item={item} onNavigate={onNavigate} />
+        <AdminSidebarNavItem
+          key={item.to}
+          item={item}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+        />
       ))}
     </nav>
+  )
+}
+
+function SidebarNavigation({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <AdminSidebarMainNav collapsed={collapsed} onNavigate={onNavigate} />
+      <div className="mt-auto shrink-0 pt-6">
+        <AdminSidebarLowerNav collapsed={collapsed} onNavigate={onNavigate} />
+        <SidebarSupportBlock collapsed={collapsed} onNavigate={onNavigate} />
+      </div>
+    </div>
   )
 }
 function useAdminLogout() {
@@ -169,20 +302,48 @@ function useAdminLogout() {
   return { logOut, isLoggingOut, logoutError, clearLogoutError: () => setLogoutError(null) }
 }
 
-function SidebarFooter() {
+function SidebarSupportBlock({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
+  if (collapsed) {
+    return (
+      <div className="mt-3 flex justify-center pb-1">
+        <SidebarNavTooltip label="FAQ / Help" show>
+          <Link
+            to="/admin/faq"
+            onClick={onNavigate}
+            aria-label="FAQ / Help"
+            className="flex size-10 items-center justify-center rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/90 text-[#0B68BE] transition-colors hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-[#E8F3FE]/10 dark:text-blue-300"
+          >
+            <HelpCircle className="size-[18px]" strokeWidth={1.9} />
+          </Link>
+        </SidebarNavTooltip>
+      </div>
+    )
+  }
+
   return (
-    <div className="mt-auto shrink-0 border-t border-[#D7E8FF]/70 px-2 pt-4 pb-2 dark:border-slate-800">
-      <div className="overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-[#F8FBFF]/90 px-3 py-3 shadow-sm shadow-blue-100/40 dark:border-slate-700 dark:bg-slate-800/90 dark:shadow-none">
-        <img
-          src="/sidebar/support-truck-driver.png"
-          alt=""
-          className="mx-auto h-14 w-full max-w-[168px] object-contain object-center"
-        />
-        <p className="mt-2 text-[13px] font-semibold text-slate-800 dark:text-slate-100">Support</p>
-        <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Need help?</p>
+    <div className="mt-3 shrink-0 px-1 pb-1">
+      <div className="rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/90 px-3 py-2.5 dark:border-white/10 dark:bg-[#E8F3FE]/10">
+        <p className="text-[12px] font-semibold text-[#113C69] dark:text-slate-100">Need help?</p>
+        <p className="mt-1 text-[11px] leading-snug text-[#3D7A9C] dark:text-slate-400">
+          Contact support or{' '}
+          <Link
+            to="/admin/faq"
+            onClick={onNavigate}
+            className="font-medium text-[#218EE7] transition-colors hover:text-[#0B68BE] hover:underline"
+          >
+            visit FAQ
+          </Link>
+          .
+        </p>
         <a
           href="mailto:support@drevora.app"
-          className="mt-1.5 inline-block text-[12px] font-semibold text-[#2563EB] transition-colors hover:text-[#1d4ed8]"
+          className="mt-2 inline-block text-[11px] font-semibold text-[#218EE7] transition-colors hover:text-[#0B68BE]"
         >
           Contact support
         </a>
@@ -308,13 +469,47 @@ function AccountMenu() {
   )
 }
 
-function Sidebar() {
+function Sidebar({
+  collapsed,
+  onToggleCollapsed,
+}: {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}) {
   return (
-    <aside className="relative z-10 hidden w-[240px] shrink-0 flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 px-3 py-6 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:sticky lg:top-0 lg:flex lg:h-svh lg:max-h-svh">
-      <SidebarBrand />
-      <div className="mt-8 flex min-h-0 flex-1 flex-col overflow-hidden">
-        <AdminSidebarNav scrollable />
-        <SidebarFooter />
+    <aside
+      className={cn(
+        'relative z-10 hidden h-svh max-h-svh shrink-0 flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl transition-[width,padding] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:sticky lg:top-0 lg:flex',
+        collapsed ? 'w-20 px-2 py-4' : 'w-[240px] px-3 py-6',
+      )}
+    >
+      <div
+        className={cn(
+          'flex items-start gap-2',
+          collapsed ? 'flex-col items-center' : 'justify-between px-2',
+        )}
+      >
+        <SidebarBrand collapsed={collapsed} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onToggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={cn(
+            'shrink-0 rounded-[0.9rem] text-slate-500 transition-colors hover:bg-[rgba(79,141,255,0.12)] hover:text-[#2F73FF] dark:text-slate-400 dark:hover:text-blue-300',
+            collapsed ? 'size-9' : 'size-9',
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-[18px]" strokeWidth={1.9} />
+          ) : (
+            <PanelLeftClose className="size-[18px]" strokeWidth={1.9} />
+          )}
+        </Button>
+      </div>
+      <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', collapsed ? 'mt-4' : 'mt-8')}>
+        <SidebarNavigation collapsed={collapsed} />
       </div>
     </aside>
   )
@@ -415,8 +610,7 @@ function MobileNavDrawer({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-5">
-          <AdminSidebarNav onNavigate={onClose} scrollable />
-          <SidebarFooter />
+          <SidebarNavigation onNavigate={onClose} />
         </div>
       </aside>
     </>,
@@ -503,6 +697,8 @@ function AdminLayout({
   backgroundMood?: 'default' | 'sunny' | 'cloudy' | 'rain' | 'night'
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { collapsed: sidebarCollapsed, toggleCollapsed: toggleSidebarCollapsed } =
+    useSidebarCollapsed()
   const moodClass =
     backgroundMood === 'default'
       ? ''
@@ -518,7 +714,10 @@ function AdminLayout({
     >
       <AppBackground />
       <div className="relative flex w-full items-start">
-        <Sidebar />
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebarCollapsed}
+        />
 
         <div className="relative z-10 min-w-0 flex-1 pt-14 lg:pt-0">
           <MobileNavHeader

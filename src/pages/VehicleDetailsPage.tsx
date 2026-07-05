@@ -6,7 +6,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -31,6 +31,7 @@ import {
 } from '@/components/vehicles/AvailabilityEventModals'
 import { DeleteVehicleModal } from '@/components/vehicles/DeleteVehicleModal'
 import { TimelineTab } from '@/components/vehicles/TimelineTab'
+import { VehicleConsumablesTab } from '@/components/vehicles/VehicleConsumablesTab'
 import { VehicleEditModal } from '@/components/vehicles/VehicleEditModal'
 import { VehicleStatusBadge } from '@/components/vehicles/VehicleStatusBadge'
 import {
@@ -51,6 +52,11 @@ import {
   type VehicleInput,
   type VehicleStatus,
 } from '@/services/vehiclesService'
+import {
+  fetchConsumablesForVehicle,
+  ConsumablesServiceError,
+} from '@/services/consumablesService'
+import type { Consumable } from '@/lib/consumableTypes'
 
 type VehicleTab =
   | 'Overview'
@@ -60,6 +66,7 @@ type VehicleTab =
   | 'Maintenance'
   | 'Vehicle Checks'
   | 'Defects'
+  | 'Fluids & Consumables'
   | 'History'
 
 const tabs: VehicleTab[] = [
@@ -70,8 +77,13 @@ const tabs: VehicleTab[] = [
   'Maintenance',
   'Vehicle Checks',
   'Defects',
+  'Fluids & Consumables',
   'History',
 ]
+
+const tabFromSearchParam: Record<string, VehicleTab> = {
+  consumables: 'Fluids & Consumables',
+}
 
 const maintenanceReasons = ['Service', 'Repair', 'MOT', 'Inspection', 'Tyres', 'Other']
 
@@ -530,6 +542,7 @@ function VehicleDetailsSkeleton() {
 function VehicleDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [activeTab, setActiveTab] = useState<VehicleTab>('Overview')
@@ -571,6 +584,9 @@ function VehicleDetailsPage() {
   const [vehicleSaveError, setVehicleSaveError] = useState<string | null>(null)
   const [isSavingVehicle, setIsSavingVehicle] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [vehicleConsumables, setVehicleConsumables] = useState<Consumable[]>([])
+  const [isLoadingConsumables, setIsLoadingConsumables] = useState(false)
+  const [consumablesLoadError, setConsumablesLoadError] = useState<string | null>(null)
 
   const loadVehicle = useCallback(async () => {
     if (!id) {
@@ -601,6 +617,13 @@ function VehicleDetailsPage() {
   }, [loadVehicle])
 
   useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && tabFromSearchParam[tabParam]) {
+      setActiveTab(tabFromSearchParam[tabParam])
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     if (!toastMessage) return
     const timeoutId = window.setTimeout(() => setToastMessage(null), 3000)
     return () => window.clearTimeout(timeoutId)
@@ -627,6 +650,43 @@ function VehicleDetailsPage() {
     }
 
     void loadTimeline()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeTab, vehicle])
+
+  useEffect(() => {
+    if (activeTab !== 'Fluids & Consumables' || !vehicle) return
+
+    const vehicleId = vehicle.id
+    let isCancelled = false
+
+    async function loadConsumables() {
+      setIsLoadingConsumables(true)
+      setConsumablesLoadError(null)
+
+      try {
+        const records = await fetchConsumablesForVehicle(vehicleId)
+        if (!isCancelled) {
+          setVehicleConsumables(records)
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setConsumablesLoadError(
+            error instanceof ConsumablesServiceError
+              ? error.message
+              : 'Unable to load consumables for this vehicle.',
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingConsumables(false)
+        }
+      }
+    }
+
+    void loadConsumables()
 
     return () => {
       isCancelled = true
@@ -1040,6 +1100,14 @@ function VehicleDetailsPage() {
         ) : null}
         {activeTab === 'Defects' ? (
           <EmptyState icon={ShieldAlert} message="No defects yet" />
+        ) : null}
+        {activeTab === 'Fluids & Consumables' ? (
+          <VehicleConsumablesTab
+            vehicleId={vehicle.id}
+            items={vehicleConsumables}
+            isLoading={isLoadingConsumables}
+            loadError={consumablesLoadError}
+          />
         ) : null}
         {activeTab === 'History' ? (
           <EmptyState icon={CheckCircle2} message="No vehicle history yet" />
