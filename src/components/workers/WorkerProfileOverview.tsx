@@ -1,12 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Briefcase,
+  CalendarDays,
   MapPin,
   PhoneCall,
   ShieldCheck,
   UserRound,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
 import { WorkerEmploymentTypeBadge } from '@/components/workers/WorkerEmploymentTypeBadge'
 import { WorkerExpiryDateValue } from '@/components/workers/WorkerExpiryDateValue'
@@ -17,6 +18,8 @@ import {
   isWorkerAddressEmpty,
 } from '@/lib/workerProfileUtils'
 import type { Driver, DriverStatus } from '@/services/driversService'
+import { fetchWorkerHolidayBalanceSummary } from '@/services/holidayRequestsService'
+import type { HolidayBalanceSummary } from '@/lib/holidayRequestTypes'
 import { cn } from '@/lib/utils'
 
 const profileSectionCardClass =
@@ -113,10 +116,29 @@ type WorkerProfileOverviewProps = {
 }
 
 export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
+  const [holidayBalance, setHolidayBalance] = useState<HolidayBalanceSummary | null>(null)
   const fullName = `${driver.firstName} ${driver.lastName}`.trim()
   const licenceCategories = formatLicenceCategories(driver.licenceCategories)
   const defaultVehicle = getWorkerDefaultVehicleLabel(driver)
   const hasAddress = !isWorkerAddressEmpty(driver)
+  const paidDays = driver.annualPaidHolidayDays ?? 0
+  const bankDays = driver.bankHolidayEntitlementDays ?? 0
+  const totalEntitlement = driver.paidHolidayEnabled === false ? 0 : paidDays + bankDays
+
+  useEffect(() => {
+    let isCancelled = false
+    void fetchWorkerHolidayBalanceSummary(driver.id)
+      .then((balance) => {
+        if (!isCancelled) setHolidayBalance(balance)
+      })
+      .catch(() => {
+        if (!isCancelled) setHolidayBalance(null)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [driver.id])
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -161,6 +183,40 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
           </ProfileField>
         </ProfileSectionCard>
       </div>
+
+      <ProfileSectionCard title="Holiday Entitlement" icon={CalendarDays}>
+        <ProfileField label="Paid holiday enabled">
+          {driver.paidHolidayEnabled === null ? (
+            <ProfileEmptyValue>Use Employment Type default</ProfileEmptyValue>
+          ) : driver.paidHolidayEnabled ? (
+            'Yes'
+          ) : (
+            'No'
+          )}
+        </ProfileField>
+        <ProfileField label="Annual paid holiday days">
+          {driver.annualPaidHolidayDays == null ? <ProfileEmptyValue>Use default</ProfileEmptyValue> : driver.annualPaidHolidayDays}
+        </ProfileField>
+        <ProfileField label="Bank holiday entitlement">
+          {driver.bankHolidayEntitlementDays == null ? <ProfileEmptyValue>Use default</ProfileEmptyValue> : driver.bankHolidayEntitlementDays}
+        </ProfileField>
+        <ProfileField label="Total entitlement">{totalEntitlement}</ProfileField>
+        <ProfileField label="Used approved paid holiday">
+          {holidayBalance ? holidayBalance.usedHolidayDays : <ProfileEmptyValue />}
+        </ProfileField>
+        <ProfileField label="Pending paid holiday">
+          {holidayBalance ? holidayBalance.pendingHolidayDays : <ProfileEmptyValue />}
+        </ProfileField>
+        <ProfileField label="Remaining paid holiday">
+          {holidayBalance && holidayBalance.allowanceKnown && Number.isFinite(holidayBalance.remainingBeforeRequest)
+            ? holidayBalance.remainingBeforeRequest
+            : <ProfileEmptyValue />}
+        </ProfileField>
+        <ProfileField label="Unpaid leave allowed">{driver.unpaidLeaveAllowed ? 'Yes' : 'No'}</ProfileField>
+        <ProfileField label="Notes" className="sm:col-span-2">
+          {driver.holidayEntitlementNotes ? driver.holidayEntitlementNotes : <ProfileEmptyValue />}
+        </ProfileField>
+      </ProfileSectionCard>
 
       <ProfileSectionCard title="Address" icon={MapPin} className="lg:max-w-2xl">
         {hasAddress ? (

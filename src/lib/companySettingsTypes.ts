@@ -1,10 +1,107 @@
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import type { DriverRole } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
+import type { EmploymentType } from '@/services/driversService'
 
 export type CompanyDateFormat = 'DMY' | 'MDY' | 'YMD'
 export type CompanyWeekStarts = 'monday' | 'sunday'
 export type TimesheetWeekStartDay = 'monday' | 'sunday'
+export type HolidayCountingMethod = 'working_days' | 'calendar_days' | 'custom_working_week'
+export type HolidayWorkingDay =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday'
+
+export type HolidayEntitlementRule = {
+  paidHolidayEnabled: boolean
+  annualPaidHolidayDays: number
+  bankHolidayEntitlementDays: number
+  unpaidLeaveAllowed: boolean
+}
+
+export type HolidayEntitlementRules = Record<EmploymentType, HolidayEntitlementRule>
+
+export const DEFAULT_HOLIDAY_ENTITLEMENT_RULES: HolidayEntitlementRules = {
+  'Full-time': {
+    paidHolidayEnabled: true,
+    annualPaidHolidayDays: 20,
+    bankHolidayEntitlementDays: 8,
+    unpaidLeaveAllowed: true,
+  },
+  'Part-time': {
+    paidHolidayEnabled: true,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  Umbrella: {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  Agency: {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  'Self-employed / Contractor': {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  'Zero-hours': {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  Temporary: {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  Casual: {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+  Other: {
+    paidHolidayEnabled: true,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  },
+}
+
+export const HOLIDAY_WORKING_DAY_OPTIONS: {
+  value: HolidayWorkingDay
+  label: string
+}[] = [
+  { value: 'monday', label: 'Monday' },
+  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'wednesday', label: 'Wednesday' },
+  { value: 'thursday', label: 'Thursday' },
+  { value: 'friday', label: 'Friday' },
+  { value: 'saturday', label: 'Saturday' },
+  { value: 'sunday', label: 'Sunday' },
+]
+
+export const DEFAULT_HOLIDAY_WORKING_DAYS: HolidayWorkingDay[] = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+]
 
 export type TimesheetWeekSettings = {
   timesheetWeekStartDay: TimesheetWeekStartDay
@@ -160,6 +257,9 @@ export type CompanySettings = {
   requireTimesheetApproval: boolean
   holidayYearStart: string
   annualLeaveAllowance: number
+  holidayCountingMethod: HolidayCountingMethod
+  holidayWorkingDays: HolidayWorkingDay[]
+  holidayEntitlementRules: HolidayEntitlementRules
   theme: CompanyTheme
   compactTables: boolean
   emailNotifications: boolean
@@ -202,6 +302,9 @@ export type CompanySettingsInput = {
   requireTimesheetApproval: boolean
   holidayYearStart: string
   annualLeaveAllowance: number
+  holidayCountingMethod: HolidayCountingMethod
+  holidayWorkingDays: HolidayWorkingDay[]
+  holidayEntitlementRules: HolidayEntitlementRules
   theme: CompanyTheme
   compactTables: boolean
   emailNotifications: boolean
@@ -244,6 +347,9 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   requireTimesheetApproval: true,
   holidayYearStart: '01-01',
   annualLeaveAllowance: 28,
+  holidayCountingMethod: 'working_days',
+  holidayWorkingDays: DEFAULT_HOLIDAY_WORKING_DAYS,
+  holidayEntitlementRules: DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
   theme: 'light',
   compactTables: false,
   emailNotifications: true,

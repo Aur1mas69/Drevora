@@ -10,7 +10,8 @@ import AdminDashboardPage from '@/pages/AdminDashboardPage'
 import AdminLoginPage from '@/pages/AdminLoginPage'
 import AdminComingSoonPage from '@/pages/admin/AdminComingSoonPage'
 import ContactsPage from '@/pages/ContactsPage'
-import CompliancePage from '@/pages/CompliancePage'
+import DocumentsPage from '@/pages/DocumentsPage'
+import DriverReportsPage from '@/pages/DriverReportsPage'
 import ConsumablesPage from '@/pages/ConsumablesPage'
 import VehicleComplianceProfilePage from '@/pages/VehicleComplianceProfilePage'
 import WorkerComplianceProfilePage from '@/pages/WorkerComplianceProfilePage'
@@ -21,6 +22,7 @@ import WorkerLoginPage from '@/pages/WorkerLoginPage'
 import DriversPage from '@/pages/DriversPage'
 import HistoryPage from '@/pages/HistoryPage'
 import LandingPage from '@/pages/LandingPage'
+import MyHolidaysPage from '@/pages/MyHolidaysPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProfilePage from '@/pages/ProfilePage'
 import FaqHelpPage from '@/pages/FaqHelpPage'
@@ -32,22 +34,26 @@ import VehicleDetailsPage from '@/pages/VehicleDetailsPage'
 import VehiclesPage from '@/pages/VehiclesPage'
 import { useAuth } from '@/contexts/AuthContext'
 
-function RequireAuth() {
-  const { isAuthenticated, isAuthLoading } = useAuth()
+function RequireWorkerAuth() {
+  const { isAuthenticated, isAuthLoading, portal } = useAuth()
 
   if (isAuthLoading) {
     return null
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin-login" replace />
+    return <Navigate to="/driver-login" replace />
+  }
+
+  if (portal === 'admin') {
+    return <Navigate to="/admin" replace />
   }
 
   return <MainLayout />
 }
 
 function RequireAuthPage({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isAuthLoading } = useAuth()
+  const { isAuthenticated, isAuthLoading, portal } = useAuth()
 
   if (isAuthLoading) {
     return null
@@ -55,6 +61,10 @@ function RequireAuthPage({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin-login" replace />
+  }
+
+  if (portal === 'worker') {
+    return <Navigate to="/dashboard" replace />
   }
 
   return children
@@ -106,7 +116,7 @@ function AppRouter() {
           path="/documents"
           element={
             <RequireAuthPage>
-              <CompliancePage />
+              <DocumentsPage />
             </RequireAuthPage>
           }
         />
@@ -210,10 +220,7 @@ function AppRouter() {
           path="/admin/driver-reports"
           element={
             <RequireAuthPage>
-              <AdminComingSoonPage
-                title="Driver Reports"
-                description="Driver-specific reporting and exports will be available in a future release."
-              />
+              <DriverReportsPage />
             </RequireAuthPage>
           }
         />
@@ -313,8 +320,10 @@ function AppRouter() {
             </RequireAuthPage>
           }
         />
-        <Route element={<RequireAuth />}>
+        <Route element={<RequireWorkerAuth />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/worker/holidays" element={<MyHolidaysPage />} />
+          <Route path="/my-holidays" element={<Navigate to="/worker/holidays" replace />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

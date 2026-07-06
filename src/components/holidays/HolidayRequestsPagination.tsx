@@ -1,11 +1,5 @@
 import { Button } from '@/components/ui/button'
 import { HOLIDAY_PAGE_SIZE_OPTIONS } from '@/lib/holidayRequestTypes'
-import {
-  adminHeading,
-  adminSelectXs,
-  adminTableFooter,
-  adminTextMuted,
-} from '@/lib/adminUiStyles'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type HolidayRequestsPaginationProps = {
@@ -28,20 +22,18 @@ export function HolidayRequestsPagination({
   const to = Math.min(page * pageSize, totalCount)
 
   return (
-    <div
-      className={`flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between ${adminTableFooter}`}
-    >
-      <p className={`text-xs font-medium ${adminTextMuted}`}>
+    <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-[#D3E9FC]/70 bg-[#F8FBFF]/80 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-[#5499BF]">
         Showing {from}–{to} of {totalCount}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className={`flex items-center gap-1.5 text-xs font-medium ${adminTextMuted}`}>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF]">
           Rows
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className={adminSelectXs}
+            className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70"
           >
             {HOLIDAY_PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -58,12 +50,12 @@ export function HolidayRequestsPagination({
             size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="h-8 w-8 rounded-[8px] p-0"
+            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF]"
             aria-label="Previous page"
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className={`min-w-[4.5rem] text-center text-xs font-semibold tabular-nums ${adminHeading}`}>
+          <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-[#113C69]">
             {page} / {totalPages}
           </span>
           <Button
@@ -72,7 +64,7 @@ export function HolidayRequestsPagination({
             size="sm"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="h-8 w-8 rounded-[8px] p-0"
+            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF]"
             aria-label="Next page"
           >
             <ChevronRight className="size-4" />

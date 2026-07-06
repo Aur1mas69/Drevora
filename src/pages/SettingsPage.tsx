@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
+import { Lock } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import {
   SettingsField,
@@ -17,6 +18,7 @@ import {
   settingsSelectClassName,
 } from '@/components/settings/SettingsControls'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
 import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
 import { Button } from '@/components/ui/button'
@@ -28,13 +30,14 @@ import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import {
   COMPANY_SETTINGS_TABS,
   DEFAULT_COMPANY_SETTINGS,
+  HOLIDAY_WORKING_DAY_OPTIONS,
   THEME_OPTIONS,
   type CompanyTheme,
   type CompanySettingsInput,
   type CompanySettingsTab,
 } from '@/lib/companySettingsTypes'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
-import { companySettingsService, validateCompanyName, COMPANY_NAME_MAX_LENGTH } from '@/services/companySettingsService'
+import { companySettingsService } from '@/services/companySettingsService'
 
 const timezoneOptions = [
   'Europe/London',
@@ -47,8 +50,20 @@ const timezoneOptions = [
   'UTC',
 ]
 
+function normalizeFormForCompare(value: CompanySettingsInput): CompanySettingsInput {
+  const selectedDays = new Set(value.holidayWorkingDays)
+  return {
+    ...value,
+    holidayWorkingDays: HOLIDAY_WORKING_DAY_OPTIONS.map((option) => option.value).filter((day) =>
+      selectedDays.has(day),
+    ),
+  }
+}
+
 function formsEqual(left: CompanySettingsInput, right: CompanySettingsInput): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
+  return (
+    JSON.stringify(normalizeFormForCompare(left)) === JSON.stringify(normalizeFormForCompare(right))
+  )
 }
 
 function SettingsPage() {
@@ -57,7 +72,6 @@ function SettingsPage() {
   const [form, setForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [savedForm, setSavedForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [nameError, setNameError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const isDirtyRef = useRef(false)
 
@@ -88,15 +102,7 @@ function SettingsPage() {
   async function handleSave() {
     if (!isDirty || isSaving) return
 
-    const companyNameError = validateCompanyName(form.name)
-    if (companyNameError) {
-      setNameError(companyNameError)
-      setSaveError(null)
-      return
-    }
-
     setSaveError(null)
-    setNameError(null)
 
     try {
       const updated = await updateSettings(form)
@@ -114,13 +120,7 @@ function SettingsPage() {
 
   function handleTextChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = event.target
-    if (name === 'name') {
-      updateForm({ name: value })
-      if (nameError) {
-        setNameError(validateCompanyName(value))
-      }
-      return
-    }
+    if (name === 'name') return
     updateForm({ [name]: value } as Partial<CompanySettingsInput>)
   }
 
@@ -184,20 +184,21 @@ function SettingsPage() {
                 <SettingsField
                   label="Company Name"
                   span="full"
-                  hint="Displayed on the dashboard greeting and across DREVORA."
+                  hint="Company name is locked. Contact support to change it."
                 >
-                  <Input
-                    name="name"
-                    value={form.name}
-                    onChange={handleTextChange}
-                    maxLength={COMPANY_NAME_MAX_LENGTH}
-                    required
-                    aria-invalid={Boolean(nameError)}
-                    className={settingsFieldClassName}
-                  />
-                  {nameError ? (
-                    <p className="mt-1.5 text-xs font-medium text-rose-500">{nameError}</p>
-                  ) : null}
+                  <div className="relative">
+                    <Input
+                      name="name"
+                      value={form.name}
+                      readOnly
+                      aria-readonly="true"
+                      className={`${settingsFieldClassName} cursor-not-allowed bg-[#F8FBFF]/95 pr-10 text-[#113C69] ring-[#D3E9FC]/80`}
+                    />
+                    <Lock
+                      className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#5499BF]"
+                      aria-hidden="true"
+                    />
+                  </div>
                 </SettingsField>
 
                 <SettingsField
@@ -330,36 +331,13 @@ function SettingsPage() {
             ) : null}
 
             {activeTab === 'holidays' ? (
-              <SettingsSection
-                title="Holidays"
-                description="Leave year configuration for holiday requests and reports."
-              >
-                <SettingsField
-                  label="Holiday Year Start"
-                  hint="Month and day when the leave year begins (MM-DD)."
-                >
-                  <Input
-                    name="holidayYearStart"
-                    value={form.holidayYearStart}
-                    onChange={handleTextChange}
-                    placeholder="01-01"
-                    className={settingsFieldClassName}
-                  />
-                </SettingsField>
-
-                <SettingsField label="Annual Leave Allowance">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={365}
-                    value={form.annualLeaveAllowance}
-                    onChange={(event) =>
-                      handleNumberChange('annualLeaveAllowance', Number(event.target.value) || 0)
-                    }
-                    className={settingsFieldClassName}
-                  />
-                </SettingsField>
-              </SettingsSection>
+              <HolidaySettingsPanel
+                form={form}
+                onChange={updateForm}
+                isDirty={isDirty}
+                isSaving={isSaving}
+                onSave={() => void handleSave()}
+              />
             ) : null}
 
             {activeTab === 'appearance' ? (
@@ -448,28 +426,38 @@ function SettingsPage() {
               </SettingsSection>
             ) : null}
 
-            <p className="mt-8 border-t border-blue-100/80 pt-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
-            </p>
+            {activeTab !== 'holidays' ? (
+              <p className="mt-8 border-t border-blue-100/80 pt-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </div>
 
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-        {toastMessage ? (
-          <div className="rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
-            {toastMessage}
-          </div>
-        ) : null}
-        <Button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={!isDirty || isSaving}
-          className="h-11 rounded-[14px] bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSaving ? 'Saving…' : 'Save Changes'}
-        </Button>
-      </div>
+      {activeTab !== 'holidays' ? (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+          {toastMessage ? (
+            <div className="rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
+              {toastMessage}
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!isDirty || isSaving}
+            className="h-11 rounded-[14px] bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      ) : null}
+
+      {activeTab === 'holidays' && toastMessage ? (
+        <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
+          {toastMessage}
+        </div>
+      ) : null}
     </AdminLayout>
   )
 }

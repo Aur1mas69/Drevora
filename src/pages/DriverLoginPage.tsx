@@ -19,7 +19,7 @@ function DriverLoginPage() {
       description="Driver login"
       onBack={() => navigate('/')}
       onSignInSuccess={(session) => {
-        setAuthenticatedSession(session)
+        setAuthenticatedSession(session, 'worker')
         navigate('/dashboard', { replace: true })
       }}
     />

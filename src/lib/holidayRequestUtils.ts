@@ -1,9 +1,109 @@
+import {
+  DEFAULT_HOLIDAY_WORKING_DAYS,
+  type HolidayCountingMethod,
+  type HolidayWorkingDay,
+} from '@/lib/companySettingsTypes'
 import type {
+  HolidayDayBreakdown,
   HolidayRequest,
   HolidayRequestStatus,
   HolidayRequestStatusFilter,
   HolidayRequestSummaryStats,
 } from '@/lib/holidayRequestTypes'
+
+const DAY_INDEX_TO_HOLIDAY_DAY: HolidayWorkingDay[] = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+]
+
+export type HolidayCountingSettings = {
+  holidayCountingMethod: HolidayCountingMethod
+  holidayWorkingDays: HolidayWorkingDay[]
+}
+
+export const DEFAULT_HOLIDAY_COUNTING_SETTINGS: HolidayCountingSettings = {
+  holidayCountingMethod: 'working_days',
+  holidayWorkingDays: DEFAULT_HOLIDAY_WORKING_DAYS,
+}
+
+export const HOLIDAY_MAX_WORKERS_OFF_PER_DAY = 2
+
+export function resolveWorkerDisplayName(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+): string {
+  const first = firstName?.trim() ?? ''
+  const last = lastName?.trim() ?? ''
+  const full = `${first} ${last}`.trim()
+  if (full) return full
+  if (first) return first
+  if (last) return last
+  return 'Worker'
+}
+
+export function normalizeHolidayIsoDate(value: string): string {
+  return value.slice(0, 10)
+}
+
+export function addHolidayDaysIso(iso: string, days: number): string {
+  const date = new Date(`${normalizeHolidayIsoDate(iso)}T00:00:00`)
+  date.setDate(date.getDate() + days)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function buildHolidayRequestsByDay(
+  requests: HolidayRequest[],
+  visibleStart: string,
+  visibleEnd: string,
+): Map<string, HolidayRequest[]> {
+  const map = new Map<string, HolidayRequest[]>()
+
+  for (const request of requests) {
+    const start = normalizeHolidayIsoDate(request.startDate)
+    const end = normalizeHolidayIsoDate(request.endDate)
+    if (!start || !end || end < start) continue
+
+    let current = start
+    while (current <= end) {
+      if (current >= visibleStart && current <= visibleEnd) {
+        const dayRequests = map.get(current) ?? []
+        dayRequests.push(request)
+        map.set(current, dayRequests)
+      }
+      current = addHolidayDaysIso(current, 1)
+    }
+  }
+
+  for (const [iso, dayRequests] of map.entries()) {
+    map.set(
+      iso,
+      dayRequests.sort((left, right) => left.workerName.localeCompare(right.workerName)),
+    )
+  }
+
+  return map
+}
+
+export function matchesHolidayRequestCompanyScope(
+  driverCompany: string | null | undefined,
+  companyScope: string | null | undefined,
+): boolean {
+  const scope = companyScope?.trim() ?? ''
+  if (!scope) return true
+
+  const workerCompany = driverCompany?.trim() ?? ''
+  if (!workerCompany) return true
+
+  return workerCompany === scope
+}
 
 export function calculateInclusiveCalendarDays(
   startDate: string,
@@ -18,7 +118,65 @@ export function calculateInclusiveCalendarDays(
   return diffDays + 1
 }
 
+export function calculateHolidayDayBreakdown(
+  startDate: string,
+  endDate: string,
+  settings: HolidayCountingSettings = DEFAULT_HOLIDAY_COUNTING_SETTINGS,
+): HolidayDayBreakdown {
+  const calendarDaysTotal = calculateInclusiveCalendarDays(startDate, endDate)
+  if (calendarDaysTotal <= 0) {
+    return {
+      calendarDaysTotal: 0,
+      holidayDaysDeducted: 0,
+      nonWorkingDaysExcluded: 0,
+    }
+  }
+
+  if (settings.holidayCountingMethod === 'calendar_days') {
+    return {
+      calendarDaysTotal,
+      holidayDaysDeducted: calendarDaysTotal,
+      nonWorkingDaysExcluded: 0,
+    }
+  }
+
+  const workingDays = new Set(
+    settings.holidayWorkingDays.length > 0
+      ? settings.holidayWorkingDays
+      : DEFAULT_HOLIDAY_WORKING_DAYS,
+  )
+  const current = new Date(`${startDate}T00:00:00`)
+  const end = new Date(`${endDate}T00:00:00`)
+  let holidayDaysDeducted = 0
+
+  while (current <= end) {
+    const day = DAY_INDEX_TO_HOLIDAY_DAY[current.getDay()]
+    if (workingDays.has(day)) {
+      holidayDaysDeducted += 1
+    }
+    current.setDate(current.getDate() + 1)
+  }
+
+  return {
+    calendarDaysTotal,
+    holidayDaysDeducted,
+    nonWorkingDaysExcluded: calendarDaysTotal - holidayDaysDeducted,
+  }
+}
+
+export function getHolidayCountingMethodLabel(method: HolidayCountingMethod): string {
+  switch (method) {
+    case 'calendar_days':
+      return 'Calendar days'
+    case 'custom_working_week':
+      return 'Custom working week'
+    case 'working_days':
+      return 'Working days only'
+  }
+}
+
 export function getStatusLabel(status: HolidayRequestStatus): string {
+  if (status === 'Rejected') return 'Declined'
   return status
 }
 
@@ -27,7 +185,7 @@ export function getStatusBadgeClass(status: HolidayRequestStatus): string {
     case 'Pending':
       return 'bg-amber-50 text-amber-700 ring-amber-100'
     case 'Approved':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+      return 'bg-teal-50 text-teal-700 ring-teal-100'
     case 'Rejected':
       return 'bg-rose-50 text-rose-700 ring-rose-100'
     case 'Cancelled':
@@ -56,10 +214,17 @@ export function getMonthBounds(date = new Date()): { start: string; end: string 
   }
 }
 
+export function toLocalIsoDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function addDaysIso(dateValue: string, days: number): string {
-  const date = new Date(`${dateValue}T00:00:00`)
+  const date = new Date(`${normalizeHolidayIsoDate(dateValue)}T00:00:00`)
   date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
+  return toLocalIsoDate(date)
 }
 
 export function computeHolidaySummaryStats(
@@ -70,6 +235,9 @@ export function computeHolidaySummaryStats(
   const upcomingEnd = addDaysIso(today, 30)
 
   const pendingRequests = rows.filter((row) => row.status === 'Pending').length
+  const approvedRequests = rows.filter((row) => row.status === 'Approved').length
+  const declinedRequests = rows.filter((row) => row.status === 'Rejected').length
+  const totalRequests = rows.length
 
   const approvedThisMonth = rows.filter((row) => {
     if (row.status !== 'Approved') return false
@@ -92,6 +260,9 @@ export function computeHolidaySummaryStats(
 
   return {
     pendingRequests,
+    approvedRequests,
+    declinedRequests,
+    totalRequests,
     approvedThisMonth,
     workersOffToday: workersOffTodaySet.size,
     upcomingLeave,

@@ -1,0 +1,36 @@
+import { Button } from '@/components/ui/button'
+import { FileText, Plus } from 'lucide-react'
+import { documentPageCardClass } from './documentUiStyles'
+
+type DocumentsEmptyStateProps = {
+  hasActiveFilters: boolean
+  onAddFirst: () => void
+}
+
+export function DocumentsEmptyState({ hasActiveFilters, onAddFirst }: DocumentsEmptyStateProps) {
+  return (
+    <div className={`px-6 py-14 text-center ${documentPageCardClass}`}>
+      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#EEF6FF] text-[#218EE7] ring-1 ring-[#C5DFFB]/70">
+        <FileText className="size-7" aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 text-lg font-semibold text-[#113C69]">
+        {hasActiveFilters ? 'No documents found.' : 'No documents added yet.'}
+      </h2>
+      <p className="mt-2 text-sm text-[#5499BF]">
+        {hasActiveFilters
+          ? 'Try adjusting your search or filters.'
+          : 'Add company, worker or vehicle documents to track expiry dates and files.'}
+      </p>
+      {!hasActiveFilters ? (
+        <Button
+          type="button"
+          onClick={onAddFirst}
+          className="mt-5 h-10 rounded-[12px] bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 text-sm font-semibold text-white"
+        >
+          <Plus className="mr-1.5 size-4" />
+          Add first document
+        </Button>
+      ) : null}
+    </div>
+  )
+}

@@ -41,7 +41,10 @@ import {
   validateVehicleForm,
   type VehicleFormErrors,
 } from '@/lib/vehicleForm'
+import type { Document } from '@/lib/documentTypes'
+import { documentStatusClassMap, getDocumentStatusLabel } from '@/lib/documentUtils'
 import { notifyVehiclesUpdated } from '@/lib/vehicleEvents'
+import { fetchDocumentsByVehicleId } from '@/services/documentsService'
 import { driversService, type Driver } from '@/services/driversService'
 import {
   vehiclesService,
@@ -138,21 +141,90 @@ function getVehicleName(vehicle: Vehicle): string {
   return `${vehicle.make} ${vehicle.model}`.trim()
 }
 
-function getDaysRemaining(value: string | null): number | null {
-  if (!value) return null
+function DocumentsTab({ vehicle }: { vehicle: Vehicle }) {
+  const [items, setItems] = useState<Document[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const expiryDate = new Date(`${value}T00:00:00`)
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    void fetchDocumentsByVehicleId(vehicle.id)
+      .then((records) => {
+        if (!cancelled) setItems(records)
+      })
+      .catch(() => {
+        if (!cancelled) setItems([])
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [vehicle.id])
 
-  return Math.ceil((expiryDate.getTime() - today.getTime()) / 86_400_000)
-}
+  if (isLoading) {
+    return (
+      <div className="rounded-[20px] bg-white px-6 py-10 text-center text-sm font-medium text-slate-500 ring-1 ring-blue-100/70">
+        Loading documents…
+      </div>
+    )
+  }
 
-function getDocumentStatus(daysRemaining: number | null) {
-  if (daysRemaining === null) return 'Not set'
-  if (daysRemaining < 0) return 'Expired'
-  if (daysRemaining <= 30) return 'Expiring Soon'
-  return 'Valid'
+  if (items.length === 0) {
+    return (
+      <div className="rounded-[20px] bg-white px-6 py-10 text-center ring-1 ring-blue-100/70">
+        <p className="text-sm font-semibold text-slate-800">No documents for this vehicle yet.</p>
+        <Link
+          to={`/documents?tab=vehicles&vehicleId=${vehicle.id}`}
+          className="mt-3 inline-flex text-sm font-semibold text-[#2563EB] hover:underline"
+        >
+          Add vehicle documents
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {items.map((document) => (
+        <Card
+          key={document.id}
+          className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70"
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+                  {document.documentName}
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-500">{document.documentType}</p>
+                <p className="mt-2 text-sm font-medium text-slate-500">
+                  Expiry: {document.expiryDate ? formatDate(document.expiryDate) : 'No expiry'}
+                </p>
+              </div>
+              <FileText className="size-5 text-[#3B82F6]" />
+            </div>
+            <span
+              className={`mt-5 inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${documentStatusClassMap[document.status]}`}
+            >
+              {getDocumentStatusLabel(document.status)}
+            </span>
+          </CardContent>
+        </Card>
+      ))}
+      <Card className="rounded-[20px] border border-dashed border-blue-200 bg-[#F8FBFF] py-0 ring-0">
+        <CardContent className="flex h-full flex-col items-center justify-center p-6 text-center">
+          <Link
+            to={`/documents?tab=vehicles&vehicleId=${vehicle.id}`}
+            className="text-sm font-semibold text-[#2563EB] hover:underline"
+          >
+            Manage all vehicle documents
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
 function DetailItem({ label, value }: { label: string; value: string | number }) {
@@ -248,64 +320,6 @@ function OverviewTab({
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function DocumentsTab({ vehicle }: { vehicle: Vehicle }) {
-  const documents = [
-    { label: 'Insurance', expiry: vehicle.insuranceExpiry },
-    { label: 'MOT', expiry: vehicle.motExpiry },
-    { label: 'Road Tax', expiry: vehicle.roadTaxExpiry },
-    { label: 'Tachograph Calibration', expiry: vehicle.tachographExpiry },
-    { label: 'Operator Licence', expiry: null },
-  ]
-
-  return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {documents.map((document) => {
-        const daysRemaining = getDaysRemaining(document.expiry)
-        const status = getDocumentStatus(daysRemaining)
-        const statusClass =
-          status === 'Expired'
-            ? 'bg-rose-50 text-rose-700 ring-rose-200'
-            : status === 'Expiring Soon'
-              ? 'bg-orange-50 text-orange-700 ring-orange-200'
-              : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-
-        return (
-          <Card
-            key={document.label}
-            className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70"
-          >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    {document.label}
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-slate-500">
-                    Expiry date: {formatDate(document.expiry)}
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-slate-500">
-                    Days remaining:{' '}
-                    {daysRemaining === null ? 'Not set' : daysRemaining}
-                  </p>
-                </div>
-                <FileText className="size-5 text-[#3B82F6]" />
-              </div>
-              <span
-                className={`mt-5 inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClass}`}
-              >
-                {status}
-              </span>
-              <p className="mt-4 text-xs font-medium text-slate-400">
-                Upload support prepared for future documents module.
-              </p>
-            </CardContent>
-          </Card>
-        )
-      })}
-    </div>
   )
 }
 

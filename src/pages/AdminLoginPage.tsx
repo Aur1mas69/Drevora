@@ -19,7 +19,7 @@ function AdminLoginPage() {
       description="Admin login"
       onBack={() => navigate('/')}
       onSignInSuccess={(session) => {
-        setAuthenticatedSession(session)
+        setAuthenticatedSession(session, 'admin')
         navigate('/admin', { replace: true })
       }}
     />

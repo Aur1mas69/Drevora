@@ -104,12 +104,26 @@ export type ConsumableFormSubmitPayload = {
   removeReceipt: boolean
 }
 
-export type ConsumablesMonthlySummaryQuery = {
-  year: number
-  month: number
+export type ConsumableSummaryPeriod =
+  | 'this_week'
+  | 'this_month'
+  | 'this_year'
+  | 'all_time'
+  | 'custom'
+
+export type ConsumablesSummaryQuery = {
+  period?: ConsumableSummaryPeriod
+  dateFrom?: string
+  dateTo?: string
+  /** Legacy month picker — dashboard overview */
+  year?: number
+  month?: number
   vehicleId?: string | 'all'
   type?: ConsumableTypeFilter
 }
+
+/** @deprecated Use ConsumablesSummaryQuery */
+export type ConsumablesMonthlySummaryQuery = ConsumablesSummaryQuery
 
 export type ConsumableSummaryRecord = {
   consumableType: ConsumableType
@@ -135,6 +149,31 @@ export type ConsumableMonthlyVehicleBreakdown = {
   vehicleId: string | null
   vehicleLabel: string | null
   totalQuantity: number
+  totalCost: number | null
+  entryCount: number
+  lastEntryDate: string | null
+}
+
+export type ConsumableTypeQuantityLine = {
+  unit: ConsumableUnit
+  totalQuantity: number
+}
+
+export type ConsumableTypeCardSummary = {
+  consumableType: ConsumableType
+  quantityLines: ConsumableTypeQuantityLine[]
+  totalCost: number | null
+  entryCount: number
+  vehiclesUsed: number
+  lastEntryDate: string | null
+  primaryQuantity: number
+  primaryUnit: ConsumableUnit
+}
+
+export type ConsumableTypeVehicleBreakdown = {
+  vehicleId: string | null
+  vehicleLabel: string | null
+  quantityLines: ConsumableTypeQuantityLine[]
   totalCost: number | null
   entryCount: number
   lastEntryDate: string | null

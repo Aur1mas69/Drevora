@@ -280,6 +280,83 @@ export function WorkerFormModal({
           </FormSection>
 
           <FormSection
+            title="Holiday Entitlement"
+            description="Worker-level values override the Employment Type defaults from Settings."
+          >
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Paid holiday enabled
+              </span>
+              <select
+                name="paidHolidayEnabled"
+                value={form.paidHolidayEnabled === null ? '' : String(form.paidHolidayEnabled)}
+                onChange={onChange}
+                className={fieldSelectClass}
+              >
+                <option value="">Use Employment Type default</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Annual paid holiday days
+              </span>
+              <Input
+                name="annualPaidHolidayDays"
+                type="number"
+                min={0}
+                step="0.5"
+                value={form.annualPaidHolidayDays}
+                onChange={onChange}
+                className={fieldInputClass}
+                placeholder="Use default"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Bank holiday entitlement days
+              </span>
+              <Input
+                name="bankHolidayEntitlementDays"
+                type="number"
+                min={0}
+                step="0.5"
+                value={form.bankHolidayEntitlementDays}
+                onChange={onChange}
+                className={fieldInputClass}
+                placeholder="Use default"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Unpaid leave allowed
+              </span>
+              <select
+                name="unpaidLeaveAllowed"
+                value={String(form.unpaidLeaveAllowed)}
+                onChange={onChange}
+                className={fieldSelectClass}
+              >
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Entitlement notes
+              </span>
+              <Input
+                name="holidayEntitlementNotes"
+                value={form.holidayEntitlementNotes}
+                onChange={onChange}
+                className={fieldInputClass}
+                placeholder="Optional notes for this worker"
+              />
+            </label>
+          </FormSection>
+
+          <FormSection
             title="Licence & Compliance"
             description="UK HGV licence, CPC, tachograph card and D4 medical dates."
           >

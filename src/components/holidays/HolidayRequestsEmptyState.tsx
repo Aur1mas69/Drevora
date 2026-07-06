@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
-import { adminEmptyState, adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import { CalendarDays } from 'lucide-react'
+import { holidayPageCardClass, holidayPrimaryButtonClass } from './holidayUiStyles'
 
 type HolidayRequestsEmptyStateProps = {
   onCreateFirst: () => void
@@ -8,22 +8,20 @@ type HolidayRequestsEmptyStateProps = {
 
 export function HolidayRequestsEmptyState({ onCreateFirst }: HolidayRequestsEmptyStateProps) {
   return (
-    <div className={adminEmptyState}>
-      <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
-        No holiday requests yet
+    <div className={`px-6 py-12 text-center ${holidayPageCardClass}`}>
+      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#EEF6FF] text-[#218EE7] ring-1 ring-[#C5DFFB]">
+        <CalendarDays className="size-5" aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
+        No holiday requests found.
       </h2>
-      <p className={`mx-auto mt-2 max-w-md text-sm ${adminTextMuted}`}>
-        Create the first leave request to start tracking annual leave, approvals and workforce
-        availability.
+      <p className="mx-auto mt-2 max-w-md text-sm text-[#5499BF]">
+        Create a new holiday request to start tracking worker leave, approvals and declined requests.
       </p>
       <div className="mt-5">
-        <Button
-          type="button"
-          onClick={onCreateFirst}
-          className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
-        >
+        <Button type="button" onClick={onCreateFirst} className={holidayPrimaryButtonClass}>
           <CalendarDays className="mr-1.5 size-4" />
-          Create first request
+          New Holiday Request
         </Button>
       </div>
     </div>

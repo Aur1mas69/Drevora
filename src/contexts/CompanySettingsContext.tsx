@@ -82,7 +82,8 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
         applyGlobalCompanySettings(null)
         applyDocumentTheme('light')
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to load company settings:', error)
       setSettings(null)
       applyGlobalCompanySettings(null)
       applyDocumentTheme('light')

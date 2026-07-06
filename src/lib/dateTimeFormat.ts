@@ -261,6 +261,18 @@ export function getDefaultWeekStart(
   return normalizeWeekStart(new Date().toISOString().slice(0, 10), weekStarts)
 }
 
+const WEEKDAY_LABELS_MONDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+const WEEKDAY_LABELS_SUNDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+export function getWeekdayLabels(weekStarts: CompanyWeekStarts = globalWeekStarts): readonly string[] {
+  return weekStarts === 'sunday' ? WEEKDAY_LABELS_SUNDAY : WEEKDAY_LABELS_MONDAY
+}
+
+/** BCP 47 locale hint for native date inputs (Monday-first vs Sunday-first). */
+export function getDateInputLocale(weekStarts: CompanyWeekStarts = globalWeekStarts): string {
+  return weekStarts === 'sunday' ? 'en-US' : 'en-GB'
+}
+
 export function getDateFormatLabel(dateFormat: CompanyDateFormat): string {
   switch (dateFormat) {
     case 'MDY':

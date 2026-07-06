@@ -155,14 +155,21 @@ async function searchDriverReports(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
-  const { data, error } = await requireSupabase()
+  const settings = await fetchCompanySettings()
+  const companyName = settings?.name?.trim() || null
+
+  let request = requireSupabase()
     .from('driver_reports')
-    .select(
-      'id, title, status, worker_id, driver_id, drivers ( first_name, last_name )',
-    )
+    .select('id, title, status, worker_id, company')
     .or(`title.ilike.${pattern},status.ilike.${pattern}`)
     .order('updated_at', { ascending: false })
     .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2)
+
+  if (companyName) {
+    request = request.eq('company', companyName)
+  }
+
+  const { data, error } = await request
 
   logSupabaseQuery({
     service: 'dashboardQuickSearchService.searchDriverReports',
@@ -173,15 +180,30 @@ async function searchDriverReports(
 
   if (error) return []
 
+  const scopedRows = (data ?? []).filter((row) => isWorkerInScope(row.worker_id, scope))
+
+  const workerIds = scopedRows
+    .map((row) => row.worker_id)
+    .filter((id): id is string => Boolean(id))
+  const workerNameById = new Map<string, string>()
+
+  if (workerIds.length > 0) {
+    const { data: workerRows } = await requireSupabase()
+      .from('drivers')
+      .select('id, first_name, last_name')
+      .in('id', [...new Set(workerIds)])
+
+    for (const worker of workerRows ?? []) {
+      workerNameById.set(worker.id, formatWorkerName(worker as DriverNameJoinRow))
+    }
+  }
+
   const items: QuickSearchResultItem[] = []
 
-  for (const row of data ?? []) {
-    const workerId = row.worker_id ?? row.driver_id
-    if (!isWorkerInScope(workerId, scope)) continue
-
-    const workerName = formatWorkerName(
-      normalizeJoinRow(row.drivers as DriverNameJoinRow | DriverNameJoinRow[] | null),
-    )
+  for (const row of scopedRows) {
+    const workerName = row.worker_id
+      ? workerNameById.get(row.worker_id) ?? 'Worker'
+      : 'Worker'
     const title = row.title?.trim() || 'Driver Report'
     const status = row.status?.trim()
 

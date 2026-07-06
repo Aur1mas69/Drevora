@@ -1,6 +1,7 @@
 import { resolveCompanyName } from '@/lib/company'
 import {
   companySettingsCoreSelect,
+  companySettingsHolidayCountingSelect,
   companySettingsSelect,
   companySettingsWeekendSelect,
   companySettingsWeekNumberingSelect,
@@ -34,6 +35,13 @@ import {
   WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   CURRENCY_OPTIONS,
+  DEFAULT_HOLIDAY_WORKING_DAYS,
+  DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
+  HOLIDAY_WORKING_DAY_OPTIONS,
+  type HolidayEntitlementRules,
+  type HolidayEntitlementRule,
+  type HolidayCountingMethod,
+  type HolidayWorkingDay,
 } from '@/lib/companySettingsTypes'
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
@@ -83,6 +91,9 @@ type CompanyRow = {
   timesheet_week_start_day: string | null
   timesheet_week_reset_month: number | null
   timesheet_week_reset_day: number | null
+  holiday_counting_method: string | null
+  holiday_working_days: string[] | null
+  holiday_entitlement_rules: unknown | null
 }
 
 export class CompanySettingsServiceError extends Error {
@@ -131,6 +142,59 @@ function normalizeTimesheetWeekStartDay(
   value: string | null | undefined,
 ): TimesheetWeekStartDay {
   return value === 'sunday' ? 'sunday' : 'monday'
+}
+
+function normalizeHolidayCountingMethod(
+  value: string | null | undefined,
+): HolidayCountingMethod {
+  if (value === 'calendar_days' || value === 'custom_working_week') return value
+  return 'working_days'
+}
+
+function normalizeHolidayWorkingDays(value: string[] | null | undefined): HolidayWorkingDay[] {
+  const allowed = new Set(HOLIDAY_WORKING_DAY_OPTIONS.map((option) => option.value))
+  const selected = new Set(
+    (value ?? []).filter((day): day is HolidayWorkingDay => allowed.has(day as HolidayWorkingDay)),
+  )
+  const ordered = HOLIDAY_WORKING_DAY_OPTIONS.map((option) => option.value).filter((day) =>
+    selected.has(day),
+  )
+
+  return ordered.length > 0 ? ordered : DEFAULT_HOLIDAY_WORKING_DAYS
+}
+
+function normalizeHolidayEntitlementNumber(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+}
+
+function normalizeHolidayEntitlementRule(value: unknown): HolidayEntitlementRule {
+  const source = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  return {
+    paidHolidayEnabled: source.paidHolidayEnabled === true,
+    annualPaidHolidayDays: normalizeHolidayEntitlementNumber(source.annualPaidHolidayDays),
+    bankHolidayEntitlementDays: normalizeHolidayEntitlementNumber(source.bankHolidayEntitlementDays),
+    unpaidLeaveAllowed: source.unpaidLeaveAllowed !== false,
+  }
+}
+
+function normalizeHolidayEntitlementRules(value: unknown): HolidayEntitlementRules {
+  const source = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+
+  return Object.fromEntries(
+    Object.entries(DEFAULT_HOLIDAY_ENTITLEMENT_RULES).map(([employmentType, fallback]) => {
+      const rawRule = source[employmentType]
+      if (rawRule == null) return [employmentType, fallback]
+
+      return [
+        employmentType,
+        {
+          ...fallback,
+          ...normalizeHolidayEntitlementRule(rawRule),
+        },
+      ]
+    }),
+  ) as HolidayEntitlementRules
 }
 
 function normalizeTimesheetWeekResetMonth(value: number | null | undefined): number {
@@ -362,6 +426,9 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       row.timesheet_week_reset_day,
       normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
     ),
+    holidayCountingMethod: normalizeHolidayCountingMethod(row.holiday_counting_method),
+    holidayWorkingDays: normalizeHolidayWorkingDays(row.holiday_working_days),
+    holidayEntitlementRules: normalizeHolidayEntitlementRules(row.holiday_entitlement_rules),
   }
 }
 
@@ -410,20 +477,16 @@ export function companySettingsToFormValues(
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
+    holidayCountingMethod: settings.holidayCountingMethod,
+    holidayWorkingDays: settings.holidayWorkingDays,
+    holidayEntitlementRules: settings.holidayEntitlementRules,
   }
 }
 
 function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
 
-  if (input.name !== undefined) {
-    const nameError = validateCompanyName(input.name)
-    if (nameError) {
-      throw new CompanySettingsServiceError(nameError)
-    }
-    payload.name = input.name.trim()
-  }
-
+  // Company name is locked in Settings UI; not editable via this form.
   if (input.logoUrl !== undefined) payload.logo_url = input.logoUrl.trim() || null
   if (input.address !== undefined) payload.address = input.address.trim() || null
   if (input.city !== undefined) payload.city = input.city.trim() || null
@@ -541,29 +604,39 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
       month,
     )
   }
+  if (input.holidayCountingMethod !== undefined) {
+    payload.holiday_counting_method = normalizeHolidayCountingMethod(input.holidayCountingMethod)
+  }
+  if (input.holidayWorkingDays !== undefined) {
+    payload.holiday_working_days = normalizeHolidayWorkingDays(input.holidayWorkingDays)
+  }
+  if (input.holidayEntitlementRules !== undefined) {
+    payload.holiday_entitlement_rules = normalizeHolidayEntitlementRules(input.holidayEntitlementRules)
+  }
 
   return payload
 }
 
-const WEEKEND_OVERTIME_PAYLOAD_KEYS = [
-  'saturday_overtime_enabled',
-  'saturday_overtime_after_hours',
-  'saturday_overtime_multiplier',
-  'sunday_overtime_enabled',
-  'sunday_overtime_after_hours',
-  'sunday_overtime_multiplier',
-] as const
-
-const TIMESHEET_WEEK_NUMBERING_PAYLOAD_KEYS = [
-  'timesheet_week_start_day',
-  'timesheet_week_reset_month',
-  'timesheet_week_reset_day',
-] as const
+function logCompanySettingsPersistenceError(
+  action: 'update' | 'insert' | 'select',
+  table: string,
+  payload: Record<string, unknown> | null,
+  error: { message?: string; details?: string; hint?: string; code?: string } | null,
+): void {
+  console.error(`[companySettingsService.${action}] table: public.${table}`, {
+    payload,
+    message: error?.message ?? null,
+    details: error?.details ?? null,
+    hint: error?.hint ?? null,
+    code: error?.code ?? null,
+  })
+}
 
 async function updateCompanyRecord(
   companyId: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
+  const table = 'companies'
   const { error } = await requireSupabase()
     .from('companies')
     .update(payload)
@@ -571,43 +644,25 @@ async function updateCompanyRecord(
 
   if (!error) return
 
-  if (!isMissingColumnError(error)) {
-    throw new CompanySettingsServiceError(error.message)
-  }
-
-  const strippedPayload = { ...payload }
-  for (const key of WEEKEND_OVERTIME_PAYLOAD_KEYS) {
-    delete strippedPayload[key]
-  }
-  for (const key of TIMESHEET_WEEK_NUMBERING_PAYLOAD_KEYS) {
-    delete strippedPayload[key]
-  }
-
-  if (Object.keys(strippedPayload).length === 0) {
-    throw new CompanySettingsServiceError(error.message)
-  }
-
-  const { error: retryError } = await requireSupabase()
-    .from('companies')
-    .update(strippedPayload)
-    .eq('id', companyId)
-
-  if (retryError) {
-    throw new CompanySettingsServiceError(retryError.message)
-  }
+  logCompanySettingsPersistenceError('update', table, payload, error)
+  throw new CompanySettingsServiceError(error.message)
 }
 
-function isMissingColumnError(error: { message?: string; code?: string } | null): boolean {
+function isMissingColumnError(error: { message?: string; code?: string; details?: string } | null): boolean {
   if (!error) return false
 
   const message = error.message?.toLowerCase() ?? ''
+  const details = error.details?.toLowerCase() ?? ''
+
   return (
     error.code === '42703' ||
     error.code === 'PGRST204' ||
+    message.includes('schema cache') ||
     (message.includes('column') &&
       (message.includes('does not exist') ||
         message.includes('not found') ||
-        message.includes('could not find')))
+        message.includes('could not find'))) ||
+    details.includes('column')
   )
 }
 
@@ -656,7 +711,22 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
   }
 
   if (error && !isMissingColumnError(error)) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsSelect },
+      error,
+    )
     throw new CompanySettingsServiceError(error.message)
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsSelect, fallback: 'core' },
+      error,
+    )
   }
 
   const { data: coreData, error: coreError } = await queryCompanyRow(companySettingsCoreSelect)
@@ -669,6 +739,12 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
   })
 
   if (coreError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsCoreSelect },
+      coreError,
+    )
     throw new CompanySettingsServiceError(coreError.message)
   }
 
@@ -682,6 +758,13 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
 
   if (!weekendError && weekendData) {
     merged = { ...merged, ...(weekendData as unknown as Record<string, unknown>) }
+  } else if (weekendError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsWeekendSelect, optional: 'weekend_overtime' },
+      weekendError,
+    )
   }
 
   const { data: weekNumberingData, error: weekNumberingError } = await queryCompanyRow(
@@ -690,6 +773,28 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
 
   if (!weekNumberingError && weekNumberingData) {
     merged = { ...merged, ...(weekNumberingData as unknown as Record<string, unknown>) }
+  } else if (weekNumberingError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsWeekNumberingSelect, optional: 'timesheet_week_numbering' },
+      weekNumberingError,
+    )
+  }
+
+  const { data: holidayCountingData, error: holidayCountingError } = await queryCompanyRow(
+    companySettingsHolidayCountingSelect,
+  )
+
+  if (!holidayCountingError && holidayCountingData) {
+    merged = { ...merged, ...(holidayCountingData as unknown as Record<string, unknown>) }
+  } else if (holidayCountingError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsHolidayCountingSelect, optional: 'holiday_counting' },
+      holidayCountingError,
+    )
   }
 
   return merged as unknown as CompanyRow
@@ -750,11 +855,15 @@ export async function updateCompanySettings(
   }
 
   const merged: CompanySettingsInput = { ...DEFAULT_COMPANY_SETTINGS, ...input }
+  const insertPayload = toDbPayload(merged)
   const { error: insertError } = await requireSupabase()
     .from('companies')
-    .insert(toDbPayload(merged))
+    .insert(insertPayload)
 
-  if (insertError) throw new CompanySettingsServiceError(insertError.message)
+  if (insertError) {
+    logCompanySettingsPersistenceError('insert', 'companies', insertPayload, insertError)
+    throw new CompanySettingsServiceError(insertError.message)
+  }
 
   const created = await fetchCompanySettings()
   if (!created) {

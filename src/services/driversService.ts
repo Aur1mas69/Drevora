@@ -45,6 +45,11 @@ export type Driver = {
   company: string
   role: DriverRole
   employmentType: EmploymentType | null
+  paidHolidayEnabled: boolean | null
+  annualPaidHolidayDays: number | null
+  bankHolidayEntitlementDays: number | null
+  unpaidLeaveAllowed: boolean
+  holidayEntitlementNotes: string | null
   assignment: string | null
   status: DriverStatus
   licenceCategories: LicenceCategory[]
@@ -80,6 +85,11 @@ export type CreateDriverInput = {
   role: DriverRole
   status: DriverStatus
   employmentType: string
+  paidHolidayEnabled: boolean | null | string
+  annualPaidHolidayDays: string
+  bankHolidayEntitlementDays: string
+  unpaidLeaveAllowed: boolean | string
+  holidayEntitlementNotes: string
   licenceCategories: LicenceCategory[]
   drivingLicenceExpiry: string
   tachoCardNumber: string
@@ -101,6 +111,14 @@ export type CreateDriverInput = {
 
 export type UpdateDriverInput = CreateDriverInput
 
+export type UpdateWorkerHolidayEntitlementInput = {
+  paidHolidayEnabled: boolean | null
+  annualPaidHolidayDays: string
+  bankHolidayEntitlementDays: string
+  unpaidLeaveAllowed: boolean
+  holidayEntitlementNotes: string
+}
+
 export const emptyCreateDriverInput: CreateDriverInput = {
   firstName: '',
   lastName: '',
@@ -110,6 +128,11 @@ export const emptyCreateDriverInput: CreateDriverInput = {
   role: 'Driver',
   status: 'Off Duty',
   employmentType: '',
+  paidHolidayEnabled: null,
+  annualPaidHolidayDays: '',
+  bankHolidayEntitlementDays: '',
+  unpaidLeaveAllowed: true,
+  holidayEntitlementNotes: '',
   licenceCategories: [],
   drivingLicenceExpiry: '',
   tachoCardNumber: '',
@@ -140,6 +163,11 @@ type DriverRow = {
   company: string | null
   role: string | null
   employment_type?: string | null
+  paid_holiday_enabled?: boolean | null
+  annual_paid_holiday_days?: number | string | null
+  bank_holiday_entitlement_days?: number | string | null
+  unpaid_leave_allowed?: boolean | null
+  holiday_entitlement_notes?: string | null
   assigned_vehicle?: string | null
   status: string | null
   licence_categories?: string[] | null
@@ -174,10 +202,10 @@ const basicDriverSelectWithAssignmentLegacy =
   'id, created_at, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
 
 const workerCoreSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -247,6 +275,23 @@ function emptyUuidToNull(value: string): string | null {
   return trimmed
 }
 
+function optionalNumberToNull(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function optionalBooleanToNull(value: boolean | string | null | undefined): boolean | null {
+  if (value === true || value === 'true') return true
+  if (value === false || value === 'false') return false
+  return null
+}
+
+function booleanWithDefault(value: boolean | string | null | undefined, fallback: boolean): boolean {
+  return optionalBooleanToNull(value) ?? fallback
+}
+
 function resolveEmploymentType(value: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -265,6 +310,12 @@ function mapEmploymentTypeFromRow(
   if (!trimmed) return null
   if (isEmploymentType(trimmed)) return trimmed
   return 'Other'
+}
+
+function nullableNumberFromRow(value: number | string | null | undefined): number | null {
+  if (value == null || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
 }
 
 function resolveWorkerEmail(input: CreateDriverInput): string {
@@ -361,6 +412,11 @@ function buildFullWritePayload(input: CreateDriverInput): Record<string, unknown
     role: input.role,
     status: input.status,
     employment_type: resolveEmploymentType(input.employmentType),
+    paid_holiday_enabled: optionalBooleanToNull(input.paidHolidayEnabled),
+    annual_paid_holiday_days: optionalNumberToNull(input.annualPaidHolidayDays),
+    bank_holiday_entitlement_days: optionalNumberToNull(input.bankHolidayEntitlementDays),
+    unpaid_leave_allowed: booleanWithDefault(input.unpaidLeaveAllowed, true),
+    holiday_entitlement_notes: emptyToNull(input.holidayEntitlementNotes),
     licence_categories:
       input.licenceCategories.length > 0 ? input.licenceCategories : null,
     driving_licence_expiry: emptyDateToNull(input.drivingLicenceExpiry),
@@ -412,6 +468,11 @@ const OPTIONAL_FIELD_STRIP_ORDER = [
   'phone',
   'company',
   'role',
+  'paid_holiday_enabled',
+  'annual_paid_holiday_days',
+  'bank_holiday_entitlement_days',
+  'unpaid_leave_allowed',
+  'holiday_entitlement_notes',
 ] as const
 
 async function fetchWorkerCodesForCompany(company: string): Promise<Set<string>> {
@@ -798,6 +859,11 @@ function mapDriverRow(row: DriverRow): Driver {
     company: row.company ?? '',
     role: isDriverRole(row.role) ? row.role : 'Driver',
     employmentType: mapEmploymentTypeFromRow(row.employment_type),
+    paidHolidayEnabled: row.paid_holiday_enabled ?? null,
+    annualPaidHolidayDays: nullableNumberFromRow(row.annual_paid_holiday_days),
+    bankHolidayEntitlementDays: nullableNumberFromRow(row.bank_holiday_entitlement_days),
+    unpaidLeaveAllowed: row.unpaid_leave_allowed ?? true,
+    holidayEntitlementNotes: row.holiday_entitlement_notes?.trim() || null,
     assignment: row.assigned_vehicle?.trim() || null,
     status: isDriverStatus(row.status) ? row.status : 'Off Duty',
     licenceCategories: normalizeLicenceCategories(row.licence_categories),
@@ -855,6 +921,12 @@ export function getDriverFormValues(driver: Driver): CreateDriverInput {
     role: driver.role,
     status: driver.status,
     employmentType: driver.employmentType ?? '',
+    paidHolidayEnabled: driver.paidHolidayEnabled,
+    annualPaidHolidayDays: driver.annualPaidHolidayDays == null ? '' : String(driver.annualPaidHolidayDays),
+    bankHolidayEntitlementDays:
+      driver.bankHolidayEntitlementDays == null ? '' : String(driver.bankHolidayEntitlementDays),
+    unpaidLeaveAllowed: driver.unpaidLeaveAllowed,
+    holidayEntitlementNotes: driver.holidayEntitlementNotes ?? '',
     licenceCategories: driver.licenceCategories,
     drivingLicenceExpiry: driver.drivingLicenceExpiry ?? '',
     tachoCardNumber: driver.tachoCardNumber ?? '',
@@ -1020,6 +1092,51 @@ export async function fetchDriverById(id: string): Promise<Driver | null> {
   }
 }
 
+export async function fetchDriverByEmail(email: string): Promise<Driver | null> {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) return null
+
+  const attempts = [
+    workerProfileSelect,
+    workerCoreSelect,
+    complianceDriverSelect,
+    basicDriverSelectLegacy,
+    basicDriverSelectMinimal,
+  ]
+
+  try {
+    for (const select of attempts) {
+      const { data, error } = await requireSupabase()
+        .from('drivers')
+        .select(select)
+        .ilike('email', normalizedEmail)
+        .maybeSingle()
+
+      logSupabaseQuery({
+        service: 'driversService.fetchDriverByEmail',
+        table: 'drivers',
+        data: data ? [data] : [],
+        error,
+      })
+
+      if (!error && data) {
+        const [driver] = await enrichDriversWithDefaultVehicles([
+          mapDriverRow(data as unknown as DriverRow),
+        ])
+        if (!driver) return null
+        return persistWorkerCodeIfNeeded(driver)
+      }
+    }
+
+    return null
+  } catch (error) {
+    if (error instanceof DriversServiceError) throw error
+    throw new DriversServiceError(
+      error instanceof Error ? error.message : 'Unable to load worker profile.',
+    )
+  }
+}
+
 export async function createDriver(input: CreateDriverInput): Promise<Driver> {
   const insertedId = await createDriverRecord(input)
   const driver = await fetchDriverRowById(insertedId)
@@ -1036,6 +1153,32 @@ export async function updateDriver(
   input: UpdateDriverInput,
 ): Promise<Driver> {
   await updateDriverRecord(id, input)
+
+  const driver = await fetchDriverRowById(id)
+  if (!driver) {
+    throw new DriversServiceError('Worker was updated but could not be loaded.')
+  }
+
+  return persistWorkerCodeIfNeeded(driver)
+}
+
+export async function updateWorkerHolidayEntitlement(
+  id: string,
+  input: UpdateWorkerHolidayEntitlementInput,
+): Promise<Driver> {
+  const payload = {
+    paid_holiday_enabled: input.paidHolidayEnabled,
+    annual_paid_holiday_days: optionalNumberToNull(input.annualPaidHolidayDays),
+    bank_holiday_entitlement_days: optionalNumberToNull(input.bankHolidayEntitlementDays),
+    unpaid_leave_allowed: input.unpaidLeaveAllowed,
+    holiday_entitlement_notes: emptyToNull(input.holidayEntitlementNotes),
+  }
+
+  const { error } = await requireSupabase().from('drivers').update(payload).eq('id', id)
+
+  if (error) {
+    throw new DriversServiceError(formatWriteErrorMessage(error), error.code ?? null)
+  }
 
   const driver = await fetchDriverRowById(id)
   if (!driver) {
@@ -1079,8 +1222,10 @@ export const driversService = {
   fetchDrivers,
   fetchDriversWithCompliance,
   fetchDriverById,
+  fetchDriverByEmail,
   createDriver,
   updateDriver,
+  updateWorkerHolidayEntitlement,
   updateWorkerAvatarUrl,
   deleteDriver,
   getDriverFormValues,

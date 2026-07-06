@@ -114,8 +114,22 @@ export function HolidayRequestDrawer({
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
-                <dt className="text-slate-500">Total days</dt>
-                <dd className="font-semibold tabular-nums text-[#2A376F]">{request.totalDays}</dd>
+                <dt className="text-slate-500">Calendar days away</dt>
+                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                  {request.calendarDaysTotal}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Holiday days deducted</dt>
+                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                  {request.holidayDaysDeducted}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Non-working days excluded</dt>
+                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                  {request.nonWorkingDaysExcluded}
+                </dd>
               </div>
               <div>
                 <dt className="text-slate-500">Reason</dt>
@@ -180,7 +194,7 @@ export function HolidayRequestDrawer({
                 className="h-10 flex-1 rounded-[12px] bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700"
               >
                 <X className="mr-1.5 size-4" />
-                Reject
+                Decline
               </Button>
             </div>
           </div>

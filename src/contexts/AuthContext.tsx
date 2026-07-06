@@ -1,4 +1,10 @@
 import {
+  clearStoredAuthPortal,
+  readStoredAuthPortal,
+  writeStoredAuthPortal,
+  type AuthPortal,
+} from '@/lib/authPortal'
+import {
   createContext,
   useCallback,
   useContext,
@@ -13,7 +19,8 @@ type AuthContextValue = {
   isAuthenticated: boolean
   isAuthLoading: boolean
   session: AuthSession | null
-  setAuthenticatedSession: (session: AuthSession) => void
+  portal: AuthPortal | null
+  setAuthenticatedSession: (session: AuthSession, portal: AuthPortal) => void
   signOut: () => Promise<void>
 }
 
@@ -21,6 +28,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null)
+  const [portal, setPortal] = useState<AuthPortal | null>(() => readStoredAuthPortal())
   const [isAuthLoading, setIsAuthLoading] = useState(true)
 
   useEffect(() => {
@@ -31,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const existingSession = await authService.getCurrentSession()
         if (!isCancelled && existingSession) {
           setSession(existingSession)
+          setPortal(readStoredAuthPortal())
         }
       } catch {
         // Session restore must not block public routes from rendering.
@@ -48,13 +57,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const setAuthenticatedSession = useCallback((nextSession: AuthSession) => {
-    setSession(nextSession)
-  }, [])
+  const setAuthenticatedSession = useCallback(
+    (nextSession: AuthSession, nextPortal: AuthPortal) => {
+      setSession(nextSession)
+      setPortal(nextPortal)
+      writeStoredAuthPortal(nextPortal)
+    },
+    [],
+  )
 
   const signOut = useCallback(async () => {
     await authService.signOut()
     setSession(null)
+    setPortal(null)
+    clearStoredAuthPortal()
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -62,10 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: session !== null,
       isAuthLoading,
       session,
+      portal,
       setAuthenticatedSession,
       signOut,
     }),
-    [isAuthLoading, session, setAuthenticatedSession, signOut],
+    [isAuthLoading, portal, session, setAuthenticatedSession, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

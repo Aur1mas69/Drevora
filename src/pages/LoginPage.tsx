@@ -17,7 +17,7 @@ function LoginPage() {
     <LoginPageContent
       onBack={() => navigate('/')}
       onSignInSuccess={(session) => {
-        setAuthenticatedSession(session)
+        setAuthenticatedSession(session, 'admin')
         navigate('/admin', { replace: true })
       }}
     />

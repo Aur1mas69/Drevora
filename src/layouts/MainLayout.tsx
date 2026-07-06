@@ -2,10 +2,11 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import { History, Home, LogOut, User } from 'lucide-react'
+import { History, Home, LogOut, Palmtree, User } from 'lucide-react'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Home },
+  { label: 'My Holidays', to: '/worker/holidays', icon: Palmtree },
   { label: 'History', to: '/history', icon: History },
   { label: 'Profile', to: '/profile', icon: User },
 ]

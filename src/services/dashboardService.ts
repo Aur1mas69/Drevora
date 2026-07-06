@@ -843,13 +843,17 @@ async function fetchRecentDriverReportActivity(
   scope: CompanyActivityScope,
 ): Promise<DashboardRecentActivity[]> {
   try {
-    const { data, error } = await requireSupabase()
+    let request = requireSupabase()
       .from('driver_reports')
-      .select(
-        'id, created_at, updated_at, status, title, worker_id, driver_id, drivers ( first_name, last_name )',
-      )
+      .select('id, created_at, updated_at, status, title, worker_id, company')
       .order('updated_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
+
+    if (scope.companyName) {
+      request = request.eq('company', scope.companyName)
+    }
+
+    const { data, error } = await request
 
     logSupabaseQuery({
       service: 'dashboardService.fetchRecentDriverReportActivity',
@@ -860,17 +864,35 @@ async function fetchRecentDriverReportActivity(
 
     if (error) return []
 
+    const scopedRows = (data ?? []).filter((row) =>
+      isWorkerInCompanyScope(row.worker_id, scope),
+    )
+
+    const workerIds = scopedRows
+      .map((row) => row.worker_id)
+      .filter((id): id is string => Boolean(id))
+    const workerNameById = new Map<string, string>()
+
+    if (workerIds.length > 0) {
+      const { data: workerRows } = await requireSupabase()
+        .from('drivers')
+        .select('id, first_name, last_name')
+        .in('id', [...new Set(workerIds)])
+
+      for (const worker of workerRows ?? []) {
+        workerNameById.set(
+          worker.id,
+          formatWorkerName(worker as DriverNameJoinRow),
+        )
+      }
+    }
+
     const items: DashboardRecentActivity[] = []
 
-    for (const row of data ?? []) {
-      const workerId = row.worker_id ?? row.driver_id
-      if (!isWorkerInCompanyScope(workerId, scope)) continue
-
-      const workerName = formatWorkerName(
-        normalizeJoinRow(
-          row.drivers as DriverNameJoinRow | DriverNameJoinRow[] | null,
-        ),
-      )
+    for (const row of scopedRows) {
+      const workerName = row.worker_id
+        ? workerNameById.get(row.worker_id) ?? 'Worker'
+        : 'Worker'
       const reportTitle = row.title?.trim() || 'Driver Report'
 
       items.push({
@@ -1242,9 +1264,17 @@ function isClosedDriverReportStatus(value: string | null | undefined): boolean {
   return status === 'closed' || status === 'resolved'
 }
 
-async function fetchDriverReportsStatusCounts(): Promise<DashboardDriverReportsSummary> {
+async function fetchDriverReportsStatusCounts(
+  scope: CompanyActivityScope,
+): Promise<DashboardDriverReportsSummary> {
   try {
-    const { data, error } = await requireSupabase().from('driver_reports').select('status')
+    let request = requireSupabase().from('driver_reports').select('status, company, worker_id')
+
+    if (scope.companyName) {
+      request = request.eq('company', scope.companyName)
+    }
+
+    const { data, error } = await request
 
     logSupabaseQuery({
       service: 'dashboardService.fetchDriverReportsStatusCounts',
@@ -1255,11 +1285,18 @@ async function fetchDriverReportsStatusCounts(): Promise<DashboardDriverReportsS
 
     if (error) return emptyDashboardStats.driverReports
 
-    const rows = data ?? []
+    const rows = (data ?? []).filter((row) =>
+      isWorkerInCompanyScope(row.worker_id, scope),
+    )
+
+    const newCount = rows.filter((row) => isNewDriverReportStatus(row.status)).length
+    const inProgressCount = rows.filter((row) =>
+      isInProgressDriverReportStatus(row.status),
+    ).length
 
     return {
-      open: rows.filter((row) => isNewDriverReportStatus(row.status)).length,
-      inProgress: rows.filter((row) => isInProgressDriverReportStatus(row.status)).length,
+      open: newCount + inProgressCount,
+      inProgress: inProgressCount,
       closed: rows.filter((row) => isClosedDriverReportStatus(row.status)).length,
     }
   } catch {
@@ -1625,6 +1662,8 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   try {
     console.log('[dashboardService.fetchDashboardStats] loading dashboard counts')
 
+    const companyScope = await fetchCompanyActivityScope()
+
     const [
       workers,
       workingToday,
@@ -1632,7 +1671,6 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       vehicleDocumentRows,
       dashboardVehicles,
       holidayRequests,
-      companyScope,
       timesheetOverview,
       driverReports,
       consumablesOverview,
@@ -1643,9 +1681,8 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       fetchVehicleDocumentRows(),
       fetchDashboardVehicles(),
       fetchHolidayStatusCounts(),
-      fetchCompanyActivityScope(),
       fetchTimesheetOverview(),
-      fetchDriverReportsStatusCounts(),
+      fetchDriverReportsStatusCounts(companyScope),
       fetchConsumablesOverview(),
     ])
 

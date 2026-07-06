@@ -25,6 +25,9 @@ alter table public.vehicle_check_templates enable row level security;
 alter table public.worker_compliance_records disable row level security;
 alter table public.vehicle_compliance_records disable row level security;
 alter table public.consumables disable row level security;
+alter table public.contacts disable row level security;
+alter table public.documents disable row level security;
+alter table public.driver_reports disable row level security;
 alter table public.dashboard_notes enable row level security;
 
 
@@ -58,6 +61,9 @@ create policy "Read active vehicle check templates"
   using (is_active = true);
 grant select, insert, update, delete on public.vehicle_compliance_records to anon, authenticated;
 grant select, insert, update, delete on public.consumables to anon, authenticated;
+grant select, insert, update, delete on public.contacts to anon, authenticated;
+grant select, insert, update, delete on public.documents to anon, authenticated;
+grant select, insert, update, delete on public.driver_reports to anon, authenticated;
 grant select, insert, update, delete on public.dashboard_notes to anon, authenticated;
 
 create or replace function public.drevora_current_company_id()

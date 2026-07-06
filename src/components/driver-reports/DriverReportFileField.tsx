@@ -1,0 +1,114 @@
+import {
+  getDriverReportFileDisplayName,
+  validateDriverReportFile,
+} from '@/lib/driverReportFileStorage'
+import type { DriverReport } from '@/lib/driverReportTypes'
+import { FileText, Upload, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+
+type DriverReportFileFieldProps = {
+  existingPath: string | null
+  selectedFile: File | null
+  removeFile: boolean
+  onSelectFile: (file: File | null) => void
+  onRemoveExisting: () => void
+  onClearSelection: () => void
+}
+
+export function DriverReportFileField({
+  existingPath,
+  selectedFile,
+  removeFile,
+  onSelectFile,
+  onRemoveExisting,
+  onClearSelection,
+}: DriverReportFileFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ''
+    if (!file) return
+
+    const validationError = validateDriverReportFile(file)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError(null)
+    onSelectFile(file)
+  }
+
+  const existingLabel = existingPath ? getDriverReportFileDisplayName(existingPath) : null
+  const showExisting = Boolean(existingLabel) && !removeFile && !selectedFile
+
+  return (
+    <div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {selectedFile ? (
+        <div className="flex items-center justify-between gap-3 rounded-[12px] border border-[#C5DFFB] bg-[#F5FAFF] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <FileText className="size-4 shrink-0 text-[#218EE7]" />
+            <span className="truncate text-sm font-medium text-[#113C69]">{selectedFile.name}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClearSelection}
+            className="rounded-lg p-1 text-[#5499BF] hover:bg-white hover:text-[#113C69]"
+            aria-label="Remove selected file"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : showExisting ? (
+        <div className="flex items-center justify-between gap-3 rounded-[12px] border border-[#C5DFFB] bg-[#F5FAFF] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <FileText className="size-4 shrink-0 text-[#218EE7]" />
+            <span className="truncate text-sm font-medium text-[#113C69]">{existingLabel}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onRemoveExisting}
+            className="text-xs font-semibold text-rose-600 hover:underline"
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-[#C5DFFB] bg-white px-4 py-6 text-sm font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF]"
+        >
+          <Upload className="size-4" />
+          Upload photo or PDF (max 10 MB)
+        </button>
+      )}
+
+      {!selectedFile && !showExisting ? (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="mt-2 text-xs font-semibold text-[#0B68BE] hover:underline"
+        >
+          Choose file
+        </button>
+      ) : null}
+
+      {error ? <p className="mt-2 text-xs font-medium text-rose-600">{error}</p> : null}
+    </div>
+  )
+}
+
+export function getDriverReportStoragePath(report: DriverReport): string | null {
+  return report.attachmentPath?.trim() || report.attachmentUrl?.trim() || null
+}

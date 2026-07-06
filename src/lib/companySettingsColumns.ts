@@ -44,6 +44,9 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'timesheet_week_start_day',
   'timesheet_week_reset_month',
   'timesheet_week_reset_day',
+  'holiday_counting_method',
+  'holiday_working_days',
+  'holiday_entitlement_rules',
 ] as const
 
 export type CompanySettingsColumn = (typeof COMPANY_SETTINGS_COLUMNS)[number]
@@ -101,6 +104,13 @@ export const COMPANY_SETTINGS_WEEK_NUMBERING_COLUMNS = [
   'timesheet_week_reset_day',
 ] as const
 
+/** Holiday counting columns — optional until migration is applied. */
+export const COMPANY_SETTINGS_HOLIDAY_COUNTING_COLUMNS = [
+  'holiday_counting_method',
+  'holiday_working_days',
+  'holiday_entitlement_rules',
+] as const
+
 /** PostgREST select list — must stay a string literal for Supabase client typing. */
 export const companySettingsCoreSelect = `
   id,
@@ -152,6 +162,12 @@ export const companySettingsWeekNumberingSelect = `
   timesheet_week_reset_day
 ` as const
 
+export const companySettingsHolidayCountingSelect = `
+  holiday_counting_method,
+  holiday_working_days,
+  holiday_entitlement_rules
+` as const
+
 /** Full select including weekend overtime (requires latest migration). */
 export const companySettingsSelect = `
   id,
@@ -194,5 +210,8 @@ export const companySettingsSelect = `
   sunday_overtime_multiplier,
   timesheet_week_start_day,
   timesheet_week_reset_month,
-  timesheet_week_reset_day
+  timesheet_week_reset_day,
+  holiday_counting_method,
+  holiday_working_days,
+  holiday_entitlement_rules
 ` as const

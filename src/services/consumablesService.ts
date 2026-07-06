@@ -12,7 +12,7 @@ import type {
   UpdateConsumableInput,
 } from '@/lib/consumableTypes'
 import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
-import { getMonthDateRange } from '@/lib/consumableUtils'
+import { getConsumableSummaryDateRange, getMonthDateRange } from '@/lib/consumableUtils'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -429,14 +429,27 @@ export async function deleteConsumable(id: string, deleteReason?: string | null)
 export async function fetchConsumablesMonthlySummary(
   query: ConsumablesMonthlySummaryQuery,
 ): Promise<ConsumablesMonthlySummaryResult> {
-  const { dateFrom, dateTo } = getMonthDateRange(query.year, query.month)
+  const range =
+    query.year !== undefined && query.month !== undefined
+      ? getMonthDateRange(query.year, query.month)
+      : getConsumableSummaryDateRange(
+          query.period ?? 'this_month',
+          query.dateFrom,
+          query.dateTo,
+        )
 
   let request = requireSupabase()
     .from('consumables')
     .select('consumable_type, quantity, unit, cost, vehicle_id, entry_date')
     .is('deleted_at', null)
-    .gte('entry_date', dateFrom)
-    .lte('entry_date', dateTo)
+
+  if (range.dateFrom) {
+    request = request.gte('entry_date', range.dateFrom)
+  }
+
+  if (range.dateTo) {
+    request = request.lte('entry_date', range.dateTo)
+  }
 
   if (query.type && query.type !== 'all') {
     request = request.eq('consumable_type', query.type)

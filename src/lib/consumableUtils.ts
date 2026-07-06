@@ -2,7 +2,11 @@ import type {
   ConsumableMonthlyTypeSummary,
   ConsumableMonthlyVehicleBreakdown,
   ConsumableSummaryRecord,
+  ConsumableSummaryPeriod,
   ConsumableType,
+  ConsumableTypeCardSummary,
+  ConsumableTypeQuantityLine,
+  ConsumableTypeVehicleBreakdown,
   ConsumableUnit,
 } from '@/lib/consumableTypes'
 import { CONSUMABLE_TYPES, CONSUMABLE_UNITS } from '@/lib/consumableTypes'
@@ -215,6 +219,243 @@ export function getMonthDateRange(year: number, month: number): { dateFrom: stri
     dateFrom: `${year}-${paddedMonth}-01`,
     dateTo: `${year}-${paddedMonth}-${paddedLastDay}`,
   }
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function startOfWeekMonday(date: Date): Date {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const day = copy.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  copy.setDate(copy.getDate() + diff)
+  return copy
+}
+
+function endOfWeekSunday(date: Date): Date {
+  const monday = startOfWeekMonday(date)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return sunday
+}
+
+export function getConsumableSummaryDateRange(
+  period: ConsumableSummaryPeriod,
+  customFrom?: string,
+  customTo?: string,
+): { dateFrom?: string; dateTo?: string } {
+  const now = new Date()
+
+  switch (period) {
+    case 'this_week':
+      return {
+        dateFrom: toIsoDate(startOfWeekMonday(now)),
+        dateTo: toIsoDate(endOfWeekSunday(now)),
+      }
+    case 'this_month':
+      return getMonthDateRange(now.getFullYear(), now.getMonth() + 1)
+    case 'this_year':
+      return {
+        dateFrom: `${now.getFullYear()}-01-01`,
+        dateTo: `${now.getFullYear()}-12-31`,
+      }
+    case 'all_time':
+      return {}
+    case 'custom': {
+      const from = customFrom?.trim()
+      const to = customTo?.trim()
+      if (!from && !to) return getMonthDateRange(now.getFullYear(), now.getMonth() + 1)
+      return {
+        dateFrom: from || undefined,
+        dateTo: to || undefined,
+      }
+    }
+    default:
+      return getMonthDateRange(now.getFullYear(), now.getMonth() + 1)
+  }
+}
+
+export function getConsumableSummaryPeriodLabel(
+  period: ConsumableSummaryPeriod,
+  customFrom?: string,
+  customTo?: string,
+): string {
+  switch (period) {
+    case 'this_week':
+      return 'This week'
+    case 'this_month':
+      return 'This month'
+    case 'this_year':
+      return 'This year'
+    case 'all_time':
+      return 'All time'
+    case 'custom':
+      if (customFrom && customTo) return `${customFrom} – ${customTo}`
+      if (customFrom) return `From ${customFrom}`
+      if (customTo) return `Until ${customTo}`
+      return 'Custom range'
+    default:
+      return 'This month'
+  }
+}
+
+export function formatTypeCardQuantity(lines: ConsumableTypeQuantityLine[]): string {
+  if (lines.length === 0) return '—'
+  return lines
+    .map((line) => `${formatSummaryQuantity(line.totalQuantity)} ${line.unit}`)
+    .join(' · ')
+}
+
+export function getConsumableTypeAccent(type: ConsumableType): {
+  bar: string
+  cardRing: string
+  cardBg: string
+} {
+  switch (type) {
+    case 'AdBlue':
+      return {
+        bar: 'bg-[#218EE7]',
+        cardRing: 'ring-[#89CFF0]/60',
+        cardBg: 'from-[#EEF6FF] to-[#D3E9FC]/50',
+      }
+    case 'Diesel':
+      return {
+        bar: 'bg-slate-600',
+        cardRing: 'ring-slate-200/80',
+        cardBg: 'from-slate-50 to-slate-100/80',
+      }
+    case 'Petrol':
+      return {
+        bar: 'bg-orange-500',
+        cardRing: 'ring-orange-200/80',
+        cardBg: 'from-orange-50 to-orange-100/60',
+      }
+    case 'Engine Oil':
+    case 'Hydraulic Oil':
+      return {
+        bar: 'bg-amber-500',
+        cardRing: 'ring-amber-200/80',
+        cardBg: 'from-amber-50 to-amber-100/60',
+      }
+    case 'Coolant':
+      return {
+        bar: 'bg-red-400',
+        cardRing: 'ring-red-200/80',
+        cardBg: 'from-red-50 to-red-100/50',
+      }
+    case 'Screenwash':
+      return {
+        bar: 'bg-cyan-500',
+        cardRing: 'ring-cyan-200/80',
+        cardBg: 'from-cyan-50 to-cyan-100/50',
+      }
+    case 'Grease':
+      return {
+        bar: 'bg-yellow-500',
+        cardRing: 'ring-yellow-200/80',
+        cardBg: 'from-yellow-50 to-yellow-100/50',
+      }
+    case 'Admixture':
+    case 'Concrete Additive':
+      return {
+        bar: 'bg-purple-500',
+        cardRing: 'ring-purple-200/80',
+        cardBg: 'from-purple-50 to-purple-100/50',
+      }
+    default:
+      return {
+        bar: 'bg-[#5499BF]',
+        cardRing: 'ring-[#C5DFFB]/80',
+        cardBg: 'from-[#F8FBFF] to-[#EEF6FF]',
+      }
+  }
+}
+
+function buildQuantityLines(rows: ConsumableSummaryRecord[]): ConsumableTypeQuantityLine[] {
+  const unitGroups = new Map<ConsumableUnit, ConsumableSummaryRecord[]>()
+
+  for (const row of rows) {
+    const bucket = unitGroups.get(row.unit) ?? []
+    bucket.push(row)
+    unitGroups.set(row.unit, bucket)
+  }
+
+  return [...unitGroups.entries()]
+    .map(([unit, unitRows]) => ({
+      unit,
+      totalQuantity: unitRows.reduce((sum, row) => sum + row.quantity, 0),
+    }))
+    .sort((left, right) => right.totalQuantity - left.totalQuantity)
+}
+
+export function computeConsumableTypeCards(
+  records: ConsumableSummaryRecord[],
+): ConsumableTypeCardSummary[] {
+  const byType = new Map<ConsumableType, ConsumableSummaryRecord[]>()
+
+  for (const record of records) {
+    const bucket = byType.get(record.consumableType) ?? []
+    bucket.push(record)
+    byType.set(record.consumableType, bucket)
+  }
+
+  const cards = [...byType.entries()].map(([consumableType, rows]) => {
+    const quantityLines = buildQuantityLines(rows)
+    const primary = quantityLines[0] ?? { unit: 'L' as ConsumableUnit, totalQuantity: 0 }
+    const vehicleIds = new Set(rows.map((row) => row.vehicleId).filter(Boolean))
+
+    return {
+      consumableType,
+      quantityLines,
+      totalCost: sumCosts(rows.map((row) => row.cost)),
+      entryCount: rows.length,
+      vehiclesUsed: vehicleIds.size,
+      lastEntryDate: maxEntryDate(rows.map((row) => row.entryDate)),
+      primaryQuantity: primary.totalQuantity,
+      primaryUnit: primary.unit,
+    }
+  })
+
+  return cards.sort((left, right) => right.primaryQuantity - left.primaryQuantity)
+}
+
+export function computeVehicleBreakdownForType(
+  records: ConsumableSummaryRecord[],
+  consumableType: ConsumableType,
+  vehicleLabels: Map<string, string>,
+): ConsumableTypeVehicleBreakdown[] {
+  const filtered = records.filter((record) => record.consumableType === consumableType)
+  const groups = new Map<string, ConsumableSummaryRecord[]>()
+
+  for (const record of filtered) {
+    const key = record.vehicleId ?? '__none__'
+    const bucket = groups.get(key) ?? []
+    bucket.push(record)
+    groups.set(key, bucket)
+  }
+
+  const breakdown = [...groups.entries()].map(([key, rows]) => {
+    const vehicleId = key === '__none__' ? null : key
+
+    return {
+      vehicleId,
+      vehicleLabel: vehicleId ? vehicleLabels.get(vehicleId) ?? vehicleId : null,
+      quantityLines: buildQuantityLines(rows),
+      totalCost: sumCosts(rows.map((row) => row.cost)),
+      entryCount: rows.length,
+      lastEntryDate: maxEntryDate(rows.map((row) => row.entryDate)),
+    }
+  })
+
+  return breakdown.sort((left, right) => {
+    const leftQty = left.quantityLines[0]?.totalQuantity ?? 0
+    const rightQty = right.quantityLines[0]?.totalQuantity ?? 0
+    return rightQty - leftQty
+  })
 }
 
 export function buildTypeUnitGroupKey(type: ConsumableType, unit: ConsumableUnit): string {

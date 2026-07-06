@@ -85,6 +85,13 @@ alter table public.drivers
   add column if not exists employment_type text;
 
 alter table public.drivers
+  add column if not exists paid_holiday_enabled boolean,
+  add column if not exists annual_paid_holiday_days numeric,
+  add column if not exists bank_holiday_entitlement_days numeric,
+  add column if not exists unpaid_leave_allowed boolean not null default true,
+  add column if not exists holiday_entitlement_notes text;
+
+alter table public.drivers
   add column if not exists address_line_1 text,
   add column if not exists address_line_2 text,
   add column if not exists town_city text,
@@ -324,6 +331,25 @@ create table if not exists public.companies (
   timesheet_week_start_day text not null default 'monday',
   timesheet_week_reset_month integer not null default 4,
   timesheet_week_reset_day integer not null default 5,
+  holiday_counting_method text not null default 'working_days',
+  holiday_working_days text[] not null default array[
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday'
+  ]::text[],
+  holiday_entitlement_rules jsonb not null default '{
+    "Full-time": { "paidHolidayEnabled": true, "annualPaidHolidayDays": 20, "bankHolidayEntitlementDays": 8, "unpaidLeaveAllowed": true },
+    "Part-time": { "paidHolidayEnabled": true, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Umbrella": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Agency": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Self-employed / Contractor": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Zero-hours": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Temporary": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Casual": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
+    "Other": { "paidHolidayEnabled": true, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true }
+  }'::jsonb,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
@@ -370,6 +396,20 @@ create table if not exists public.companies (
   ),
   constraint companies_timesheet_week_reset_day_check check (
     timesheet_week_reset_day >= 1 and timesheet_week_reset_day <= 31
+  ),
+  constraint companies_holiday_counting_method_check check (
+    holiday_counting_method in ('working_days', 'calendar_days', 'custom_working_week')
+  ),
+  constraint companies_holiday_working_days_check check (
+    holiday_working_days <@ array[
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday'
+    ]::text[]
   )
 );
 
@@ -483,9 +523,17 @@ create table if not exists public.holiday_requests (
   reason text,
   status text not null default 'Pending',
   manager_note text,
+  leave_type text not null default 'paid_holiday',
+  is_paid_leave boolean not null default true,
+  holiday_days_deducted numeric,
+  calendar_days_total numeric,
+  non_working_days_excluded numeric,
   constraint holiday_requests_end_after_start check (end_date >= start_date),
   constraint holiday_requests_status_check check (
     status in ('Pending', 'Approved', 'Rejected', 'Cancelled')
+  ),
+  constraint holiday_requests_leave_type_check check (
+    leave_type in ('paid_holiday', 'unpaid_leave', 'bank_holiday')
   )
 );
 
@@ -648,6 +696,119 @@ grant select, insert, update, delete on public.vehicle_compliance_records to ano
 
 
 -- -----------------------------------------------------------------------------
+-- Documents (company, worker, vehicle)
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.documents (
+  id uuid primary key default gen_random_uuid(),
+  company text,
+  document_name text not null,
+  document_type text not null,
+  applies_to text not null,
+  worker_id uuid references public.drivers (id) on delete cascade,
+  vehicle_id uuid references public.vehicles (id) on delete cascade,
+  reference_number text,
+  issue_date date,
+  expiry_date date,
+  file_url text,
+  file_path text,
+  notes text,
+  status text not null default 'valid',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  constraint documents_applies_to_check check (
+    applies_to in ('company', 'worker', 'vehicle')
+  ),
+  constraint documents_status_check check (
+    status in ('valid', 'expiring_soon', 'expired', 'no_expiry')
+  ),
+  constraint documents_worker_scope_check check (
+    applies_to <> 'worker' or worker_id is not null
+  ),
+  constraint documents_vehicle_scope_check check (
+    applies_to <> 'vehicle' or vehicle_id is not null
+  )
+);
+
+create index if not exists documents_company_idx on public.documents (company);
+create index if not exists documents_applies_to_idx on public.documents (applies_to);
+create index if not exists documents_worker_id_idx on public.documents (worker_id);
+create index if not exists documents_vehicle_id_idx on public.documents (vehicle_id);
+create index if not exists documents_document_type_idx on public.documents (document_type);
+create index if not exists documents_expiry_date_idx on public.documents (expiry_date);
+create index if not exists documents_status_idx on public.documents (status);
+
+drop trigger if exists documents_set_updated_at on public.documents;
+
+create trigger documents_set_updated_at
+  before update on public.documents
+  for each row
+  execute function public.drevora_set_updated_at();
+
+alter table public.documents disable row level security;
+grant select, insert, update, delete on public.documents to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- Driver Reports
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.driver_reports (
+  id uuid primary key default gen_random_uuid(),
+  company text,
+  worker_id uuid references public.drivers (id) on delete set null,
+  vehicle_id uuid references public.vehicles (id) on delete set null,
+  title text not null,
+  report_type text not null default 'Other',
+  priority text not null default 'Medium',
+  status text not null default 'New',
+  description text,
+  location text,
+  issue_datetime timestamptz,
+  office_notes text,
+  attachment_url text,
+  attachment_path text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint driver_reports_report_type_check check (
+    report_type in (
+      'Vehicle issue',
+      'Damage',
+      'Load / cargo issue',
+      'Site / customer issue',
+      'Health & safety',
+      'Delay / operational issue',
+      'Other'
+    )
+  ),
+  constraint driver_reports_priority_check check (
+    priority in ('Low', 'Medium', 'High', 'Critical')
+  ),
+  constraint driver_reports_status_check check (
+    status in ('New', 'In Progress', 'Closed')
+  )
+);
+
+create index if not exists driver_reports_company_idx on public.driver_reports (company);
+create index if not exists driver_reports_worker_id_idx on public.driver_reports (worker_id);
+create index if not exists driver_reports_vehicle_id_idx on public.driver_reports (vehicle_id);
+create index if not exists driver_reports_status_idx on public.driver_reports (status);
+create index if not exists driver_reports_priority_idx on public.driver_reports (priority);
+create index if not exists driver_reports_report_type_idx on public.driver_reports (report_type);
+create index if not exists driver_reports_created_at_idx on public.driver_reports (created_at desc);
+
+drop trigger if exists driver_reports_set_updated_at on public.driver_reports;
+
+create trigger driver_reports_set_updated_at
+  before update on public.driver_reports
+  for each row
+  execute function public.drevora_set_updated_at();
+
+alter table public.driver_reports disable row level security;
+grant select, insert, update, delete on public.driver_reports to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
 -- Consumables
 -- Fuel, fluids, AdBlue, oils and other vehicle-related consumables.
 -- -----------------------------------------------------------------------------
@@ -783,6 +944,65 @@ create trigger dashboard_notes_set_updated_at
 
 alter table public.dashboard_notes enable row level security;
 grant select, insert, update, delete on public.dashboard_notes to anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- Contacts
+-- Business directory: customers, suppliers, garages, sites, etc.
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.contacts (
+  id uuid primary key default gen_random_uuid(),
+  company text,
+  name text,
+  organisation text,
+  category text not null default 'other',
+  phone text,
+  email text,
+  website text,
+  role_title text,
+  vat_number text,
+  account_reference text,
+  address_line_1 text,
+  address_line_2 text,
+  town_city text,
+  county text,
+  postcode text,
+  country text default 'United Kingdom',
+  notes text,
+  status text not null default 'active',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  constraint contacts_category_check check (
+    category in (
+      'customer',
+      'supplier',
+      'garage_workshop',
+      'site_plant',
+      'insurance',
+      'accountant',
+      'emergency',
+      'other'
+    )
+  ),
+  constraint contacts_status_check check (status in ('active', 'inactive'))
+);
+
+create index if not exists contacts_company_idx on public.contacts (company);
+create index if not exists contacts_category_idx on public.contacts (category);
+create index if not exists contacts_status_idx on public.contacts (status);
+create index if not exists contacts_name_idx on public.contacts (name);
+create index if not exists contacts_organisation_idx on public.contacts (organisation);
+
+drop trigger if exists contacts_set_updated_at on public.contacts;
+
+create trigger contacts_set_updated_at
+  before update on public.contacts
+  for each row
+  execute function public.drevora_set_updated_at();
+
+alter table public.contacts disable row level security;
+grant select, insert, update, delete on public.contacts to anon, authenticated;
 
 
 -- -----------------------------------------------------------------------------

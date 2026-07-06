@@ -2,13 +2,20 @@ import { EditHolidayRequestModal } from '@/components/holidays/EditHolidayReques
 import { HolidayRequestDrawer } from '@/components/holidays/HolidayRequestDrawer'
 import { HolidayRequestsDataTable } from '@/components/holidays/HolidayRequestsDataTable'
 import { HolidayRequestsEmptyState } from '@/components/holidays/HolidayRequestsEmptyState'
+import {
+  HolidayRequestsCalendar,
+  type HolidayCalendarView,
+} from '@/components/holidays/HolidayRequestsCalendar'
 import { HolidayRequestsPagination } from '@/components/holidays/HolidayRequestsPagination'
 import { HolidayRequestsSummaryCards } from '@/components/holidays/HolidayRequestsSummaryCards'
 import { HolidayRequestsToolbar } from '@/components/holidays/HolidayRequestsToolbar'
+import { holidayPageCardClass, holidayPrimaryButtonClass } from '@/components/holidays/holidayUiStyles'
 import { NewHolidayRequestModal } from '@/components/holidays/NewHolidayRequestModal'
+import { Button } from '@/components/ui/button'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   HolidayRequest,
+  HolidayLeaveType,
   HolidayRequestStatusFilter,
   HolidayRequestSummaryStats,
 } from '@/lib/holidayRequestTypes'
@@ -18,18 +25,23 @@ import {
   approveHolidayRequest,
   createHolidayRequest,
   deleteHolidayRequest,
+  fetchHolidayCalendarRequests,
   fetchHolidayRequests,
   HolidayRequestsServiceError,
   rejectHolidayRequest,
   updateHolidayRequest,
 } from '@/services/holidayRequestsService'
 import { useCallback, useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 
 export default function HolidayRequestsPage() {
   const [items, setItems] = useState<HolidayRequest[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<HolidayRequestSummaryStats>({
     pendingRequests: 0,
+    approvedRequests: 0,
+    declinedRequests: 0,
+    totalRequests: 0,
     approvedThisMonth: 0,
     workersOffToday: 0,
     upcomingLeave: 0,
@@ -50,6 +62,19 @@ export default function HolidayRequestsPage() {
   const [viewRequest, setViewRequest] = useState<HolidayRequest | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [calendarItems, setCalendarItems] = useState<HolidayRequest[]>([])
+  const [calendarView, setCalendarView] = useState<HolidayCalendarView>('month')
+  const [calendarAnchorDate, setCalendarAnchorDate] = useState(() => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  })
+  const [calendarRange, setCalendarRange] = useState<{ start: string; end: string } | null>(null)
+  const [isCalendarLoading, setIsCalendarLoading] = useState(false)
+  const [calendarError, setCalendarError] = useState<string | null>(null)
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
@@ -108,6 +133,38 @@ export default function HolidayRequestsPage() {
     }
   }, [debouncedSearch, dateFrom, dateTo, page, pageSize, statusFilter, workerFilter])
 
+  const loadCalendarRequests = useCallback(async () => {
+    if (!calendarRange) return
+
+    setIsCalendarLoading(true)
+    setCalendarError(null)
+
+    try {
+      const calendarRequests = await fetchHolidayCalendarRequests({
+        dateFrom: calendarRange.start,
+        dateTo: calendarRange.end,
+        statuses: ['Approved', 'Pending'],
+      })
+      setCalendarItems(calendarRequests)
+    } catch (error) {
+      const message =
+        error instanceof HolidayRequestsServiceError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to load holiday calendar'
+      setCalendarError(message)
+    } finally {
+      setIsCalendarLoading(false)
+    }
+  }, [calendarRange])
+
+  const handleCalendarRangeChange = useCallback((range: { start: string; end: string }) => {
+    setCalendarRange((current) =>
+      current?.start === range.start && current.end === range.end ? current : range,
+    )
+  }, [])
+
   useEffect(() => {
     void loadWorkers().catch(() => {
       /* workers load failure handled on submit */
@@ -117,6 +174,11 @@ export default function HolidayRequestsPage() {
   useEffect(() => {
     void loadRequests()
   }, [loadRequests])
+
+  useEffect(() => {
+    if (!calendarRange) return
+    void loadCalendarRequests()
+  }, [calendarRange, calendarRefreshKey, loadCalendarRequests])
 
   function clearFilters() {
     setSearchTerm('')
@@ -131,6 +193,7 @@ export default function HolidayRequestsPage() {
     workerId: string
     startDate: string
     endDate: string
+    leaveType: HolidayLeaveType
     reason: string
   }) {
     setIsSaving(true)
@@ -139,10 +202,12 @@ export default function HolidayRequestsPage() {
         workerId: input.workerId,
         startDate: input.startDate,
         endDate: input.endDate,
+        leaveType: input.leaveType,
         reason: input.reason,
       })
       showToast('Holiday request submitted')
       await loadRequests()
+      setCalendarRefreshKey((current) => current + 1)
     } catch (error) {
       throw error instanceof HolidayRequestsServiceError
         ? error
@@ -171,6 +236,7 @@ export default function HolidayRequestsPage() {
       showToast('Holiday request updated')
       setEditRequest(null)
       await loadRequests()
+      setCalendarRefreshKey((current) => current + 1)
     } catch (error) {
       throw error instanceof HolidayRequestsServiceError
         ? error
@@ -187,6 +253,7 @@ export default function HolidayRequestsPage() {
       showToast('Holiday request approved')
       setViewRequest(null)
       await loadRequests()
+      setCalendarRefreshKey((current) => current + 1)
     } catch (error) {
       const message =
         error instanceof HolidayRequestsServiceError
@@ -202,9 +269,10 @@ export default function HolidayRequestsPage() {
     setIsSaving(true)
     try {
       await rejectHolidayRequest(request.id, managerNote)
-      showToast('Holiday request rejected')
+      showToast('Holiday request declined')
       setViewRequest(null)
       await loadRequests()
+      setCalendarRefreshKey((current) => current + 1)
     } catch (error) {
       const message =
         error instanceof HolidayRequestsServiceError
@@ -227,6 +295,7 @@ export default function HolidayRequestsPage() {
       await deleteHolidayRequest(request.id)
       showToast('Holiday request deleted')
       await loadRequests()
+      setCalendarRefreshKey((current) => current + 1)
     } catch (error) {
       const message =
         error instanceof HolidayRequestsServiceError
@@ -243,17 +312,34 @@ export default function HolidayRequestsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
-            Holiday Requests
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage annual leave, approvals and workforce availability.
-          </p>
+      <div className="space-y-5">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
+              Operations
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
+              Holiday Requests
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-[#5499BF]">
+              Manage worker holiday requests, approvals and declined requests.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setIsNewModalOpen(true)}
+            className={`shrink-0 ${holidayPrimaryButtonClass}`}
+          >
+            <Plus className="mr-1.5 size-4" />
+            New Holiday Request
+          </Button>
         </header>
 
-        <HolidayRequestsSummaryCards stats={stats} />
+        <HolidayRequestsSummaryCards
+          stats={stats}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+        />
 
         <HolidayRequestsToolbar
           searchTerm={searchTerm}
@@ -267,29 +353,27 @@ export default function HolidayRequestsPage() {
           dateTo={dateTo}
           onDateToChange={setDateTo}
           workers={workers}
-          hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilters}
-          onNewRequest={() => setIsNewModalOpen(true)}
         />
 
         {loadError ? (
-          <div className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {loadError}
           </div>
         ) : null}
 
         {isLoading ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+          <div className={`px-6 py-10 text-center text-sm text-[#5499BF] ${holidayPageCardClass}`}>
             Loading holiday requests…
           </div>
         ) : showEmptyState ? (
           <HolidayRequestsEmptyState onCreateFirst={() => setIsNewModalOpen(true)} />
         ) : items.length === 0 ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
-              No matching requests
+          <div className={`px-6 py-10 text-center ${holidayPageCardClass}`}>
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
+              No holiday requests found.
             </h2>
-            <p className="mt-2 text-sm text-slate-500">Try adjusting your search or filters.</p>
+            <p className="mt-2 text-sm text-[#5499BF]">Try adjusting your search or filters.</p>
           </div>
         ) : (
           <div>
@@ -310,6 +394,18 @@ export default function HolidayRequestsPage() {
             />
           </div>
         )}
+
+        <HolidayRequestsCalendar
+          requests={calendarItems}
+          workers={workers}
+          isLoading={isCalendarLoading}
+          error={calendarError}
+          view={calendarView}
+          anchorDate={calendarAnchorDate}
+          onViewChange={setCalendarView}
+          onAnchorDateChange={setCalendarAnchorDate}
+          onRangeChange={handleCalendarRangeChange}
+        />
       </div>
 
       <NewHolidayRequestModal
