@@ -62,6 +62,12 @@ export type Driver = {
   emergencyContactName: string | null
   emergencyContactPhone: string | null
   emergencyContactRelationship: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  townCity: string | null
+  county: string | null
+  postcode: string | null
+  country: string | null
   avatarUrl: string | null
 }
 
@@ -85,6 +91,12 @@ export type CreateDriverInput = {
   emergencyContactName: string
   emergencyContactPhone: string
   emergencyContactRelationship: string
+  addressLine1: string
+  addressLine2: string
+  townCity: string
+  county: string
+  postcode: string
+  country: string
 }
 
 export type UpdateDriverInput = CreateDriverInput
@@ -109,6 +121,12 @@ export const emptyCreateDriverInput: CreateDriverInput = {
   emergencyContactName: '',
   emergencyContactPhone: '',
   emergencyContactRelationship: '',
+  addressLine1: '',
+  addressLine2: '',
+  townCity: '',
+  county: '',
+  postcode: '',
+  country: 'United Kingdom',
 }
 
 type DriverRow = {
@@ -137,6 +155,12 @@ type DriverRow = {
   emergency_contact_name?: string | null
   emergency_contact_phone?: string | null
   emergency_contact_relationship?: string | null
+  address_line_1?: string | null
+  address_line_2?: string | null
+  town_city?: string | null
+  county?: string | null
+  postcode?: string | null
+  country?: string | null
   avatar_url: string | null
 }
 
@@ -153,7 +177,7 @@ const workerCoreSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -227,6 +251,11 @@ function resolveEmploymentType(value: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
   return isEmploymentType(trimmed) ? trimmed : null
+}
+
+function resolveCountry(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
 }
 
 function mapEmploymentTypeFromRow(
@@ -346,6 +375,12 @@ function buildFullWritePayload(input: CreateDriverInput): Record<string, unknown
     emergency_contact_relationship: emptyToNull(
       input.emergencyContactRelationship,
     ),
+    address_line_1: emptyToNull(input.addressLine1),
+    address_line_2: emptyToNull(input.addressLine2),
+    town_city: emptyToNull(input.townCity),
+    county: emptyToNull(input.county),
+    postcode: emptyToNull(input.postcode),
+    country: resolveCountry(input.country),
   }
 }
 
@@ -364,6 +399,12 @@ const OPTIONAL_FIELD_STRIP_ORDER = [
   'emergency_contact_name',
   'emergency_contact_phone',
   'emergency_contact_relationship',
+  'address_line_1',
+  'address_line_2',
+  'town_city',
+  'county',
+  'postcode',
+  'country',
   'driving_licence_expiry',
   'cpc_expiry',
   'driver_card_expiry',
@@ -775,6 +816,12 @@ function mapDriverRow(row: DriverRow): Driver {
     emergencyContactPhone: row.emergency_contact_phone?.trim() || null,
     emergencyContactRelationship:
       row.emergency_contact_relationship?.trim() || null,
+    addressLine1: row.address_line_1?.trim() || null,
+    addressLine2: row.address_line_2?.trim() || null,
+    townCity: row.town_city?.trim() || null,
+    county: row.county?.trim() || null,
+    postcode: row.postcode?.trim() || null,
+    country: row.country?.trim() || null,
     avatarUrl: row.avatar_url,
   }
 }
@@ -819,6 +866,12 @@ export function getDriverFormValues(driver: Driver): CreateDriverInput {
     emergencyContactName: driver.emergencyContactName ?? '',
     emergencyContactPhone: driver.emergencyContactPhone ?? '',
     emergencyContactRelationship: driver.emergencyContactRelationship ?? '',
+    addressLine1: driver.addressLine1 ?? '',
+    addressLine2: driver.addressLine2 ?? '',
+    townCity: driver.townCity ?? '',
+    county: driver.county ?? '',
+    postcode: driver.postcode ?? '',
+    country: driver.country ?? 'United Kingdom',
   }
 }
 

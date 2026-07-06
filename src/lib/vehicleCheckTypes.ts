@@ -46,6 +46,7 @@ export type VehicleChecksQuery = {
   search?: string
   status?: VehicleCheckStatus | 'all'
   vehicleId?: string | 'all'
+  workerId?: string | 'all'
   inspectionDate?: string
   page?: number
   pageSize?: number

@@ -210,6 +210,10 @@ export async function fetchConsumables(
     request = request.eq('vehicle_id', query.vehicleId)
   }
 
+  if (query.workerId && query.workerId !== 'all') {
+    request = request.eq('worker_id', query.workerId)
+  }
+
   if (query.dateFrom) {
     request = request.gte('entry_date', query.dateFrom)
   }

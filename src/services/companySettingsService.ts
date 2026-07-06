@@ -92,6 +92,17 @@ export class CompanySettingsServiceError extends Error {
   }
 }
 
+export const COMPANY_NAME_MAX_LENGTH = 80
+
+export function validateCompanyName(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Company name is required.'
+  if (trimmed.length > COMPANY_NAME_MAX_LENGTH) {
+    return `Company name must be ${COMPANY_NAME_MAX_LENGTH} characters or fewer.`
+  }
+  return null
+}
+
 function normalizeDateFormat(value: string | null | undefined): CompanyDateFormat {
   if (value === 'MDY' || value === 'YMD') return value
   return 'DMY'
@@ -405,7 +416,14 @@ export function companySettingsToFormValues(
 function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
 
-  // Company name is set at registration and is not editable via Settings.
+  if (input.name !== undefined) {
+    const nameError = validateCompanyName(input.name)
+    if (nameError) {
+      throw new CompanySettingsServiceError(nameError)
+    }
+    payload.name = input.name.trim()
+  }
+
   if (input.logoUrl !== undefined) payload.logo_url = input.logoUrl.trim() || null
   if (input.address !== undefined) payload.address = input.address.trim() || null
   if (input.city !== undefined) payload.city = input.city.trim() || null
@@ -751,4 +769,5 @@ export const companySettingsService = {
   updateCompanySettings,
   companySettingsToFormValues,
   mapCompanySettingsRow,
+  validateCompanyName,
 }

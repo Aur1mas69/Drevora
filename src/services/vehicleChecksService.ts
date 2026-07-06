@@ -247,6 +247,10 @@ export async function fetchVehicleChecks(
     request = request.eq('vehicle_id', query.vehicleId)
   }
 
+  if (query.workerId && query.workerId !== 'all') {
+    request = request.eq('worker_id', query.workerId)
+  }
+
   if (query.inspectionDate) {
     request = request.eq('inspection_date', query.inspectionDate)
   }

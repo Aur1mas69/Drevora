@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-react'
 import { AuthServiceError } from '@/services/authService'
+import drevoraMark from '@/assets/drevora-mark.png'
+import drevoraWordmark from '@/assets/drevora-wordmark.svg'
 import {
   adminMainNavigationItems,
   adminSecondaryNavigationItems,
@@ -97,6 +99,8 @@ function SidebarNavTooltip({
   )
 }
 
+const drevoraMarkClass = 'h-10 w-10 shrink-0 object-contain'
+
 function SidebarBrand({
   compact = false,
   collapsed = false,
@@ -104,28 +108,32 @@ function SidebarBrand({
   compact?: boolean
   collapsed?: boolean
 }) {
-  if (collapsed) {
+  if (collapsed || compact) {
     return (
-      <div className="flex justify-center px-1 py-1">
-        <span
-          aria-label="DREVORA"
-          className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F8DFF] to-[#6366F1] text-sm font-extrabold text-white shadow-[0_8px_20px_rgba(47,115,255,0.28)]"
-        >
-          D
-        </span>
+      <div
+        className={cn(
+          'flex items-center px-1 py-1',
+          collapsed ? 'justify-center' : 'min-w-0 shrink justify-start',
+        )}
+      >
+        <img
+          src={drevoraMark}
+          alt="DREVORA"
+          className={drevoraMarkClass}
+          draggable={false}
+        />
       </div>
     )
   }
 
   return (
-    <div className={compact ? 'min-w-0 shrink px-1' : 'px-5 py-5'}>
-      <span
-        className={`inline-block bg-gradient-to-r from-[#4F8DFF] to-[#6366F1] bg-clip-text font-extrabold uppercase tracking-[0.18em] text-transparent ${
-          compact ? 'text-lg' : 'text-xl'
-        }`}
-      >
-        DREVORA
-      </span>
+    <div className="px-5 py-5">
+      <img
+        src={drevoraWordmark}
+        alt="DREVORA"
+        className="block h-10 max-w-[168px] w-auto object-contain"
+        draggable={false}
+      />
     </div>
   )
 }

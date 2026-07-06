@@ -1,5 +1,8 @@
 import type { Driver, DriverRole, LicenceCategory } from '@/services/driversService'
+import type { VehicleCheckResult } from '@/lib/vehicleCheckTypes'
 import { getDaysRemaining, getToday } from '@/lib/complianceUtils'
+
+export const WORKER_PROFILE_HISTORY_LIMIT = 25
 
 export const WORKER_LICENCE_CATEGORIES: LicenceCategory[] = ['C', 'C+E', 'B', 'Other']
 
@@ -163,6 +166,38 @@ export function formatEmploymentType(
   value: EmploymentType | null | undefined,
 ): string {
   return value ?? 'Not set'
+}
+
+export function isWorkerAddressEmpty(
+  driver: Pick<
+    Driver,
+    | 'addressLine1'
+    | 'addressLine2'
+    | 'townCity'
+    | 'county'
+    | 'postcode'
+    | 'country'
+  >,
+): boolean {
+  return ![
+    driver.addressLine1,
+    driver.addressLine2,
+    driver.townCity,
+    driver.county,
+    driver.postcode,
+    driver.country,
+  ].some((value) => value?.trim())
+}
+
+export function formatVehicleCheckResultLabel(result: VehicleCheckResult): string {
+  switch (result) {
+    case 'Pass':
+      return 'Passed'
+    case 'Advisory':
+      return 'Issue'
+    case 'Fail':
+      return 'Failed'
+  }
 }
 
 export const employmentTypeClassMap: Record<EmploymentType, string> = {

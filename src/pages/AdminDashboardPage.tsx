@@ -5,6 +5,7 @@ import {
   DashboardOverview,
   DashboardPageHeader,
 } from '@/components/dashboard/DashboardOverview'
+import { DashboardQuickSearch } from '@/components/dashboard/DashboardQuickSearch'
 import { useFleetOperationsHeader } from '@/hooks/useFleetOperationsHeader'
 import AdminLayout from '@/layouts/AdminLayout'
 import {
@@ -45,6 +46,7 @@ function AdminDashboardPage() {
       wideContent
       customHeader={<FleetOperationsHeader {...fleetHeader} />}
     >
+      <DashboardQuickSearch />
       <DashboardPageHeader />
 
       {isEmptyWorkspace ? (

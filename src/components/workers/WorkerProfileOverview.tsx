@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Briefcase,
+  MapPin,
   PhoneCall,
   ShieldCheck,
   UserRound,
@@ -13,6 +14,7 @@ import {
   formatLicenceCategories,
   formatWorkerProfileDate,
   getWorkerDefaultVehicleLabel,
+  isWorkerAddressEmpty,
 } from '@/lib/workerProfileUtils'
 import type { Driver, DriverStatus } from '@/services/driversService'
 import { cn } from '@/lib/utils'
@@ -114,6 +116,7 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
   const fullName = `${driver.firstName} ${driver.lastName}`.trim()
   const licenceCategories = formatLicenceCategories(driver.licenceCategories)
   const defaultVehicle = getWorkerDefaultVehicleLabel(driver)
+  const hasAddress = !isWorkerAddressEmpty(driver)
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -158,6 +161,33 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
           </ProfileField>
         </ProfileSectionCard>
       </div>
+
+      <ProfileSectionCard title="Address" icon={MapPin} className="lg:max-w-2xl">
+        {hasAddress ? (
+          <>
+            <ProfileField label="Address Line 1" className="sm:col-span-2">
+              {driver.addressLine1 ? driver.addressLine1 : <ProfileEmptyValue />}
+            </ProfileField>
+            <ProfileField label="Address Line 2" className="sm:col-span-2">
+              {driver.addressLine2 ? driver.addressLine2 : <ProfileEmptyValue />}
+            </ProfileField>
+            <ProfileField label="Town / City">
+              {driver.townCity ? driver.townCity : <ProfileEmptyValue />}
+            </ProfileField>
+            <ProfileField label="County">
+              {driver.county ? driver.county : <ProfileEmptyValue />}
+            </ProfileField>
+            <ProfileField label="Postcode">
+              {driver.postcode ? driver.postcode : <ProfileEmptyValue />}
+            </ProfileField>
+            <ProfileField label="Country">
+              {driver.country ? driver.country : <ProfileEmptyValue />}
+            </ProfileField>
+          </>
+        ) : (
+          <p className="text-sm font-medium text-slate-400 sm:col-span-2">No address added</p>
+        )}
+      </ProfileSectionCard>
 
       <ProfileSectionCard
         title="Licence & Compliance"

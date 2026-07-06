@@ -46,6 +46,7 @@ export type ConsumablesQuery = {
   search?: string
   type?: ConsumableTypeFilter
   vehicleId?: string | 'all'
+  workerId?: string | 'all'
   dateFrom?: string
   dateTo?: string
   page?: number

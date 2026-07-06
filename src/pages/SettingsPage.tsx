@@ -34,7 +34,7 @@ import {
   type CompanySettingsTab,
 } from '@/lib/companySettingsTypes'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
-import { companySettingsService } from '@/services/companySettingsService'
+import { companySettingsService, validateCompanyName, COMPANY_NAME_MAX_LENGTH } from '@/services/companySettingsService'
 
 const timezoneOptions = [
   'Europe/London',
@@ -57,6 +57,7 @@ function SettingsPage() {
   const [form, setForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [savedForm, setSavedForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const isDirtyRef = useRef(false)
 
@@ -87,7 +88,15 @@ function SettingsPage() {
   async function handleSave() {
     if (!isDirty || isSaving) return
 
+    const companyNameError = validateCompanyName(form.name)
+    if (companyNameError) {
+      setNameError(companyNameError)
+      setSaveError(null)
+      return
+    }
+
     setSaveError(null)
+    setNameError(null)
 
     try {
       const updated = await updateSettings(form)
@@ -105,7 +114,13 @@ function SettingsPage() {
 
   function handleTextChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = event.target
-    if (name === 'name') return
+    if (name === 'name') {
+      updateForm({ name: value })
+      if (nameError) {
+        setNameError(validateCompanyName(value))
+      }
+      return
+    }
     updateForm({ [name]: value } as Partial<CompanySettingsInput>)
   }
 
@@ -163,21 +178,26 @@ function SettingsPage() {
 
             {activeTab === 'general' ? (
               <SettingsSection
-                title="General"
-                description="Organisation profile shown across the dashboard and fleet operations header."
+                title="Company Profile"
+                description="Organisation name and profile shown on the dashboard and fleet operations header."
               >
                 <SettingsField
                   label="Company Name"
                   span="full"
-                  hint="Company name is set during registration and cannot be changed here."
+                  hint="Displayed on the dashboard greeting and across DREVORA."
                 >
                   <Input
                     name="name"
                     value={form.name}
-                    readOnly
-                    aria-readonly="true"
-                    className={`${settingsFieldClassName} cursor-not-allowed bg-[#F1F5F9]/80 text-slate-600`}
+                    onChange={handleTextChange}
+                    maxLength={COMPANY_NAME_MAX_LENGTH}
+                    required
+                    aria-invalid={Boolean(nameError)}
+                    className={settingsFieldClassName}
                   />
+                  {nameError ? (
+                    <p className="mt-1.5 text-xs font-medium text-rose-500">{nameError}</p>
+                  ) : null}
                 </SettingsField>
 
                 <SettingsField

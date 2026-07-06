@@ -84,6 +84,14 @@ alter table public.drivers
 alter table public.drivers
   add column if not exists employment_type text;
 
+alter table public.drivers
+  add column if not exists address_line_1 text,
+  add column if not exists address_line_2 text,
+  add column if not exists town_city text,
+  add column if not exists county text,
+  add column if not exists postcode text,
+  add column if not exists country text default 'United Kingdom';
+
 create index if not exists drivers_default_vehicle_id_idx
   on public.drivers (default_vehicle_id);
 

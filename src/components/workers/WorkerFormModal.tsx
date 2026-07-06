@@ -187,6 +187,33 @@ export function WorkerFormModal({
             </label>
           </FormSection>
 
+          <FormSection title="Address" description="Optional home or contact address for this worker.">
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Address Line 1</span>
+              <Input name="addressLine1" value={form.addressLine1} onChange={onChange} className={fieldInputClass} />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Address Line 2</span>
+              <Input name="addressLine2" value={form.addressLine2} onChange={onChange} className={fieldInputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Town / City</span>
+              <Input name="townCity" value={form.townCity} onChange={onChange} className={fieldInputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">County</span>
+              <Input name="county" value={form.county} onChange={onChange} className={fieldInputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Postcode</span>
+              <Input name="postcode" value={form.postcode} onChange={onChange} className={fieldInputClass} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Country</span>
+              <Input name="country" value={form.country} onChange={onChange} className={fieldInputClass} />
+            </label>
+          </FormSection>
+
           <FormSection title="Work Details" description="Role, status, default vehicle and start date.">
             <label className="block">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">

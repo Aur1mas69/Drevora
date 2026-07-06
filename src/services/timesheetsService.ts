@@ -1171,6 +1171,47 @@ export async function fetchExistingTimesheetDriverIdsForWeek(
   return new Set((data ?? []).map((row) => row.driver_id))
 }
 
+export async function fetchTimesheetsByDriverId(
+  driverId: string,
+  options: { page?: number; pageSize?: number } = {},
+): Promise<{ items: TimesheetListItem[]; totalCount: number }> {
+  const page = Math.max(1, options.page ?? 1)
+  const pageSize = options.pageSize ?? 25
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  const { data, error, count } = await requireSupabase()
+    .from('timesheets')
+    .select(timesheetListSelect, { count: 'exact' })
+    .eq('driver_id', driverId)
+    .is('deleted_at', null)
+    .order('week_start', { ascending: false })
+    .order('updated_at', { ascending: false })
+    .range(from, to)
+
+  logSupabaseQuery({
+    service: 'timesheetsService.fetchTimesheetsByDriverId',
+    table: 'timesheets',
+    data,
+    error,
+    count,
+  })
+
+  if (error) {
+    throw new TimesheetsServiceError(error.message)
+  }
+
+  const rows = (data ?? []) as unknown as TimesheetRow[]
+  let items = rows.map((row) => mapListRow(row))
+  const totalsMap = await fetchEntryTotalsByTimesheetIds(items.map((item) => item.id))
+  items = applyListTotals(items, totalsMap)
+
+  return {
+    items,
+    totalCount: count ?? items.length,
+  }
+}
+
 export const timesheetsService = {
   fetchTimesheetsPage,
   fetchTimesheetWeekStats,
@@ -1187,4 +1228,5 @@ export const timesheetsService = {
   bulkApproveTimesheets,
   bulkRejectTimesheets,
   fetchExistingTimesheetDriverIdsForWeek,
+  fetchTimesheetsByDriverId,
 }

@@ -5,8 +5,9 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type ReactNode,
 } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Eye, Filter, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
@@ -140,6 +141,32 @@ const workersFilterButtonClass =
 
 function getDriverName(driver: Driver): string {
   return `${driver.firstName} ${driver.lastName}`.trim()
+}
+
+function getWorkerProfilePath(driver: Driver): string {
+  return `/drivers/${driver.id}`
+}
+
+function WorkerProfileLink({
+  driver,
+  className,
+  children,
+}: {
+  driver: Driver
+  className?: string
+  children: ReactNode
+}) {
+  const workerName = getDriverName(driver)
+
+  return (
+    <Link
+      to={getWorkerProfilePath(driver)}
+      aria-label={`View worker profile for ${workerName}`}
+      className={className}
+    >
+      {children}
+    </Link>
+  )
 }
 
 function resetAvatarFormState(setters: {
@@ -308,7 +335,7 @@ function DriverRowActions({
       id: 'view',
       label: 'View',
       icon: Eye,
-      to: `/drivers/${driver.id}`,
+      to: getWorkerProfilePath(driver),
     },
     {
       id: 'edit',
@@ -361,21 +388,40 @@ function DriversTable({
                   className="group border-b border-[#D3E9FC]/55 transition-all duration-200 last:border-b-0 hover:bg-[#F5FAFF]/95 hover:shadow-[inset_0_0_0_1px_rgba(191,227,245,0.45),0_4px_14px_rgba(33,142,231,0.06)] dark:hover:bg-slate-800/40"
                 >
                   <td className="px-6 py-4">
-                    <WorkerAvatar
-                      firstName={driver.firstName}
-                      lastName={driver.lastName}
-                      avatarUrl={driver.avatarUrl}
-                      size="sm"
-                    />
+                    <WorkerProfileLink
+                      driver={driver}
+                      className="inline-flex rounded-full no-underline transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/45 [&>div]:cursor-pointer [&>div]:transition-all [&>div]:duration-200 hover:[&>div]:-translate-y-0.5 hover:[&>div]:ring-[#218EE7] hover:[&>div]:shadow-[0_6px_16px_rgba(33,142,231,0.16)]"
+                    >
+                      <WorkerAvatar
+                        firstName={driver.firstName}
+                        lastName={driver.lastName}
+                        avatarUrl={driver.avatarUrl}
+                        size="sm"
+                      />
+                    </WorkerProfileLink>
                   </td>
                   <td className="px-6 py-4">
-                    <WorkerCodeBadge code={driver.workerCode} />
+                    {driver.workerCode ? (
+                      <WorkerProfileLink
+                        driver={driver}
+                        className="inline-flex rounded-full no-underline transition-all duration-200 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/45 [&>span]:cursor-pointer [&>span]:transition-all [&>span]:duration-200 hover:[&>span]:bg-[#E8F3FE] hover:[&>span]:ring-[#89CFF0]/80"
+                      >
+                        <WorkerCodeBadge code={driver.workerCode} />
+                      </WorkerProfileLink>
+                    ) : (
+                      <WorkerCodeBadge code={driver.workerCode} />
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold tracking-[-0.01em] text-[#113C69] dark:text-slate-100">
-                        {getDriverName(driver)}
-                      </p>
+                      <WorkerProfileLink
+                        driver={driver}
+                        className="block max-w-full rounded-sm no-underline transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
+                      >
+                        <p className="truncate text-sm font-bold tracking-[-0.01em] text-[#113C69] transition-colors duration-200 hover:text-[#0B68BE] dark:text-slate-100 dark:hover:text-blue-300">
+                          {getDriverName(driver)}
+                        </p>
+                      </WorkerProfileLink>
                       <p className="mt-1 truncate text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
                         {driver.email}
                       </p>

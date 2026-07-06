@@ -8,13 +8,9 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  CalendarCheck,
-  ClipboardCheck,
-  FileText,
   Mail,
   Pencil,
   Phone,
-  ShieldCheck,
   Trash2,
 } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -33,16 +29,15 @@ import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
 import { WorkerComplianceBadge } from '@/components/workers/WorkerComplianceBadge'
 import { WorkerProfileOverview } from '@/components/workers/WorkerProfileOverview'
+import {
+  WorkerProfileHistoryTabs,
+  type WorkerProfileHistoryTab,
+} from '@/components/workers/profile/WorkerProfileHistoryTabs'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
-type DriverDetailsTab =
-  | 'Overview'
-  | 'Timesheets'
-  | 'Holidays'
-  | 'Vehicle Checks'
-  | 'Documents'
+type DriverDetailsTab = 'Overview' | WorkerProfileHistoryTab
 
 type DriverForm = CreateDriverInput
 type DriverFormErrors = Partial<Record<keyof DriverForm, string>>
@@ -53,6 +48,7 @@ const tabs: DriverDetailsTab[] = [
   'Holidays',
   'Vehicle Checks',
   'Documents',
+  'Consumables',
 ]
 
 const statusClassMap: Record<DriverStatus, string> = {
@@ -176,30 +172,6 @@ function DeleteDriverModal({
         </div>
       </div>
     </div>
-  )
-}
-
-function EmptyTabState({
-  icon: Icon,
-  message,
-}: {
-  icon: typeof ClipboardCheck
-  message: string
-}) {
-  return (
-    <Card className="mx-auto max-w-6xl rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 py-0 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35">
-      <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-[#E8F3FE] text-[#0B68BE] ring-1 ring-[#C5DFFB]/60">
-          <Icon className="size-5" strokeWidth={1.9} />
-        </div>
-        <p className="mt-3 text-base font-semibold tracking-[-0.02em] text-[#113C69]">
-          {message}
-        </p>
-        <p className="mt-1.5 max-w-md text-sm font-medium text-slate-500">
-          This section will connect to the worker profile as the module is built.
-        </p>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -592,17 +564,8 @@ function DriverDetailsPage() {
         </Card>
 
         {activeTab === 'Overview' ? <WorkerProfileOverview driver={driver} /> : null}
-        {activeTab === 'Timesheets' ? (
-          <EmptyTabState icon={ClipboardCheck} message="No timesheets yet" />
-        ) : null}
-        {activeTab === 'Holidays' ? (
-          <EmptyTabState icon={CalendarCheck} message="No holiday requests yet" />
-        ) : null}
-        {activeTab === 'Vehicle Checks' ? (
-          <EmptyTabState icon={ShieldCheck} message="No vehicle checks yet" />
-        ) : null}
-        {activeTab === 'Documents' ? (
-          <EmptyTabState icon={FileText} message="No documents yet" />
+        {activeTab !== 'Overview' ? (
+          <WorkerProfileHistoryTabs worker={driver} activeTab={activeTab} />
         ) : null}
       </section>
 
