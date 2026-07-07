@@ -9,15 +9,7 @@ import {
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  CheckCircle2,
-  ClipboardCheck,
-  FileText,
-  Pencil,
-  Plus,
-  ShieldAlert,
   Trash2,
-  Truck,
-  Wrench,
 } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
@@ -30,10 +22,20 @@ import {
   type AvailabilityDetailsContext,
 } from '@/components/vehicles/AvailabilityEventModals'
 import { DeleteVehicleModal } from '@/components/vehicles/DeleteVehicleModal'
-import { TimelineTab } from '@/components/vehicles/TimelineTab'
 import { VehicleConsumablesTab } from '@/components/vehicles/VehicleConsumablesTab'
 import { VehicleEditModal } from '@/components/vehicles/VehicleEditModal'
-import { VehicleStatusBadge } from '@/components/vehicles/VehicleStatusBadge'
+import { VehicleProfileAvailabilityTab } from '@/components/vehicles/profile/VehicleProfileAvailabilityTab'
+import { VehicleProfileChecksTab } from '@/components/vehicles/profile/VehicleProfileChecksTab'
+import { VehicleProfileDocumentsTab } from '@/components/vehicles/profile/VehicleProfileDocumentsTab'
+import { VehicleProfileDriverReportsTab } from '@/components/vehicles/profile/VehicleProfileDriverReportsTab'
+import { VehicleProfileHeader } from '@/components/vehicles/profile/VehicleProfileHeader'
+import { VehicleProfileOverviewTab } from '@/components/vehicles/profile/VehicleProfileOverviewTab'
+import { VehicleProfileTabBar } from '@/components/vehicles/profile/VehicleProfileTabBar'
+import {
+  vehicleProfilePanelClass,
+  vehicleProfileTabFromSearchParam,
+  type VehicleProfileTabId,
+} from '@/components/vehicles/profile/vehicleProfileUi'
 import {
   getVehicleFormValues,
   initialVehicleForm,
@@ -41,14 +43,10 @@ import {
   validateVehicleForm,
   type VehicleFormErrors,
 } from '@/lib/vehicleForm'
-import type { Document } from '@/lib/documentTypes'
-import { documentStatusClassMap, getDocumentStatusLabel } from '@/lib/documentUtils'
 import { notifyVehiclesUpdated } from '@/lib/vehicleEvents'
-import { fetchDocumentsByVehicleId } from '@/services/documentsService'
 import { driversService, type Driver } from '@/services/driversService'
 import {
   vehiclesService,
-  getVehicleStatusForDate,
   type VehicleAvailability,
   type VehicleAvailabilityInput,
   type Vehicle,
@@ -60,33 +58,6 @@ import {
   ConsumablesServiceError,
 } from '@/services/consumablesService'
 import type { Consumable } from '@/lib/consumableTypes'
-
-type VehicleTab =
-  | 'Overview'
-  | 'Documents'
-  | 'Availability'
-  | 'Timeline'
-  | 'Maintenance'
-  | 'Vehicle Checks'
-  | 'Defects'
-  | 'Fluids & Consumables'
-  | 'History'
-
-const tabs: VehicleTab[] = [
-  'Overview',
-  'Documents',
-  'Availability',
-  'Timeline',
-  'Maintenance',
-  'Vehicle Checks',
-  'Defects',
-  'Fluids & Consumables',
-  'History',
-]
-
-const tabFromSearchParam: Record<string, VehicleTab> = {
-  consumables: 'Fluids & Consumables',
-}
 
 const maintenanceReasons = ['Service', 'Repair', 'MOT', 'Inspection', 'Tyres', 'Other']
 
@@ -127,271 +98,10 @@ function getReasonOptions(status: VehicleStatus): string[] {
   return []
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return 'Not set'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(`${value}T00:00:00`))
-}
-
-function getVehicleName(vehicle: Vehicle): string {
-  return `${vehicle.make} ${vehicle.model}`.trim()
-}
-
-function DocumentsTab({ vehicle }: { vehicle: Vehicle }) {
-  const [items, setItems] = useState<Document[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    setIsLoading(true)
-    void fetchDocumentsByVehicleId(vehicle.id)
-      .then((records) => {
-        if (!cancelled) setItems(records)
-      })
-      .catch(() => {
-        if (!cancelled) setItems([])
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [vehicle.id])
-
-  if (isLoading) {
-    return (
-      <div className="rounded-[20px] bg-white px-6 py-10 text-center text-sm font-medium text-slate-500 ring-1 ring-blue-100/70">
-        Loading documents…
-      </div>
-    )
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-[20px] bg-white px-6 py-10 text-center ring-1 ring-blue-100/70">
-        <p className="text-sm font-semibold text-slate-800">No documents for this vehicle yet.</p>
-        <Link
-          to={`/documents?tab=vehicles&vehicleId=${vehicle.id}`}
-          className="mt-3 inline-flex text-sm font-semibold text-[#2563EB] hover:underline"
-        >
-          Add vehicle documents
-        </Link>
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {items.map((document) => (
-        <Card
-          key={document.id}
-          className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70"
-        >
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                  {document.documentName}
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-500">{document.documentType}</p>
-                <p className="mt-2 text-sm font-medium text-slate-500">
-                  Expiry: {document.expiryDate ? formatDate(document.expiryDate) : 'No expiry'}
-                </p>
-              </div>
-              <FileText className="size-5 text-[#3B82F6]" />
-            </div>
-            <span
-              className={`mt-5 inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${documentStatusClassMap[document.status]}`}
-            >
-              {getDocumentStatusLabel(document.status)}
-            </span>
-          </CardContent>
-        </Card>
-      ))}
-      <Card className="rounded-[20px] border border-dashed border-blue-200 bg-[#F8FBFF] py-0 ring-0">
-        <CardContent className="flex h-full flex-col items-center justify-center p-6 text-center">
-          <Link
-            to={`/documents?tab=vehicles&vehicleId=${vehicle.id}`}
-            className="text-sm font-semibold text-[#2563EB] hover:underline"
-          >
-            Manage all vehicle documents
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function DetailItem({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl bg-[#F8FBFF] px-4 py-3.5 ring-1 ring-blue-50">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-        {label}
-      </p>
-      <div className="mt-2 text-sm font-semibold text-slate-800">{value}</div>
-    </div>
-  )
-}
-
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
 
   return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>
-}
-
-function EmptyState({
-  icon: Icon,
-  message,
-}: {
-  icon: typeof ClipboardCheck
-  message: string
-}) {
-  return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="flex size-12 items-center justify-center rounded-[18px] bg-[#EAF4FF] text-[#3B82F6] ring-1 ring-blue-100">
-          <Icon className="size-6" strokeWidth={1.9} />
-        </div>
-        <p className="mt-4 text-lg font-semibold tracking-[-0.02em] text-slate-950">
-          {message}
-        </p>
-        <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
-          This section is ready for future module integration.
-        </p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function OverviewTab({
-  vehicle,
-  currentDriverName,
-}: {
-  vehicle: Vehicle
-  currentDriverName: string
-}) {
-  const vehicleAge = vehicle.year
-    ? `${Math.max(new Date().getFullYear() - vehicle.year, 0)} years`
-    : 'Not set'
-
-  return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="p-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <DetailItem label="Registration" value={vehicle.registration} />
-          <DetailItem label="Fleet Number" value={vehicle.fleetNumber ?? 'Not set'} />
-          <DetailItem label="Vehicle Type" value={vehicle.vehicleType ?? 'Not set'} />
-          <DetailItem label="Make" value={vehicle.make} />
-          <DetailItem label="Model" value={vehicle.model} />
-          <DetailItem label="Year" value={vehicle.year ?? 'Not set'} />
-          <DetailItem label="VIN" value={vehicle.vin ?? 'Not set'} />
-          <DetailItem label="Assigned Driver" value={currentDriverName} />
-          <DetailItem
-            label="Status"
-            value={getVehicleStatusForDate(vehicle)}
-          />
-          <DetailItem
-            label="Current Mileage"
-            value={vehicle.currentOdometer?.toLocaleString('en-GB') ?? 'Not set'}
-          />
-          <DetailItem label="Vehicle Age" value={vehicleAge} />
-          {getVehicleStatusForDate(vehicle) === 'Off Road' ? (
-            <>
-              <DetailItem
-                label="Off Road Reason"
-                value={vehicle.offRoadReason ?? 'Not set'}
-              />
-              <DetailItem
-                label="Off Road Start Date"
-                value={formatDate(vehicle.offRoadStartDate)}
-              />
-              <DetailItem
-                label="Expected Return Date"
-                value={formatDate(vehicle.offRoadExpectedReturnDate)}
-              />
-              <DetailItem label="Off Road Notes" value={vehicle.notes ?? 'Not set'} />
-            </>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function AvailabilityTab({
-  vehicle,
-  onAddAvailability,
-  onSelectRecord,
-}: {
-  vehicle: Vehicle
-  onAddAvailability: () => void
-  onSelectRecord: (record: VehicleAvailability) => void
-}) {
-  return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
-              Availability
-            </p>
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              Schedule date-based vehicle availability without changing the main vehicle record.
-            </p>
-          </div>
-          <Button
-            type="button"
-            onClick={onAddAvailability}
-            className="h-11 rounded-[16px] bg-[#3B82F6] px-4 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB]"
-          >
-            <Plus className="size-4" />
-            Add Availability
-          </Button>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {vehicle.availabilityRecords.length === 0 ? (
-            <div className="rounded-2xl bg-[#F8FBFF] px-4 py-8 text-center ring-1 ring-blue-50">
-              <p className="text-sm font-semibold text-slate-600">
-                No availability records yet
-              </p>
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                If no record exists, the vehicle uses its fallback status.
-              </p>
-            </div>
-          ) : (
-            vehicle.availabilityRecords.map((record) => (
-              <button
-                key={record.id}
-                type="button"
-                onClick={() => onSelectRecord(record)}
-                className="flex w-full flex-col gap-3 rounded-2xl bg-[#F8FBFF] px-4 py-4 text-left ring-1 ring-blue-50 transition-all duration-[250ms] hover:-translate-y-0.5 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <VehicleStatusBadge status={record.status} />
-                  <p className="mt-2 text-sm font-semibold text-slate-800">
-                    {formatDate(record.startDate)} -{' '}
-                    {record.endDate ? formatDate(record.endDate) : 'Ongoing'}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">
-                    Reason: {record.reason ?? 'Not set'}
-                  </p>
-                </div>
-                <p className="max-w-md text-sm font-medium text-slate-500">
-                  {record.notes ?? 'No notes'}
-                </p>
-              </button>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
 }
 
 function AvailabilityModal({
@@ -535,20 +245,22 @@ function AvailabilityModal({
 
 function VehicleDetailsSkeleton() {
   return (
-    <section className="space-y-5">
-      <Card className="rounded-[20px] border-0 bg-white/72 py-0 shadow-[0_18px_45px_rgba(59,130,246,0.07)] ring-1 ring-white/80">
-        <CardContent className="animate-pulse p-6">
-          <div className="h-10 w-36 rounded-[16px] bg-blue-100" />
-          <div className="mt-6 h-12 w-72 rounded-full bg-blue-100" />
-        </CardContent>
-      </Card>
-      <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-        <CardContent className="grid gap-3 p-6 sm:grid-cols-2 xl:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, index) => (
-            <div key={index} className="h-20 animate-pulse rounded-2xl bg-[#F8FBFF]" />
-          ))}
-        </CardContent>
-      </Card>
+    <section className="mx-auto max-w-6xl space-y-5">
+      <div className={`${vehicleProfilePanelClass} animate-pulse p-6`}>
+        <div className="h-9 w-36 rounded-[12px] bg-[#E8F3FE]" />
+        <div className="mt-6 flex items-center gap-4">
+          <div className="size-14 rounded-2xl bg-[#E8F3FE]" />
+          <div className="space-y-2">
+            <div className="h-8 w-48 rounded-full bg-[#E8F3FE]" />
+            <div className="h-4 w-32 rounded-full bg-[#E8F3FE]" />
+          </div>
+        </div>
+      </div>
+      <div className={`${vehicleProfilePanelClass} grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4`}>
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="h-20 animate-pulse rounded-xl bg-[#E8F3FE]/70" />
+        ))}
+      </div>
     </section>
   )
 }
@@ -559,7 +271,7 @@ function VehicleDetailsPage() {
   const [searchParams] = useSearchParams()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [drivers, setDrivers] = useState<Driver[]>([])
-  const [activeTab, setActiveTab] = useState<VehicleTab>('Overview')
+  const [activeTab, setActiveTab] = useState<VehicleProfileTabId>('overview')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -632,8 +344,8 @@ function VehicleDetailsPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && tabFromSearchParam[tabParam]) {
-      setActiveTab(tabFromSearchParam[tabParam])
+    if (tabParam && vehicleProfileTabFromSearchParam[tabParam]) {
+      setActiveTab(vehicleProfileTabFromSearchParam[tabParam])
     }
   }, [searchParams])
 
@@ -644,7 +356,7 @@ function VehicleDetailsPage() {
   }, [toastMessage])
 
   useEffect(() => {
-    if (activeTab !== 'Timeline' || !vehicle) return
+    if (activeTab !== 'availability' || !vehicle) return
 
     const vehicleId = vehicle.id
     let isCancelled = false
@@ -671,7 +383,7 @@ function VehicleDetailsPage() {
   }, [activeTab, vehicle])
 
   useEffect(() => {
-    if (activeTab !== 'Fluids & Consumables' || !vehicle) return
+    if (activeTab !== 'consumables' || !vehicle) return
 
     const vehicleId = vehicle.id
     let isCancelled = false
@@ -714,7 +426,7 @@ function VehicleDetailsPage() {
 
   const currentDriverName = useMemo(() => {
     const driver = drivers.find((item) => item.id === vehicle?.currentDriverId)
-    return driver ? `${driver.firstName} ${driver.lastName}`.trim() : 'No current driver'
+    return driver ? `${driver.firstName} ${driver.lastName}`.trim() : 'Unassigned'
   }, [drivers, vehicle?.currentDriverId])
 
   function openEditVehicleModal() {
@@ -778,7 +490,7 @@ function VehicleDetailsPage() {
 
       setIsEditModalOpen(false)
       await loadVehicle()
-      if (activeTab === 'Timeline') {
+      if (activeTab === 'availability') {
         const records = await vehiclesService.fetchVehicleTimelineRecords(vehicle.id)
         setTimelineRecords(records)
       }
@@ -847,7 +559,7 @@ function VehicleDetailsPage() {
       setIsAvailabilityModalOpen(false)
       setAvailabilityForm(initialAvailabilityForm)
       await loadVehicle()
-      if (activeTab === 'Timeline') {
+      if (activeTab === 'availability') {
         const records = await vehiclesService.fetchVehicleTimelineRecords(vehicle.id)
         setTimelineRecords(records)
       }
@@ -986,136 +698,48 @@ function VehicleDetailsPage() {
   }
 
   return (
-    <AdminLayout>
-      <section className="space-y-5">
-        <Card className="rounded-[20px] border-0 bg-white/72 py-0 shadow-[0_18px_45px_rgba(59,130,246,0.07)] ring-1 ring-white/80 backdrop-blur">
-          <CardContent className="p-5 sm:p-6">
-            <div className="mb-6">
-              <Button
-                asChild
-                variant="outline"
-                className="h-11 rounded-[16px] border-0 bg-white px-4 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#EAF4FF] hover:text-[#2563EB]"
-              >
-                <Link to="/vehicles">
-                  <ArrowLeft className="size-4" />
-                  Back to Vehicles
-                </Link>
-              </Button>
-            </div>
+    <AdminLayout premiumBackground>
+      <section className="mx-auto max-w-6xl space-y-5">
+        <VehicleProfileHeader
+          vehicle={vehicle}
+          assignedWorkerLabel={currentDriverName}
+          onEdit={openEditVehicleModal}
+        />
 
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3.5">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-[#EAF4FF] text-[#2563EB] ring-1 ring-blue-100">
-                  <Truck className="size-7" strokeWidth={1.9} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">
-                      {vehicle.registration}
-                    </h1>
-                    <VehicleStatusBadge status={getVehicleStatusForDate(vehicle)} />
-                  </div>
-                  <p className="mt-1 text-sm font-medium text-slate-500">
-                    {getVehicleName(vehicle)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={openEditVehicleModal}
-                  className="h-9 rounded-[12px] border-0 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
-                >
-                  <Pencil className="size-3.5" />
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setIsDeleteModalOpen(true)
-                  }}
-                  disabled={isDeleting}
-                  variant="outline"
-                  className="h-9 rounded-[12px] border-0 bg-white px-3 text-sm font-semibold text-rose-600 shadow-sm ring-1 ring-rose-100 transition-all duration-[250ms] ease-out hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-
-            {deleteError ? (
-              <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
-                {deleteError}
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-          <CardContent className="p-3">
-            <div className="flex gap-2 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`shrink-0 rounded-[16px] px-4 py-2.5 text-sm font-semibold transition-all duration-[250ms] ease-out ${
-                    activeTab === tab
-                      ? 'bg-[#DCEEFF] text-[#2563EB] shadow-[0_10px_24px_rgba(59,130,246,0.18)]'
-                      : 'text-slate-500 hover:-translate-y-0.5 hover:bg-[#F6FAFF] hover:text-slate-950'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {activeTab === 'Overview' ? (
-          <OverviewTab vehicle={vehicle} currentDriverName={currentDriverName} />
+        {deleteError ? (
+          <div className={`${vehicleProfilePanelClass} px-4 py-3 text-sm font-medium text-rose-600`}>
+            {deleteError}
+          </div>
         ) : null}
-        {activeTab === 'Documents' ? <DocumentsTab vehicle={vehicle} /> : null}
-        {activeTab === 'Availability' ? (
-          <AvailabilityTab
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            onClick={() => {
+              setDeleteError(null)
+              setIsDeleteModalOpen(true)
+            }}
+            disabled={isDeleting}
+            variant="ghost"
+            className="h-9 rounded-[12px] px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+          >
+            <Trash2 className="size-3.5" />
+            Delete vehicle
+          </Button>
+        </div>
+
+        <VehicleProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {activeTab === 'overview' ? (
+          <VehicleProfileOverviewTab
             vehicle={vehicle}
-            onAddAvailability={openAvailabilityModal}
-            onSelectRecord={openAvailabilityDetails}
+            assignedWorkerLabel={currentDriverName}
           />
         ) : null}
-        {activeTab === 'Timeline' ? (
-          isLoadingTimeline || !timelineVehicle ? (
-            <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-              <CardContent className="space-y-4 p-6">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-20 animate-pulse rounded-2xl bg-[#F8FBFF]"
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          ) : (
-            <TimelineTab
-              vehicle={timelineVehicle}
-              onSelectRecord={openAvailabilityDetails}
-            />
-          )
+        {activeTab === 'vehicle-checks' ? (
+          <VehicleProfileChecksTab vehicleId={vehicle.id} />
         ) : null}
-        {activeTab === 'Maintenance' ? (
-          <EmptyState icon={Wrench} message="No maintenance records yet" />
-        ) : null}
-        {activeTab === 'Vehicle Checks' ? (
-          <EmptyState icon={ClipboardCheck} message="No vehicle checks yet" />
-        ) : null}
-        {activeTab === 'Defects' ? (
-          <EmptyState icon={ShieldAlert} message="No defects yet" />
-        ) : null}
-        {activeTab === 'Fluids & Consumables' ? (
+        {activeTab === 'consumables' ? (
           <VehicleConsumablesTab
             vehicleId={vehicle.id}
             items={vehicleConsumables}
@@ -1123,8 +747,18 @@ function VehicleDetailsPage() {
             loadError={consumablesLoadError}
           />
         ) : null}
-        {activeTab === 'History' ? (
-          <EmptyState icon={CheckCircle2} message="No vehicle history yet" />
+        {activeTab === 'documents' ? <VehicleProfileDocumentsTab vehicle={vehicle} /> : null}
+        {activeTab === 'driver-reports' ? (
+          <VehicleProfileDriverReportsTab vehicleId={vehicle.id} />
+        ) : null}
+        {activeTab === 'availability' ? (
+          <VehicleProfileAvailabilityTab
+            vehicle={vehicle}
+            timelineVehicle={timelineVehicle}
+            isLoadingTimeline={isLoadingTimeline}
+            onAddAvailability={openAvailabilityModal}
+            onSelectRecord={openAvailabilityDetails}
+          />
         ) : null}
       </section>
 

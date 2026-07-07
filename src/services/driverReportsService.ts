@@ -216,6 +216,38 @@ export async function fetchDriverReports(): Promise<DriverReport[]> {
   return mapReportRows((data ?? []) as unknown as DriverReportRow[])
 }
 
+export async function fetchDriverReportsForVehicle(vehicleId: string): Promise<DriverReport[]> {
+  let request = requireSupabase()
+    .from('driver_reports')
+    .select(reportSelect)
+    .eq('vehicle_id', vehicleId)
+
+  const company = resolveCompanyScope()
+  if (company) request = request.eq('company', company)
+
+  const { data, error } = await request
+    .order('created_at', { ascending: false })
+    .order('title', { ascending: true })
+
+  logSupabaseQuery({
+    service: 'driverReportsService.fetchDriverReportsForVehicle',
+    table: 'driver_reports',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingTableError(error.message)) {
+      throw new DriverReportsServiceError(
+        'Driver reports table is not available yet. Run the driver reports migration on your Supabase project.',
+      )
+    }
+    throw new DriverReportsServiceError(error.message)
+  }
+
+  return mapReportRows((data ?? []) as unknown as DriverReportRow[])
+}
+
 export async function createDriverReport(input: CreateDriverReportInput): Promise<DriverReport> {
   const payload = {
     company: resolveCompanyScope(),
@@ -270,6 +302,7 @@ export async function deleteDriverReport(id: string): Promise<void> {
 
 export const driverReportsService = {
   fetchDriverReports,
+  fetchDriverReportsForVehicle,
   createDriverReport,
   updateDriverReport,
   deleteDriverReport,

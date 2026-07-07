@@ -56,6 +56,7 @@ type TimesheetsToolbarProps = {
   onSortDirChange: (value: TimesheetsSortDirection) => void
   hasActiveFilters: boolean
   onClearFilters: () => void
+  onCleanCurrentView: () => void
   onNewTimesheet: () => void
 }
 
@@ -232,6 +233,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     onSortByChange,
     sortDir,
     onSortDirChange,
+    onCleanCurrentView,
     onClearFilters,
     onNewTimesheet,
   } = props
@@ -402,6 +404,15 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCleanCurrentView}
+              className="h-10 rounded-[12px] border-[#C5DFFB] bg-white/90 px-3 text-xs font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
+            >
+              Clean current view
+            </Button>
+
             <div ref={filterRootRef} className="relative">
               <Button
                 type="button"

@@ -107,7 +107,7 @@ export function NewVehicleCheckModal({
     setError(null)
 
     if (!vehicleId || !workerId) {
-      setError('Please select a vehicle and driver.')
+      setError('Please select a vehicle and worker.')
       return
     }
 
@@ -141,7 +141,7 @@ export function NewVehicleCheckModal({
     setError(null)
 
     if (!vehicleId || !workerId) {
-      setError('Please select a vehicle and driver.')
+      setError('Please select a vehicle and worker.')
       return
     }
 
@@ -194,7 +194,7 @@ export function NewVehicleCheckModal({
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               {step === 1
-                ? 'Select the vehicle, driver and inspection date.'
+                ? 'Select the vehicle, worker and inspection date.'
                 : 'Mark each item as Pass, Advisory or Fail.'}
             </p>
           </div>
@@ -236,7 +236,7 @@ export function NewVehicleCheckModal({
               </label>
 
               <label className="block text-sm font-medium text-slate-700">
-                Driver
+                Worker
                 <select
                   value={workerId}
                   onChange={(event) => setWorkerId(event.target.value)}
@@ -244,7 +244,7 @@ export function NewVehicleCheckModal({
                   required
                 >
                   {sortedDrivers.length === 0 ? (
-                    <option value="">No drivers available</option>
+                    <option value="">No workers available</option>
                   ) : (
                     sortedDrivers.map((driver) => (
                       <option key={driver.id} value={driver.id}>

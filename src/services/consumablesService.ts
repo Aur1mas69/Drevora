@@ -1,5 +1,5 @@
+import { normalizeConsumableTypeKey } from '@/lib/consumableTypes'
 import {
-  isConsumableType,
   isConsumableUnit,
 } from '@/lib/consumableUtils'
 import type {
@@ -85,7 +85,7 @@ function mapRow(
   workerNames: Map<string, string>,
   vehicleLabels: Map<string, string>,
 ): Consumable {
-  const consumableType = isConsumableType(row.consumable_type) ? row.consumable_type : 'Other'
+  const consumableType = normalizeConsumableTypeKey(row.consumable_type) ?? 'Other'
   const unit = isConsumableUnit(row.unit) ? row.unit : 'L'
 
   return {
@@ -100,7 +100,7 @@ function mapRow(
     itemName: row.item_name,
     quantity: Number(row.quantity) || 0,
     unit,
-    cost: row.cost === null || row.cost === undefined ? null : Number(row.cost),
+    cost: row.cost === null || row.cost === undefined || row.cost === '' ? null : Number(row.cost),
     supplier: row.supplier,
     site: row.site,
     odometer: row.odometer === null || row.odometer === undefined ? null : Number(row.odometer),
@@ -488,10 +488,13 @@ export async function fetchConsumablesMonthlySummary(
   const vehicleLabelMap = await fetchVehicleLabelMap(vehicleIds)
 
   const records = rows.map((row) => ({
-    consumableType: isConsumableType(row.consumable_type) ? row.consumable_type : 'Other',
+    consumableType: normalizeConsumableTypeKey(row.consumable_type) ?? 'Other',
     unit: isConsumableUnit(row.unit) ? row.unit : 'L',
     quantity: Number(row.quantity) || 0,
-    cost: row.cost === null || row.cost === undefined ? null : Number(row.cost),
+    cost:
+      row.cost === null || row.cost === undefined || row.cost === ''
+        ? null
+        : Number(row.cost),
     vehicleId: row.vehicle_id,
     entryDate: row.entry_date,
   }))

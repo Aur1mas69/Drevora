@@ -1,16 +1,29 @@
-import type { ChangeEvent, ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import type { ChangeEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import {
+  SettingsCard,
+  SettingsChoiceGroup,
+  SettingsField,
+  SettingsMultiChipGroup,
+  SettingsPageIntro,
+  SettingsSegmentedControl,
+  SettingsStatusFooter,
+  settingsFieldClassName,
+  settingsInnerCardClassName,
+  settingsStatusTextClassName,
+} from '@/components/settings/SettingsControls'
 import {
   DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
   HOLIDAY_WORKING_DAY_OPTIONS,
   type CompanySettingsInput,
   type HolidayCountingMethod,
+  type HolidayEntitlementRule,
+  type HolidayEntitlementRules,
   type HolidayWorkingDay,
 } from '@/lib/companySettingsTypes'
-import { WORKER_EMPLOYMENT_TYPES } from '@/lib/workerProfileUtils'
-import { cn } from '@/lib/utils'
-import { Calendar, CalendarDays, CalendarRange, Sparkles } from 'lucide-react'
+import { WORKER_EMPLOYMENT_TYPES, type EmploymentType } from '@/lib/workerProfileUtils'
+import { Calendar, CalendarDays, CalendarRange } from 'lucide-react'
 
 type HolidaySettingsPanelProps = {
   form: CompanySettingsInput
@@ -19,12 +32,6 @@ type HolidaySettingsPanelProps = {
   isSaving: boolean
   onSave: () => void
 }
-
-const holidayInputClass =
-  'h-10 w-full rounded-[12px] border border-[#C5DFFB]/80 bg-white px-3 text-sm font-medium text-[#113C69] shadow-sm transition-all placeholder:text-[#5499BF]/70 hover:border-[#BFE3F5] focus-visible:border-[#89CFF0] focus-visible:ring-3 focus-visible:ring-[#BFE3F5]/70 focus-visible:outline-none'
-
-const sectionCardClass =
-  'rounded-[18px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 p-5 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35 sm:p-6'
 
 const COUNTING_METHOD_OPTIONS: {
   value: HolidayCountingMethod
@@ -52,54 +59,236 @@ const COUNTING_METHOD_OPTIONS: {
   },
 ]
 
-function YesNoToggle({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: boolean
-  onChange: (value: boolean) => void
-  disabled?: boolean
-}) {
+function getEditorDefaultRule(employmentType: EmploymentType): HolidayEntitlementRule {
+  if (employmentType === 'Full-time') {
+    return { ...DEFAULT_HOLIDAY_ENTITLEMENT_RULES['Full-time'] }
+  }
+
+  return {
+    paidHolidayEnabled: false,
+    annualPaidHolidayDays: 0,
+    bankHolidayEntitlementDays: 0,
+    unpaidLeaveAllowed: true,
+  }
+}
+
+function resolveEntitlementRule(
+  rules: HolidayEntitlementRules,
+  employmentType: EmploymentType,
+): HolidayEntitlementRule {
+  return rules[employmentType] ?? getEditorDefaultRule(employmentType)
+}
+
+function isPristineConfiguredRule(rule: HolidayEntitlementRule): boolean {
   return (
-    <div
-      className={cn(
-        'inline-flex rounded-[10px] bg-white p-0.5 ring-1 ring-[#C5DFFB]/70',
-        disabled && 'opacity-55',
-      )}
-    >
-      {[
-        { label: 'Yes', bool: true },
-        { label: 'No', bool: false },
-      ].map((option) => {
-        const selected = value === option.bool
-        return (
-          <button
-            key={option.label}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(option.bool)}
-            className={cn(
-              'min-w-[3rem] rounded-[8px] px-2.5 py-1.5 text-xs font-semibold transition-all',
-              selected
-                ? 'bg-gradient-to-br from-[#218EE7] to-[#0B68BE] text-white shadow-sm'
-                : 'text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#0B68BE]',
-            )}
-            aria-pressed={selected}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
+    !rule.paidHolidayEnabled &&
+    rule.annualPaidHolidayDays === 0 &&
+    rule.bankHolidayEntitlementDays === 0 &&
+    rule.unpaidLeaveAllowed
   )
 }
 
-function FieldLabel({ children }: { children: ReactNode }) {
+function listConfiguredEntitlementRules(rules: HolidayEntitlementRules) {
+  return WORKER_EMPLOYMENT_TYPES.map((employmentType) => ({
+    employmentType,
+    rule: resolveEntitlementRule(rules, employmentType),
+  })).filter(({ rule }) => !isPristineConfiguredRule(rule))
+}
+
+function rulesEqual(left: HolidayEntitlementRule, right: HolidayEntitlementRule): boolean {
   return (
-    <span className="text-xs font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
-      {children}
-    </span>
+    left.paidHolidayEnabled === right.paidHolidayEnabled &&
+    left.annualPaidHolidayDays === right.annualPaidHolidayDays &&
+    left.bankHolidayEntitlementDays === right.bankHolidayEntitlementDays &&
+    left.unpaidLeaveAllowed === right.unpaidLeaveAllowed
+  )
+}
+
+function formatYesNo(value: boolean): string {
+  return value ? 'Yes' : 'No'
+}
+
+function formatConfiguredEntitlementRuleLine(
+  employmentType: EmploymentType,
+  rule: HolidayEntitlementRule,
+): string {
+  const parts = [`Paid: ${formatYesNo(rule.paidHolidayEnabled)}`]
+
+  if (rule.paidHolidayEnabled) {
+    parts.push(`${rule.annualPaidHolidayDays} days`)
+    parts.push(`Bank holidays ${rule.bankHolidayEntitlementDays}`)
+  }
+
+  parts.push(`Unpaid leave ${formatYesNo(rule.unpaidLeaveAllowed)}`)
+
+  return `${employmentType} — ${parts.join(' · ')}`
+}
+
+type HolidayEntitlementRulesSectionProps = {
+  rules: HolidayEntitlementRules
+  onUpdateRule: (employmentType: EmploymentType, patch: Partial<HolidayEntitlementRule>) => void
+}
+
+function HolidayEntitlementRulesSection({
+  rules,
+  onUpdateRule,
+}: HolidayEntitlementRulesSectionProps) {
+  const [selectedEmploymentType, setSelectedEmploymentType] =
+    useState<EmploymentType>('Full-time')
+  const [draft, setDraft] = useState<HolidayEntitlementRule>(() =>
+    resolveEntitlementRule(rules, 'Full-time'),
+  )
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const savedRule = resolveEntitlementRule(rules, selectedEmploymentType)
+  const configuredRules = useMemo(() => listConfiguredEntitlementRules(rules), [rules])
+  const isDraftDirty = !rulesEqual(draft, savedRule)
+
+  useEffect(() => {
+    setDraft(resolveEntitlementRule(rules, selectedEmploymentType))
+    setSuccessMessage(null)
+  }, [rules, selectedEmploymentType])
+
+  function handleSaveRule() {
+    onUpdateRule(selectedEmploymentType, { ...draft })
+    setSuccessMessage(`Rule saved for ${selectedEmploymentType}.`)
+  }
+
+  function handleSelectConfigured(employmentType: EmploymentType) {
+    setSelectedEmploymentType(employmentType)
+    setSuccessMessage(null)
+  }
+
+  return (
+    <SettingsCard
+      title="Holiday Entitlement Rules"
+      description="Set default holiday rules by employment type. Worker profile values override these rules."
+    >
+      <div className={settingsInnerCardClassName}>
+        <div className="space-y-4">
+          <SettingsField label="Employment type" span="full">
+            <select
+              value={selectedEmploymentType}
+              onChange={(event) => {
+                setSelectedEmploymentType(event.target.value as EmploymentType)
+                setSuccessMessage(null)
+              }}
+              className={settingsFieldClassName}
+            >
+              {WORKER_EMPLOYMENT_TYPES.map((employmentType) => (
+                <option key={employmentType} value={employmentType}>
+                  {employmentType}
+                </option>
+              ))}
+            </select>
+          </SettingsField>
+
+          <SettingsSegmentedControl
+            label="Paid holiday enabled"
+            value={draft.paidHolidayEnabled ? 'yes' : 'no'}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, paidHolidayEnabled: value === 'yes' }))
+            }
+          />
+
+          {draft.paidHolidayEnabled ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SettingsField label="Paid days">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={draft.annualPaidHolidayDays}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      annualPaidHolidayDays: Number(event.target.value) || 0,
+                    }))
+                  }
+                  className={settingsFieldClassName}
+                />
+              </SettingsField>
+
+              <SettingsField label="Bank holidays">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={draft.bankHolidayEntitlementDays}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      bankHolidayEntitlementDays: Number(event.target.value) || 0,
+                    }))
+                  }
+                  className={settingsFieldClassName}
+                />
+              </SettingsField>
+            </div>
+          ) : (
+            <p className={settingsStatusTextClassName}>
+              Paid holiday is disabled for this employment type.
+            </p>
+          )}
+
+          <div className="border-t border-[rgba(75,120,220,0.12)] pt-4 dark:border-slate-700">
+            <SettingsSegmentedControl
+              label="Unpaid leave allowed"
+              value={draft.unpaidLeaveAllowed ? 'yes' : 'no'}
+              options={[
+                { value: 'yes', label: 'Yes' },
+                { value: 'no', label: 'No' },
+              ]}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, unpaidLeaveAllowed: value === 'yes' }))
+              }
+            />
+          </div>
+
+          {successMessage ? (
+            <div className="rounded-[12px] bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
+              {successMessage}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveRule}
+              disabled={!isDraftDirty}
+              className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+            >
+              Save rule
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {configuredRules.length > 0 ? (
+        <div className="border-t border-[rgba(75,120,220,0.12)] pt-4 dark:border-slate-700">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Configured rules
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {configuredRules.map(({ employmentType, rule }) => (
+              <li key={employmentType}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectConfigured(employmentType)}
+                  className="text-left text-sm font-medium leading-snug text-[#2A376F] transition-colors hover:text-[#2563EB] dark:text-slate-200"
+                >
+                  {formatConfiguredEntitlementRuleLine(employmentType, rule)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </SettingsCard>
   )
 }
 
@@ -133,8 +322,8 @@ export function HolidaySettingsPanel({
   }
 
   function updateHolidayEntitlementRule(
-    employmentType: keyof typeof DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
-    patch: Partial<(typeof DEFAULT_HOLIDAY_ENTITLEMENT_RULES)[keyof typeof DEFAULT_HOLIDAY_ENTITLEMENT_RULES]>,
+    employmentType: EmploymentType,
+    patch: Partial<HolidayEntitlementRule>,
   ) {
     onChange({
       holidayEntitlementRules: {
@@ -150,50 +339,34 @@ export function HolidaySettingsPanel({
   const workingDaysDisabled = form.holidayCountingMethod === 'calendar_days'
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 sm:col-span-2">
-      <div
-        className={cn(
-          sectionCardClass,
-          'relative overflow-hidden bg-gradient-to-br from-[#F5FAFF] via-[#EEF6FF] to-[#E3F2FD]/90',
-        )}
+    <div className="space-y-4 sm:col-span-2">
+      <SettingsPageIntro
+        title="Holidays"
+        description="Configure holiday allowance and how DREVORA counts working days for requests."
+      />
+
+      <SettingsCard
+        title="Leave year & allowance"
+        description="Set when your holiday year starts and the default annual leave allowance."
       >
-        <div className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-[#218EE7]/8 blur-2xl" />
-        <div className="relative flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#218EE7] to-[#0B68BE] text-white shadow-[0_8px_20px_rgba(33,142,231,0.25)]">
-            <Sparkles className="size-5" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
-              Holiday Settings
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#5499BF]">
-              Configure holiday allowance and how DREVORA counts working days for requests.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <section className={sectionCardClass}>
-        <h3 className="text-sm font-semibold text-[#113C69]">Leave year &amp; allowance</h3>
-        <p className="mt-1 text-xs leading-5 text-[#5499BF]">
-          Set when your holiday year starts and the default annual leave allowance.
-        </p>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <FieldLabel>Holiday Year Start</FieldLabel>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SettingsField
+            label="Holiday year start"
+            hint="Month and day when the leave year begins (MM-DD)."
+          >
             <Input
               name="holidayYearStart"
               value={form.holidayYearStart}
               onChange={handleTextChange}
               placeholder="01-01"
-              className={`${holidayInputClass} mt-1.5`}
+              className={settingsFieldClassName}
             />
-            <p className="mt-1.5 text-xs text-[#5499BF]">Month and day when the leave year begins (MM-DD).</p>
-          </label>
+          </SettingsField>
 
-          <label className="block">
-            <FieldLabel>Annual Leave Allowance</FieldLabel>
+          <SettingsField
+            label="Annual leave allowance"
+            hint="Default paid days before employment-type rules apply."
+          >
             <Input
               type="number"
               min={0}
@@ -202,206 +375,47 @@ export function HolidaySettingsPanel({
               onChange={(event) =>
                 onChange({ annualLeaveAllowance: Number(event.target.value) || 0 })
               }
-              className={`${holidayInputClass} mt-1.5`}
+              className={settingsFieldClassName}
             />
-            <p className="mt-1.5 text-xs text-[#5499BF]">Default paid days before employment-type rules apply.</p>
-          </label>
+          </SettingsField>
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className={sectionCardClass}>
-        <h3 className="text-sm font-semibold text-[#113C69]">Holiday counting method</h3>
-        <p className="mt-1 text-xs leading-5 text-[#5499BF]">
-          Choose how DREVORA deducts days when a worker books time off.
-        </p>
+      <SettingsCard
+        title="Holiday counting method"
+        description="Choose how DREVORA deducts days when a worker books time off."
+      >
+        <SettingsChoiceGroup
+          value={form.holidayCountingMethod}
+          options={COUNTING_METHOD_OPTIONS}
+          onChange={(value) => onChange({ holidayCountingMethod: value })}
+        />
+      </SettingsCard>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {COUNTING_METHOD_OPTIONS.map((option) => {
-            const selected = form.holidayCountingMethod === option.value
-            const Icon = option.icon
+      <SettingsCard
+        title="Working days selection"
+        description="These days are deducted when using Working days only or Custom working week. Keep Monday–Friday selected for a standard UK working week."
+      >
+        <SettingsMultiChipGroup
+          label="Working days"
+          options={HOLIDAY_WORKING_DAY_OPTIONS}
+          selected={form.holidayWorkingDays}
+          onToggle={toggleHolidayWorkingDay}
+          disabled={workingDaysDisabled}
+          formatLabel={(label) => label.slice(0, 3)}
+        />
+      </SettingsCard>
 
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onChange({ holidayCountingMethod: option.value })}
-                aria-pressed={selected}
-                className={cn(
-                  'group flex h-full flex-col rounded-[16px] border p-4 text-left transition-all duration-200',
-                  selected
-                    ? 'border-[#218EE7] bg-gradient-to-br from-[#EEF6FF] to-[#D3E9FC]/60 shadow-[0_8px_24px_rgba(33,142,231,0.14)] ring-2 ring-[#89CFF0]/50'
-                    : 'border-[#C5DFFB]/80 bg-white/80 shadow-sm hover:-translate-y-0.5 hover:border-[#89CFF0] hover:bg-[#F8FBFF] hover:shadow-[0_8px_20px_rgba(33,142,231,0.08)] active:translate-y-0',
-                )}
-              >
-                <div
-                  className={cn(
-                    'mb-3 flex size-9 items-center justify-center rounded-[12px] transition-colors',
-                    selected
-                      ? 'bg-gradient-to-br from-[#218EE7] to-[#0B68BE] text-white shadow-sm'
-                      : 'bg-[#F5FAFF] text-[#0B68BE] ring-1 ring-[#D3E9FC]/70 group-hover:bg-[#EEF6FF]',
-                  )}
-                >
-                  <Icon className="size-4.5" aria-hidden="true" />
-                </div>
-                <span className="text-sm font-semibold text-[#113C69]">{option.label}</span>
-                <span className="mt-1 text-xs leading-5 text-[#5499BF]">{option.description}</span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
+      <HolidayEntitlementRulesSection
+        rules={form.holidayEntitlementRules}
+        onUpdateRule={updateHolidayEntitlementRule}
+      />
 
-      <section className={sectionCardClass}>
-        <h3 className="text-sm font-semibold text-[#113C69]">Working days selection</h3>
-        <p className="mt-1 text-xs leading-5 text-[#5499BF]">
-          These days are deducted when using Working days only or Custom working week. Keep
-          Monday–Friday selected for a standard UK working week.
-        </p>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {HOLIDAY_WORKING_DAY_OPTIONS.map((day) => {
-            const isSelected = form.holidayWorkingDays.includes(day.value)
-
-            return (
-              <button
-                key={day.value}
-                type="button"
-                disabled={workingDaysDisabled}
-                onClick={() => toggleHolidayWorkingDay(day.value)}
-                aria-pressed={isSelected}
-                className={cn(
-                  'min-w-[5.5rem] rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200',
-                  isSelected
-                    ? 'border-[#218EE7] bg-gradient-to-br from-[#D3E9FC] to-[#BFE3F5]/80 text-[#0B477F] shadow-[0_4px_12px_rgba(33,142,231,0.15)]'
-                    : 'border-[#C5DFFB]/90 bg-white/90 text-[#5499BF] hover:border-[#89CFF0] hover:bg-[#F8FBFF] hover:text-[#0B68BE]',
-                  workingDaysDisabled && 'cursor-not-allowed opacity-50',
-                )}
-              >
-                {day.label.slice(0, 3)}
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className={sectionCardClass}>
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-[#113C69]">Holiday Entitlement Rules</h3>
-            <p className="mt-1 text-xs leading-5 text-[#5499BF]">
-              Defaults by employment type. Worker profile values override these rules.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {WORKER_EMPLOYMENT_TYPES.map((employmentType) => {
-            const rule =
-              form.holidayEntitlementRules[employmentType] ??
-              DEFAULT_HOLIDAY_ENTITLEMENT_RULES[employmentType]
-            const total = rule.paidHolidayEnabled
-              ? rule.annualPaidHolidayDays + rule.bankHolidayEntitlementDays
-              : 0
-
-            return (
-              <article
-                key={employmentType}
-                className="rounded-[14px] border border-[#C5DFFB]/70 bg-gradient-to-br from-white/95 to-[#F5FAFF]/90 p-3.5 shadow-sm ring-1 ring-[#D3E9FC]/40 transition-shadow hover:shadow-[0_6px_16px_rgba(33,142,231,0.08)]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-semibold leading-snug text-[#113C69]">
-                    {employmentType}
-                  </h4>
-                  <span className="inline-flex shrink-0 rounded-full bg-[#EEF6FF] px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#0B68BE] ring-1 ring-[#C5DFFB]/80">
-                    Total {total}
-                  </span>
-                </div>
-
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <FieldLabel>Paid enabled</FieldLabel>
-                    <YesNoToggle
-                      value={rule.paidHolidayEnabled}
-                      onChange={(paidHolidayEnabled) =>
-                        updateHolidayEntitlementRule(employmentType, { paidHolidayEnabled })
-                      }
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <FieldLabel>Paid days</FieldLabel>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.5"
-                        value={rule.annualPaidHolidayDays}
-                        disabled={!rule.paidHolidayEnabled}
-                        onChange={(event) =>
-                          updateHolidayEntitlementRule(employmentType, {
-                            annualPaidHolidayDays: Number(event.target.value) || 0,
-                          })
-                        }
-                        className={`${holidayInputClass} mt-1 h-9 text-xs`}
-                      />
-                    </label>
-
-                    <label className="block">
-                      <FieldLabel>Bank holidays</FieldLabel>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.5"
-                        value={rule.bankHolidayEntitlementDays}
-                        disabled={!rule.paidHolidayEnabled}
-                        onChange={(event) =>
-                          updateHolidayEntitlementRule(employmentType, {
-                            bankHolidayEntitlementDays: Number(event.target.value) || 0,
-                          })
-                        }
-                        className={`${holidayInputClass} mt-1 h-9 text-xs`}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-[#D3E9FC]/60 pt-3">
-                    <FieldLabel>Unpaid leave</FieldLabel>
-                    <YesNoToggle
-                      value={rule.unpaidLeaveAllowed}
-                      onChange={(unpaidLeaveAllowed) =>
-                        updateHolidayEntitlementRule(employmentType, { unpaidLeaveAllowed })
-                      }
-                    />
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      </section>
-
-      <div className="flex flex-col gap-3 rounded-[18px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#EEF6FF]/80 px-5 py-4 shadow-sm ring-1 ring-[#C5DFFB]/35 sm:flex-row sm:items-center sm:justify-between">
-        <p
-          className={cn(
-            'text-sm font-medium',
-            isDirty ? 'text-[#0B68BE]' : 'text-[#5499BF]',
-          )}
-        >
-          {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
-        </p>
-        <Button
-          type="button"
-          onClick={onSave}
-          disabled={!isDirty || isSaving}
-          className={cn(
-            'h-10 w-full rounded-[12px] bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.22)] transition-all sm:w-auto',
-            'hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(33,142,231,0.28)] active:translate-y-0',
-            'disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none disabled:hover:translate-y-0',
-          )}
-        >
-          {isSaving ? 'Saving…' : 'Save Changes'}
-        </Button>
-      </div>
+      <SettingsStatusFooter
+        isDirty={isDirty}
+        isSaving={isSaving}
+        onSave={onSave}
+      />
     </div>
   )
 }

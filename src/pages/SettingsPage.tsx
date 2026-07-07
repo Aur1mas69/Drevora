@@ -14,10 +14,14 @@ import {
   SettingsSection,
   SettingsTabs,
   SettingsToggle,
+  settingsDividerClassName,
   settingsFieldClassName,
+  settingsSaveButtonClassName,
   settingsSelectClassName,
+  settingsStatusTextClassName,
 } from '@/components/settings/SettingsControls'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
 import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
@@ -36,7 +40,9 @@ import {
   type CompanySettingsInput,
   type CompanySettingsTab,
 } from '@/lib/companySettingsTypes'
+import { useSearchParams } from 'react-router-dom'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
+
 import { companySettingsService } from '@/services/companySettingsService'
 
 const timezoneOptions = [
@@ -67,6 +73,7 @@ function formsEqual(left: CompanySettingsInput, right: CompanySettingsInput): bo
 }
 
 function SettingsPage() {
+  const [searchParams] = useSearchParams()
   const { settings, isLoading, isSaving, updateSettings } = useCompanySettings()
   const [activeTab, setActiveTab] = useState<CompanySettingsTab>('general')
   const [form, setForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
@@ -78,6 +85,13 @@ function SettingsPage() {
   const isDirty = !formsEqual(form, savedForm)
 
   useUnsavedChangesWarning(isDirty)
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'consumables') {
+      setActiveTab('consumables')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     isDirtyRef.current = isDirty
@@ -340,6 +354,12 @@ function SettingsPage() {
               />
             ) : null}
 
+            {activeTab === 'consumables' ? (
+              <div className="sm:col-span-2">
+                <ConsumablesDefaultPricesPanel embeddedInSettings />
+              </div>
+            ) : null}
+
             {activeTab === 'appearance' ? (
               <SettingsSection
                 title="Appearance"
@@ -402,7 +422,7 @@ function SettingsPage() {
                   <TwoFactorAuthComingLaterCard />
                 </div>
 
-                <div className="mt-4 border-t border-blue-100/80 pt-6 sm:col-span-2">
+                <div className={`mt-4 ${settingsDividerClassName} pt-6 sm:col-span-2`}>
                   <SettingsField
                     label="Session Timeout"
                     hint="Minutes of inactivity before automatic sign-out."
@@ -426,8 +446,8 @@ function SettingsPage() {
               </SettingsSection>
             ) : null}
 
-            {activeTab !== 'holidays' ? (
-              <p className="mt-8 border-t border-blue-100/80 pt-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            {activeTab !== 'holidays' && activeTab !== 'consumables' ? (
+              <p className={`mt-8 ${settingsDividerClassName} pt-4 ${settingsStatusTextClassName}`}>
                 {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
               </p>
             ) : null}
@@ -435,7 +455,7 @@ function SettingsPage() {
         </Card>
       </div>
 
-      {activeTab !== 'holidays' ? (
+      {activeTab !== 'holidays' && activeTab !== 'consumables' ? (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
           {toastMessage ? (
             <div className="rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
@@ -446,7 +466,7 @@ function SettingsPage() {
             type="button"
             onClick={() => void handleSave()}
             disabled={!isDirty || isSaving}
-            className="h-11 rounded-[14px] bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+            className={settingsSaveButtonClassName}
           >
             {isSaving ? 'Saving…' : 'Save Changes'}
           </Button>

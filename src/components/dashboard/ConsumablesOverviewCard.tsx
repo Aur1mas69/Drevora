@@ -10,15 +10,19 @@ function CompactKpiStrip({ overview }: { overview: DashboardConsumablesOverview 
   const items = [
     { label: 'Entries', value: overview.totalEntries.toLocaleString('en-GB') },
     {
-      label: 'Total qty',
-      value: `${formatSummaryQuantity(overview.totalQuantityLitres)} L`,
+      label: 'Diesel',
+      value: `${formatSummaryQuantity(overview.dieselLitres)} L`,
+    },
+    {
+      label: 'AdBlue',
+      value: `${formatSummaryQuantity(overview.adBlueLitres)} L`,
     },
     { label: 'Cost', value: formatConsumableCost(overview.totalCost) },
     { label: 'Vehicles', value: overview.vehiclesUsed.toLocaleString('en-GB') },
   ]
 
   return (
-    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
       {items.map((item) => (
         <div
           key={item.label}

@@ -1,11 +1,15 @@
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import {
+  vehicleProfilePanelClass,
+  vehicleProfileTableHeadClass,
+  vehicleProfileTableRowClass,
+} from '@/components/vehicles/profile/vehicleProfileUi'
 import type { Consumable } from '@/lib/consumableTypes'
 import {
   computeVehicleConsumableSummaries,
-  formatConsumableCost,
+  formatConsumableItemCost,
+  formatConsumableEntryDateTime,
   formatQuantityWithUnit,
-  formatSupplierSite,
-  formatVehicleConsumableHistoryLine,
   getConsumableTypeBadgeClass,
 } from '@/lib/consumableUtils'
 import { Link } from 'react-router-dom'
@@ -32,7 +36,8 @@ export function VehicleConsumablesTab({
   isLoading,
   loadError,
 }: VehicleConsumablesTabProps) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, formatTime, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const summaries = computeVehicleConsumableSummaries(items)
 
   if (isLoading) {
@@ -56,10 +61,10 @@ export function VehicleConsumablesTab({
   }
 
   return (
-    <div className="space-y-4 rounded-[20px] border border-[#D3E9FC] bg-white/80 p-5 shadow-sm">
+    <div className={`${vehicleProfilePanelClass} space-y-4 p-5`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[#113C69]">Fluids & Consumables</h3>
+          <h3 className="text-lg font-semibold text-[#113C69]">Consumables</h3>
           <p className="mt-1 text-sm text-[#3D7A9C]">
             Fuel, AdBlue, oils and other consumables recorded for this vehicle.
           </p>
@@ -89,46 +94,68 @@ export function VehicleConsumablesTab({
           </p>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/70 px-4 py-3 transition-colors hover:bg-[#E8F3FE]/60"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
+        <div className="overflow-x-auto rounded-[14px] border border-[#D3E9FC]/80">
+          <table className="w-full min-w-[900px] border-collapse">
+            <thead>
+              <tr className={vehicleProfileTableHeadClass}>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Quantity</th>
+                <th className="px-4 py-3">Unit</th>
+                <th className="px-4 py-3">Cost</th>
+                <th className="px-4 py-3">Worker</th>
+                <th className="px-4 py-3">Notes</th>
+                <th className="px-4 py-3">Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className={vehicleProfileTableRowClass}>
+                  <td className="px-4 py-3 text-sm font-medium tabular-nums text-[#113C69]">
+                    {formatConsumableEntryDateTime(
+                      item.entryDate,
+                      item.entryTime,
+                      formatDate,
+                      formatTime,
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getConsumableTypeBadgeClass(item.consumableType)}`}
+                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getConsumableTypeBadgeClass(item.consumableType)}`}
                     >
                       {item.consumableType}
                     </span>
-                    <span className="text-sm font-semibold text-[#113C69]">
-                      {formatQuantityWithUnit(item.quantity, item.unit)}
-                    </span>
-                    <span className="text-sm font-semibold text-[#0B68BE]">
-                      {formatConsumableCost(item.cost)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[#113C69]">
-                    {formatVehicleConsumableHistoryLine({
-                      entryDateLabel: formatDate(item.entryDate),
-                      consumableType: item.consumableType,
-                      itemName: item.itemName,
-                      quantity: item.quantity,
-                      unit: item.unit,
-                      costLabel: formatConsumableCost(item.cost),
-                      supplierSite: formatSupplierSite(item.supplier, item.site),
-                    })}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right text-sm text-[#3D7A9C]">
-                  <p>{item.workerName ?? '—'}</p>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69]">
+                    {item.quantity}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[#5499BF]">{item.unit}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-[#0B68BE]">
+                    {formatConsumableItemCost(item, defaultPrices)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[#5499BF]">{item.workerName ?? '—'}</td>
+                  <td className="max-w-[180px] px-4 py-3 text-sm text-[#5499BF]">
+                    <span className="line-clamp-2">{item.notes ?? item.itemName ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.receiptUrl ? (
+                      <a
+                        href={item.receiptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-[#218EE7] hover:underline"
+                      >
+                        Open
+                      </a>
+                    ) : (
+                      <span className="text-[#5499BF]/70">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

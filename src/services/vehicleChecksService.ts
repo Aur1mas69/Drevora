@@ -1,6 +1,7 @@
 import {
   computeOverallResult,
   computeVehicleCheckSummaryStats,
+  enrichVehicleCheckItemsWithTemplates,
 } from '@/lib/vehicleCheckUtils'
 import type {
   CreateVehicleCheckInput,
@@ -10,6 +11,7 @@ import type {
   VehicleCheckItemInput,
   VehicleCheckListItem,
   VehicleCheckResult,
+  VehicleCheckResultFilter,
   VehicleChecksPageResult,
   VehicleChecksQuery,
   VehicleCheckStatus,
@@ -18,6 +20,9 @@ import type {
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
+import { fetchTemplateItemsByVehicleType } from '@/services/vehicleCheckTemplatesService'
+
+export const VEHICLE_CHECK_ITEMS_TABLE = 'vehicle_check_items'
 
 type DriverJoinRow = {
   first_name: string
@@ -27,6 +32,9 @@ type DriverJoinRow = {
 type VehicleJoinRow = {
   registration: string
   fleet_number: string | null
+  make: string | null
+  model: string | null
+  vehicle_type: string | null
 }
 
 type VehicleCheckItemRow = {
@@ -37,6 +45,9 @@ type VehicleCheckItemRow = {
   result: string
   comment: string | null
   photo_url: string | null
+  allow_notes: boolean | null
+  allow_photo: boolean | null
+  fail_on_defect: boolean | null
 }
 
 type VehicleCheckRow = {
@@ -67,8 +78,8 @@ const vehicleCheckListSelect = `
   overall_result,
   notes,
   drivers ( first_name, last_name ),
-  vehicles ( registration, fleet_number ),
-  vehicle_check_items ( id, result )
+  vehicles ( registration, fleet_number, make, model, vehicle_type ),
+  vehicle_check_items ( id, vehicle_check_id, category, item_name, result, comment, photo_url, allow_notes, allow_photo, fail_on_defect )
 `
 
 const vehicleCheckDetailSelect = `
@@ -83,7 +94,7 @@ const vehicleCheckDetailSelect = `
   overall_result,
   notes,
   drivers ( first_name, last_name ),
-  vehicles ( registration, fleet_number ),
+  vehicles ( registration, fleet_number, make, model, vehicle_type ),
   vehicle_check_items (
     id,
     vehicle_check_id,
@@ -91,7 +102,10 @@ const vehicleCheckDetailSelect = `
     item_name,
     result,
     comment,
-    photo_url
+    photo_url,
+    allow_notes,
+    allow_photo,
+    fail_on_defect
   )
 `
 
@@ -136,12 +150,22 @@ function mapItemRow(row: VehicleCheckItemRow): VehicleCheckItem {
     result: normalizeResult(row.result),
     comment: row.comment,
     photoUrl: row.photo_url,
+    description: null,
+    templateItem: null,
+    allowNotes: row.allow_notes ?? true,
+    allowPhoto: row.allow_photo ?? false,
+    failOnDefect: row.fail_on_defect ?? true,
   }
 }
 
 function countFailItems(row: VehicleCheckRow): number {
   const items = row.vehicle_check_items ?? []
   return items.filter((item) => item.result === 'Fail').length
+}
+
+function countDefectItems(row: VehicleCheckRow): number {
+  const items = row.vehicle_check_items ?? []
+  return items.filter((item) => item.result === 'Fail' || item.result === 'Advisory').length
 }
 
 function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
@@ -155,6 +179,8 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     vehicleId: row.vehicle_id,
     vehicleRegistration: vehicle?.registration ?? 'Unknown',
     fleetNumber: vehicle?.fleet_number ?? null,
+    vehicleMake: vehicle?.make ?? null,
+    vehicleModel: vehicle?.model ?? null,
     workerId: row.worker_id,
     workerName: driver ? `${driver.first_name} ${driver.last_name}`.trim() : 'Unknown',
     inspectionDate: row.inspection_date,
@@ -163,6 +189,7 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     overallResult: normalizeResult(row.overall_result),
     notes: row.notes,
     failCount: countFailItems(row),
+    defectCount: countDefectItems(row),
   }
 }
 
@@ -174,14 +201,14 @@ function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
 }
 
 async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
-  const [checksResult, failItemsResult] = await Promise.all([
+  const [checksResult, defectItemsResult] = await Promise.all([
     requireSupabase()
       .from('vehicle_checks')
       .select('inspection_date, overall_result, vehicle_id'),
     requireSupabase()
-      .from('vehicle_check_items')
+      .from(VEHICLE_CHECK_ITEMS_TABLE)
       .select('id')
-      .eq('result', 'Fail'),
+      .in('result', ['Fail', 'Advisory']),
   ])
 
   logSupabaseQuery({
@@ -192,18 +219,18 @@ async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
   })
 
   logSupabaseQuery({
-    service: 'vehicleChecksService.fetchVehicleCheckStats.failItems',
+    service: 'vehicleChecksService.fetchVehicleCheckStats.defectItems',
     table: 'vehicle_check_items',
-    data: failItemsResult.data,
-    error: failItemsResult.error,
+    data: defectItemsResult.data,
+    error: defectItemsResult.error,
   })
 
   if (checksResult.error) {
     throw new VehicleChecksServiceError(checksResult.error.message)
   }
 
-  if (failItemsResult.error) {
-    throw new VehicleChecksServiceError(failItemsResult.error.message)
+  if (defectItemsResult.error) {
+    throw new VehicleChecksServiceError(defectItemsResult.error.message)
   }
 
   return computeVehicleCheckSummaryStats(
@@ -212,11 +239,45 @@ async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
       overallResult: normalizeResult(row.overall_result),
       vehicleId: row.vehicle_id,
     })),
-    failItemsResult.data?.length ?? 0,
+    defectItemsResult.data?.length ?? 0,
   )
 }
 
+function matchesVehicleCheckSearch(row: VehicleCheckRow, search: string): boolean {
+  const driver = normalizeJoinRow(row.drivers)
+  const vehicle = normalizeJoinRow(row.vehicles)
+  const items = row.vehicle_check_items ?? []
+  const haystack = [
+    vehicle?.registration,
+    vehicle?.fleet_number,
+    vehicle?.make,
+    vehicle?.model,
+    driver?.first_name,
+    driver?.last_name,
+    row.notes,
+    ...items.flatMap((item) => [item.category, item.item_name, item.comment]),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return haystack.includes(search.toLowerCase())
+}
+
+function matchesResultFilter(
+  row: VehicleCheckRow,
+  result: VehicleCheckResultFilter | undefined,
+): boolean {
+  if (!result || result === 'all') return true
+  if (result === 'Defects') {
+    return normalizeResult(row.overall_result) === 'Advisory' || countDefectItems(row) > 0
+  }
+
+  return normalizeResult(row.overall_result) === result
+}
+
 function buildItemRows(checkId: string, items: VehicleCheckItemInput[]) {
+  // Completed answers only — guidance lives on vehicle_check_template_items.description.
   return items.map((item) => ({
     vehicle_check_id: checkId,
     category: item.category,
@@ -224,6 +285,9 @@ function buildItemRows(checkId: string, items: VehicleCheckItemInput[]) {
     result: item.result,
     comment: item.comment?.trim() || null,
     photo_url: item.photoUrl?.trim() || null,
+    allow_notes: item.allowNotes ?? true,
+    allow_photo: item.allowPhoto ?? false,
+    fail_on_defect: item.failOnDefect ?? true,
   }))
 }
 
@@ -232,8 +296,6 @@ export async function fetchVehicleChecks(
 ): Promise<VehicleChecksPageResult> {
   const page = Math.max(1, query.page ?? 1)
   const pageSize = query.pageSize ?? DEFAULT_VEHICLE_CHECK_PAGE_SIZE
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
 
   let request = requireSupabase()
     .from('vehicle_checks')
@@ -241,6 +303,10 @@ export async function fetchVehicleChecks(
 
   if (query.status && query.status !== 'all') {
     request = request.eq('status', query.status)
+  }
+
+  if (query.result && query.result !== 'all' && query.result !== 'Defects') {
+    request = request.eq('overall_result', query.result)
   }
 
   if (query.vehicleId && query.vehicleId !== 'all') {
@@ -255,18 +321,17 @@ export async function fetchVehicleChecks(
     request = request.eq('inspection_date', query.inspectionDate)
   }
 
-  const search = query.search?.trim()
-  if (search) {
-    request = request.or(
-      `registration.ilike.%${search}%,fleet_number.ilike.%${search}%`,
-      { referencedTable: 'vehicles' },
-    )
+  if (query.dateFrom) {
+    request = request.gte('inspection_date', query.dateFrom)
+  }
+
+  if (query.dateTo) {
+    request = request.lte('inspection_date', query.dateTo)
   }
 
   request = request
     .order('inspection_date', { ascending: false })
     .order('created_at', { ascending: false })
-    .range(from, to)
 
   const { data, error, count } = await request
 
@@ -283,11 +348,22 @@ export async function fetchVehicleChecks(
   }
 
   const rows = (data ?? []) as unknown as VehicleCheckRow[]
+  const search = query.search?.trim()
+  const filteredRows = rows.filter((row) => {
+    if (!matchesResultFilter(row, query.result)) return false
+    if (search && !matchesVehicleCheckSearch(row, search)) return false
+    return true
+  })
+  const from = (page - 1) * pageSize
+  const to = from + pageSize
   const stats = await fetchVehicleCheckStats()
 
   return {
-    items: rows.map(mapListRow),
-    totalCount: count ?? rows.length,
+    items: filteredRows.slice(from, to).map(mapListRow),
+    totalCount:
+      search || query.result === 'Defects'
+        ? filteredRows.length
+        : (count ?? filteredRows.length),
     page,
     pageSize,
     stats,
@@ -313,7 +389,18 @@ export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | 
   }
 
   if (!data) return null
-  return mapDetailRow(data as unknown as VehicleCheckRow)
+
+  const row = data as unknown as VehicleCheckRow
+  const check = mapDetailRow(row)
+  const vehicle = normalizeJoinRow(row.vehicles)
+  const vehicleType = vehicle?.vehicle_type?.trim()
+
+  if (vehicleType && check.items.length > 0) {
+    const templates = await fetchTemplateItemsByVehicleType(vehicleType)
+    check.items = enrichVehicleCheckItemsWithTemplates(check.items, templates)
+  }
+
+  return check
 }
 
 export async function createVehicleCheck(input: CreateVehicleCheckInput): Promise<VehicleCheck> {
@@ -350,7 +437,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   }
 
   const itemRows = buildItemRows(checkRow.id, input.items)
-  const { error: itemsError } = await requireSupabase().from('vehicle_check_items').insert(itemRows)
+  const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
 
   logSupabaseQuery({
     service: 'vehicleChecksService.createVehicleCheck.items',
@@ -387,6 +474,11 @@ export async function updateVehicleCheck(
     result: item.result,
     comment: item.comment,
     photoUrl: item.photoUrl,
+    templateItem: item.templateItem,
+    description: null,
+    allowNotes: item.allowNotes,
+    allowPhoto: item.allowPhoto,
+    failOnDefect: item.failOnDefect,
   }))
 
   const overallResult = computeOverallResult(items)
@@ -420,7 +512,7 @@ export async function updateVehicleCheck(
 
   if (input.items) {
     const { error: deleteError } = await requireSupabase()
-      .from('vehicle_check_items')
+      .from(VEHICLE_CHECK_ITEMS_TABLE)
       .delete()
       .eq('vehicle_check_id', id)
 
@@ -429,7 +521,7 @@ export async function updateVehicleCheck(
     }
 
     const itemRows = buildItemRows(id, items)
-    const { error: itemsError } = await requireSupabase().from('vehicle_check_items').insert(itemRows)
+    const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
 
     logSupabaseQuery({
       service: 'vehicleChecksService.updateVehicleCheck.items',

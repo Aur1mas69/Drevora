@@ -222,6 +222,7 @@ export default function HolidayRequestsPage() {
     endDate: string
     reason: string
     status: HolidayRequest['status']
+    leaveType: HolidayRequest['leaveType']
   }) {
     if (!editRequest) return
 
@@ -232,6 +233,7 @@ export default function HolidayRequestsPage() {
         endDate: input.endDate,
         reason: input.reason,
         status: input.status,
+        leaveType: input.leaveType,
       })
       showToast('Holiday request updated')
       setEditRequest(null)

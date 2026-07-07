@@ -47,6 +47,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'holiday_counting_method',
   'holiday_working_days',
   'holiday_entitlement_rules',
+  'consumable_default_prices',
 ] as const
 
 export type CompanySettingsColumn = (typeof COMPANY_SETTINGS_COLUMNS)[number]
@@ -166,6 +167,10 @@ export const companySettingsHolidayCountingSelect = `
   holiday_counting_method,
   holiday_working_days,
   holiday_entitlement_rules
+` as const
+
+export const companySettingsConsumablePricesSelect = `
+  consumable_default_prices
 ` as const
 
 /** Full select including weekend overtime (requires latest migration). */

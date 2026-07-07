@@ -29,17 +29,17 @@ export type PlanningEvent = {
 }
 
 export const planningEventColorMap: Record<string, string> = {
-  Available: 'bg-emerald-500',
-  Assigned: 'bg-blue-500',
-  Workshop: 'bg-yellow-400',
+  Available: 'bg-emerald-600',
+  Assigned: 'bg-[#218EE7]',
+  Workshop: 'bg-amber-500',
   Maintenance: 'bg-orange-500',
-  'Out of Service': 'bg-red-600',
-  'Off Road': 'bg-slate-950',
-  Reserved: 'bg-purple-500',
+  'Out of Service': 'bg-rose-700',
+  'Off Road': 'bg-slate-900',
+  Reserved: 'bg-violet-600',
   MOT: 'bg-amber-500',
-  Insurance: 'bg-blue-500',
-  'Road Tax': 'bg-slate-500',
-  'Tachograph Calibration': 'bg-purple-600',
+  Insurance: 'bg-[#218EE7]',
+  'Road Tax': 'bg-slate-600',
+  'Tachograph Calibration': 'bg-violet-600',
   Service: 'bg-orange-500',
 }
 

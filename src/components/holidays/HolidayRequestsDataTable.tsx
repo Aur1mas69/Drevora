@@ -8,7 +8,6 @@ import {
 import type { HolidayRequest } from '@/lib/holidayRequestTypes'
 import {
   canApproveHolidayRequest,
-  canEditHolidayRequest,
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
@@ -44,11 +43,10 @@ function HolidayRequestRowActions({
   onReject: () => void
   onDelete: () => void
 }) {
-  const actions: RowAction[] = [{ id: 'view', label: 'View', icon: Eye, onClick: onView }]
-
-  if (canEditHolidayRequest(request.status)) {
-    actions.push({ id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit })
-  }
+  const actions: RowAction[] = [
+    { id: 'view', label: 'View', icon: Eye, onClick: onView },
+    { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
+  ]
 
   if (canApproveHolidayRequest(request.status)) {
     actions.push(

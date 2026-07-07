@@ -8,6 +8,7 @@ import type {
   DriverReportSummaryStats,
 } from '@/lib/driverReportTypes'
 import type { CreateDriverReportInput } from '@/lib/driverReportTypes'
+import type { CurrentViewMode } from '@/lib/currentViewVisibility'
 
 export function getDriverReportStatusLabel(status: DriverReportStatus): string {
   return status
@@ -187,6 +188,17 @@ export function filterDriverReports(reports: DriverReport[], query: DriverReport
   }
 
   return result
+}
+
+export function filterDriverReportsByVisibility(
+  reports: DriverReport[],
+  visibilityMode: CurrentViewMode,
+): DriverReport[] {
+  if (visibilityMode === 'all') return reports
+  if (visibilityMode === 'history') {
+    return reports.filter((report) => report.status === 'Closed')
+  }
+  return reports.filter((report) => report.status === 'New' || report.status === 'In Progress')
 }
 
 export function getReportDescriptionSnippet(description: string | null, maxLength = 72): string {

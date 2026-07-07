@@ -33,6 +33,7 @@ export type HolidayDayBreakdown = {
 
 export type HolidayBalanceSummary = HolidayDayBreakdown & {
   annualAllowance: number
+  bankHolidayEntitlementDays: number
   allowanceKnown: boolean
   usedHolidayDays: number
   pendingHolidayDays: number

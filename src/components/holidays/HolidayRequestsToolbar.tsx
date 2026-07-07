@@ -28,7 +28,7 @@ type HolidayRequestsToolbarProps = {
 }
 
 const filterPanelClass =
-  'absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(100vw-2rem,20rem)] rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
+  'absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
 
 const filterFieldLabelClass = 'text-xs font-semibold text-[#5499BF]'
 
@@ -196,8 +196,8 @@ export function HolidayRequestsToolbar({
                       <HolidayDateInput
                         value={dateFrom}
                         onChange={onDateFromChange}
-                        className={`${holidaySelectClass} w-full min-w-0 px-2.5`}
-                        aria-label="Date from"
+                        className={`${holidaySelectClass} w-full min-w-0 px-2`}
+                        aria-label="Start date"
                       />
                     </label>
                     <label className="block min-w-0 space-y-1.5">
@@ -206,8 +206,8 @@ export function HolidayRequestsToolbar({
                         value={dateTo}
                         onChange={onDateToChange}
                         min={dateFrom || undefined}
-                        className={`${holidaySelectClass} w-full min-w-0 px-2.5`}
-                        aria-label="Date to"
+                        className={`${holidaySelectClass} w-full min-w-0 px-2`}
+                        aria-label="End date"
                       />
                     </label>
                   </div>

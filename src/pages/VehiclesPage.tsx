@@ -456,13 +456,16 @@ function VehiclesPage() {
 
   return (
     <AdminLayout premiumBackground>
-      <section className="space-y-5">
+      <section className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-[1.75rem] font-semibold tracking-[-0.04em] text-[#2A376F] sm:text-[2rem]">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
+              Fleet
+            </p>
+            <h1 className="mt-1 text-[1.75rem] font-semibold tracking-[-0.04em] text-[#2A376F] sm:text-[2rem]">
               Vehicles
             </h1>
-            <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500">
+            <p className="mt-1 max-w-2xl text-sm font-medium text-[#5499BF]">
               Manage your fleet, documents, maintenance and inspections.
             </p>
           </div>

@@ -350,6 +350,7 @@ create table if not exists public.companies (
     "Casual": { "paidHolidayEnabled": false, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true },
     "Other": { "paidHolidayEnabled": true, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true }
   }'::jsonb,
+  consumable_default_prices jsonb not null default '{}'::jsonb,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
@@ -579,10 +580,20 @@ create table if not exists public.vehicle_check_items (
   result text not null default 'Pass',
   comment text,
   photo_url text,
+  guidance text,
+  allow_notes boolean not null default true,
+  allow_photo boolean not null default false,
+  fail_on_defect boolean not null default true,
   constraint vehicle_check_items_result_check check (
     result in ('Pass', 'Advisory', 'Fail')
   )
 );
+
+alter table public.vehicle_check_items
+  add column if not exists guidance text,
+  add column if not exists allow_notes boolean not null default true,
+  add column if not exists allow_photo boolean not null default false,
+  add column if not exists fail_on_defect boolean not null default true;
 
 create index if not exists vehicle_checks_vehicle_id_idx on public.vehicle_checks (vehicle_id);
 create index if not exists vehicle_checks_worker_id_idx on public.vehicle_checks (worker_id);
@@ -597,38 +608,89 @@ alter table public.vehicle_check_items disable row level security;
 grant select, insert, update, delete on public.vehicle_checks to anon, authenticated;
 grant select, insert, update, delete on public.vehicle_check_items to anon, authenticated;
 
--- Vehicle check templates (type-based checklists)
+-- Vehicle check templates (flexible company/vehicle-type checklists)
 create table if not exists public.vehicle_check_templates (
   id uuid primary key default gen_random_uuid(),
-  created_at timestamptz default now(),
-  vehicle_type text not null,
-  section text not null,
-  item_name text not null,
-  sort_order integer default 0,
-  is_required boolean default true,
-  is_active boolean default true
+  company text,
+  name text not null,
+  vehicle_type text,
+  description text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
+alter table public.vehicle_check_templates
+  add column if not exists company text,
+  add column if not exists name text,
+  add column if not exists vehicle_type text,
+  add column if not exists description text,
+  add column if not exists is_active boolean not null default true,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+update public.vehicle_check_templates
+set name = coalesce(name, vehicle_type || ' Daily Vehicle Check', 'Vehicle Check Template')
+where name is null;
+
+alter table public.vehicle_check_templates
+  alter column name set not null;
+
+create table if not exists public.vehicle_check_template_items (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references public.vehicle_check_templates (id) on delete cascade,
+  section text not null,
+  label text not null,
+  description text,
+  sort_order integer not null default 0,
+  is_required boolean not null default true,
+  allow_notes boolean not null default true,
+  allow_photo boolean not null default false,
+  fail_on_defect boolean not null default true,
+  is_active boolean not null default true,
+  is_custom boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists vehicle_check_templates_company_idx
+  on public.vehicle_check_templates (company);
 create index if not exists vehicle_check_templates_vehicle_type_idx
   on public.vehicle_check_templates (vehicle_type);
-create index if not exists vehicle_check_templates_section_idx
-  on public.vehicle_check_templates (section);
 create index if not exists vehicle_check_templates_is_active_idx
   on public.vehicle_check_templates (is_active);
+create index if not exists vehicle_check_template_items_template_id_idx
+  on public.vehicle_check_template_items (template_id);
+create index if not exists vehicle_check_template_items_sort_order_idx
+  on public.vehicle_check_template_items (sort_order);
+create index if not exists vehicle_check_template_items_is_active_idx
+  on public.vehicle_check_template_items (is_active);
 
-alter table public.vehicle_check_templates enable row level security;
+create or replace function public.set_vehicle_check_template_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
-grant select on public.vehicle_check_templates to anon, authenticated;
+drop trigger if exists vehicle_check_templates_updated_at on public.vehicle_check_templates;
+
+create trigger vehicle_check_templates_updated_at
+  before update on public.vehicle_check_templates
+  for each row
+  execute function public.set_vehicle_check_template_updated_at();
+
+alter table public.vehicle_check_templates disable row level security;
+alter table public.vehicle_check_template_items disable row level security;
+
+grant select, insert, update, delete on public.vehicle_check_templates to anon, authenticated;
+grant select, insert, update, delete on public.vehicle_check_template_items to anon, authenticated;
 
 drop policy if exists vehicle_check_templates_select_global on public.vehicle_check_templates;
 drop policy if exists vehicle_check_templates_select_company on public.vehicle_check_templates;
 drop policy if exists "Read active vehicle check templates" on public.vehicle_check_templates;
-
-create policy "Read active vehicle check templates"
-  on public.vehicle_check_templates
-  for select
-  to anon, authenticated
-  using (is_active = true);
 
 grant select, insert, update, delete on public.worker_compliance_records to anon, authenticated;
 

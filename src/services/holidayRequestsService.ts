@@ -148,6 +148,11 @@ function numberOrNull(value: number | string | null | undefined): number | null 
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
 }
 
+import {
+  isPaidHolidayLeaveType,
+  resolvePaidHolidayEntitlementDays,
+} from '@/lib/holidayEntitlement'
+
 function resolveWorkerEntitlement(
   driver: DriverJoinRow | null,
   rules: HolidayEntitlementRules,
@@ -156,7 +161,7 @@ function resolveWorkerEntitlement(
   paidHolidayEnabled: boolean
   annualPaidHolidayDays: number
   bankHolidayEntitlementDays: number
-  totalEntitlement: number
+  paidHolidayEntitlement: number
   unpaidLeaveAllowed: boolean
 } {
   const employmentType =
@@ -177,9 +182,10 @@ function resolveWorkerEntitlement(
     paidHolidayEnabled,
     annualPaidHolidayDays,
     bankHolidayEntitlementDays,
-    totalEntitlement: paidHolidayEnabled
-      ? annualPaidHolidayDays + bankHolidayEntitlementDays
-      : 0,
+    paidHolidayEntitlement: resolvePaidHolidayEntitlementDays(
+      paidHolidayEnabled,
+      annualPaidHolidayDays,
+    ),
     unpaidLeaveAllowed: driver?.unpaid_leave_allowed ?? rule.unpaidLeaveAllowed,
   }
 }
@@ -329,10 +335,13 @@ async function fetchApprovedHolidayDaysUsed({
   const rows = (data ?? []) as unknown as Array<{
     start_date: string
     end_date: string
+    leave_type?: string | null
     holiday_days_deducted?: number | string | null
   }>
 
   return rows.reduce((total, row) => {
+    if (!isPaidHolidayLeaveType(row.leave_type)) return total
+
     const startDate = row.start_date > bounds.start ? row.start_date : bounds.start
     const endDate = row.end_date < bounds.end ? row.end_date : bounds.end
     const storedDeduction = numberOrNull(row.holiday_days_deducted)
@@ -354,7 +363,6 @@ export async function calculateHolidayRequestBalance(
   const { settings, annualAllowance, allowanceKnown, entitlementRules, holidayYearStart } =
     await getHolidayCountingContext()
   const leaveType = input.leaveType ?? 'paid_holiday'
-  const isPaidLeave = leaveType === 'paid_holiday' || leaveType === 'bank_holiday'
 
   const workerResult = await requireSupabase()
     .from('drivers')
@@ -402,9 +410,12 @@ export async function calculateHolidayRequestBalance(
     excludeRequestId: input.excludeRequestId,
     status: 'Pending',
   })
-  const effectiveAllowanceKnown = allowanceKnown || entitlement.totalEntitlement > 0
-  const effectiveAllowance = entitlement.totalEntitlement
-  const deductibleDays = isPaidLeave && entitlement.paidHolidayEnabled ? breakdown.holidayDaysDeducted : 0
+  const effectiveAllowanceKnown = allowanceKnown || entitlement.paidHolidayEntitlement > 0
+  const effectiveAllowance = entitlement.paidHolidayEntitlement
+  const deductibleDays =
+    leaveType === 'paid_holiday' && entitlement.paidHolidayEnabled
+      ? breakdown.holidayDaysDeducted
+      : 0
   const remainingBeforeRequest = effectiveAllowanceKnown
     ? effectiveAllowance - usedHolidayDays
     : Number.NaN
@@ -419,6 +430,7 @@ export async function calculateHolidayRequestBalance(
     ...breakdown,
     holidayDaysDeducted: deductibleDays,
     annualAllowance: effectiveAllowance,
+    bankHolidayEntitlementDays: entitlement.bankHolidayEntitlementDays,
     allowanceKnown: effectiveAllowanceKnown,
     usedHolidayDays,
     pendingHolidayDays,
@@ -718,7 +730,7 @@ export async function updateHolidayRequest(
     input.startDate !== undefined ||
     input.endDate !== undefined ||
     input.leaveType !== undefined ||
-    input.status === 'Approved'
+    input.status !== undefined
 
   if (shouldRecalculateDays) {
     const { data: existing, error: existingError } = await requireSupabase()

@@ -5,12 +5,17 @@ import { VehicleCheckDrawer } from '@/components/vehicle-checks/VehicleCheckDraw
 import { VehicleChecksDataTable } from '@/components/vehicle-checks/VehicleChecksDataTable'
 import { VehicleChecksEmptyState } from '@/components/vehicle-checks/VehicleChecksEmptyState'
 import { VehicleChecksPagination } from '@/components/vehicle-checks/VehicleChecksPagination'
-import { VehicleChecksSummaryCards } from '@/components/vehicle-checks/VehicleChecksSummaryCards'
+import {
+  VehicleChecksSummaryCards,
+  type VehicleChecksKpiFilter,
+} from '@/components/vehicle-checks/VehicleChecksSummaryCards'
 import { VehicleChecksToolbar } from '@/components/vehicle-checks/VehicleChecksToolbar'
+import { Button } from '@/components/ui/button'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   VehicleCheck,
   VehicleCheckListItem,
+  VehicleCheckResultFilter,
   VehicleCheckStatusFilter,
   VehicleCheckSummaryStats,
 } from '@/lib/vehicleCheckTypes'
@@ -24,14 +29,34 @@ import {
   updateVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
-import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import {
+  fetchVehicles,
+  getVehicleStatusForDate,
+  type Vehicle,
+  type VehicleStatus,
+} from '@/services/vehiclesService'
+import { getCurrentViewToday } from '@/lib/currentViewVisibility'
+import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+
+const vehicleUnavailableStatuses: VehicleStatus[] = [
+  'Off Road',
+  'Maintenance',
+  'Workshop',
+  'Out of Service',
+  'Reserved',
+  'Assigned',
+]
 
 export default function VehicleChecksPage() {
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<VehicleCheckSummaryStats>({
+    totalChecks: 0,
     checksToday: 0,
+    passedToday: 0,
+    failedToday: 0,
+    defectsReported: 0,
     openDefects: 0,
     vehiclesChecked: 0,
     failedInspections: 0,
@@ -43,8 +68,12 @@ export default function VehicleChecksPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<VehicleCheckStatusFilter>('all')
+  const [resultFilter, setResultFilter] = useState<VehicleCheckResultFilter>('all')
   const [vehicleFilter, setVehicleFilter] = useState('all')
-  const [inspectionDate, setInspectionDate] = useState('')
+  const [workerFilter, setWorkerFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState(() => getCurrentViewToday())
+  const [dateTo, setDateTo] = useState(() => getCurrentViewToday())
+  const [activeKpiFilter, setActiveKpiFilter] = useState<VehicleChecksKpiFilter>('checksToday')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_VEHICLE_CHECK_PAGE_SIZE)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
@@ -60,8 +89,11 @@ export default function VehicleChecksPage() {
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     statusFilter !== 'all' ||
+    resultFilter !== 'all' ||
     vehicleFilter !== 'all' ||
-    inspectionDate.length > 0
+    workerFilter !== 'all' ||
+    dateFrom.length > 0 ||
+    dateTo.length > 0
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -75,7 +107,7 @@ export default function VehicleChecksPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, statusFilter, vehicleFilter, inspectionDate, pageSize])
+  }, [dateFrom, dateTo, debouncedSearch, pageSize, resultFilter, statusFilter, vehicleFilter, workerFilter])
 
   const loadReferenceData = useCallback(async () => {
     const [loadedVehicles, loadedDrivers] = await Promise.all([
@@ -94,8 +126,11 @@ export default function VehicleChecksPage() {
       const result = await fetchVehicleChecks({
         search: debouncedSearch,
         status: statusFilter,
+        result: resultFilter,
         vehicleId: vehicleFilter,
-        inspectionDate: inspectionDate || undefined,
+        workerId: workerFilter,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         page,
         pageSize,
       })
@@ -114,7 +149,7 @@ export default function VehicleChecksPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [debouncedSearch, inspectionDate, page, pageSize, statusFilter, vehicleFilter])
+  }, [dateFrom, dateTo, debouncedSearch, page, pageSize, resultFilter, statusFilter, vehicleFilter, workerFilter])
 
   useEffect(() => {
     void loadReferenceData().catch(() => {
@@ -155,8 +190,44 @@ export default function VehicleChecksPage() {
     setSearchTerm('')
     setDebouncedSearch('')
     setStatusFilter('all')
+    setResultFilter('all')
     setVehicleFilter('all')
-    setInspectionDate('')
+    setWorkerFilter('all')
+    setDateFrom('')
+    setDateTo('')
+    setActiveKpiFilter(null)
+  }
+
+  function handleKpiFilterChange(value: VehicleChecksKpiFilter) {
+    setActiveKpiFilter(value)
+    setSearchTerm('')
+    setDebouncedSearch('')
+    setVehicleFilter('all')
+    setWorkerFilter('all')
+
+    if (!value) {
+      setStatusFilter('all')
+      setResultFilter('all')
+      setDateFrom('')
+      setDateTo('')
+      return
+    }
+
+    setDateFrom(getCurrentViewToday())
+    setDateTo(getCurrentViewToday())
+    setStatusFilter('all')
+
+    if (value === 'passedToday') {
+      setResultFilter('Pass')
+    } else if (value === 'failedToday') {
+      setResultFilter('Fail')
+    } else if (value === 'defectsReported') {
+      setResultFilter('Defects')
+      setDateFrom('')
+      setDateTo('')
+    } else {
+      setResultFilter('all')
+    }
   }
 
   async function handleCreate(input: {
@@ -249,36 +320,93 @@ export default function VehicleChecksPage() {
     }
   }
 
-  const showEmptyState =
-    !isLoading && !loadError && totalCount === 0 && !hasActiveFilters
+  const today = getCurrentViewToday()
+  const activeVehicleCount = vehicles.filter(
+    (vehicle) => !vehicleUnavailableStatuses.includes(getVehicleStatusForDate(vehicle, today)),
+  ).length
+  const vehiclesNotChecked =
+    vehicles.length > 0 ? Math.max(activeVehicleCount - stats.vehiclesChecked, 0) : null
+  const isTodayView =
+    debouncedSearch.trim().length === 0 &&
+    statusFilter === 'all' &&
+    resultFilter === 'all' &&
+    vehicleFilter === 'all' &&
+    workerFilter === 'all' &&
+    dateFrom === today &&
+    dateTo === today
+  const showNoRecordsState = !isLoading && !loadError && totalCount === 0 && stats.totalChecks === 0
+  const showNoTodayState =
+    !isLoading && !loadError && totalCount === 0 && stats.totalChecks > 0 && isTodayView
 
   return (
     <AdminLayout>
       <div className="space-y-4">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
-            Vehicle Checks
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage daily vehicle inspections and defect reports.
-          </p>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
+              Vehicle Checks
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage daily vehicle inspections and defect reports.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setIsNewModalOpen(true)}
+            className="h-10 shrink-0 rounded-[14px] bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(33,142,231,0.24)] hover:bg-[#1d7fd0]"
+          >
+            <Plus className="mr-1.5 size-4" />
+            New Vehicle Check
+          </Button>
         </header>
 
-        <VehicleChecksSummaryCards stats={stats} />
+        <VehicleChecksSummaryCards
+          stats={stats}
+          vehiclesNotChecked={vehiclesNotChecked}
+          activeFilter={activeKpiFilter}
+          onFilterChange={handleKpiFilterChange}
+        />
 
         <VehicleChecksToolbar
           searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
+          onSearchTermChange={(value) => {
+            setSearchTerm(value)
+            setActiveKpiFilter(null)
+          }}
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={(value) => {
+            setStatusFilter(value)
+            setActiveKpiFilter(null)
+          }}
+          resultFilter={resultFilter}
+          onResultFilterChange={(value) => {
+            setResultFilter(value)
+            setActiveKpiFilter(null)
+          }}
           vehicleFilter={vehicleFilter}
-          onVehicleFilterChange={setVehicleFilter}
-          inspectionDate={inspectionDate}
-          onInspectionDateChange={setInspectionDate}
+          onVehicleFilterChange={(value) => {
+            setVehicleFilter(value)
+            setActiveKpiFilter(null)
+          }}
+          workerFilter={workerFilter}
+          onWorkerFilterChange={(value) => {
+            setWorkerFilter(value)
+            setActiveKpiFilter(null)
+          }}
+          dateFrom={dateFrom}
+          onDateFromChange={(value) => {
+            setDateFrom(value)
+            setActiveKpiFilter(null)
+          }}
+          dateTo={dateTo}
+          onDateToChange={(value) => {
+            setDateTo(value)
+            setActiveKpiFilter(null)
+          }}
           vehicles={vehicles}
+          workers={drivers}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilters}
-          onNewInspection={() => setIsNewModalOpen(true)}
         />
 
         {loadError ? (
@@ -291,8 +419,17 @@ export default function VehicleChecksPage() {
           <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
             Loading inspections…
           </div>
-        ) : showEmptyState ? (
+        ) : showNoRecordsState ? (
           <VehicleChecksEmptyState onCreateFirst={() => setIsNewModalOpen(true)} />
+        ) : showNoTodayState ? (
+          <div className="rounded-[18px] border border-[#D3E9FC] bg-white px-6 py-10 text-center shadow-[0_10px_30px_rgba(33,142,231,0.08)]">
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+              No checks completed today.
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Change the date range or clear the date filters to view previous checks.
+            </p>
+          </div>
         ) : items.length === 0 ? (
           <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
             <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">

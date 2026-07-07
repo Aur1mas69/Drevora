@@ -7,8 +7,10 @@ import {
 } from '@/components/ui/RowActionsMenu'
 import { ConsumableReceiptStatus } from '@/components/consumables/ConsumableReceiptStatus'
 import type { Consumable } from '@/lib/consumableTypes'
+import type { ConsumableDefaultPricesMap } from '@/lib/consumableDefaultPrices'
 import {
-  formatConsumableCost,
+  formatConsumableEntryDateTime,
+  formatConsumableItemCost,
   formatQuantityWithUnit,
   formatSupplierSite,
   getConsumableTypeBadgeClass,
@@ -49,16 +51,18 @@ function ConsumableRowActions({
 
 function ConsumableMobileCard({
   item,
+  defaultPrices,
   onView,
   onEdit,
   onDelete,
 }: {
   item: Consumable
+  defaultPrices: ConsumableDefaultPricesMap
   onView: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, formatTime } = useCompanySettings()
 
   return (
     <article className="rounded-xl border border-[#D3E9FC] bg-white/90 p-4 shadow-sm">
@@ -86,11 +90,15 @@ function ConsumableMobileCard({
         </div>
         <div>
           <dt className="text-[#3D7A9C]">Date</dt>
-          <dd className="font-semibold text-[#113C69]">{formatDate(item.entryDate)}</dd>
+          <dd className="font-semibold text-[#113C69]">
+            {formatConsumableEntryDateTime(item.entryDate, item.entryTime, formatDate, formatTime)}
+          </dd>
         </div>
         <div>
           <dt className="text-[#3D7A9C]">Cost</dt>
-          <dd className="font-semibold text-[#113C69]">{formatConsumableCost(item.cost)}</dd>
+          <dd className="font-semibold text-[#113C69]">
+            {formatConsumableItemCost(item, defaultPrices)}
+          </dd>
         </div>
         <div>
           <dt className="text-[#3D7A9C]">Receipt</dt>
@@ -109,7 +117,8 @@ export function ConsumablesDataTable({
   onEdit,
   onDelete,
 }: ConsumablesDataTableProps) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, formatTime, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const rowPadding = 'py-4'
   const headerCellClass = 'px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#3D7A9C]'
 
@@ -148,7 +157,12 @@ export function ConsumablesDataTable({
               {items.map((item) => (
                 <tr key={item.id} className={`${adminTableRow} text-sm`}>
                   <td className={`px-4 ${rowPadding} whitespace-nowrap tabular-nums text-sm ${adminTextStrong}`}>
-                    {formatDate(item.entryDate)}
+                    {formatConsumableEntryDateTime(
+                      item.entryDate,
+                      item.entryTime,
+                      formatDate,
+                      formatTime,
+                    )}
                   </td>
                   <td className={`px-4 ${rowPadding} whitespace-nowrap text-base font-semibold ${adminHeading}`}>
                     {item.vehicleLabel ?? '—'}
@@ -170,7 +184,7 @@ export function ConsumablesDataTable({
                     {formatQuantityWithUnit(item.quantity, item.unit)}
                   </td>
                   <td className={`px-4 ${rowPadding} whitespace-nowrap tabular-nums text-base font-semibold ${adminTextStrong}`}>
-                    {formatConsumableCost(item.cost)}
+                    {formatConsumableItemCost(item, defaultPrices)}
                   </td>
                   <td className={`max-w-[220px] truncate px-4 ${rowPadding} text-sm ${adminText}`}>
                     {formatSupplierSite(item.supplier, item.site)}
@@ -197,6 +211,7 @@ export function ConsumablesDataTable({
           <ConsumableMobileCard
             key={item.id}
             item={item}
+            defaultPrices={defaultPrices}
             onView={() => onView(item)}
             onEdit={() => onEdit(item)}
             onDelete={() => onDelete(item)}

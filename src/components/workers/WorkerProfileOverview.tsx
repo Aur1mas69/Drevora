@@ -12,13 +12,14 @@ import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
 import { WorkerEmploymentTypeBadge } from '@/components/workers/WorkerEmploymentTypeBadge'
 import { WorkerExpiryDateValue } from '@/components/workers/WorkerExpiryDateValue'
 import {
-  formatLicenceCategories,
   formatWorkerProfileDate,
   getWorkerDefaultVehicleLabel,
   isWorkerAddressEmpty,
 } from '@/lib/workerProfileUtils'
+import { WorkerLicenceCategoryBadges } from '@/components/workers/WorkerLicenceCategoryBadges'
 import type { Driver, DriverStatus } from '@/services/driversService'
 import { fetchWorkerHolidayBalanceSummary } from '@/services/holidayRequestsService'
+import { resolvePaidHolidayEntitlementDays } from '@/lib/holidayEntitlement'
 import type { HolidayBalanceSummary } from '@/lib/holidayRequestTypes'
 import { cn } from '@/lib/utils'
 
@@ -118,12 +119,12 @@ type WorkerProfileOverviewProps = {
 export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
   const [holidayBalance, setHolidayBalance] = useState<HolidayBalanceSummary | null>(null)
   const fullName = `${driver.firstName} ${driver.lastName}`.trim()
-  const licenceCategories = formatLicenceCategories(driver.licenceCategories)
   const defaultVehicle = getWorkerDefaultVehicleLabel(driver)
   const hasAddress = !isWorkerAddressEmpty(driver)
-  const paidDays = driver.annualPaidHolidayDays ?? 0
-  const bankDays = driver.bankHolidayEntitlementDays ?? 0
-  const totalEntitlement = driver.paidHolidayEnabled === false ? 0 : paidDays + bankDays
+  const paidHolidayEntitlement = resolvePaidHolidayEntitlementDays(
+    driver.paidHolidayEnabled !== false,
+    driver.annualPaidHolidayDays ?? 0,
+  )
 
   useEffect(() => {
     let isCancelled = false
@@ -200,7 +201,7 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
         <ProfileField label="Bank holiday entitlement">
           {driver.bankHolidayEntitlementDays == null ? <ProfileEmptyValue>Use default</ProfileEmptyValue> : driver.bankHolidayEntitlementDays}
         </ProfileField>
-        <ProfileField label="Total entitlement">{totalEntitlement}</ProfileField>
+        <ProfileField label="Paid holiday entitlement">{paidHolidayEntitlement}</ProfileField>
         <ProfileField label="Used approved paid holiday">
           {holidayBalance ? holidayBalance.usedHolidayDays : <ProfileEmptyValue />}
         </ProfileField>
@@ -251,11 +252,7 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
         contentClassName="sm:grid-cols-2 lg:grid-cols-3"
       >
         <ProfileField label="Licence Categories" className="sm:col-span-2 lg:col-span-3">
-          {licenceCategories === 'Not set' ? (
-            <ProfileEmptyValue />
-          ) : (
-            licenceCategories
-          )}
+          <WorkerLicenceCategoryBadges categories={driver.licenceCategories} />
         </ProfileField>
         <ComplianceDateField label="Licence Expiry" value={driver.drivingLicenceExpiry} />
         <ComplianceDateField label="CPC Expiry" value={driver.cpcExpiry} />

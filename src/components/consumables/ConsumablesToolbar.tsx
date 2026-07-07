@@ -19,7 +19,12 @@ type ConsumablesToolbarProps = {
   onDateToChange: (value: string) => void
   vehicles: Vehicle[]
   hasActiveFilters: boolean
+  isHistoryView: boolean
+  currentPeriodLabel: string
   onClearFilters: () => void
+  onCleanCurrentView: () => void
+  onShowCurrentPeriod: () => void
+  onShowHistory: () => void
   onNewRecord: () => void
 }
 
@@ -36,7 +41,12 @@ export function ConsumablesToolbar({
   onDateToChange,
   vehicles,
   hasActiveFilters,
+  isHistoryView,
+  currentPeriodLabel,
   onClearFilters,
+  onCleanCurrentView,
+  onShowCurrentPeriod,
+  onShowHistory,
   onNewRecord,
 }: ConsumablesToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
@@ -150,6 +160,24 @@ export function ConsumablesToolbar({
               </div>
             ) : null}
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={isHistoryView ? onShowCurrentPeriod : onShowHistory}
+            className="h-11 rounded-xl border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+          >
+            {isHistoryView ? currentPeriodLabel : 'Show history'}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCleanCurrentView}
+            className="h-11 rounded-xl px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+          >
+            Clean current view
+          </Button>
         </div>
 
         <Button

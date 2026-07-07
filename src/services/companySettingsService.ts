@@ -1,7 +1,9 @@
+import { COMPANY_UPDATED_EVENT } from '@/lib/companyEvents'
 import { resolveCompanyName } from '@/lib/company'
 import {
   companySettingsCoreSelect,
   companySettingsHolidayCountingSelect,
+  companySettingsConsumablePricesSelect,
   companySettingsSelect,
   companySettingsWeekendSelect,
   companySettingsWeekNumberingSelect,
@@ -43,6 +45,11 @@ import {
   type HolidayCountingMethod,
   type HolidayWorkingDay,
 } from '@/lib/companySettingsTypes'
+import {
+  normalizeConsumableDefaultPrices,
+  serializeConsumableDefaultPrices,
+  type ConsumableDefaultPricesMap,
+} from '@/lib/consumableDefaultPrices'
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
@@ -94,6 +101,7 @@ type CompanyRow = {
   holiday_counting_method: string | null
   holiday_working_days: string[] | null
   holiday_entitlement_rules: unknown | null
+  consumable_default_prices: unknown | null
 }
 
 export class CompanySettingsServiceError extends Error {
@@ -429,6 +437,9 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     holidayCountingMethod: normalizeHolidayCountingMethod(row.holiday_counting_method),
     holidayWorkingDays: normalizeHolidayWorkingDays(row.holiday_working_days),
     holidayEntitlementRules: normalizeHolidayEntitlementRules(row.holiday_entitlement_rules),
+    consumableDefaultPrices: normalizeConsumableDefaultPrices(
+      row.consumable_default_prices ?? {},
+    ),
   }
 }
 
@@ -695,6 +706,32 @@ async function fetchAlternateCompanyName(companyId: string): Promise<string | nu
   return null
 }
 
+async function mergeOptionalConsumableDefaultPrices(
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data: consumablePricesData, error: consumablePricesError } = await queryCompanyRow(
+    companySettingsConsumablePricesSelect,
+  )
+
+  if (!consumablePricesError && consumablePricesData) {
+    return {
+      ...row,
+      ...(consumablePricesData as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (consumablePricesError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      { select: companySettingsConsumablePricesSelect, optional: 'consumable_default_prices' },
+      consumablePricesError,
+    )
+  }
+
+  return row
+}
+
 async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
   const table = 'companies'
   const { data, error } = await queryCompanyRow(companySettingsSelect)
@@ -707,7 +744,7 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
   })
 
   if (!error && data) {
-    return data as unknown as CompanyRow
+    return mergeOptionalConsumableDefaultPrices(data as unknown as CompanyRow)
   }
 
   if (error && !isMissingColumnError(error)) {
@@ -797,6 +834,21 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     )
   }
 
+  const { data: consumablePricesData, error: consumablePricesError } = await queryCompanyRow(
+    companySettingsConsumablePricesSelect,
+  )
+
+  if (!consumablePricesError && consumablePricesData) {
+    merged = { ...merged, ...(consumablePricesData as unknown as Record<string, unknown>) }
+  } else if (consumablePricesError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsConsumablePricesSelect, optional: 'consumable_default_prices' },
+      consumablePricesError,
+    )
+  }
+
   return merged as unknown as CompanyRow
 }
 
@@ -872,10 +924,54 @@ export async function updateCompanySettings(
   return created
 }
 
+export async function updateConsumableDefaultPrices(
+  prices: ConsumableDefaultPricesMap,
+): Promise<CompanySettings> {
+  if (!isSupabaseConfigured) {
+    throw new CompanySettingsServiceError('Supabase is not configured')
+  }
+
+  const existing = await fetchCompanySettings()
+  if (!existing) {
+    throw new CompanySettingsServiceError('Company settings not found')
+  }
+
+  const payload = {
+    consumable_default_prices: serializeConsumableDefaultPrices(prices),
+  }
+
+  const { error } = await requireSupabase()
+    .from('companies')
+    .update(payload)
+    .eq('id', existing.id)
+
+  if (error) {
+    logCompanySettingsPersistenceError('update', 'companies', payload, error)
+    if (isMissingColumnError(error)) {
+      throw new CompanySettingsServiceError(
+        'Default consumable prices are not available yet. Run the consumable_default_prices database migration in Supabase first.',
+      )
+    }
+    throw new CompanySettingsServiceError(error.message)
+  }
+
+  const refreshed = await fetchCompanySettings()
+  if (!refreshed) {
+    throw new CompanySettingsServiceError('Unable to reload company settings after save')
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(COMPANY_UPDATED_EVENT))
+  }
+
+  return refreshed
+}
+
 export const companySettingsService = {
   fetchCompanySettings,
   saveCompanySettings,
   updateCompanySettings,
+  updateConsumableDefaultPrices,
   companySettingsToFormValues,
   mapCompanySettingsRow,
   validateCompanyName,

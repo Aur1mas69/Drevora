@@ -4,7 +4,52 @@ import { getDaysRemaining, getToday } from '@/lib/complianceUtils'
 
 export const WORKER_PROFILE_HISTORY_LIMIT = 25
 
-export const WORKER_LICENCE_CATEGORIES: LicenceCategory[] = ['C', 'C+E', 'B', 'Other']
+export type WorkerLicenceCategoryOption = {
+  value: LicenceCategory
+  label: string
+  shortLabel: string
+}
+
+export const WORKER_LICENCE_CATEGORY_OPTIONS: WorkerLicenceCategoryOption[] = [
+  { value: 'B', label: 'Car / Van (B)', shortLabel: 'B' },
+  { value: 'C1', label: '7.5 Tonne (C1)', shortLabel: 'C1' },
+  { value: 'C', label: 'HGV Class 2 (C)', shortLabel: 'Class 2' },
+  { value: 'C+E', label: 'HGV Class 1 (C+E)', shortLabel: 'Class 1' },
+  { value: 'D', label: 'PCV / Bus (D)', shortLabel: 'D' },
+  { value: 'D1', label: 'Minibus (D1)', shortLabel: 'D1' },
+  { value: 'B+E', label: 'Trailer (B+E)', shortLabel: 'B+E' },
+  { value: 'Forklift', label: 'Forklift', shortLabel: 'Forklift' },
+  { value: 'HIAB', label: 'HIAB / Grab', shortLabel: 'HIAB' },
+  { value: 'ADR', label: 'ADR', shortLabel: 'ADR' },
+  { value: 'Moffett', label: 'Moffett', shortLabel: 'Moffett' },
+  { value: 'Other', label: 'Other', shortLabel: 'Other' },
+]
+
+export const WORKER_LICENCE_CATEGORIES: LicenceCategory[] =
+  WORKER_LICENCE_CATEGORY_OPTIONS.map((option) => option.value)
+
+const LICENCE_CATEGORY_OPTION_BY_VALUE = new Map(
+  WORKER_LICENCE_CATEGORY_OPTIONS.map((option) => [option.value, option]),
+)
+
+const LEGACY_LICENCE_CATEGORY_ALIASES: Record<string, LicenceCategory> = {
+  B: 'B',
+  C1: 'C1',
+  C: 'C',
+  'C+E': 'C+E',
+  CE: 'C+E',
+  D: 'D',
+  D1: 'D1',
+  'B+E': 'B+E',
+  BE: 'B+E',
+  E: 'C+E',
+  FORKLIFT: 'Forklift',
+  HIAB: 'HIAB',
+  'HIAB/GRAB': 'HIAB',
+  ADR: 'ADR',
+  MOFFETT: 'Moffett',
+  OTHER: 'Other',
+}
 
 export const WORKER_COMPLIANCE_EXPIRY_DAYS = 30
 
@@ -36,12 +81,66 @@ export const workerExpiryDateClassMap: Record<WorkerExpiryDateStatus, string> = 
   missing: 'text-slate-400 dark:text-slate-500',
 }
 
+function normalizeLicenceCategoryKey(raw: string): string {
+  return raw.trim().replace(/\s+/g, '').toUpperCase()
+}
+
+export function normalizeLicenceCategory(
+  value: string | null | undefined,
+): LicenceCategory | null {
+  if (!value?.trim()) return null
+
+  const trimmed = value.trim()
+  if (LICENCE_CATEGORY_OPTION_BY_VALUE.has(trimmed as LicenceCategory)) {
+    return trimmed as LicenceCategory
+  }
+
+  const aliasKey = normalizeLicenceCategoryKey(trimmed)
+  const aliased = LEGACY_LICENCE_CATEGORY_ALIASES[aliasKey]
+  if (aliased) return aliased
+
+  const caseInsensitiveMatch = WORKER_LICENCE_CATEGORY_OPTIONS.find(
+    (option) => option.value.toUpperCase() === aliasKey,
+  )
+  return caseInsensitiveMatch?.value ?? null
+}
+
 export function normalizeLicenceCategories(
   value: string[] | null | undefined,
 ): LicenceCategory[] {
   if (!value?.length) return []
-  const allowed = new Set<string>(WORKER_LICENCE_CATEGORIES)
-  return value.filter((item): item is LicenceCategory => allowed.has(item))
+
+  const seen = new Set<LicenceCategory>()
+  const result: LicenceCategory[] = []
+
+  for (const item of value) {
+    const normalized = normalizeLicenceCategory(item)
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized)
+      result.push(normalized)
+    }
+  }
+
+  return result
+}
+
+export function formatLicenceCategoryLabel(
+  category: LicenceCategory | string,
+): string {
+  const normalized = normalizeLicenceCategory(category)
+  const key = normalized ?? category
+  return LICENCE_CATEGORY_OPTION_BY_VALUE.get(key as LicenceCategory)?.label ?? String(category).trim()
+}
+
+export function formatLicenceCategoryShortLabel(
+  category: LicenceCategory | string,
+): string {
+  const normalized = normalizeLicenceCategory(category)
+  const key = normalized ?? category
+  return (
+    LICENCE_CATEGORY_OPTION_BY_VALUE.get(key as LicenceCategory)?.shortLabel ??
+    formatLicenceCategoryLabel(category)
+  )
 }
 
 export function getWorkerExpiryDateStatus(
@@ -124,7 +223,7 @@ export function formatLicenceCategories(
   categories: LicenceCategory[] | null | undefined,
 ): string {
   if (!categories?.length) return 'Not set'
-  return categories.join(', ')
+  return categories.map((category) => formatLicenceCategoryLabel(category)).join(', ')
 }
 
 export function toDateInputValue(value: string | null | undefined): string {

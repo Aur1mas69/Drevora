@@ -1,6 +1,6 @@
 import { getTimesheetWeekSettings } from '@/lib/companySettingsGlobals'
 import { getCompanyTodayIsoDate } from '@/lib/companyDate'
-import { computeMonthlyConsumablesSummary } from '@/lib/consumableUtils'
+import { computeMonthlyConsumablesSummary, enrichConsumableSummaryRecords } from '@/lib/consumableUtils'
 import type { ConsumableType, ConsumableUnit } from '@/lib/consumableTypes'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
@@ -158,7 +158,8 @@ export type DashboardConsumablesTypeTile = {
 
 export type DashboardConsumablesOverview = {
   totalEntries: number
-  totalQuantityLitres: number
+  dieselLitres: number
+  adBlueLitres: number
   totalCost: number | null
   vehiclesUsed: number
   typeTiles: DashboardConsumablesTypeTile[]
@@ -284,7 +285,8 @@ export const emptyDashboardStats: DashboardStats = {
   },
   consumablesOverview: {
     totalEntries: 0,
-    totalQuantityLitres: 0,
+    dieselLitres: 0,
+    adBlueLitres: 0,
     totalCost: null,
     vehiclesUsed: 0,
     typeTiles: [],
@@ -1527,15 +1529,24 @@ function buildConsumablesTypeTiles(
 async function fetchConsumablesOverview(): Promise<DashboardConsumablesOverview> {
   try {
     const now = new Date()
-    const result = await fetchConsumablesMonthlySummary({
-      year: now.getFullYear(),
-      month: now.getMonth() + 1,
-    })
-    const summary = computeMonthlyConsumablesSummary(result.records)
+    const [settings, result] = await Promise.all([
+      fetchCompanySettings(),
+      fetchConsumablesMonthlySummary({
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+      }),
+    ])
+    const summary = computeMonthlyConsumablesSummary(
+      enrichConsumableSummaryRecords(
+        result.records,
+        settings?.consumableDefaultPrices ?? {},
+      ),
+    )
 
     return {
       totalEntries: summary.totalEntries,
-      totalQuantityLitres: summary.totalLitres,
+      dieselLitres: summary.dieselLitres,
+      adBlueLitres: summary.adBlueLitres,
       totalCost: summary.totalCost,
       vehiclesUsed: summary.vehiclesWithUsage,
       typeTiles: buildConsumablesTypeTiles(summary.typeSummaries),

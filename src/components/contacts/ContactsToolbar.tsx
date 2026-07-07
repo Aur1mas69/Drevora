@@ -39,7 +39,7 @@ export function ContactsToolbar({
   const filtersRef = useRef<HTMLDivElement>(null)
 
   const activeFilterCount =
-    (categoryFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0)
+    (categoryFilter !== 'all' ? 1 : 0) + (statusFilter !== 'active' ? 1 : 0)
 
   useEffect(() => {
     if (!isFiltersOpen) return

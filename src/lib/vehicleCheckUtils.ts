@@ -1,5 +1,6 @@
-import type { VehicleCheckTemplate } from '@/lib/vehicleCheckTemplateTypes'
+import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import type {
+  VehicleCheckItem,
   VehicleCheckItemInput,
   VehicleCheckItemResult,
   VehicleCheckListItem,
@@ -8,19 +9,67 @@ import type {
   VehicleChecklistSection,
 } from '@/lib/vehicleCheckTypes'
 
+type VehicleCheckItemDescriptionSource = {
+  description?: string | null
+  templateItem?: { description?: string | null } | null
+}
+
+export function resolveVehicleCheckItemDescription(
+  item: VehicleCheckItemDescriptionSource,
+): string | null {
+  const fromItem = item.description?.trim()
+  if (fromItem) return fromItem
+
+  const fromTemplate = item.templateItem?.description?.trim()
+  return fromTemplate || null
+}
+
+export function enrichVehicleCheckItemsWithTemplates(
+  items: VehicleCheckItem[],
+  templates: VehicleCheckTemplateItem[],
+): VehicleCheckItem[] {
+  return items.map((item) => {
+    const template = templates.find(
+      (entry) => entry.section === item.category && entry.label === item.itemName,
+    )
+    const templateItem = template ? { description: template.description } : null
+
+    return {
+      ...item,
+      templateItem,
+      description: resolveVehicleCheckItemDescription({
+        description: null,
+        templateItem,
+      }),
+    }
+  })
+}
+
 export function createChecklistItemsFromTemplates(
-  templates: VehicleCheckTemplate[],
+  templates: VehicleCheckTemplateItem[],
 ): VehicleCheckItemInput[] {
-  return templates.map((template) => ({
-    category: template.section,
-    itemName: template.itemName,
-    result: 'Pass' as VehicleCheckItemResult,
-    comment: '',
-  }))
+  return templates.map((template) => {
+    const templateItem = { description: template.description }
+
+    return {
+      category: template.section,
+      itemName: template.label,
+      result: 'Pass' as VehicleCheckItemResult,
+      comment: '',
+      templateItem,
+      description: resolveVehicleCheckItemDescription({
+        description: null,
+        templateItem,
+      }),
+      allowNotes: template.allowNotes,
+      allowPhoto: template.allowPhoto,
+      failOnDefect: template.failOnDefect,
+    }
+  })
 }
 
 export function groupTemplatesBySection(
-  templates: VehicleCheckTemplate[],
+  templates: VehicleCheckTemplateItem[],
 ): VehicleChecklistSection[] {
   const order: string[] = []
   const map = new Map<string, string[]>()
@@ -30,7 +79,7 @@ export function groupTemplatesBySection(
       order.push(template.section)
       map.set(template.section, [])
     }
-    map.get(template.section)?.push(template.itemName)
+    map.get(template.section)?.push(template.label)
   }
 
   return order.map((section) => ({
@@ -40,21 +89,31 @@ export function groupTemplatesBySection(
 }
 
 export function mergeChecklistWithExistingItems(
-  templates: VehicleCheckTemplate[],
+  templates: VehicleCheckTemplateItem[],
   existing: VehicleCheckItemInput[],
 ): VehicleCheckItemInput[] {
   return templates.map((template) => {
     const match = existing.find(
       (item) =>
-        item.category === template.section && item.itemName === template.itemName,
+        item.category === template.section && item.itemName === template.label,
     )
+
+    const templateItem = { description: template.description }
 
     return {
       category: template.section,
-      itemName: template.itemName,
+      itemName: template.label,
       result: match?.result ?? ('Pass' as VehicleCheckItemResult),
       comment: match?.comment ?? '',
       photoUrl: match?.photoUrl,
+      templateItem,
+      description: resolveVehicleCheckItemDescription({
+        description: null,
+        templateItem,
+      }),
+      allowNotes: template.allowNotes,
+      allowPhoto: template.allowPhoto,
+      failOnDefect: template.failOnDefect,
     }
   })
 }
@@ -131,25 +190,45 @@ export function getResultBadgeClass(result: VehicleCheckResult): string {
   }
 }
 
+export function formatVehicleCheckResultLabel(result: VehicleCheckResult): string {
+  switch (result) {
+    case 'Pass':
+      return 'Passed'
+    case 'Advisory':
+      return 'Defects'
+    case 'Fail':
+      return 'Failed'
+  }
+}
+
 export function getItemResultBadgeClass(result: VehicleCheckItemResult): string {
   return getResultBadgeClass(result)
 }
 
 export function computeVehicleCheckSummaryStats(
   checks: Pick<VehicleCheckListItem, 'inspectionDate' | 'overallResult' | 'vehicleId'>[],
-  failItemCount: number,
+  defectItemCount: number,
 ): VehicleCheckSummaryStats {
   const today = todayIsoDate()
-  const checksToday = checks.filter((check) => check.inspectionDate === today).length
+  const todayChecks = checks.filter((check) => check.inspectionDate === today)
+  const checksToday = todayChecks.length
+  const passedToday = todayChecks.filter((check) => check.overallResult === 'Pass').length
+  const failedToday = todayChecks.filter((check) => check.overallResult === 'Fail').length
   const vehiclesChecked = new Set(
-    checks.filter((check) => check.inspectionDate === today).map((check) => check.vehicleId),
+    todayChecks.map((check) => check.vehicleId),
   ).size
   const failedInspections = checks.filter((check) => check.overallResult === 'Fail').length
 
   return {
+    totalChecks: checks.length,
     checksToday,
-    openDefects: failItemCount,
+    passedToday,
+    failedToday,
+    defectsReported: defectItemCount,
     vehiclesChecked,
+    openDefects: defectItemCount,
     failedInspections,
   }
 }
+
+// TODO: Vehicle checks retention: keep records for 24 months.

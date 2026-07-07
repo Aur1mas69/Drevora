@@ -9,7 +9,11 @@ import type {
   ConsumableTypeVehicleBreakdown,
   ConsumableUnit,
 } from '@/lib/consumableTypes'
-import { CONSUMABLE_TYPES, CONSUMABLE_UNITS } from '@/lib/consumableTypes'
+import { CONSUMABLE_UNITS, normalizeConsumableTypeKey } from '@/lib/consumableTypes'
+import {
+  resolveConsumableDisplayCost,
+  type ConsumableDefaultPricesMap,
+} from '@/lib/consumableDefaultPrices'
 import { DEFAULT_CURRENCY, type CompanyCurrency } from '@/lib/companySettingsTypes'
 import { getSetting } from '@/lib/companySettingsGlobals'
 import { formatBonusAmount } from '@/lib/timesheetUtils'
@@ -27,7 +31,7 @@ const LITRE_DEFAULT_TYPES: ConsumableType[] = [
 ]
 
 export function isConsumableType(value: string | null | undefined): value is ConsumableType {
-  return CONSUMABLE_TYPES.includes(value as ConsumableType)
+  return normalizeConsumableTypeKey(value) !== null
 }
 
 export function isConsumableUnit(value: string | null | undefined): value is ConsumableUnit {
@@ -35,7 +39,7 @@ export function isConsumableUnit(value: string | null | undefined): value is Con
 }
 
 export function getDefaultUnitForType(type: ConsumableType): ConsumableUnit {
-  if (type === 'Grease') return 'kg'
+  if (type === 'Grease') return 'pcs'
   if (LITRE_DEFAULT_TYPES.includes(type)) return 'L'
   return 'L'
 }
@@ -53,9 +57,89 @@ export function formatConsumableCost(
   return formatBonusAmount(cost, currency)
 }
 
+export function enrichConsumableSummaryRecords(
+  records: ConsumableSummaryRecord[],
+  defaultPrices?: ConsumableDefaultPricesMap,
+): ConsumableSummaryRecord[] {
+  return records.map((record) => {
+    const consumableType = normalizeConsumableTypeKey(record.consumableType) ?? record.consumableType
+
+    return {
+      ...record,
+      consumableType,
+      cost: resolveConsumableDisplayCost({
+        consumableType,
+        quantity: record.quantity,
+        cost: record.cost,
+        defaultPrices,
+      }),
+    }
+  })
+}
+
+export function resolveConsumableItemCost(
+  item: {
+    consumableType: ConsumableType
+    quantity: number
+    cost: number | null
+  },
+  defaultPrices?: ConsumableDefaultPricesMap,
+): number | null {
+  return resolveConsumableDisplayCost({
+    consumableType: item.consumableType,
+    quantity: item.quantity,
+    cost: item.cost,
+    defaultPrices,
+  })
+}
+
+export function formatConsumableItemCost(
+  item: {
+    consumableType: ConsumableType
+    quantity: number
+    cost: number | null
+  },
+  defaultPrices?: ConsumableDefaultPricesMap,
+  currency?: CompanyCurrency,
+): string {
+  return formatConsumableCost(resolveConsumableItemCost(item, defaultPrices), currency)
+}
+
 export function formatSupplierSite(supplier: string | null, site: string | null): string {
   const parts = [supplier?.trim(), site?.trim()].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
+export function formatConsumableEntryDateTime(
+  entryDate: string,
+  entryTime: string | null,
+  formatDate: (value: string) => string,
+  formatTime: (value: string) => string,
+): string {
+  if (!entryTime?.trim()) return formatDate(entryDate)
+  return `${formatDate(entryDate)} ${formatTime(entryTime)}`
+}
+
+export function quantityToLitres(quantity: number, unit: ConsumableUnit): number {
+  if (unit === 'ml') return quantity / 1000
+  if (unit === 'L') return quantity
+  return 0
+}
+
+export function computeConsumableFluidTotals(
+  records: Array<{ consumableType: ConsumableType; quantity: number; unit: ConsumableUnit }>,
+): { dieselLitres: number; adBlueLitres: number } {
+  let dieselLitres = 0
+  let adBlueLitres = 0
+
+  for (const record of records) {
+    const litres = quantityToLitres(record.quantity, record.unit)
+    if (litres <= 0) continue
+    if (record.consumableType === 'Diesel') dieselLitres += litres
+    if (record.consumableType === 'AdBlue') adBlueLitres += litres
+  }
+
+  return { dieselLitres, adBlueLitres }
 }
 
 export function getConsumableTypeBadgeClass(type: ConsumableType): string {
@@ -100,6 +184,7 @@ export function validateConsumableForm(input: {
   consumableType: ConsumableType
   quantity: string
   unit: ConsumableUnit
+  unitPrice: string
   cost: string
   odometer: string
 }): string | null {
@@ -114,6 +199,11 @@ export function validateConsumableForm(input: {
   const cost = parseOptionalNumber(input.cost)
   if (input.cost.trim() && (cost === null || cost < 0)) {
     return 'Cost must be zero or greater.'
+  }
+
+  const unitPrice = parseOptionalNumber(input.unitPrice)
+  if (input.unitPrice.trim() && (unitPrice === null || unitPrice < 0)) {
+    return 'Unit price must be zero or greater.'
   }
 
   const odometer = parseOptionalNumber(input.odometer)
@@ -139,12 +229,6 @@ export type VehicleConsumableSummary = {
   dieselTotal: number
   adBlueTotal: number
   otherFluidsTotal: number
-}
-
-function quantityToLitres(quantity: number, unit: ConsumableUnit): number {
-  if (unit === 'ml') return quantity / 1000
-  if (unit === 'L') return quantity
-  return 0
 }
 
 export function computeVehicleConsumableSummaries(
@@ -480,6 +564,8 @@ export function formatEntryCount(count: number): string {
 export type ConsumablesMonthlySummaryStats = {
   totalEntries: number
   totalLitres: number
+  dieselLitres: number
+  adBlueLitres: number
   totalCost: number | null
   vehiclesWithUsage: number
   typeSummaries: ConsumableMonthlyTypeSummary[]
@@ -569,12 +655,15 @@ export function computeMonthlyConsumablesSummary(
     .sort((a, b) => b.totalQuantity - a.totalQuantity)
 
   const vehiclesWithUsage = new Set(records.map((row) => row.vehicleId).filter(Boolean)).size
+  const fluidTotals = computeConsumableFluidTotals(records)
 
   return {
     totalEntries: records.length,
     totalLitres: records
       .filter((row) => row.unit === 'L')
       .reduce((sum, row) => sum + row.quantity, 0),
+    dieselLitres: fluidTotals.dieselLitres,
+    adBlueLitres: fluidTotals.adBlueLitres,
     totalCost: sumCosts(records.map((row) => row.cost)),
     vehiclesWithUsage,
     typeSummaries,

@@ -7,6 +7,7 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type {
   HolidayBalanceSummary,
   HolidayCapacityWarning,
+  HolidayLeaveType,
   HolidayRequest,
   HolidayRequestStatus,
 } from '@/lib/holidayRequestTypes'
@@ -32,6 +33,7 @@ type EditHolidayRequestModalProps = {
     endDate: string
     reason: string
     status: HolidayRequestStatus
+    leaveType: HolidayLeaveType
   }) => Promise<void>
 }
 
@@ -66,6 +68,7 @@ export function EditHolidayRequestModal({
   const [endDate, setEndDate] = useState('')
   const [reason, setReason] = useState('')
   const [status, setStatus] = useState<HolidayRequestStatus>('Pending')
+  const [leaveType, setLeaveType] = useState<HolidayLeaveType>('paid_holiday')
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<HolidayBalanceSummary | null>(null)
   const [isBalanceLoading, setIsBalanceLoading] = useState(false)
@@ -94,6 +97,7 @@ export function EditHolidayRequestModal({
     setEndDate(request.endDate)
     setReason(request.reason ?? '')
     setStatus(request.status)
+    setLeaveType(request.leaveType)
     setError(null)
     setBalance(null)
     setBalanceError(null)
@@ -116,6 +120,7 @@ export function EditHolidayRequestModal({
       workerId: request.workerId,
       startDate,
       endDate,
+      leaveType,
       excludeRequestId: request.id,
     })
       .then((result) => {
@@ -138,7 +143,7 @@ export function EditHolidayRequestModal({
     return () => {
       isCancelled = true
     }
-  }, [dayBreakdown, endDate, isOpen, request, startDate])
+  }, [dayBreakdown, endDate, isOpen, leaveType, request, startDate])
 
   useEffect(() => {
     if (!isOpen || !request || !startDate || !endDate || !dayBreakdown) {
@@ -195,13 +200,8 @@ export function EditHolidayRequestModal({
       return
     }
 
-    if (balance?.allowanceKnown && balance.remainingAfterRequest < 0) {
-      setError('This request exceeds the worker holiday allowance.')
-      return
-    }
-
     try {
-      await onSubmit({ startDate, endDate, reason, status })
+      await onSubmit({ startDate, endDate, reason, status, leaveType })
       onClose()
     } catch (submitError) {
       setError(
@@ -307,6 +307,30 @@ export function EditHolidayRequestModal({
                   </p>
                 </div>
               ) : null}
+
+              {leaveType === 'paid_holiday' &&
+              !isBalanceLoading &&
+              balance?.allowanceKnown &&
+              balance.remainingAfterRequest < 0 ? (
+                <div className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                  This request exceeds the worker paid holiday allowance. You can still save it.
+                </div>
+              ) : null}
+
+              <label className="block text-sm font-medium text-slate-700">
+                Leave type
+                <select
+                  value={leaveType}
+                  onChange={(event) => setLeaveType(event.target.value as HolidayLeaveType)}
+                  className={selectClassName}
+                >
+                  <option value="paid_holiday">Paid holiday</option>
+                  <option value="unpaid_leave">Unpaid leave</option>
+                  {request.leaveType === 'bank_holiday' ? (
+                    <option value="bank_holiday">Bank holiday</option>
+                  ) : null}
+                </select>
+              </label>
 
               <label className="block text-sm font-medium text-slate-700">
                 Status

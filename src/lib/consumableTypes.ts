@@ -14,6 +14,25 @@ export const CONSUMABLE_TYPES = [
 
 export type ConsumableType = (typeof CONSUMABLE_TYPES)[number]
 
+const CONSUMABLE_TYPE_COMPACT_LOOKUP = new Map<string, ConsumableType>(
+  CONSUMABLE_TYPES.map((type) => [type.toLowerCase().replace(/[\s_-]+/g, ''), type]),
+)
+
+/** Canonical consumable type from stored/display variants (AdBlue, adblue, Ad Blue, etc.). */
+export function normalizeConsumableTypeKey(
+  value: string | null | undefined,
+): ConsumableType | null {
+  if (!value?.trim()) return null
+
+  const trimmed = value.trim()
+  if ((CONSUMABLE_TYPES as readonly string[]).includes(trimmed)) {
+    return trimmed as ConsumableType
+  }
+
+  const compact = trimmed.toLowerCase().replace(/[\s_-]+/g, '')
+  return CONSUMABLE_TYPE_COMPACT_LOOKUP.get(compact) ?? null
+}
+
 export const CONSUMABLE_UNITS = ['L', 'ml', 'kg', 'pcs', 'other'] as const
 
 export type ConsumableUnit = (typeof CONSUMABLE_UNITS)[number]
@@ -92,6 +111,7 @@ export type ConsumableFormValues = {
   quantity: string
   unit: ConsumableUnit
   cost: string
+  unitPrice: string
   supplier: string
   site: string
   odometer: string

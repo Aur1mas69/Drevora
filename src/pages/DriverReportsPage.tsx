@@ -1,3 +1,4 @@
+import { CleanCurrentViewModal } from '@/components/common/CleanCurrentViewModal'
 import { DeleteDriverReportModal } from '@/components/driver-reports/DeleteDriverReportModal'
 import { DriverReportDrawer } from '@/components/driver-reports/DriverReportDrawer'
 import {
@@ -27,7 +28,9 @@ import { DEFAULT_DRIVER_REPORT_PAGE_SIZE } from '@/lib/driverReportTypes'
 import {
   computeDriverReportSummaryStats,
   filterDriverReports,
+  filterDriverReportsByVisibility,
 } from '@/lib/driverReportUtils'
+import type { CurrentViewMode } from '@/lib/currentViewVisibility'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import {
   applyDriverReportFileChanges,
@@ -73,6 +76,7 @@ export default function DriverReportsPage() {
   const [vehicleFilter, setVehicleFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [visibilityMode, setVisibilityMode] = useState<CurrentViewMode>('current')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_DRIVER_REPORT_PAGE_SIZE)
 
@@ -85,9 +89,11 @@ export default function DriverReportsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
+    visibilityMode !== 'current' ||
     kpiFilter !== 'all' ||
     statusFilter !== 'all' ||
     typeFilter !== 'all' ||
@@ -147,14 +153,16 @@ export default function DriverReportsPage() {
     vehicleFilter,
     dateFrom,
     dateTo,
+    visibilityMode,
     pageSize,
   ])
 
   const summaryStats = useMemo(() => computeDriverReportSummaryStats(items), [items])
 
   const filteredItems = useMemo(
-    () =>
-      filterDriverReports(items, {
+    () => {
+      const visibleItems = filterDriverReportsByVisibility(items, visibilityMode)
+      return filterDriverReports(visibleItems, {
         search: debouncedSearch,
         kpiFilter,
         status: statusFilter,
@@ -164,9 +172,11 @@ export default function DriverReportsPage() {
         vehicleId: vehicleFilter,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-      }),
+      })
+    },
     [
       items,
+      visibilityMode,
       debouncedSearch,
       kpiFilter,
       statusFilter,
@@ -208,18 +218,50 @@ export default function DriverReportsPage() {
     setVehicleFilter('all')
     setDateFrom('')
     setDateTo('')
+    setVisibilityMode('current')
   }
 
   function handleKpiFilterChange(filter: DriverReportKpiFilter) {
     setKpiFilter(filter)
-    if (filter === 'new') setStatusFilter('New')
-    else if (filter === 'in_progress') setStatusFilter('In Progress')
-    else if (filter === 'closed') setStatusFilter('Closed')
-    else if (filter === 'critical_high') setPriorityFilter('critical_high')
-    else {
+    if (filter === 'new') {
+      setStatusFilter('New')
+      setVisibilityMode('current')
+    } else if (filter === 'in_progress') {
+      setStatusFilter('In Progress')
+      setVisibilityMode('current')
+    } else if (filter === 'closed') {
+      setStatusFilter('Closed')
+      setVisibilityMode('history')
+    } else if (filter === 'critical_high') {
+      setPriorityFilter('critical_high')
+      setVisibilityMode('all')
+      setStatusFilter('all')
+    } else {
       setStatusFilter('all')
       setPriorityFilter('all')
     }
+  }
+
+  function handleStatusFilterChange(value: DriverReportStatusFilter) {
+    setStatusFilter(value)
+    setKpiFilter('all')
+    if (value === 'Closed') {
+      setVisibilityMode('history')
+    } else if (value === 'New' || value === 'In Progress') {
+      setVisibilityMode('current')
+    }
+  }
+
+  function handleVisibilityModeChange(value: CurrentViewMode) {
+    setVisibilityMode(value)
+    setKpiFilter('all')
+    setStatusFilter('all')
+  }
+
+  function handleConfirmCleanCurrentView() {
+    clearFilters()
+    setIsCleanCurrentViewOpen(false)
+    showToast('Active driver reports view cleaned')
   }
 
   async function handleOpenAttachment(record: DriverReport) {
@@ -359,10 +401,7 @@ export default function DriverReportsPage() {
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
           statusFilter={statusFilter}
-          onStatusFilterChange={(value) => {
-            setStatusFilter(value)
-            setKpiFilter('all')
-          }}
+          onStatusFilterChange={handleStatusFilterChange}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
           priorityFilter={priorityFilter}
@@ -378,9 +417,12 @@ export default function DriverReportsPage() {
           onDateFromChange={setDateFrom}
           dateTo={dateTo}
           onDateToChange={setDateTo}
+          visibilityMode={visibilityMode}
+          onVisibilityModeChange={handleVisibilityModeChange}
           workers={workers}
           vehicles={vehicles}
           onClearFilters={clearFilters}
+          onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onAddReport={openCreateModal}
         />
 
@@ -454,6 +496,15 @@ export default function DriverReportsPage() {
           onConfirm={() => void handleDeleteConfirm()}
         />
       ) : null}
+
+      <CleanCurrentViewModal
+        open={isCleanCurrentViewOpen}
+        title="Clean driver reports current view?"
+        description="This will return Driver Reports to New and In Progress records and clear search/filter selections only. Closed reports remain saved and searchable in History or All."
+        confirmLabel="Clean current view"
+        onCancel={() => setIsCleanCurrentViewOpen(false)}
+        onConfirm={handleConfirmCleanCurrentView}
+      />
 
       {toastMessage ? (
         <div className="fixed bottom-6 right-6 z-[140] rounded-xl bg-[#113C69] px-4 py-2.5 text-sm font-semibold text-white shadow-lg">

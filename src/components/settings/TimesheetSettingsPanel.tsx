@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react'
 import {
+  SettingsCard,
+  SettingsChipGroup,
   SettingsField,
+  SettingsPageIntro,
+  SettingsSegmentedControl,
   SettingsToggle,
   settingsSelectClassName,
 } from '@/components/settings/SettingsControls'
@@ -26,132 +29,22 @@ import {
   MONTH_OPTIONS,
   TIMESHEET_WEEK_START_DAY_OPTIONS,
 } from '@/lib/timesheetWeekNumber'
-import { cn } from '@/lib/utils'
 
 type TimesheetSettingsPanelProps = {
   form: CompanySettingsInput
   onChange: (patch: Partial<CompanySettingsInput>) => void
 }
 
-function TimesheetSettingsSection({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description?: string
-  children: ReactNode
-}) {
-  return (
-    <section className="rounded-[18px] border border-[rgba(75,120,220,0.10)] bg-[#F8FBFF]/90 p-5 shadow-[0_4px_16px_rgba(40,80,140,0.04)] sm:p-6 dark:border-white/10 dark:bg-slate-900/60 dark:shadow-none">
-      <div>
-        <h3 className="text-base font-semibold tracking-[-0.02em] text-[#2A376F] dark:text-slate-100">
-          {title}
-        </h3>
-        {description ? (
-          <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
-        ) : null}
-      </div>
-      <div className="mt-4 space-y-4">{children}</div>
-    </section>
-  )
-}
-
-function OptionButtonGroup<T extends string | number>({
-  label,
-  hint,
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  hint?: string
-  options: { value: T; label: string }[]
-  value: T
-  onChange: (value: T) => void
-}) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</p>
-      {hint ? (
-        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{hint}</p>
-      ) : null}
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        {options.map((option) => {
-          const selected = value === option.value
-          return (
-            <button
-              key={String(option.value)}
-              type="button"
-              onClick={() => onChange(option.value)}
-              className={cn(
-                'rounded-[12px] px-3.5 py-2 text-sm font-semibold transition-colors ring-1',
-                selected
-                  ? 'bg-[#EAF4FF] text-[#2563EB] ring-[#BFDBFE] dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60'
-                  : 'bg-white text-slate-600 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF] dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-slate-800',
-              )}
-            >
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function ModeToggle({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (value: OvertimeMode) => void
-  options: { value: OvertimeMode; label: string }[]
-}) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</p>
-      <div className="mt-2.5 inline-flex rounded-[12px] bg-white p-1 ring-1 ring-[rgba(75,120,220,0.12)] dark:bg-slate-800/70 dark:ring-white/10">
-        {options.map((option) => {
-          const selected = value === option.value
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onChange(option.value)}
-              className={cn(
-                'rounded-[10px] px-4 py-2 text-sm font-semibold transition-colors',
-                selected
-                  ? 'bg-[#2563EB] text-white shadow-sm'
-                  : 'text-slate-600 hover:text-[#2A376F] dark:text-slate-400 dark:hover:text-slate-100',
-              )}
-            >
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPanelProps) {
   return (
     <div className="space-y-4 sm:col-span-2">
-      <div>
-        <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
-          Timesheets
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Working time, overtime and approval rules for payroll.
-        </p>
-      </div>
+      <SettingsPageIntro
+        title="Timesheets"
+        description="Working time, overtime and approval rules for payroll."
+      />
 
-      <TimesheetSettingsSection title="Breaks">
-        <OptionButtonGroup<DefaultBreakMinutes>
+      <SettingsCard title="Breaks">
+        <SettingsChipGroup<DefaultBreakMinutes>
           label="Default break"
           options={[
             { value: 30, label: '30 min' },
@@ -168,20 +61,20 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
           checked={form.paidBreaks}
           onChange={(checked) => onChange({ paidBreaks: checked })}
         />
-      </TimesheetSettingsSection>
+      </SettingsCard>
 
-      <TimesheetSettingsSection
+      <SettingsCard
         title="Overtime"
         description="Thresholds and multipliers applied to worked hours."
       >
-        <ModeToggle
+        <SettingsSegmentedControl
           label="Overtime mode"
           value={form.overtimeMode}
-          onChange={(value) => onChange({ overtimeMode: value })}
           options={[
             { value: 'Manual', label: 'Manual' },
             { value: 'Automatic', label: 'Automatic' },
           ]}
+          onChange={(value) => onChange({ overtimeMode: value as OvertimeMode })}
         />
 
         <SettingsField label="Overtime after">
@@ -235,19 +128,19 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
             </select>
           </SettingsField>
         </div>
-      </TimesheetSettingsSection>
+      </SettingsCard>
 
-      <TimesheetSettingsSection title="Approval">
+      <SettingsCard title="Approval">
         <SettingsToggle
           label="Require manager approval"
           description="Submitted timesheets must be approved before payroll."
           checked={form.requireTimesheetApproval}
           onChange={(checked) => onChange({ requireTimesheetApproval: checked })}
         />
-      </TimesheetSettingsSection>
+      </SettingsCard>
 
-      <TimesheetSettingsSection title="Time rounding">
-        <OptionButtonGroup<RoundTimeMinutes>
+      <SettingsCard title="Time rounding">
+        <SettingsChipGroup<RoundTimeMinutes>
           label="Round clock times"
           hint="Round start and finish times to the nearest interval."
           options={[
@@ -258,13 +151,13 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
           value={form.roundTimeMinutes}
           onChange={(value) => onChange({ roundTimeMinutes: value })}
         />
-      </TimesheetSettingsSection>
+      </SettingsCard>
 
-      <TimesheetSettingsSection
-        title="Week Numbering"
+      <SettingsCard
+        title="Week numbering"
         description="Week boundaries and when week 1 starts each year."
       >
-        <OptionButtonGroup
+        <SettingsChipGroup
           label="Week starts on"
           options={TIMESHEET_WEEK_START_DAY_OPTIONS}
           value={form.timesheetWeekStartDay}
@@ -317,9 +210,9 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
             </SettingsField>
           </div>
         </div>
-      </TimesheetSettingsSection>
+      </SettingsCard>
 
-      <TimesheetSettingsSection
+      <SettingsCard
         title="Weekend rules"
         description="Override standard overtime for Saturday and Sunday."
       >
@@ -406,7 +299,7 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
             </SettingsField>
           </div>
         ) : null}
-      </TimesheetSettingsSection>
+      </SettingsCard>
     </div>
   )
 }

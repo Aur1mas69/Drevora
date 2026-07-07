@@ -101,6 +101,66 @@ function SidebarNavTooltip({
 
 const drevoraMarkClass = 'h-10 w-10 shrink-0 object-contain'
 
+const sidebarFooterLabelClass =
+  'text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5499BF]/85'
+
+const sidebarFooterLinkClass =
+  'text-[10px] font-semibold text-[#218EE7] transition-colors hover:text-[#0B68BE] hover:underline'
+
+const sidebarFooterDividerClass = 'border-t border-[#D3E9FC]/70 dark:border-slate-700/80'
+
+const DREVORA_SOCIAL_LINKS = [
+  {
+    label: 'LinkedIn',
+    href: 'https://www.linkedin.com/company/drevora',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="#0A66C2" className="size-3.5" aria-hidden="true">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a-1.48 1.48 0 1 1 0-2.96 1.48 1.48 0 0 1 0 2.96zM6.813 20.452H3.555V9h3.258v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Facebook',
+    href: 'https://www.facebook.com/drevora',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="#1877F2" className="size-3.5" aria-hidden="true">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Instagram',
+    href: 'https://www.instagram.com/drevora',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
+        <defs>
+          <linearGradient id="drevora-sidebar-instagram-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#F58529" />
+            <stop offset="45%" stopColor="#DD2A7B" />
+            <stop offset="100%" stopColor="#8134AF" />
+          </linearGradient>
+        </defs>
+        <path
+          fill="url(#drevora-sidebar-instagram-gradient)"
+          d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: 'WhatsApp',
+    href: 'https://wa.me/',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="#25D366" className="size-3.5" aria-hidden="true">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+      </svg>
+    ),
+  },
+] as const
+
+const sidebarSocialLinkClass =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#D3E9FC] bg-[#F5FAFF]/90 transition-all duration-200 hover:border-[#BFE3F5] hover:bg-[#E8F3FE] hover:shadow-[0_4px_12px_rgba(33,142,231,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#89CFF0]/60 dark:border-white/10 dark:bg-[#E8F3FE]/10 dark:hover:bg-[#E8F3FE]/20 dark:hover:shadow-[0_4px_12px_rgba(33,142,231,0.18)]'
+
 function SidebarBrand({
   compact = false,
   collapsed = false,
@@ -243,13 +303,7 @@ function AdminSidebarLowerNav({
   onNavigate?: () => void
 }) {
   return (
-    <nav
-      className={cn(
-        'space-y-1 border-t border-[#D3E9FC] pr-1 dark:border-slate-700',
-        collapsed ? 'pt-3' : 'pt-4',
-      )}
-      aria-label="Settings and support"
-    >
+    <nav className="space-y-1 pr-1" aria-label="Settings and support">
       {adminSecondaryNavigationItems.map((item) => (
         <AdminSidebarNavItem
           key={item.to}
@@ -259,6 +313,86 @@ function AdminSidebarLowerNav({
         />
       ))}
     </nav>
+  )
+}
+
+function SidebarFooter({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
+  const socialLinks = DREVORA_SOCIAL_LINKS.map((link) => {
+    const anchor = (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={link.label}
+        className={sidebarSocialLinkClass}
+      >
+        {link.icon}
+      </a>
+    )
+
+    return (
+      <SidebarNavTooltip key={link.label} label={link.label} show={collapsed}>
+        {anchor}
+      </SidebarNavTooltip>
+    )
+  })
+
+  if (collapsed) {
+    return (
+      <div className={cn('mt-3 shrink-0 space-y-2 pt-3 pb-1', sidebarFooterDividerClass)}>
+        <div className="flex justify-center">
+          <SidebarNavTooltip label="FAQ / Help" show>
+            <Link
+              to="/admin/faq"
+              onClick={onNavigate}
+              aria-label="FAQ / Help"
+              className={sidebarSocialLinkClass}
+            >
+              <HelpCircle className="size-3.5 text-[#0B68BE]" strokeWidth={1.9} />
+            </Link>
+          </SidebarNavTooltip>
+        </div>
+        <div className="flex flex-col items-center gap-1.5">{socialLinks}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('mt-3 shrink-0 px-1 pt-3 pb-1', sidebarFooterDividerClass)}>
+      <div className="rounded-lg border border-[#D3E9FC]/80 bg-[#FAFCFF]/75 px-2.5 py-2 ring-1 ring-[#E8F3FE]/50 dark:border-white/10 dark:bg-[#E8F3FE]/8 dark:ring-white/5">
+        <p className="text-[11px] font-semibold leading-none text-[#113C69] dark:text-slate-100">
+          Need help?
+        </p>
+        <p className="mt-1 text-[10px] leading-snug text-[#3D7A9C]/90 dark:text-slate-400">
+          Contact support or visit FAQ.
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <a
+            href="mailto:support@drevora.app"
+            className={sidebarFooterLinkClass}
+          >
+            Contact support
+          </a>
+          <span className="text-[10px] text-[#C5DFFB]" aria-hidden="true">
+            ·
+          </span>
+          <Link to="/admin/faq" onClick={onNavigate} className={sidebarFooterLinkClass}>
+            FAQ
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-2.5">
+        <p className={cn(sidebarFooterLabelClass, 'mb-1.5')}>Connect</p>
+        <div className="flex items-center justify-between gap-1">{socialLinks}</div>
+      </div>
+    </div>
   )
 }
 
@@ -272,9 +406,15 @@ function SidebarNavigation({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
       <AdminSidebarMainNav collapsed={collapsed} onNavigate={onNavigate} />
-      <div className="mt-auto shrink-0 pt-6">
+      <div
+        className={cn(
+          'mt-auto shrink-0',
+          collapsed ? 'pt-4' : 'pt-5',
+          sidebarFooterDividerClass,
+        )}
+      >
         <AdminSidebarLowerNav collapsed={collapsed} onNavigate={onNavigate} />
-        <SidebarSupportBlock collapsed={collapsed} onNavigate={onNavigate} />
+        <SidebarFooter collapsed={collapsed} onNavigate={onNavigate} />
       </div>
     </div>
   )
@@ -308,56 +448,6 @@ function useAdminLogout() {
   }, [navigate, signOut])
 
   return { logOut, isLoggingOut, logoutError, clearLogoutError: () => setLogoutError(null) }
-}
-
-function SidebarSupportBlock({
-  collapsed = false,
-  onNavigate,
-}: {
-  collapsed?: boolean
-  onNavigate?: () => void
-}) {
-  if (collapsed) {
-    return (
-      <div className="mt-3 flex justify-center pb-1">
-        <SidebarNavTooltip label="FAQ / Help" show>
-          <Link
-            to="/admin/faq"
-            onClick={onNavigate}
-            aria-label="FAQ / Help"
-            className="flex size-10 items-center justify-center rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/90 text-[#0B68BE] transition-colors hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-[#E8F3FE]/10 dark:text-blue-300"
-          >
-            <HelpCircle className="size-[18px]" strokeWidth={1.9} />
-          </Link>
-        </SidebarNavTooltip>
-      </div>
-    )
-  }
-
-  return (
-    <div className="mt-3 shrink-0 px-1 pb-1">
-      <div className="rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/90 px-3 py-2.5 dark:border-white/10 dark:bg-[#E8F3FE]/10">
-        <p className="text-[12px] font-semibold text-[#113C69] dark:text-slate-100">Need help?</p>
-        <p className="mt-1 text-[11px] leading-snug text-[#3D7A9C] dark:text-slate-400">
-          Contact support or{' '}
-          <Link
-            to="/admin/faq"
-            onClick={onNavigate}
-            className="font-medium text-[#218EE7] transition-colors hover:text-[#0B68BE] hover:underline"
-          >
-            visit FAQ
-          </Link>
-          .
-        </p>
-        <a
-          href="mailto:support@drevora.app"
-          className="mt-2 inline-block text-[11px] font-semibold text-[#218EE7] transition-colors hover:text-[#0B68BE]"
-        >
-          Contact support
-        </a>
-      </div>
-    </div>
-  )
 }
 
 function AccountMenu() {

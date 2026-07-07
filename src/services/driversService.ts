@@ -9,7 +9,19 @@ import {
 import { normalizeLicenceCategories, isEmploymentType } from '@/lib/workerProfileUtils'
 
 export type DriverStatus = 'Working' | 'Off Duty' | 'Holiday' | 'Suspended'
-export type LicenceCategory = 'C' | 'C+E' | 'B' | 'Other'
+export type LicenceCategory =
+  | 'B'
+  | 'C1'
+  | 'C'
+  | 'C+E'
+  | 'D'
+  | 'D1'
+  | 'B+E'
+  | 'Forklift'
+  | 'HIAB'
+  | 'ADR'
+  | 'Moffett'
+  | 'Other'
 export type DriverRole =
   | 'Admin'
   | 'Driver'

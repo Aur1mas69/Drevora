@@ -10,6 +10,7 @@ import {
 } from '@/lib/driverReportTypes'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
+import type { CurrentViewMode } from '@/lib/currentViewVisibility'
 import { Filter, Plus, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -36,9 +37,12 @@ type DriverReportsToolbarProps = {
   onDateFromChange: (value: string) => void
   dateTo: string
   onDateToChange: (value: string) => void
+  visibilityMode: CurrentViewMode
+  onVisibilityModeChange: (value: CurrentViewMode) => void
   workers: Driver[]
   vehicles: Vehicle[]
   onClearFilters: () => void
+  onCleanCurrentView: () => void
   onAddReport: () => void
 }
 
@@ -62,9 +66,12 @@ export function DriverReportsToolbar({
   onDateFromChange,
   dateTo,
   onDateToChange,
+  visibilityMode,
+  onVisibilityModeChange,
   workers,
   vehicles,
   onClearFilters,
+  onCleanCurrentView,
   onAddReport,
 }: DriverReportsToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
@@ -108,6 +115,23 @@ export function DriverReportsToolbar({
             placeholder="Search reports…"
             className={driverReportSearchInputClass}
           />
+        </div>
+
+        <div className="inline-flex shrink-0 rounded-[14px] border border-[#C5DFFB] bg-white p-1 shadow-sm">
+          {(['current', 'history', 'all'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onVisibilityModeChange(mode)}
+              className={`rounded-[10px] px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                visibilityMode === mode
+                  ? 'bg-[#E8F3FE] text-[#0B68BE]'
+                  : 'text-[#3D7A9C] hover:bg-[#F5FAFF]'
+              }`}
+            >
+              {mode === 'current' ? 'Current' : mode === 'history' ? 'History' : 'All'}
+            </button>
+          ))}
         </div>
 
         <div className="relative shrink-0" ref={filtersRef}>
@@ -279,6 +303,14 @@ export function DriverReportsToolbar({
             Clear
           </button>
         ) : null}
+
+        <button
+          type="button"
+          onClick={onCleanCurrentView}
+          className="inline-flex h-10 items-center rounded-[14px] px-2.5 text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
+        >
+          Clean current view
+        </button>
       </div>
 
       <button type="button" onClick={onAddReport} className={driverReportPrimaryButtonClass}>

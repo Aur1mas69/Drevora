@@ -30,7 +30,7 @@ export default function ContactsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<ContactCategoryFilter>('all')
-  const [statusFilter, setStatusFilter] = useState<ContactStatusFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<ContactStatusFilter>('active')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_CONTACT_PAGE_SIZE)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -44,7 +44,7 @@ export default function ContactsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const hasActiveFilters =
-    debouncedSearch.trim().length > 0 || categoryFilter !== 'all' || statusFilter !== 'all'
+    debouncedSearch.trim().length > 0 || categoryFilter !== 'all' || statusFilter !== 'active'
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -108,7 +108,7 @@ export default function ContactsPage() {
     setSearchTerm('')
     setDebouncedSearch('')
     setCategoryFilter('all')
-    setStatusFilter('all')
+    setStatusFilter('active')
   }
 
   async function handleSave(input: Parameters<typeof createContact>[0]) {

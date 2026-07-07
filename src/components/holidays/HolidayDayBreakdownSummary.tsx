@@ -28,9 +28,15 @@ export function HolidayDayBreakdownSummary({
         {balance ? (
           <>
             <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Entitlement</dt>
+              <dt className="text-xs font-medium text-[#5499BF]">Paid holiday entitlement</dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
                 {balance.allowanceKnown ? formatDayCount(balance.annualAllowance) : 'Allowance not set'}
+              </dd>
+            </div>
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
+              <dt className="text-xs font-medium text-[#5499BF]">Bank holiday entitlement</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+                {formatDayCount(balance.bankHolidayEntitlementDays)}
               </dd>
             </div>
             <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
@@ -97,6 +103,13 @@ export function HolidayDayBreakdownSummary({
           </dd>
         </div>
       </dl>
+      {balance &&
+      balance.allowanceKnown &&
+      balance.bankHolidayEntitlementDays > 0 ? (
+        <p className="mt-3 text-xs leading-5 text-[#5499BF]">
+          Bank holidays are tracked separately and are not included in remaining paid holiday.
+        </p>
+      ) : null}
       {balanceError ? <p className="mt-3 text-xs font-medium text-rose-700">{balanceError}</p> : null}
       {balance &&
       balance.allowanceKnown &&

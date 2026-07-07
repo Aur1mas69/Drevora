@@ -1,9 +1,11 @@
+import { CleanCurrentViewModal } from '@/components/common/CleanCurrentViewModal'
 import { ConsumableDrawer } from '@/components/consumables/ConsumableDrawer'
 import {
   ConsumableFormModal,
   consumableFormValuesToInput,
 } from '@/components/consumables/ConsumableFormModal'
 import { ConsumablesMonthlySummary } from '@/components/consumables/ConsumablesMonthlySummary'
+import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { ConsumablesDataTable } from '@/components/consumables/ConsumablesDataTable'
 import { ConsumablesEmptyState } from '@/components/consumables/ConsumablesEmptyState'
 import { ConsumablesPagination } from '@/components/consumables/ConsumablesPagination'
@@ -13,6 +15,10 @@ import AdminLayout from '@/layouts/AdminLayout'
 import type { Consumable, ConsumableFormSubmitPayload, ConsumableTypeFilter } from '@/lib/consumableTypes'
 import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
+import {
+  formatCurrentMonthLabel,
+  getCurrentMonthDateRange,
+} from '@/lib/currentViewVisibility'
 import {
   createConsumable,
   deleteConsumable,
@@ -44,8 +50,8 @@ export default function ConsumablesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<ConsumableTypeFilter>('all')
   const [vehicleFilter, setVehicleFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(() => getCurrentMonthDateRange().dateFrom)
+  const [dateTo, setDateTo] = useState(() => getCurrentMonthDateRange().dateTo)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_CONSUMABLE_PAGE_SIZE)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -58,13 +64,18 @@ export default function ConsumablesPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [summaryRefreshToken, setSummaryRefreshToken] = useState(0)
+  const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
+
+  const currentMonthRange = getCurrentMonthDateRange()
+  const isCurrentMonthView =
+    dateFrom === currentMonthRange.dateFrom && dateTo === currentMonthRange.dateTo
+  const isHistoryView = dateFrom.length === 0 && dateTo.length === 0
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     typeFilter !== 'all' ||
     vehicleFilter !== 'all' ||
-    dateFrom.length > 0 ||
-    dateTo.length > 0
+    !isCurrentMonthView
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -162,7 +173,10 @@ export default function ConsumablesPage() {
     }
 
     try {
-      const input = consumableFormValuesToInput(payload.values)
+      const input = consumableFormValuesToInput(
+        payload.values,
+        companySettings?.consumableDefaultPrices ?? {},
+      )
       const existingReceiptPath = editRecord?.receiptUrl ?? null
 
       if (formMode === 'create') {
@@ -246,8 +260,24 @@ export default function ConsumablesPage() {
     setDebouncedSearch('')
     setTypeFilter('all')
     setVehicleFilter('all')
+    resetToCurrentMonth()
+  }
+
+  function resetToCurrentMonth() {
+    const range = getCurrentMonthDateRange()
+    setDateFrom(range.dateFrom)
+    setDateTo(range.dateTo)
+  }
+
+  function showAllDates() {
     setDateFrom('')
     setDateTo('')
+  }
+
+  function handleConfirmCleanCurrentView() {
+    clearFilters()
+    setIsCleanCurrentViewOpen(false)
+    showToast('Current month view cleaned')
   }
 
   return (
@@ -279,11 +309,18 @@ export default function ConsumablesPage() {
           onDateToChange={setDateTo}
           vehicles={vehicles}
           hasActiveFilters={hasActiveFilters}
+          isHistoryView={isHistoryView}
+          currentPeriodLabel={formatCurrentMonthLabel()}
           onClearFilters={clearFilters}
+          onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
+          onShowCurrentPeriod={resetToCurrentMonth}
+          onShowHistory={showAllDates}
           onNewRecord={openCreateForm}
         />
 
         <ConsumablesMonthlySummary vehicles={vehicles} refreshToken={summaryRefreshToken} />
+
+        <ConsumablesDefaultPricesPanel compact showSettingsLink />
 
         {loadError ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -357,6 +394,15 @@ export default function ConsumablesPage() {
           onConfirm={handleDeleteConfirm}
         />
       ) : null}
+
+      <CleanCurrentViewModal
+        open={isCleanCurrentViewOpen}
+        title="Clean consumables current view?"
+        description="This will reset Consumables to the current month and clear search/type/vehicle filters only. Records will remain saved and searchable by choosing Show history or a date range."
+        confirmLabel="Clean current view"
+        onCancel={() => setIsCleanCurrentViewOpen(false)}
+        onConfirm={handleConfirmCleanCurrentView}
+      />
     </AdminLayout>
   )
 }

@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Consumable } from '@/lib/consumableTypes'
 import {
-  formatConsumableCost,
+  formatConsumableEntryDateTime,
+  formatConsumableItemCost,
   formatQuantityWithUnit,
   formatSupplierSite,
   getConsumableTypeBadgeClass,
@@ -38,7 +39,8 @@ export function ConsumableDrawer({
   onClose,
   onEdit,
 }: ConsumableDrawerProps) {
-  const { formatDate, formatTime } = useCompanySettings()
+  const { formatDate, formatTime, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -121,10 +123,14 @@ export function ConsumableDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <dl className="space-y-3 rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/80 p-4">
-            <DetailRow label="Date" value={formatDate(record.entryDate)} />
             <DetailRow
-              label="Time"
-              value={record.entryTime ? formatTime(record.entryTime) : '—'}
+              label="Date / Time"
+              value={formatConsumableEntryDateTime(
+                record.entryDate,
+                record.entryTime,
+                formatDate,
+                formatTime,
+              )}
             />
             <DetailRow label="Vehicle" value={record.vehicleLabel ?? '—'} />
             <DetailRow label="Worker" value={record.workerName ?? '—'} />
@@ -132,7 +138,10 @@ export function ConsumableDrawer({
               label="Quantity"
               value={formatQuantityWithUnit(record.quantity, record.unit)}
             />
-            <DetailRow label="Cost" value={formatConsumableCost(record.cost)} />
+            <DetailRow
+              label="Cost"
+              value={formatConsumableItemCost(record, defaultPrices)}
+            />
             <DetailRow
               label="Supplier / Site"
               value={formatSupplierSite(record.supplier, record.site)}

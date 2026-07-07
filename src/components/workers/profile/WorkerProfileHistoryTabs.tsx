@@ -22,11 +22,16 @@ import {
   getDocumentStatusLabel,
 } from '@/lib/documentUtils'
 import {
-  formatConsumableCost,
+  formatConsumableItemCost,
+  formatConsumableEntryDateTime,
   formatQuantityWithUnit,
   formatSupplierSite,
 } from '@/lib/consumableUtils'
 import type { Consumable } from '@/lib/consumableTypes'
+import {
+  calculatePaidHolidayRemaining,
+  resolvePaidHolidayEntitlementDays,
+} from '@/lib/holidayEntitlement'
 import type { HolidayBalanceSummary, HolidayRequest } from '@/lib/holidayRequestTypes'
 import { getStatusBadgeClass as getHolidayStatusBadgeClass } from '@/lib/holidayRequestUtils'
 import type { TimesheetListItem } from '@/lib/timesheetTypes'
@@ -468,17 +473,25 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
   const bankHolidayEntitlementDays =
     entitlementWorker.bankHolidayEntitlementDays ?? rule.bankHolidayEntitlementDays
   const unpaidLeaveAllowed = entitlementWorker.unpaidLeaveAllowed ?? rule.unpaidLeaveAllowed
-  const totalPaidEntitlement = paidHolidayEnabled
-    ? annualPaidHolidayDays + bankHolidayEntitlementDays
-    : 0
+  const paidHolidayEntitlement = resolvePaidHolidayEntitlementDays(
+    paidHolidayEnabled,
+    annualPaidHolidayDays,
+  )
+  const usedPaidHoliday = balance?.usedHolidayDays ?? 0
+  const pendingPaidHoliday = balance?.pendingHolidayDays ?? 0
+  const calculatedRemaining = calculatePaidHolidayRemaining({
+    annualPaidHolidayDays: paidHolidayEntitlement,
+    usedPaidHoliday,
+    pendingPaidHoliday,
+  })
   const remainingPaidHoliday =
     balance && Number.isFinite(balance.remainingBeforeRequest)
       ? balance.remainingBeforeRequest
-      : totalPaidEntitlement
+      : calculatedRemaining.remainingPaidHoliday
   const remainingAfterPending =
     balance && Number.isFinite(balance.remainingAfterPendingRequests)
       ? balance.remainingAfterPendingRequests
-      : remainingPaidHoliday
+      : calculatedRemaining.remainingAfterPending
   const allowanceExceeded = remainingPaidHoliday < 0 || remainingAfterPending < 0
 
   return (
@@ -522,7 +535,7 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
           <HolidayEntitlementTile label="Paid holiday enabled" value={paidHolidayEnabled ? 'Yes' : 'No'} />
           <HolidayEntitlementTile label="Annual paid holiday days" value={formatDayCount(annualPaidHolidayDays)} />
           <HolidayEntitlementTile label="Bank holiday entitlement" value={formatDayCount(bankHolidayEntitlementDays)} />
-          <HolidayEntitlementTile label="Total paid entitlement" value={formatDayCount(totalPaidEntitlement)} />
+          <HolidayEntitlementTile label="Paid holiday entitlement" value={formatDayCount(paidHolidayEntitlement)} />
           <HolidayEntitlementTile label="Used paid holiday" value={formatDayCount(balance?.usedHolidayDays ?? 0)} />
           <HolidayEntitlementTile label="Pending paid holiday" value={formatDayCount(balance?.pendingHolidayDays ?? 0)} />
           <HolidayEntitlementTile
@@ -545,6 +558,11 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
             </div>
           ) : null}
         </div>
+        {paidHolidayEnabled ? (
+          <p className="mt-3 text-xs leading-5 text-[#5499BF]">
+            Bank holidays are tracked separately and are not included in remaining paid holiday.
+          </p>
+        ) : null}
       </section>
 
       <WorkerProfileTabShell
@@ -806,15 +824,17 @@ function WorkerProfileDocumentsTab({ worker }: { worker: Driver }) {
   )
 }
 
-function formatConsumableDateTime(item: Consumable, formatDate: (v: string) => string): string {
-  if (item.entryTime) {
-    return `${formatDate(item.entryDate)} · ${item.entryTime.slice(0, 5)}`
-  }
-  return formatDate(item.entryDate)
+function formatConsumableDateTime(
+  item: Consumable,
+  formatDate: (value: string) => string,
+  formatTime: (value: string) => string,
+): string {
+  return formatConsumableEntryDateTime(item.entryDate, item.entryTime, formatDate, formatTime)
 }
 
 function WorkerProfileConsumablesTab({ worker }: { worker: Driver }) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, formatTime, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const [items, setItems] = useState<Consumable[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -874,7 +894,7 @@ function WorkerProfileConsumablesTab({ worker }: { worker: Driver }) {
           {items.map((item) => (
             <tr key={item.id} className={workerProfileTableRowClass}>
               <td className="px-5 py-3.5 text-sm font-medium text-[#3D7A9C]">
-                {formatConsumableDateTime(item, formatDate)}
+                {formatConsumableDateTime(item, formatDate, formatTime)}
               </td>
               <td className="px-5 py-3.5 text-sm font-semibold text-[#113C69]">
                 {item.vehicleLabel ?? '—'}
@@ -889,7 +909,7 @@ function WorkerProfileConsumablesTab({ worker }: { worker: Driver }) {
                 {formatQuantityWithUnit(item.quantity, item.unit)}
               </td>
               <td className="px-5 py-3.5 text-sm font-semibold text-[#0B68BE]">
-                {formatConsumableCost(item.cost)}
+                {formatConsumableItemCost(item, defaultPrices)}
               </td>
               <td className="max-w-[180px] px-5 py-3.5 text-sm font-medium text-[#3D7A9C]">
                 <p className="truncate">

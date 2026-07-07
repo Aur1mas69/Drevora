@@ -1,4 +1,5 @@
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
+import type { ConsumableType, ConsumableUnit } from '@/lib/consumableTypes'
 import type { DriverRole } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
 import type { EmploymentType } from '@/services/driversService'
@@ -230,6 +231,10 @@ export function formatOvertimeMultiplierLabel(value: OvertimeMultiplier): string
   return `${value.toFixed(1)}x`
 }
 
+export type ConsumableDefaultPricesMap = Partial<
+  Record<ConsumableType, { unitPrice: number; unit: ConsumableUnit }>
+>
+
 export type CompanySettings = {
   id: string
   createdAt: string
@@ -275,6 +280,7 @@ export type CompanySettings = {
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
+  consumableDefaultPrices: ConsumableDefaultPricesMap
 }
 
 export type CompanySettingsInput = {
@@ -370,6 +376,7 @@ export type CompanySettingsTab =
   | 'regional'
   | 'timesheets'
   | 'holidays'
+  | 'consumables'
   | 'appearance'
   | 'notifications'
   | 'security'
@@ -382,6 +389,7 @@ export const COMPANY_SETTINGS_TABS: {
   { id: 'regional', label: 'Regional' },
   { id: 'timesheets', label: 'Timesheets' },
   { id: 'holidays', label: 'Holidays' },
+  { id: 'consumables', label: 'Consumables' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'security', label: 'Security' },

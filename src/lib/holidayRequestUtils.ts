@@ -197,8 +197,8 @@ export function canApproveHolidayRequest(status: HolidayRequestStatus): boolean 
   return status === 'Pending'
 }
 
-export function canEditHolidayRequest(status: HolidayRequestStatus): boolean {
-  return status === 'Pending' || status === 'Rejected'
+export function canEditHolidayRequest(_status: HolidayRequestStatus): boolean {
+  return true
 }
 
 export function todayIsoDate(): string {

@@ -6,7 +6,11 @@ import {
   type RowAction,
 } from '@/components/ui/RowActionsMenu'
 import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
-import { getResultBadgeClass, getStatusBadgeClass } from '@/lib/vehicleCheckUtils'
+import {
+  formatVehicleCheckResultLabel,
+  getResultBadgeClass,
+  getStatusBadgeClass,
+} from '@/lib/vehicleCheckUtils'
 import {
   adminHeading,
   adminTableHeadText,
@@ -53,17 +57,42 @@ export function VehicleChecksDataTable({
   const rowPadding = compactTables ? 'py-1' : 'py-1.5'
   const cellText = compactTables ? 'text-[11px]' : 'text-xs'
 
+  function formatCheckDateTime(check: VehicleCheckListItem): string {
+    const datePart = formatDate(check.inspectionDate)
+    const timePart = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(check.createdAt))
+
+    return `${datePart}, ${timePart}`
+  }
+
+  function getDefectsLabel(check: VehicleCheckListItem): string {
+    if (check.defectCount === 0) return 'No defects'
+    return `${check.defectCount} ${check.defectCount === 1 ? 'defect' : 'defects'}`
+  }
+
+  function getVehicleSubline(check: VehicleCheckListItem): string {
+    const makeModel = [check.vehicleMake, check.vehicleModel].filter(Boolean).join(' ')
+    if (makeModel && check.fleetNumber) return `${makeModel} · Fleet ${check.fleetNumber}`
+    if (makeModel) return makeModel
+    if (check.fleetNumber) return `Fleet ${check.fleetNumber}`
+    return 'Vehicle details'
+  }
+
   return (
     <div className={adminTableShellSm}>
       <div className="max-h-[calc(100vh-24rem)] overflow-auto">
-        <table className="w-full min-w-[920px] border-collapse text-left">
+        <table className="w-full min-w-[980px] border-collapse text-left">
           <thead className={adminTableHeader}>
             <tr className={adminTableHeadText}>
+              <th className="px-3 py-2">Date / Time</th>
               <th className="px-3 py-2">Vehicle</th>
-              <th className="px-3 py-2">Fleet No</th>
-              <th className="px-3 py-2">Driver</th>
-              <th className="px-3 py-2">Inspection Date</th>
+              <th className="px-3 py-2">Worker</th>
               <th className="px-3 py-2">Result</th>
+              <th className="px-3 py-2">Defects</th>
+              <th className="px-3 py-2">Duration</th>
               <th className="px-3 py-2">Status</th>
               <TableActionsHeader />
             </tr>
@@ -71,23 +100,25 @@ export function VehicleChecksDataTable({
           <tbody>
             {checks.map((check) => (
               <tr key={check.id} className={`${adminTableRow} ${cellText}`}>
-                <td className={`px-3 ${rowPadding} font-medium ${adminHeading}`}>
-                  {check.vehicleRegistration}
+                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
+                  {formatCheckDateTime(check)}
                 </td>
-                <td className={`px-3 ${rowPadding} tabular-nums ${adminText}`}>
-                  {check.fleetNumber ?? '—'}
+                <td className={`px-3 ${rowPadding}`}>
+                  <div className={`font-semibold ${adminHeading}`}>{check.vehicleRegistration}</div>
+                  <div className={`mt-0.5 ${adminText}`}>{getVehicleSubline(check)}</div>
                 </td>
                 <td className={`px-3 ${rowPadding} ${adminTextStrong}`}>{check.workerName}</td>
-                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
-                  {formatDate(check.inspectionDate)}
-                </td>
                 <td className={`px-3 ${rowPadding}`}>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(check.overallResult)}`}
                   >
-                    {check.overallResult}
+                    {formatVehicleCheckResultLabel(check.overallResult)}
                   </span>
                 </td>
+                <td className={`px-3 ${rowPadding} ${check.defectCount > 0 ? 'font-semibold text-amber-700' : adminText}`}>
+                  {getDefectsLabel(check)}
+                </td>
+                <td className={`px-3 ${rowPadding} ${adminText}`}>—</td>
                 <td className={`px-3 ${rowPadding}`}>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getStatusBadgeClass(check.status)}`}

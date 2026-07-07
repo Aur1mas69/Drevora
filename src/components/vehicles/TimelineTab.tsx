@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
+import { vehicleProfilePanelClass } from '@/components/vehicles/profile/vehicleProfileUi'
 import { VehicleStatusBadge, statusEmojiMap } from '@/components/vehicles/VehicleStatusBadge'
 import { buildTimelineEntries, formatShortDate } from '@/lib/vehicleAvailability'
 import type { Vehicle, VehicleAvailability } from '@/services/vehiclesService'
@@ -12,21 +13,21 @@ export function TimelineTab({ vehicle, onSelectRecord }: TimelineTabProps) {
   const entries = buildTimelineEntries(vehicle)
 
   return (
-    <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-      <CardContent className="p-6">
+    <Card className={`${vehicleProfilePanelClass} overflow-hidden py-0`}>
+      <CardContent className="p-4 sm:p-5">
         <div>
-          <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
+          <p className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
             Timeline
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm font-medium text-[#5499BF]">
             Upcoming events first, then history.
           </p>
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-5 space-y-3">
           {entries.length === 0 ? (
-            <div className="rounded-2xl bg-[#F8FBFF] px-4 py-8 text-center ring-1 ring-blue-50">
-              <p className="text-sm font-semibold text-slate-600">
+            <div className="rounded-[14px] border border-dashed border-[#C5DFFB] bg-[#F8FBFF]/80 px-4 py-8 text-center">
+              <p className="text-sm font-semibold text-[#113C69]">
                 No timeline events yet
               </p>
             </div>
@@ -39,8 +40,8 @@ export function TimelineTab({ vehicle, onSelectRecord }: TimelineTabProps) {
               return (
                 <div
                   key={entry.id}
-                  className={`rounded-2xl bg-[#F8FBFF] px-4 py-4 ring-1 ring-blue-50 ${
-                    record ? 'cursor-pointer transition-all duration-[250ms] hover:-translate-y-0.5 hover:shadow-sm' : ''
+                  className={`rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-4 py-3.5 ${
+                    record ? 'cursor-pointer transition-all duration-200 hover:-translate-y-px hover:border-[#C5DFFB] hover:bg-[#F8FBFF]' : ''
                   }`}
                   onClick={() => {
                     if (record) onSelectRecord(record)
@@ -54,12 +55,12 @@ export function TimelineTab({ vehicle, onSelectRecord }: TimelineTabProps) {
                   role={record ? 'button' : undefined}
                   tabIndex={record ? 0 : undefined}
                 >
-                  <p className="text-sm font-semibold text-slate-500">
+                  <p className="text-sm font-semibold tabular-nums text-[#5499BF]">
                     {formatShortDate(entry.date)}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <span className="text-base">{statusEmojiMap[entry.status]}</span>
-                    <p className="text-sm font-semibold text-slate-900">{entry.label}</p>
+                    <p className="text-sm font-semibold text-[#113C69]">{entry.label}</p>
                     {entry.kind === 'event' ? (
                       <VehicleStatusBadge status={entry.status} />
                     ) : null}

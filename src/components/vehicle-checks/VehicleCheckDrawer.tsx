@@ -19,7 +19,7 @@ export function VehicleCheckDrawer({
   onClose,
   onEdit,
 }: VehicleCheckDrawerProps) {
-  const { formatDate, formatDateTime } = useCompanySettings()
+  const { formatDate } = useCompanySettings()
 
   useEffect(() => {
     if (!isOpen) return
@@ -39,7 +39,24 @@ export function VehicleCheckDrawer({
     itemName: item.itemName,
     result: item.result,
     comment: item.comment ?? '',
+    templateItem: item.templateItem,
+    description: item.description,
+    allowNotes: item.allowNotes,
+    allowPhoto: item.allowPhoto,
+    failOnDefect: item.failOnDefect,
   }))
+  const passedItems = check.items.filter((item) => item.result === 'Pass')
+  const failedItems = check.items.filter((item) => item.result === 'Fail')
+  const defectItems = check.items.filter((item) => item.result === 'Fail' || item.result === 'Advisory')
+  const photoItems = check.items.filter((item) => item.photoUrl)
+  const submittedAt = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(check.createdAt))
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -118,7 +135,17 @@ export function VehicleCheckDrawer({
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Submitted</dt>
-                <dd className="text-right text-slate-700">{formatDateTime(check.createdAt)}</dd>
+                <dd className="text-right text-slate-700">{submittedAt}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Checklist result</dt>
+                <dd className="text-right text-slate-700">
+                  {passedItems.length} passed · {failedItems.length} failed
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Duration</dt>
+                <dd className="text-right text-slate-700">Not recorded</dd>
               </div>
               <div>
                 <dt className="text-slate-500">Overall notes</dt>
@@ -128,6 +155,67 @@ export function VehicleCheckDrawer({
               </div>
             </dl>
           </section>
+
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Defects
+            </h3>
+            <div className="mt-3 space-y-2">
+              {defectItems.length === 0 ? (
+                <div className="rounded-[12px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                  No defects
+                </div>
+              ) : (
+                defectItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-amber-950">{item.itemName}</p>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(item.result)}`}
+                      >
+                        {item.result}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-amber-800/80">{item.category}</p>
+                    {item.comment ? (
+                      <p className="mt-2 text-sm text-amber-950/80">{item.comment}</p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          {photoItems.length > 0 ? (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Photos
+              </h3>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {photoItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={item.photoUrl ?? undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
+                  >
+                    <img
+                      src={item.photoUrl ?? undefined}
+                      alt={`${item.itemName} defect`}
+                      className="h-28 w-full object-cover"
+                    />
+                    <span className="block truncate px-2 py-1.5 text-xs font-medium text-slate-600">
+                      {item.itemName}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">

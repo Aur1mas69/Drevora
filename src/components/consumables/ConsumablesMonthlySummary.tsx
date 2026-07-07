@@ -11,6 +11,7 @@ import {
   computeMonthlyConsumablesSummary,
   computeVehicleBreakdownForType,
   computeVehicleBreakdownForTypeUnit,
+  enrichConsumableSummaryRecords,
   formatConsumableCost,
   formatEntryCount,
   formatSummaryQuantity,
@@ -47,7 +48,8 @@ export function ConsumablesMonthlySummary({
   vehicles,
   refreshToken = 0,
 }: ConsumablesMonthlySummaryProps) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const [period, setPeriod] = useState<ConsumableSummaryPeriod>('this_month')
   const [customDateFrom, setCustomDateFrom] = useState('')
   const [customDateTo, setCustomDateTo] = useState('')
@@ -114,8 +116,13 @@ export function ConsumablesMonthlySummary({
 
   const vehicleLabelMap = useMemo(() => new Map(Object.entries(vehicleLabels)), [vehicleLabels])
 
-  const typeCards = useMemo(() => computeConsumableTypeCards(records), [records])
-  const summary = useMemo(() => computeMonthlyConsumablesSummary(records), [records])
+  const enrichedRecords = useMemo(
+    () => enrichConsumableSummaryRecords(records, defaultPrices),
+    [defaultPrices, records],
+  )
+
+  const typeCards = useMemo(() => computeConsumableTypeCards(enrichedRecords), [enrichedRecords])
+  const summary = useMemo(() => computeMonthlyConsumablesSummary(enrichedRecords), [enrichedRecords])
 
   const maxBarQuantity = useMemo(
     () => Math.max(...typeCards.map((card) => card.primaryQuantity), 1),
@@ -135,8 +142,8 @@ export function ConsumablesMonthlySummary({
 
   const typeBreakdown = useMemo(() => {
     if (!selectedType) return []
-    return computeVehicleBreakdownForType(records, selectedType, vehicleLabelMap)
-  }, [records, selectedType, vehicleLabelMap])
+    return computeVehicleBreakdownForType(enrichedRecords, selectedType, vehicleLabelMap)
+  }, [enrichedRecords, selectedType, vehicleLabelMap])
 
   function handleTypeCardClick(type: ConsumableType) {
     if (selectedType === type && typeFilter === type) {
@@ -355,7 +362,7 @@ export function ConsumablesMonthlySummary({
                       const isExpanded = expandedTableKey === row.key
                       const breakdown = isExpanded
                         ? computeVehicleBreakdownForTypeUnit(
-                            records,
+                            enrichedRecords,
                             row.consumableType,
                             row.unit,
                             vehicleLabelMap,
@@ -385,7 +392,7 @@ export function ConsumablesMonthlySummary({
                 const isExpanded = expandedTableKey === row.key
                 const breakdown = isExpanded
                   ? computeVehicleBreakdownForTypeUnit(
-                      records,
+                      enrichedRecords,
                       row.consumableType,
                       row.unit,
                       vehicleLabelMap,

@@ -103,6 +103,11 @@ export function EditVehicleCheckModal({
       result: item.result,
       comment: item.comment ?? '',
       photoUrl: item.photoUrl,
+      templateItem: item.templateItem,
+      description: item.description,
+      allowNotes: item.allowNotes,
+      allowPhoto: item.allowPhoto,
+      failOnDefect: item.failOnDefect,
     }))
     itemsRef.current = savedItems
     setItems(savedItems)
@@ -294,7 +299,7 @@ export function EditVehicleCheckModal({
               </label>
 
               <label className="block text-sm font-medium text-slate-700">
-                Driver
+                Worker
                 <select
                   value={workerId}
                   onChange={(event) => setWorkerId(event.target.value)}

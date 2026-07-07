@@ -6,7 +6,9 @@ import {
   type ChangeEvent,
   type FormEvent,
   type MouseEvent,
+  type ReactNode,
 } from 'react'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -29,9 +31,50 @@ const vehicleStatuses: VehicleStatus[] = [
   'Reserved',
 ]
 
+const vehicleFormInputClass =
+  'mt-2 h-11 rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] focus-visible:ring-3 focus-visible:ring-[#BFE3F5]'
+
+const vehicleFormSelectClass =
+  'mt-2 h-11 w-full rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5]'
+
+const vehicleFormTextareaClass =
+  'mt-2 w-full rounded-[16px] border-0 bg-white px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5]'
+
+const vehicleFormLabelClass = 'text-sm font-semibold text-[#113C69]'
+
+function VehicleFormSection({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <section className="rounded-[16px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#F5FAFF]/95 p-4 ring-1 ring-[#C5DFFB]/35 sm:p-5">
+      <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-[#0B68BE]">{title}</h3>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
+  )
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
   return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>
+}
+
+function DvlaSoonBadge() {
+  return (
+    <button
+      type="button"
+      disabled
+      aria-label="DVLA lookup coming soon"
+      title="DVLA lookup coming soon"
+      className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-full border border-[#D3E9FC] bg-gradient-to-r from-[#F5FAFF] to-[#EEF6FF] px-2.5 py-1 text-[11px] font-semibold text-[#5499BF] ring-1 ring-[#C5DFFB]/50 select-none disabled:pointer-events-none disabled:opacity-90"
+    >
+      <Search className="size-3 shrink-0 opacity-75" aria-hidden />
+      DVLA Soon
+    </button>
+  )
 }
 
 function UnsavedChangesDialog({
@@ -153,223 +196,259 @@ export function VehicleEditModal({
         onClick={handleBackdropClick}
       >
         <div
-          className="max-h-full w-full max-w-3xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+          className="flex max-h-[min(100%,calc(100vh-4rem))] w-full max-w-3xl flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
           onClick={(event) => event.stopPropagation()}
         >
-          <form onSubmit={onSubmit} className="p-5 sm:p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
-              {eyebrow}
-            </p>
-            <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
-              {title}
-            </h2>
+          <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 px-5 pt-5 sm:px-6 sm:pt-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
+                {eyebrow}
+              </p>
+              <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+                {title}
+              </h2>
 
-            {submitError ? (
-              <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
-                {submitError}
-              </div>
-            ) : null}
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {[
-                ['registration', 'Registration Number'],
-                ['fleetNumber', 'Fleet Number'],
-                ['make', 'Make'],
-                ['model', 'Model'],
-                ['year', 'Year'],
-                ['vin', 'VIN'],
-                ['currentOdometer', 'Current Odometer'],
-              ].map(([name, label]) => (
-                <label key={name} className="block">
-                  <span className="text-sm font-semibold text-slate-700">{label}</span>
-                  <Input
-                    name={name}
-                    value={form[name as keyof VehicleInput]}
-                    onChange={onChange}
-                    className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-                  />
-                  <FieldError message={errors[name as keyof VehicleInput]} />
-                </label>
-              ))}
-
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700">Vehicle Type</span>
-                <select
-                  name="vehicleType"
-                  value={form.vehicleType}
-                  onChange={onChange}
-                  required
-                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                >
-                  <option value="">Select vehicle type</option>
-                  {vehicleTypeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.vehicleType} />
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700">Current Driver</span>
-                <select
-                  name="currentDriverId"
-                  value={form.currentDriverId}
-                  onChange={onChange}
-                  disabled={form.status === 'Off Road' && !form.offRoadStartDate}
-                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                >
-                  <option value="">
-                    {form.status === 'Off Road' && !form.offRoadStartDate
-                      ? 'Unavailable while Off Road'
-                      : 'No current driver'}
-                  </option>
-                  {drivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {getDriverName(driver)}
-                    </option>
-                  ))}
-                </select>
-                {form.status === 'Off Road' && !form.offRoadStartDate ? (
-                  <p className="mt-1.5 text-xs font-medium text-slate-400">
-                    Off Road vehicles cannot be assigned to drivers.
-                  </p>
-                ) : null}
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700">Status</span>
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={onChange}
-                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                >
-                  {vehicleStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {isScheduledStatus ? (
-                <>
-                  <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Reason</span>
-                    {reasonOptions.length > 0 ? (
-                      <select
-                        name="offRoadReason"
-                        value={form.offRoadReason}
-                        onChange={onChange}
-                        className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                      >
-                        <option value="">Select reason</option>
-                        {reasonOptions.map((reason) => (
-                          <option key={reason} value={reason}>
-                            {reason}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        name="offRoadReason"
-                        value={form.offRoadReason}
-                        onChange={onChange}
-                        className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-                      />
-                    )}
-                    <FieldError message={errors.offRoadReason} />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Start Date</span>
-                    <Input
-                      name="offRoadStartDate"
-                      type="date"
-                      value={form.offRoadStartDate}
-                      onChange={onChange}
-                      className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-                    />
-                    <FieldError message={errors.offRoadStartDate} />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">End Date</span>
-                    <Input
-                      name="offRoadExpectedReturnDate"
-                      type="date"
-                      value={form.offRoadExpectedReturnDate}
-                      onChange={onChange}
-                      className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-                    />
-                    <FieldError message={errors.offRoadExpectedReturnDate} />
-                  </label>
-
-                  <label className="block sm:col-span-2">
-                    <span className="text-sm font-semibold text-slate-700">
-                      Availability Notes
-                    </span>
-                    <textarea
-                      name="offRoadNotes"
-                      value={form.offRoadNotes}
-                      onChange={onChange}
-                      rows={3}
-                      className="mt-2 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                    />
-                    <FieldError message={errors.offRoadNotes} />
-                  </label>
-                </>
+              {submitError ? (
+                <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
+                  {submitError}
+                </div>
               ) : null}
-
-              {[
-                ['insuranceExpiry', 'Insurance Expiry'],
-                ['motExpiry', 'MOT Expiry'],
-                ['roadTaxExpiry', 'Road Tax Expiry'],
-                ['tachographExpiry', 'Tachograph Calibration Expiry'],
-              ].map(([name, label]) => (
-                <label key={name} className="block">
-                  <span className="text-sm font-semibold text-slate-700">{label}</span>
-                  <Input
-                    name={name}
-                    type="date"
-                    value={form[name as keyof VehicleInput]}
-                    onChange={onChange}
-                    className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
-                  />
-                </label>
-              ))}
-
-              <label className="block sm:col-span-2">
-                <span className="text-sm font-semibold text-slate-700">Notes</span>
-                <textarea
-                  name="notes"
-                  value={form.notes}
-                  onChange={onChange}
-                  rows={4}
-                  className="mt-2 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
-                />
-              </label>
             </div>
 
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={requestClose}
-                disabled={isSubmitting}
-                className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] disabled:translate-y-0 disabled:opacity-70"
-              >
-                {isSubmitting ? 'Saving...' : submitLabel}
-              </Button>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 sm:px-6">
+              <VehicleFormSection title="Basic Details">
+                <label className="block">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                    <span className={vehicleFormLabelClass}>Registration Number</span>
+                    <DvlaSoonBadge />
+                  </div>
+                  <Input
+                    name="registration"
+                    value={form.registration}
+                    onChange={onChange}
+                    className={vehicleFormInputClass}
+                  />
+                  <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
+                    DVLA lookup will be available in a future update.
+                  </p>
+                  <FieldError message={errors.registration} />
+                </label>
+
+                {[
+                  ['fleetNumber', 'Fleet Number'],
+                  ['make', 'Make'],
+                  ['model', 'Model'],
+                  ['year', 'Year'],
+                  ['vin', 'VIN'],
+                ].map(([name, label]) => (
+                  <label key={name} className="block">
+                    <span className={vehicleFormLabelClass}>{label}</span>
+                    <Input
+                      name={name}
+                      value={form[name as keyof VehicleInput]}
+                      onChange={onChange}
+                      className={vehicleFormInputClass}
+                    />
+                    <FieldError message={errors[name as keyof VehicleInput]} />
+                  </label>
+                ))}
+              </VehicleFormSection>
+
+              <VehicleFormSection title="Assignment & Status">
+                <label className="block">
+                  <span className={vehicleFormLabelClass}>Vehicle Type</span>
+                  <select
+                    name="vehicleType"
+                    value={form.vehicleType}
+                    onChange={onChange}
+                    required
+                    className={vehicleFormSelectClass}
+                  >
+                    <option value="">Select vehicle type</option>
+                    {vehicleTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={errors.vehicleType} />
+                </label>
+
+                <label className="block">
+                  <span className={vehicleFormLabelClass}>Current Driver</span>
+                  <select
+                    name="currentDriverId"
+                    value={form.currentDriverId}
+                    onChange={onChange}
+                    disabled={form.status === 'Off Road' && !form.offRoadStartDate}
+                    className={vehicleFormSelectClass}
+                  >
+                    <option value="">
+                      {form.status === 'Off Road' && !form.offRoadStartDate
+                        ? 'Unavailable while Off Road'
+                        : 'No current driver'}
+                    </option>
+                    {drivers.map((driver) => (
+                      <option key={driver.id} value={driver.id}>
+                        {getDriverName(driver)}
+                      </option>
+                    ))}
+                  </select>
+                  {form.status === 'Off Road' && !form.offRoadStartDate ? (
+                    <p className="mt-1.5 text-xs font-medium text-slate-400">
+                      Off Road vehicles cannot be assigned to drivers.
+                    </p>
+                  ) : null}
+                </label>
+
+                <label className="block">
+                  <span className={vehicleFormLabelClass}>Status</span>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={onChange}
+                    className={vehicleFormSelectClass}
+                  >
+                    {vehicleStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className={vehicleFormLabelClass}>Current Odometer</span>
+                  <Input
+                    name="currentOdometer"
+                    value={form.currentOdometer}
+                    onChange={onChange}
+                    className={vehicleFormInputClass}
+                  />
+                  <FieldError message={errors.currentOdometer} />
+                </label>
+
+                {isScheduledStatus ? (
+                  <>
+                    <label className="block">
+                      <span className={vehicleFormLabelClass}>Reason</span>
+                      {reasonOptions.length > 0 ? (
+                        <select
+                          name="offRoadReason"
+                          value={form.offRoadReason}
+                          onChange={onChange}
+                          className={vehicleFormSelectClass}
+                        >
+                          <option value="">Select reason</option>
+                          {reasonOptions.map((reason) => (
+                            <option key={reason} value={reason}>
+                              {reason}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          name="offRoadReason"
+                          value={form.offRoadReason}
+                          onChange={onChange}
+                          className={vehicleFormInputClass}
+                        />
+                      )}
+                      <FieldError message={errors.offRoadReason} />
+                    </label>
+
+                    <label className="block">
+                      <span className={vehicleFormLabelClass}>Start Date</span>
+                      <Input
+                        name="offRoadStartDate"
+                        type="date"
+                        value={form.offRoadStartDate}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.offRoadStartDate} />
+                    </label>
+
+                    <label className="block">
+                      <span className={vehicleFormLabelClass}>End Date</span>
+                      <Input
+                        name="offRoadExpectedReturnDate"
+                        type="date"
+                        value={form.offRoadExpectedReturnDate}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.offRoadExpectedReturnDate} />
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className={vehicleFormLabelClass}>Availability Notes</span>
+                      <textarea
+                        name="offRoadNotes"
+                        value={form.offRoadNotes}
+                        onChange={onChange}
+                        rows={3}
+                        className={vehicleFormTextareaClass}
+                      />
+                      <FieldError message={errors.offRoadNotes} />
+                    </label>
+                  </>
+                ) : null}
+              </VehicleFormSection>
+
+              <VehicleFormSection title="Compliance Dates">
+                {[
+                  ['motExpiry', 'MOT Expiry'],
+                  ['insuranceExpiry', 'Insurance Expiry'],
+                  ['roadTaxExpiry', 'Road Tax Expiry'],
+                  ['tachographExpiry', 'Tachograph Calibration Expiry'],
+                ].map(([name, label]) => (
+                  <label key={name} className="block">
+                    <span className={vehicleFormLabelClass}>{label}</span>
+                    <Input
+                      name={name}
+                      type="date"
+                      value={form[name as keyof VehicleInput]}
+                      onChange={onChange}
+                      className={vehicleFormInputClass}
+                    />
+                  </label>
+                ))}
+              </VehicleFormSection>
+
+              <VehicleFormSection title="Notes">
+                <label className="block sm:col-span-2">
+                  <span className={vehicleFormLabelClass}>Notes</span>
+                  <textarea
+                    name="notes"
+                    value={form.notes}
+                    onChange={onChange}
+                    rows={4}
+                    className={vehicleFormTextareaClass}
+                  />
+                </label>
+              </VehicleFormSection>
+            </div>
+
+            <div className="shrink-0 border-t border-[#D3E9FC]/80 bg-white px-5 py-4 sm:px-6 sm:py-5">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={requestClose}
+                  disabled={isSubmitting}
+                  className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(59,130,246,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-[#2563EB] disabled:translate-y-0 disabled:opacity-70"
+                >
+                  {isSubmitting ? 'Saving...' : submitLabel}
+                </Button>
+              </div>
             </div>
           </form>
         </div>

@@ -1,8 +1,10 @@
 import { Clock3, ShieldCheck } from 'lucide-react'
 
+import { settingsInnerCardClassName } from '@/components/settings/SettingsControls'
+
 export function TwoFactorAuthComingLaterCard() {
   return (
-    <div className="rounded-[16px] bg-[#F8FAFC] px-4 py-5 ring-1 ring-[#E2E8F0] opacity-90 dark:bg-slate-900/70 dark:ring-white/10 sm:px-5">
+    <div className={`${settingsInnerCardClassName} opacity-90`}>
       <div className="flex items-start gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white ring-1 ring-[#E2E8F0] dark:bg-slate-800/70 dark:ring-white/10">
           <ShieldCheck className="size-5 text-slate-400 dark:text-slate-500" strokeWidth={1.9} />

@@ -1,3 +1,4 @@
+import { CleanCurrentViewModal } from '@/components/common/CleanCurrentViewModal'
 import { DeleteTimesheetModal } from '@/components/timesheets/DeleteTimesheetModal'
 import { NewTimesheetModal } from '@/components/timesheets/NewTimesheetModal'
 import { TimesheetDrawer } from '@/components/timesheets/TimesheetDrawer'
@@ -84,6 +85,7 @@ export default function TimesheetsPage() {
   const [deleteTarget, setDeleteTarget] = useState<TimesheetListItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
 
   const weekSettings = useMemo(
     () =>
@@ -269,6 +271,21 @@ export default function TimesheetsPage() {
   function handleDelete(timesheet: TimesheetListItem) {
     setDeleteError(null)
     setDeleteTarget(timesheet)
+  }
+
+  function resetToCurrentWeekView() {
+    setSearchTerm('')
+    setDebouncedSearch('')
+    setStatusFilter('all')
+    setRoleFilter('all')
+    setWeekFilter(getDefaultWeekStartMonday())
+    setSelectedIds(new Set())
+  }
+
+  function handleConfirmCleanCurrentView() {
+    resetToCurrentWeekView()
+    setIsCleanCurrentViewOpen(false)
+    showToast('Current week view cleaned')
   }
 
   function handleCancelDelete() {
@@ -547,6 +564,7 @@ export default function TimesheetsPage() {
             setStatusFilter('all')
             setRoleFilter('all')
           }}
+          onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onNewTimesheet={() => {
             setCreateError(null)
             setIsNewModalOpen(true)
@@ -657,6 +675,15 @@ export default function TimesheetsPage() {
           onConfirm={() => void handleConfirmDelete()}
         />
       ) : null}
+
+      <CleanCurrentViewModal
+        open={isCleanCurrentViewOpen}
+        title="Clean timesheets current view?"
+        description="This will reset Timesheets to the current week and clear search/status filters only. Records will remain saved and searchable by choosing another week."
+        confirmLabel="Clean current view"
+        onCancel={() => setIsCleanCurrentViewOpen(false)}
+        onConfirm={handleConfirmCleanCurrentView}
+      />
 
       {toastMessage ? (
         <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">

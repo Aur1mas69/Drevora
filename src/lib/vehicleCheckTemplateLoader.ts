@@ -4,7 +4,7 @@ import {
   groupTemplatesBySection,
   mergeChecklistWithExistingItems,
 } from '@/lib/vehicleCheckUtils'
-import { fetchTemplatesByVehicleType } from '@/services/vehicleCheckTemplatesService'
+import { fetchTemplateItemsByVehicleType } from '@/services/vehicleCheckTemplatesService'
 import { fetchVehicleTypeById } from '@/services/vehiclesService'
 
 export type VehicleChecklistLoadStatus =
@@ -45,7 +45,7 @@ export async function loadVehicleChecklist(
 
   let templates
   try {
-    templates = await fetchTemplatesByVehicleType(vehicleType)
+    templates = await fetchTemplateItemsByVehicleType(vehicleType)
   } catch (error) {
     const message =
       error instanceof Error && error.message.trim().length > 0

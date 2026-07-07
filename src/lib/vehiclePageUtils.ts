@@ -14,7 +14,6 @@ export type FleetSummaryStats = {
   maintenanceDue: number
   motExpiringSoon: number
   insuranceExpiringSoon: number
-  withoutDriver: number
 }
 
 export function getDocumentStatus(
@@ -47,7 +46,6 @@ export function computeFleetSummaryStats(vehicles: Vehicle[]): FleetSummaryStats
   let maintenanceDue = 0
   let motExpiringSoon = 0
   let insuranceExpiringSoon = 0
-  let withoutDriver = 0
 
   for (const vehicle of vehicles) {
     const status = getVehicleStatusForDate(vehicle)
@@ -59,7 +57,6 @@ export function computeFleetSummaryStats(vehicles: Vehicle[]): FleetSummaryStats
     if (getDocumentStatus(vehicle.insuranceExpiry) === 'warning') {
       insuranceExpiringSoon += 1
     }
-    if (!vehicle.currentDriverId) withoutDriver += 1
   }
 
   return {
@@ -68,7 +65,6 @@ export function computeFleetSummaryStats(vehicles: Vehicle[]): FleetSummaryStats
     maintenanceDue,
     motExpiringSoon,
     insuranceExpiringSoon,
-    withoutDriver,
   }
 }
 

@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { WorkerAvatarField } from '@/components/workers/WorkerAvatarField'
 import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
-import { WORKER_EMPLOYMENT_TYPES, WORKER_LICENCE_CATEGORIES } from '@/lib/workerProfileUtils'
+import {
+  WORKER_EMPLOYMENT_TYPES,
+  WORKER_LICENCE_CATEGORY_OPTIONS,
+} from '@/lib/workerProfileUtils'
+import { WorkerLicenceCategoryBadges } from '@/components/workers/WorkerLicenceCategoryBadges'
 import type {
   CreateDriverInput,
   DriverRole,
@@ -361,22 +365,39 @@ export function WorkerFormModal({
             description="UK HGV licence, CPC, tachograph card and D4 medical dates."
           >
             <div className="block sm:col-span-2">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Licence Categories</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Licence Categories
+              </span>
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Select all UK licence and equipment categories that apply.
+              </p>
+              {form.licenceCategories.length > 0 ? (
+                <div className="mt-3 rounded-[16px] bg-[#F5FAFF] px-3 py-2.5 ring-1 ring-[#C5DFFB]/60 dark:bg-slate-900/50 dark:ring-white/10">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5499BF]/85">
+                    Selected
+                  </p>
+                  <WorkerLicenceCategoryBadges
+                    categories={form.licenceCategories}
+                    className="mt-2"
+                  />
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
-                {WORKER_LICENCE_CATEGORIES.map((category) => {
-                  const selected = form.licenceCategories.includes(category)
+                {WORKER_LICENCE_CATEGORY_OPTIONS.map((option) => {
+                  const selected = form.licenceCategories.includes(option.value)
                   return (
                     <button
-                      key={category}
+                      key={option.value}
                       type="button"
-                      onClick={() => toggleLicenceCategory(category)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+                      onClick={() => toggleLicenceCategory(option.value)}
+                      aria-pressed={selected}
+                      className={`rounded-full px-3 py-1.5 text-left text-xs font-semibold ring-1 transition-colors ${
                         selected
-                          ? 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/80'
-                          : 'bg-white text-slate-600 ring-slate-200 hover:bg-[#F5FAFF] dark:bg-slate-900/70 dark:text-slate-300 dark:ring-white/10'
+                          ? 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/80 shadow-[0_2px_8px_rgba(33,142,231,0.12)]'
+                          : 'bg-white text-slate-600 ring-slate-200 hover:bg-[#F5FAFF] hover:ring-[#C5DFFB]/70 dark:bg-slate-900/70 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-slate-800/80'
                       }`}
                     >
-                      {category}
+                      {option.label}
                     </button>
                   )
                 })}

@@ -2,22 +2,22 @@ import type { VehicleStatus } from '@/services/vehiclesService'
 
 export const statusClassMap: Record<VehicleStatus, string> = {
   Available: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  Assigned: 'bg-blue-50 text-blue-700 ring-blue-200',
+  Assigned: 'bg-[#EEF6FF] text-[#0B68BE] ring-[#C5DFFB]',
   Workshop: 'bg-orange-50 text-orange-700 ring-orange-200',
-  Maintenance: 'bg-amber-50 text-amber-700 ring-amber-200',
+  Maintenance: 'bg-amber-50 text-amber-800 ring-amber-200',
   'Out of Service': 'bg-rose-50 text-rose-700 ring-rose-200',
-  'Off Road': 'bg-rose-600 text-white ring-rose-700',
-  Reserved: 'bg-purple-50 text-purple-700 ring-purple-200',
+  'Off Road': 'bg-slate-900 text-white ring-slate-950',
+  Reserved: 'bg-violet-50 text-violet-700 ring-violet-200',
 }
 
 export const calendarClassMap: Record<VehicleStatus, string> = {
-  Available: 'bg-emerald-500',
-  Assigned: 'bg-blue-500',
-  Workshop: 'bg-yellow-400',
+  Available: 'bg-emerald-600',
+  Assigned: 'bg-[#218EE7]',
+  Workshop: 'bg-amber-500',
   Maintenance: 'bg-orange-500',
-  'Out of Service': 'bg-red-600',
-  'Off Road': 'bg-slate-950',
-  Reserved: 'bg-purple-500',
+  'Out of Service': 'bg-rose-700',
+  'Off Road': 'bg-slate-900',
+  Reserved: 'bg-violet-600',
 }
 
 export const statusEmojiMap: Record<VehicleStatus, string> = {

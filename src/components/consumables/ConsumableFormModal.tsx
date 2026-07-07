@@ -14,6 +14,12 @@ import {
   parseOptionalNumber,
   validateConsumableForm,
 } from '@/lib/consumableUtils'
+import {
+  formatCalculatedCost,
+  resolveDefaultUnitPrice,
+  resolveConsumableEntryCost,
+  type ConsumableDefaultPricesMap,
+} from '@/lib/consumableDefaultPrices'
 import { validateConsumableReceiptFile } from '@/lib/consumableReceiptStorage'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
@@ -37,43 +43,81 @@ const fieldClassName =
 const textareaClassName =
   'mt-1.5 min-h-[88px] w-full rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#E8F3FE]'
 
-function buildInitialValues(record: Consumable | null): ConsumableFormValues {
-  if (!record) {
-    return {
-      entryDate: new Date().toISOString().slice(0, 10),
-      entryTime: '',
-      vehicleId: '',
-      workerId: '',
-      consumableType: 'Diesel',
-      itemName: '',
-      quantity: '',
-      unit: 'L',
-      cost: '',
-      supplier: '',
-      site: '',
-      odometer: '',
-      notes: '',
-    }
-  }
+function withCalculatedCost(
+  values: ConsumableFormValues,
+  defaultPrices: ConsumableDefaultPricesMap,
+): ConsumableFormValues {
+  const quantity = Number(values.quantity)
+  const defaultPrice = resolveDefaultUnitPrice(defaultPrices, values.consumableType)
+  const cost = resolveConsumableEntryCost(values.consumableType, quantity, defaultPrices)
 
   return {
-    entryDate: record.entryDate,
-    entryTime: record.entryTime?.slice(0, 5) ?? '',
-    vehicleId: record.vehicleId ?? '',
-    workerId: record.workerId ?? '',
-    consumableType: record.consumableType,
-    itemName: record.itemName ?? '',
-    quantity: String(record.quantity),
-    unit: record.unit,
-    cost: record.cost === null ? '' : String(record.cost),
-    supplier: record.supplier ?? '',
-    site: record.site ?? '',
-    odometer: record.odometer === null ? '' : String(record.odometer),
-    notes: record.notes ?? '',
+    ...values,
+    unitPrice: defaultPrice ? formatCalculatedCost(defaultPrice.unitPrice) : '',
+    cost: cost !== null ? formatCalculatedCost(cost) : '',
   }
 }
 
-export function consumableFormValuesToInput(values: ConsumableFormValues) {
+function buildInitialValues(
+  record: Consumable | null,
+  defaultPrices: ConsumableDefaultPricesMap,
+): ConsumableFormValues {
+  if (!record) {
+    const dieselDefault = resolveDefaultUnitPrice(defaultPrices, 'Diesel')
+
+    return withCalculatedCost(
+      {
+        entryDate: new Date().toISOString().slice(0, 10),
+        entryTime: '',
+        vehicleId: '',
+        workerId: '',
+        consumableType: 'Diesel',
+        itemName: '',
+        quantity: '',
+        unit: dieselDefault?.unit ?? 'L',
+        unitPrice: '',
+        cost: '',
+        supplier: '',
+        site: '',
+        odometer: '',
+        notes: '',
+      },
+      defaultPrices,
+    )
+  }
+
+  return withCalculatedCost(
+    {
+      entryDate: record.entryDate,
+      entryTime: record.entryTime?.slice(0, 5) ?? '',
+      vehicleId: record.vehicleId ?? '',
+      workerId: record.workerId ?? '',
+      consumableType: record.consumableType,
+      itemName: record.itemName ?? '',
+      quantity: String(record.quantity),
+      unit: record.unit,
+      unitPrice: '',
+      cost: '',
+      supplier: record.supplier ?? '',
+      site: record.site ?? '',
+      odometer: record.odometer === null ? '' : String(record.odometer),
+      notes: record.notes ?? '',
+    },
+    defaultPrices,
+  )
+}
+
+export function consumableFormValuesToInput(
+  values: ConsumableFormValues,
+  defaultPrices?: ConsumableDefaultPricesMap,
+) {
+  const quantity = Number(values.quantity)
+  const cost = resolveConsumableEntryCost(
+    values.consumableType,
+    quantity,
+    defaultPrices,
+  )
+
   return {
     entryDate: values.entryDate,
     entryTime: values.entryTime.trim() || null,
@@ -81,9 +125,9 @@ export function consumableFormValuesToInput(values: ConsumableFormValues) {
     workerId: values.workerId.trim() || null,
     consumableType: values.consumableType,
     itemName: values.itemName.trim() || null,
-    quantity: Number(values.quantity),
+    quantity,
     unit: values.unit,
-    cost: parseOptionalNumber(values.cost),
+    cost,
     supplier: values.supplier.trim() || null,
     site: values.site.trim() || null,
     odometer: parseOptionalNumber(values.odometer),
@@ -101,8 +145,11 @@ export function ConsumableFormModal({
   onClose,
   onSubmit,
 }: ConsumableFormModalProps) {
-  const { timeFormat } = useCompanySettings()
-  const [values, setValues] = useState<ConsumableFormValues>(() => buildInitialValues(record))
+  const { timeFormat, settings } = useCompanySettings()
+  const defaultPrices = settings?.consumableDefaultPrices ?? {}
+  const [values, setValues] = useState<ConsumableFormValues>(() =>
+    buildInitialValues(record, defaultPrices),
+  )
   const [error, setError] = useState<string | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [removeReceipt, setRemoveReceipt] = useState(false)
@@ -122,11 +169,11 @@ export function ConsumableFormModal({
 
   useEffect(() => {
     if (!isOpen) return
-    setValues(buildInitialValues(record))
+    setValues(buildInitialValues(record, defaultPrices))
     setError(null)
     setReceiptFile(null)
     setRemoveReceipt(false)
-  }, [isOpen, record])
+  }, [defaultPrices, isOpen, record])
 
   useEffect(() => {
     if (!isOpen) return
@@ -142,15 +189,28 @@ export function ConsumableFormModal({
   if (!isOpen) return null
 
   function updateField<K extends keyof ConsumableFormValues>(key: K, value: ConsumableFormValues[K]) {
-    setValues((current) => ({ ...current, [key]: value }))
+    setValues((current) => {
+      const next = { ...current, [key]: value }
+      if (key === 'quantity') {
+        return withCalculatedCost(next, defaultPrices)
+      }
+      return next
+    })
   }
 
   function handleTypeChange(nextType: ConsumableFormValues['consumableType']) {
-    setValues((current) => ({
-      ...current,
-      consumableType: nextType,
-      unit: getDefaultUnitForType(nextType),
-    }))
+    const defaultPrice = resolveDefaultUnitPrice(defaultPrices, nextType)
+
+    setValues((current) =>
+      withCalculatedCost(
+        {
+          ...current,
+          consumableType: nextType,
+          unit: defaultPrice?.unit ?? getDefaultUnitForType(nextType),
+        },
+        defaultPrices,
+      ),
+    )
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -173,7 +233,7 @@ export function ConsumableFormModal({
 
     try {
       await onSubmit({
-        values,
+        values: withCalculatedCost(values, defaultPrices),
         receiptFile,
         removeReceipt,
       })
@@ -333,18 +393,6 @@ export function ConsumableFormModal({
                   </option>
                 ))}
               </select>
-            </label>
-
-            <label className="block text-sm font-medium text-[#113C69]">
-              Cost
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={values.cost}
-                onChange={(event) => updateField('cost', event.target.value)}
-                className={fieldClassName}
-              />
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
