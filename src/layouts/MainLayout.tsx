@@ -17,7 +17,7 @@ function MainLayout() {
 
   async function handleSignOut() {
     await signOut()
-    navigate('/', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   return (

@@ -17,7 +17,7 @@ function DriverLoginPage() {
     <LoginPageContent
       title="DREVORA"
       description="Driver login"
-      onBack={() => navigate('/')}
+      onBack={() => navigate('/login', { replace: true })}
       onSignInSuccess={(session) => {
         setAuthenticatedSession(session, 'worker')
         navigate('/dashboard', { replace: true })

@@ -30,7 +30,9 @@ function NotFoundPage() {
             asChild
             className="bg-blue-600 text-white hover:bg-blue-700"
           >
-            <Link to="/">Back to home</Link>
+            <Link to="/login" replace>
+              Back to login
+            </Link>
           </Button>
         </CardContent>
       </Card>

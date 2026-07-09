@@ -17,7 +17,7 @@ export default function WorkerLoginPage() {
     <LoginPageContent
       title="DREVORA"
       description="Worker login"
-      onBack={() => navigate('/')}
+      onBack={() => navigate('/login', { replace: true })}
       onSignInSuccess={(session) => {
         setAuthenticatedSession(session, 'worker')
         navigate('/dashboard', { replace: true })

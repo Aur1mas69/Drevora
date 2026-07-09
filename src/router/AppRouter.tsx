@@ -21,7 +21,6 @@ import DriverLoginPage from '@/pages/DriverLoginPage'
 import WorkerLoginPage from '@/pages/WorkerLoginPage'
 import DriversPage from '@/pages/DriversPage'
 import HistoryPage from '@/pages/HistoryPage'
-import LandingPage from '@/pages/LandingPage'
 import MyHolidaysPage from '@/pages/MyHolidaysPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -74,10 +73,10 @@ function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/admin/login" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/admin-login" element={<AdminLoginPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<AdminLoginPage />} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
         <Route path="/driver-login" element={<DriverLoginPage />} />
         <Route path="/worker-login" element={<WorkerLoginPage />} />
         <Route
