@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 
 type Accent = 'blue' | 'cyan' | 'green' | 'warning' | 'danger' | 'neutral'
 
-const CIRCLE_SIZE_CLASS = 'size-[min(100%,11.75rem)] sm:size-[12.25rem]'
+const CIRCLE_SIZE_CLASS = 'size-[min(100%,9rem)] sm:size-[min(100%,11.75rem)] lg:size-[12.25rem]'
 
 const accentStyles: Record<
   Accent,
@@ -223,7 +223,7 @@ export function DashboardKpiCard({
     styles.baseShadow,
     'px-4 text-center',
     'transition-all duration-300 ease-out',
-    'group-hover:-translate-y-1',
+    'sm:group-hover:-translate-y-1',
     styles.hoverBorder,
     styles.hoverShadow,
     styles.hoverGradient,
@@ -234,11 +234,11 @@ export function DashboardKpiCard({
   ].join(' ')
 
   const widget = (
-    <div className="mx-auto flex w-full max-w-[12.25rem] flex-col items-center">
+    <div className="mx-auto flex w-full min-w-0 max-w-[9rem] flex-col items-center sm:max-w-[12.25rem]">
       <div className={`relative shrink-0 ${CIRCLE_SIZE_CLASS}`}>
         {issueBadgeVisible ? (
           <div
-            className="absolute -right-0.5 top-0 z-10 flex size-7 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(225,29,72,0.35)]"
+            className="absolute -right-0.5 top-0 z-10 flex size-6 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(225,29,72,0.35)] sm:size-7 sm:text-[11px]"
             aria-hidden="true"
           >
             {issueCount > 9 ? '9+' : issueCount}
@@ -262,19 +262,19 @@ export function DashboardKpiCard({
               aria-hidden="true"
             />
 
-            <div className="relative flex w-full max-w-[8.5rem] flex-col items-center justify-center gap-2">
+            <div className="relative flex w-full max-w-[7.25rem] flex-col items-center justify-center gap-1.5 sm:max-w-[8.5rem] sm:gap-2">
               <div
-                className={`flex size-10 shrink-0 items-center justify-center rounded-full border transition-all duration-300 group-hover:scale-105 ${styles.icon} ${styles.iconHover}`}
+                className={`flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-300 sm:size-10 sm:group-hover:scale-105 ${styles.icon} ${styles.iconHover}`}
               >
-                <Icon className="size-[18px]" strokeWidth={2.1} aria-hidden="true" />
+                <Icon className="size-4 sm:size-[18px]" strokeWidth={2.1} aria-hidden="true" />
               </div>
 
-              <p className="w-full text-[2rem] font-bold leading-none tracking-[-0.04em] text-[#113C69] sm:text-[2.15rem]">
+              <p className="w-full text-[1.65rem] font-bold leading-none tracking-[-0.04em] text-[#113C69] sm:text-[2rem] lg:text-[2.15rem]">
                 {value}
               </p>
 
               <p
-                className={`w-full px-0.5 text-xs font-semibold leading-snug ${styles.labelColor}`}
+                className={`w-full px-0.5 text-[11px] font-semibold leading-snug sm:text-xs ${styles.labelColor}`}
               >
                 {title}
               </p>
@@ -284,7 +284,7 @@ export function DashboardKpiCard({
       </div>
 
       <p
-        className={`mt-2 w-full max-w-[12.25rem] px-1 text-center text-[10px] leading-snug sm:text-[11px] ${
+        className={`mt-2 w-full max-w-[9rem] px-0.5 text-center text-[10px] leading-snug sm:max-w-[12.25rem] sm:px-1 sm:text-[11px] ${
           helperTone === 'danger'
             ? 'font-semibold text-rose-600'
             : 'text-[#3D7A9C]'
@@ -308,12 +308,12 @@ export function DashboardKpiCard({
         to={to}
         aria-label={`${title}: ${value}. ${helper}`}
         onClick={() => onNavigate?.()}
-        className={`group block transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] ${styles.focusRing}`}
+        className={`group block min-w-0 transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] ${styles.focusRing}`}
       >
         {widget}
       </Link>
     )
   }
 
-  return <div className="group">{widget}</div>
+  return <div className="group min-w-0">{widget}</div>
 }

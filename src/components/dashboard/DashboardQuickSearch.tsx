@@ -199,7 +199,7 @@ export function DashboardQuickSearch() {
   const showEmpty = showPanel && !isLoading && !searchError && totalResults === 0
 
   return (
-    <section className="mb-6 sm:mb-7" aria-label="Quick Search">
+    <section className="mb-4 sm:mb-6 lg:mb-7" aria-label="Quick Search">
       <div className={quickSearchCardClass}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0 shrink-0">

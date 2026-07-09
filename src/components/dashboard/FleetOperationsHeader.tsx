@@ -47,7 +47,7 @@ function FleetOperationsInfoPanel({
   if (isProfileLoading) {
     return (
       <div
-        className="relative z-10 w-full min-w-0 max-w-[272px] shrink-0 animate-pulse rounded-[18px] border border-white/35 p-4 sm:min-w-[238px]"
+        className="relative z-10 w-full min-w-0 max-w-none shrink-0 animate-pulse rounded-[18px] border border-white/35 p-3.5 sm:max-w-[272px] sm:min-w-[238px] sm:p-4"
         style={WEATHER_CARD_STYLE}
         aria-hidden="true"
       >
@@ -63,7 +63,7 @@ function FleetOperationsInfoPanel({
 
   return (
     <aside
-      className="relative z-10 w-full min-w-0 max-w-[272px] shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-4 sm:min-w-[238px] sm:p-[1.125rem]"
+      className="relative z-10 w-full min-w-0 max-w-none shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-3.5 sm:max-w-[272px] sm:min-w-[238px] sm:p-[1.125rem]"
       style={WEATHER_CARD_STYLE}
       aria-label="Fleet location, weather and time"
     >
@@ -129,15 +129,15 @@ export function FleetOperationsHeader({
   )
 
   return (
-    <header className="relative min-h-[240px] overflow-hidden rounded-[24px] border border-white/40 shadow-[0_4px_28px_rgba(40,80,140,0.08)] sm:min-h-[260px] lg:min-h-[300px]">
+    <header className="relative min-h-[168px] overflow-hidden rounded-[20px] border border-white/40 shadow-[0_4px_28px_rgba(40,80,140,0.08)] sm:min-h-[240px] sm:rounded-[24px] lg:min-h-[300px]">
       <WeatherHeroBackground
         weatherCondition={weather?.condition ?? null}
         isNight={isNight}
       />
 
-      <div className="relative z-10 flex min-h-[240px] flex-col justify-center px-4 py-6 sm:min-h-[260px] sm:px-9 sm:py-9 lg:min-h-[300px] lg:px-10 lg:py-10">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-          <div className="min-w-0 flex-1 space-y-3 sm:space-y-3.5">
+      <div className="relative z-10 flex min-h-[168px] flex-col justify-center px-4 py-5 sm:min-h-[240px] sm:px-9 sm:py-9 lg:min-h-[300px] lg:px-10 lg:py-10">
+        <div className="flex flex-col gap-4 sm:gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+          <div className="min-w-0 flex-1 space-y-2 sm:space-y-3.5">
             {isProfileLoading ? (
               <div className="space-y-3">
                 <div className="h-5 w-36 animate-pulse rounded-full bg-white/30" />
@@ -148,7 +148,7 @@ export function FleetOperationsHeader({
             ) : (
               <>
                 <p
-                  className="text-lg font-medium tracking-[-0.02em] text-[#10275f]/85 sm:text-xl"
+                  className="text-base font-medium tracking-[-0.02em] text-[#10275f]/85 sm:text-lg lg:text-xl"
                   style={{ textShadow: HERO_TEXT_SHADOW }}
                 >
                   {greeting}
@@ -156,14 +156,14 @@ export function FleetOperationsHeader({
 
                 {hasCompany ? (
                   <h1
-                    className="text-[2.5rem] font-bold leading-[1.05] tracking-[-0.04em] text-[#10275f] sm:text-[2.75rem] lg:text-[3.25rem]"
+                    className="text-[1.85rem] font-bold leading-[1.08] tracking-[-0.04em] text-[#10275f] sm:text-[2.5rem] sm:leading-[1.05] lg:text-[3.25rem]"
                     style={{ textShadow: HERO_TEXT_SHADOW }}
                   >
                     {companyName}
                   </h1>
                 ) : (
                   <h1
-                    className="text-[2.5rem] font-bold leading-[1.05] tracking-[-0.03em] text-[#10275f]/65 sm:text-[2.75rem] lg:text-[3.25rem]"
+                    className="text-[1.85rem] font-bold leading-[1.08] tracking-[-0.03em] text-[#10275f]/65 sm:text-[2.5rem] sm:leading-[1.05] lg:text-[3.25rem]"
                     style={{ textShadow: HERO_TEXT_SHADOW }}
                   >
                     Company profile incomplete
@@ -171,14 +171,14 @@ export function FleetOperationsHeader({
                 )}
 
                 <p
-                  className="pt-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2563EB]"
+                  className="pt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2563EB] sm:text-[11px] sm:tracking-[0.2em]"
                   style={{ textShadow: HERO_TEXT_SHADOW }}
                 >
                   Fleet Operations Centre
                 </p>
 
                 <p
-                  className="text-sm font-medium tracking-[-0.01em] text-[#10275f]/70"
+                  className="text-xs font-medium tracking-[-0.01em] text-[#10275f]/70 sm:text-sm"
                   style={{ textShadow: HERO_TEXT_SHADOW }}
                 >
                   Live Fleet Dashboard

@@ -276,7 +276,7 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
   const { formatRelativeDateTime } = useCompanySettings()
 
   return (
-    <section className="flex min-h-[360px] flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-6 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#0ea5e9] hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
+    <section className="flex min-h-0 flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 sm:min-h-[360px] sm:p-6 sm:hover:-translate-y-0.5 sm:hover:border-[#0ea5e9] sm:hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
       <div className="shrink-0 border-b border-[#D3E9FC] pb-4">
         <h3 className="text-base font-bold tracking-[-0.02em] text-[#113C69]">Recent Activity</h3>
         <p className="mt-1 text-xs leading-5 text-[#3D7A9C]">
@@ -307,18 +307,18 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 sm:gap-5 xl:grid-cols-4 xl:gap-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mx-auto flex w-full max-w-[12.25rem] flex-col items-center">
-            <div className="size-[min(100%,11.75rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:size-[12.25rem]" />
-            <div className="mt-2 h-3 w-24 animate-pulse rounded bg-[#E8F3FE]/60" />
+          <div key={index} className="mx-auto flex w-full min-w-0 max-w-[9rem] flex-col items-center sm:max-w-[12.25rem]">
+            <div className="size-[min(100%,9rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:size-[min(100%,11.75rem)] lg:size-[12.25rem]" />
+            <div className="mt-2 h-3 w-20 animate-pulse rounded bg-[#E8F3FE]/60" />
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className={`${cardClass} h-44 animate-pulse bg-[#E8F3FE]/60`} />
             ))}
@@ -434,8 +434,8 @@ export function DashboardOverview({
   })
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 sm:gap-5 xl:grid-cols-4 xl:gap-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
         <DashboardKpiCard
           title="Active Vehicles"
           value={stats.availableVehicles}
@@ -476,9 +476,9 @@ export function DashboardOverview({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             <TimesheetOverviewCard overview={stats.timesheetOverview} />
             <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
             <DriverReportsOverviewCard summary={stats.driverReports} />
@@ -498,9 +498,11 @@ export function DashboardOverview({
 
 export function DashboardPageHeader() {
   return (
-    <div className="mb-6">
-      <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#113C69]">Dashboard</h1>
-      <p className="mt-1 text-sm text-[#3D7A9C]">
+    <div className="mb-4 sm:mb-6">
+      <h1 className="text-xl font-semibold tracking-[-0.04em] text-[#113C69] sm:text-[1.65rem]">
+        Dashboard
+      </h1>
+      <p className="mt-1.5 text-xs leading-5 text-[#3D7A9C] sm:mt-1 sm:text-sm">
         Overview of your fleet, workers and daily operations.
       </p>
     </div>

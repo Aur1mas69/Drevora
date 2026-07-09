@@ -272,6 +272,18 @@ body {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
 }
 
+@media (max-width: 639px) {
+  .drevora-app-shell__orb--center {
+    display: none;
+  }
+
+  .drevora-app-shell__orb--top-left,
+  .drevora-app-shell__orb--bottom-right {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drevora-app-shell {
     transition: none;
