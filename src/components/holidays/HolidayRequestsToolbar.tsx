@@ -28,7 +28,7 @@ type HolidayRequestsToolbarProps = {
 }
 
 const filterPanelClass =
-  'absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
+  'absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 w-full overflow-hidden rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60 sm:left-auto sm:right-0 sm:w-[min(100vw-2rem,22rem)]'
 
 const filterFieldLabelClass = 'text-xs font-semibold text-[#5499BF]'
 
@@ -113,14 +113,14 @@ export function HolidayRequestsToolbar({
           />
         </div>
 
-        <div ref={filtersRef} className="relative shrink-0 self-start sm:self-auto">
+        <div ref={filtersRef} className="relative w-full shrink-0 sm:w-auto">
           <Button
             type="button"
             variant="ghost"
             onClick={() => setIsFiltersOpen((open) => !open)}
             aria-expanded={isFiltersOpen}
             aria-controls="holiday-requests-filters-panel"
-            className="h-10 rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7]"
+            className="h-10 w-full rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
           >
             <Filter className="mr-1.5 size-4" aria-hidden="true" />
             Filters

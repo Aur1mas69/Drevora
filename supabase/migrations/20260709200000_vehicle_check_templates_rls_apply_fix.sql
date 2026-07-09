@@ -1,79 +1,6 @@
--- =============================================================================
--- DREVORA Row Level Security
--- =============================================================================
--- Run after schema.sql in the Supabase SQL Editor.
--- Safe to re-run during MVP development.
--- =============================================================================
-
-
--- -----------------------------------------------------------------------------
--- MVP — RLS disabled
--- All authenticated and anon clients can read/write during development.
--- Do NOT deploy to production with RLS disabled.
--- -----------------------------------------------------------------------------
-
-alter table public.drivers disable row level security;
-alter table public.vehicles disable row level security;
-alter table public.vehicle_availability disable row level security;
-alter table public.companies disable row level security;
-alter table public.timesheets disable row level security;
-alter table public.timesheet_entries disable row level security;
-alter table public.holiday_requests disable row level security;
-alter table public.vehicle_checks disable row level security;
-alter table public.vehicle_check_items disable row level security;
-alter table public.vehicle_check_templates enable row level security;
-alter table public.vehicle_check_template_items enable row level security;
-alter table public.worker_compliance_records disable row level security;
-alter table public.vehicle_compliance_records disable row level security;
-alter table public.consumables disable row level security;
-alter table public.contacts disable row level security;
-alter table public.documents disable row level security;
-alter table public.driver_reports disable row level security;
-alter table public.dashboard_notes enable row level security;
-
-
--- -----------------------------------------------------------------------------
--- MVP — API role grants
--- Required on PostgreSQL 15+ so anon/authenticated roles can access tables.
--- -----------------------------------------------------------------------------
-
-grant usage on schema public to anon, authenticated;
-
-grant select, insert, update, delete on public.drivers to anon, authenticated;
-grant select, insert, update, delete on public.vehicles to anon, authenticated;
-grant select, insert, update, delete on public.vehicle_availability to anon, authenticated;
-grant select, insert, update, delete on public.companies to anon, authenticated;
-grant select, insert, update, delete on public.timesheets to anon, authenticated;
-grant select, insert, update, delete on public.timesheet_entries to anon, authenticated;
-grant select, insert, update, delete on public.holiday_requests to anon, authenticated;
-grant select, insert, update, delete on public.vehicle_checks to anon, authenticated;
-grant select, insert, update, delete on public.vehicle_check_items to anon, authenticated;
-grant select, insert, update, delete on public.vehicle_check_templates to anon, authenticated;
-grant select, insert, update, delete on public.vehicle_check_template_items to anon, authenticated;
-grant select, insert, update, delete on public.worker_compliance_records to anon, authenticated;
-
-drop policy if exists vehicle_check_templates_select_global on public.vehicle_check_templates;
-drop policy if exists vehicle_check_templates_select_company on public.vehicle_check_templates;
-drop policy if exists "Read active vehicle check templates" on public.vehicle_check_templates;
-grant select, insert, update, delete on public.vehicle_compliance_records to anon, authenticated;
-grant select, insert, update, delete on public.consumables to anon, authenticated;
-grant select, insert, update, delete on public.contacts to anon, authenticated;
-grant select, insert, update, delete on public.documents to anon, authenticated;
-grant select, insert, update, delete on public.driver_reports to anon, authenticated;
-grant select, insert, update, delete on public.dashboard_notes to anon, authenticated;
-
-create or replace function public.drevora_current_company_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select c.id
-  from public.companies c
-  order by c.created_at asc nulls last
-  limit 1;
-$$;
+-- APPLY IN SUPABASE SQL EDITOR if Template Checks insert still returns 403.
+-- Replaces any stale company_id policies. Safe to re-run.
+-- Only vehicle_check_templates + vehicle_check_template_items.
 
 create or replace function public.drevora_current_company_name()
 returns text
@@ -143,6 +70,7 @@ begin
 end;
 $$;
 
+-- Match insert payload company text against any resolved company name variant.
 create or replace function public.drevora_company_text_matches_current(company_value text)
 returns boolean
 language plpgsql
@@ -221,38 +149,11 @@ begin
 end;
 $$;
 
-drop policy if exists dashboard_notes_company_select on public.dashboard_notes;
-drop policy if exists dashboard_notes_company_insert on public.dashboard_notes;
-drop policy if exists dashboard_notes_company_update on public.dashboard_notes;
-drop policy if exists dashboard_notes_company_delete on public.dashboard_notes;
-
-create policy dashboard_notes_company_select
-  on public.dashboard_notes
-  for select
-  to anon, authenticated
-  using (company_id = public.drevora_current_company_id());
-
-create policy dashboard_notes_company_insert
-  on public.dashboard_notes
-  for insert
-  to anon, authenticated
-  with check (company_id = public.drevora_current_company_id());
-
-create policy dashboard_notes_company_update
-  on public.dashboard_notes
-  for update
-  to anon, authenticated
-  using (company_id = public.drevora_current_company_id())
-  with check (company_id = public.drevora_current_company_id());
-
-create policy dashboard_notes_company_delete
-  on public.dashboard_notes
-  for delete
-  to anon, authenticated
-  using (company_id = public.drevora_current_company_id());
-
 alter table public.vehicle_check_templates enable row level security;
 alter table public.vehicle_check_template_items enable row level security;
+
+grant select, insert, update, delete on public.vehicle_check_templates to anon, authenticated;
+grant select, insert, update, delete on public.vehicle_check_template_items to anon, authenticated;
 
 drop policy if exists vehicle_check_templates_select_global on public.vehicle_check_templates;
 drop policy if exists vehicle_check_templates_select_company on public.vehicle_check_templates;
@@ -274,6 +175,7 @@ create policy vehicle_check_templates_company_select
     )
   );
 
+-- MVP: same role target as dashboard_notes (anon + authenticated). Company text enforces isolation.
 create policy vehicle_check_templates_company_insert
   on public.vehicle_check_templates
   for insert
@@ -378,52 +280,3 @@ create policy vehicle_check_template_items_company_delete
         and public.drevora_company_text_matches_current(template.company)
     )
   );
-
-
--- -----------------------------------------------------------------------------
--- Storage — consumable receipt attachments
--- Bucket and storage.objects policies: see migrations
--- 20260705210000_consumable_receipts_storage_bucket.sql
-
--- Storage — vehicle check defect photos + worker signatures (bucket: vehicle-check-photos)
--- Bucket and storage.objects policies: see migrations
--- 20260709220000_vehicle_check_photos_storage_bucket.sql
--- Paste script: supabase/scripts/apply_vehicle_check_storage_bucket.sql
-
--- Vehicle check signature columns (vehicle_checks.signature_url, signed_at)
--- Script: supabase/scripts/apply_vehicle_check_signature.sql
-
--- Vehicle check inspection duration (vehicle_checks.inspection_started_at, etc.)
--- Script: supabase/scripts/apply_vehicle_check_inspection_duration.sql
--- 20260705310000_worker_avatars_storage_bucket.sql
--- -----------------------------------------------------------------------------
-
-
--- -----------------------------------------------------------------------------
--- Production — enable RLS and add policies (NOT active during MVP)
--- Uncomment and adapt before go-live. Example pattern shown below.
--- -----------------------------------------------------------------------------
-
--- alter table public.companies enable row level security;
---
--- create policy "Authenticated users can read company"
---   on public.companies
---   for select
---   to authenticated
---   using (true);
---
--- create policy "Authenticated users can update company"
---   on public.companies
---   for update
---   to authenticated
---   using (true)
---   with check (true);
---
--- create policy "Authenticated users can insert company"
---   on public.companies
---   for insert
---   to authenticated
---   with check (true);
---
--- Repeat similar company-scoped policies for drivers, vehicles, and
--- vehicle_availability once a company_id column links records to tenants.

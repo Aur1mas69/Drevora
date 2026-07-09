@@ -677,10 +677,13 @@ function MobileNavDrawer({
       <button
         type="button"
         aria-label="Close navigation menu"
+        aria-hidden={!open}
+        tabIndex={open ? 0 : -1}
         onClick={onClose}
-        className={`fixed inset-0 z-[100] bg-slate-950/45 transition-opacity duration-300 lg:hidden ${
-          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-        }`}
+        className={cn(
+          'fixed inset-0 z-[100] bg-slate-950/45 transition-opacity duration-300 lg:hidden',
+          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+        )}
       />
 
       <aside
@@ -689,25 +692,28 @@ function MobileNavDrawer({
         role="dialog"
         aria-modal={open}
         aria-label="Admin navigation"
-        className={`fixed inset-y-0 left-0 z-[110] flex w-[min(240px,88vw)] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden ${
-          open ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={cn(
+          'fixed inset-y-0 left-0 z-[110] flex h-svh w-[min(280px,calc(100vw-2rem))] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-[transform,visibility] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden',
+          open
+            ? 'visible translate-x-0'
+            : 'invisible -translate-x-full pointer-events-none',
+        )}
       >
-        <div className="mb-4 flex items-start justify-between gap-2 px-1">
-          <SidebarBrand />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#D7E8FF]/70 px-4 py-3 dark:border-slate-800">
+          <SidebarBrand compact />
           <Button
             type="button"
             variant="ghost"
             size="icon"
             aria-label="Close navigation menu"
             onClick={onClose}
-            className="size-9 shrink-0 rounded-[0.9rem] text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950"
+            className="size-9 shrink-0 rounded-[0.9rem] text-slate-500 hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-100"
           >
             <X className="size-5" strokeWidth={2} />
           </Button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-4 pb-5">
           <SidebarNavigation onNavigate={onClose} />
         </div>
       </aside>
@@ -794,6 +800,7 @@ function AdminLayout({
   wideContent?: boolean
   backgroundMood?: 'default' | 'sunny' | 'cloudy' | 'rain' | 'night'
 }) {
+  const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { collapsed: sidebarCollapsed, toggleCollapsed: toggleSidebarCollapsed } =
     useSidebarCollapsed()
@@ -806,30 +813,34 @@ function AdminLayout({
     setMobileMenuOpen(false)
   }
 
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
   return (
     <div
-      className={`drevora-app-shell relative min-h-svh overflow-x-clip text-slate-950 dark:text-slate-100 ${moodClass}`}
+      className={`drevora-app-shell relative min-h-svh overflow-x-hidden text-slate-950 dark:text-slate-100 ${moodClass}`}
     >
       <AppBackground />
-      <div className="relative flex w-full items-start">
+      <div className="relative flex w-full min-w-0 items-start overflow-x-hidden">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebarCollapsed}
         />
 
-        <div className="relative z-10 min-w-0 flex-1 pt-14 lg:pt-0">
+        <div className="relative z-10 w-full min-w-0 max-w-full flex-1 overflow-x-hidden pt-14 lg:pt-0">
           <MobileNavHeader
             menuOpen={mobileMenuOpen}
             onOpenMenu={() => setMobileMenuOpen(true)}
           />
           <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobileMenu} />
 
-          <main className="min-w-0 px-4 py-4 sm:px-6 lg:px-8 lg:py-7">
+          <main className="w-full min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8 lg:py-7">
             <div
-              className={`mx-auto ${wideContent ? 'max-w-[1520px]' : 'max-w-7xl'} ${premiumBackground ? 'space-y-8' : 'space-y-5'}`}
+              className={`mx-auto w-full min-w-0 ${wideContent ? 'max-w-[1520px]' : 'max-w-7xl'} ${premiumBackground ? 'space-y-8' : 'space-y-5'}`}
             >
               {customHeader ? (
-                <div className="relative">
+                <div className="relative min-w-0">
                   <div className="absolute top-0 right-0 z-20 hidden lg:block">
                     <AccountMenu />
                   </div>

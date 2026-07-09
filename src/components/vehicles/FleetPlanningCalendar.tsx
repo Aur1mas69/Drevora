@@ -524,7 +524,7 @@ export function FleetPlanningCalendar({
           </div>
 
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex gap-1.5 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-1 shadow-sm ring-1 ring-[#C5DFFB]/40">
+            <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-1 shadow-sm ring-1 ring-[#C5DFFB]/40">
               {(['Day', 'Week', 'Month', 'Year'] as const).map((item) => (
                 <button
                   key={item}
@@ -586,7 +586,7 @@ export function FleetPlanningCalendar({
                     type="date"
                     value={toDateKey(focusDate)}
                     onChange={(event) => jumpToDate(event.target.value)}
-                    className={`${calendarInputClass} min-w-40`}
+                    className={`${calendarInputClass} w-full min-w-0 sm:min-w-40 sm:w-auto`}
                   />
                 </div>
               ) : (
@@ -737,7 +737,7 @@ export function FleetPlanningCalendar({
         {view === 'Month' ? (
           <div ref={monthGridRef} className="mt-4 scroll-mt-8">
             <div className="overflow-x-auto overflow-y-visible pb-1">
-              <div className="min-w-[720px] overflow-visible sm:min-w-0">
+              <div className="min-w-[720px]">
                 <div className="grid grid-cols-7 gap-2">
                   {WEEKDAY_LABELS.map((label, index) => (
                     <div

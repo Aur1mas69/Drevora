@@ -11,6 +11,9 @@ import {
 import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { VehicleTypeTemplateChecksModal } from '@/components/vehicles/VehicleTypeTemplateChecksModal'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { resolveCompanyTextScope } from '@/lib/companySettingsGlobals'
 import {
   getDriverName,
   getScheduleReasonOptions,
@@ -19,7 +22,11 @@ import {
   type VehicleFormErrors,
 } from '@/lib/vehicleForm'
 import type { Driver } from '@/services/driversService'
-import { vehicleTypeOptions, type VehicleInput, type VehicleStatus } from '@/services/vehiclesService'
+import {
+  getVehicleTypeSelectOptions,
+  type VehicleInput,
+  type VehicleStatus,
+} from '@/services/vehiclesService'
 
 const vehicleStatuses: VehicleStatus[] = [
   'Available',
@@ -150,8 +157,14 @@ export function VehicleEditModal({
 }: VehicleEditModalProps) {
   const initialFormRef = useRef(form)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
+  const [isTemplateChecksOpen, setIsTemplateChecksOpen] = useState(false)
+  const { settings, isLoading: isCompanyLoading } = useCompanySettings()
   const isScheduledStatus = scheduledAvailabilityStatuses.includes(form.status)
   const reasonOptions = getScheduleReasonOptions(form.status)
+  const vehicleTypeSelectOptions = getVehicleTypeSelectOptions(form.vehicleType)
+  const selectedVehicleType = form.vehicleType.trim()
+  const companyName = resolveCompanyTextScope(settings)
+  const canManageTemplateChecks = Boolean(selectedVehicleType && companyName && !isCompanyLoading)
   const isDirty = isVehicleFormDirty(form, initialFormRef.current)
 
   const requestClose = useCallback(() => {
@@ -255,8 +268,8 @@ export function VehicleEditModal({
               </VehicleFormSection>
 
               <VehicleFormSection title="Assignment & Status">
-                <label className="block">
-                  <span className={vehicleFormLabelClass}>Vehicle Type</span>
+                <label className="block sm:col-span-2">
+                  <span className={vehicleFormLabelClass}>Vehicle type / category</span>
                   <select
                     name="vehicleType"
                     value={form.vehicleType}
@@ -265,13 +278,37 @@ export function VehicleEditModal({
                     className={vehicleFormSelectClass}
                   >
                     <option value="">Select vehicle type</option>
-                    {vehicleTypeOptions.map((type) => (
+                    {vehicleTypeSelectOptions.map((type) => (
                       <option key={type} value={type}>
                         {type}
                       </option>
                     ))}
                   </select>
                   <FieldError message={errors.vehicleType} />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!canManageTemplateChecks}
+                      onClick={() => setIsTemplateChecksOpen(true)}
+                      className="h-9 rounded-[12px] border-[#C5DFFB] bg-white px-3 text-xs font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] disabled:opacity-60"
+                    >
+                      + Template Checks
+                    </Button>
+                    {!selectedVehicleType ? (
+                      <span className="text-xs font-medium text-[#5499BF]">
+                        Select vehicle type first.
+                      </span>
+                    ) : isCompanyLoading ? (
+                      <span className="text-xs font-medium text-[#5499BF]">
+                        Company settings are still loading.
+                      </span>
+                    ) : !companyName ? (
+                      <span className="text-xs font-medium text-[#5499BF]">
+                        Company settings are still loading.
+                      </span>
+                    ) : null}
+                  </div>
                 </label>
 
                 <label className="block">
@@ -460,6 +497,12 @@ export function VehicleEditModal({
           onDiscard={handleDiscardChanges}
         />
       ) : null}
+
+      <VehicleTypeTemplateChecksModal
+        isOpen={isTemplateChecksOpen}
+        vehicleType={selectedVehicleType}
+        onClose={() => setIsTemplateChecksOpen(false)}
+      />
     </>
   )
 }

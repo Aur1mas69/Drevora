@@ -456,9 +456,9 @@ function VehiclesPage() {
 
   return (
     <AdminLayout premiumBackground>
-      <section className="space-y-6">
+      <section className="min-w-0 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
               Fleet
             </p>
@@ -472,7 +472,7 @@ function VehiclesPage() {
           <Button
             type="button"
             onClick={openAddVehicleModal}
-            className="h-11 shrink-0 rounded-[12px] bg-[#2563EB] px-5 font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8]"
+            className="h-11 w-full shrink-0 rounded-[12px] bg-[#2563EB] px-5 font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8] sm:w-auto"
           >
             <Plus className="size-4" />
             Add Vehicle

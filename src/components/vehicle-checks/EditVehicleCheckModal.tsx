@@ -8,7 +8,7 @@ import {
   loadVehicleChecklist,
   type VehicleChecklistLoadStatus,
 } from '@/lib/vehicleCheckTemplateLoader'
-import { computeOverallResult } from '@/lib/vehicleCheckUtils'
+import { computeOverallResult, isChecklistFullyAnswered } from '@/lib/vehicleCheckUtils'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
@@ -59,6 +59,7 @@ export function EditVehicleCheckModal({
   const [checklistStatus, setChecklistStatus] = useState<VehicleChecklistLoadStatus>('missing_vehicle_type')
   const [isLoadingChecklist, setIsLoadingChecklist] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showChecklistValidation, setShowChecklistValidation] = useState(false)
   const initialVehicleIdRef = useRef<string | null>(null)
   const itemsRef = useRef<VehicleCheckItemInput[]>([])
 
@@ -96,6 +97,7 @@ export function EditVehicleCheckModal({
     setStatus(activeCheck.status)
     setNotes(activeCheck.notes ?? '')
     setError(null)
+    setShowChecklistValidation(false)
 
     const savedItems = activeCheck.items.map((item) => ({
       category: item.category,
@@ -108,6 +110,7 @@ export function EditVehicleCheckModal({
       allowNotes: item.allowNotes,
       allowPhoto: item.allowPhoto,
       failOnDefect: item.failOnDefect,
+      isAnswered: true,
     }))
     itemsRef.current = savedItems
     setItems(savedItems)
@@ -197,6 +200,12 @@ export function EditVehicleCheckModal({
   }, [vehicleId, isOpen, selectedVehicle?.vehicleType])
 
   useEffect(() => {
+    if (isChecklistFullyAnswered(items, checklistSections)) {
+      setShowChecklistValidation(false)
+    }
+  }, [items, checklistSections])
+
+  useEffect(() => {
     if (!isOpen) return
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -219,10 +228,18 @@ export function EditVehicleCheckModal({
       return
     }
 
-    if (!canSubmitVehicleChecklist(checklistStatus, items)) {
-      setError(checklistNotice ?? 'Inspection checklist cannot be empty.')
+    if (!canSubmitVehicleChecklist(checklistStatus, items, checklistSections)) {
+      if (checklistStatus !== 'ready' || items.length === 0) {
+        setError(checklistNotice ?? 'Inspection checklist cannot be empty.')
+        return
+      }
+
+      setShowChecklistValidation(true)
+      setError('Please answer every checklist item before saving.')
       return
     }
+
+    setShowChecklistValidation(false)
 
     try {
       await onSubmit({
@@ -357,6 +374,7 @@ export function EditVehicleCheckModal({
               onChange={setItems}
               sections={checklistSections.length > 0 ? checklistSections : undefined}
               emptyMessage={checklistNotice ?? undefined}
+              highlightUnanswered={showChecklistValidation}
             />
 
             {isLoadingChecklist ? (
@@ -400,7 +418,8 @@ export function EditVehicleCheckModal({
               disabled={
                 isSaving ||
                 isLoadingChecklist ||
-                !canSubmitVehicleChecklist(checklistStatus, items)
+                checklistStatus !== 'ready' ||
+                items.length === 0
               }
               className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
             >

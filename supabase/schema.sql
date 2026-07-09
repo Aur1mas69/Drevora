@@ -561,16 +561,59 @@ create table if not exists public.vehicle_checks (
   worker_id uuid not null references public.drivers (id) on delete cascade,
   inspection_date date not null,
   odometer integer,
+  odometer_unit text not null default 'miles',
   status text not null default 'Completed',
   overall_result text not null default 'Pass',
   notes text,
+  signature_url text,
+  signed_at timestamptz,
+  inspection_started_at timestamptz,
+  inspection_completed_at timestamptz,
+  duration_seconds integer,
   constraint vehicle_checks_status_check check (
     status in ('Completed', 'Pending', 'In Progress')
   ),
   constraint vehicle_checks_overall_result_check check (
     overall_result in ('Pass', 'Advisory', 'Fail')
+  ),
+  constraint vehicle_checks_odometer_unit_check check (
+    odometer_unit in ('miles', 'km')
   )
 );
+
+alter table public.vehicle_checks
+  add column if not exists odometer_unit text,
+  add column if not exists signature_url text,
+  add column if not exists signed_at timestamptz,
+  add column if not exists inspection_started_at timestamptz,
+  add column if not exists inspection_completed_at timestamptz,
+  add column if not exists duration_seconds integer;
+
+update public.vehicle_checks
+set odometer_unit = 'miles'
+where odometer_unit is null;
+
+alter table public.vehicle_checks
+  alter column odometer_unit set default 'miles';
+
+alter table public.vehicle_checks
+  alter column odometer_unit set not null;
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_odometer_unit_check;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_odometer_unit_check check (
+    odometer_unit in ('miles', 'km')
+  );
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_duration_seconds_non_negative;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_duration_seconds_non_negative check (
+    duration_seconds is null or duration_seconds >= 0
+  );
 
 create table if not exists public.vehicle_check_items (
   id uuid primary key default gen_random_uuid(),
@@ -682,8 +725,8 @@ create trigger vehicle_check_templates_updated_at
   for each row
   execute function public.set_vehicle_check_template_updated_at();
 
-alter table public.vehicle_check_templates disable row level security;
-alter table public.vehicle_check_template_items disable row level security;
+alter table public.vehicle_check_templates enable row level security;
+alter table public.vehicle_check_template_items enable row level security;
 
 grant select, insert, update, delete on public.vehicle_check_templates to anon, authenticated;
 grant select, insert, update, delete on public.vehicle_check_template_items to anon, authenticated;
@@ -985,6 +1028,152 @@ as $$
   from public.companies c
   order by c.created_at asc nulls last
   limit 1;
+$$;
+
+create or replace function public.drevora_current_company_name()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  company_id uuid;
+  resolved text;
+begin
+  select c.id
+  into company_id
+  from public.companies c
+  order by c.created_at asc nulls last
+  limit 1;
+
+  if company_id is null then
+    return null;
+  end if;
+
+  select nullif(trim(c.name), '')
+  into resolved
+  from public.companies c
+  where c.id = company_id;
+
+  if resolved is not null then
+    return resolved;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'companies'
+      and column_name = 'company_name'
+  ) then
+    execute
+      'select nullif(trim(company_name), '''') from public.companies where id = $1'
+      into resolved
+      using company_id;
+
+    if resolved is not null then
+      return resolved;
+    end if;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'companies'
+      and column_name = 'organisation_name'
+  ) then
+    execute
+      'select nullif(trim(organisation_name), '''') from public.companies where id = $1'
+      into resolved
+      using company_id;
+
+    if resolved is not null then
+      return resolved;
+    end if;
+  end if;
+
+  return null;
+end;
+$$;
+
+create or replace function public.drevora_company_text_matches_current(company_value text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  company_id uuid;
+  insert_value text;
+  candidate text;
+begin
+  if company_value is null then
+    return true;
+  end if;
+
+  insert_value := nullif(trim(company_value), '');
+  if insert_value is null then
+    return false;
+  end if;
+
+  select c.id
+  into company_id
+  from public.companies c
+  order by c.created_at asc nulls last
+  limit 1;
+
+  if company_id is null then
+    return false;
+  end if;
+
+  select nullif(trim(c.name), '')
+  into candidate
+  from public.companies c
+  where c.id = company_id;
+
+  if candidate is not null and lower(insert_value) = lower(candidate) then
+    return true;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'companies'
+      and column_name = 'company_name'
+  ) then
+    execute
+      'select nullif(trim(company_name), '''') from public.companies where id = $1'
+      into candidate
+      using company_id;
+
+    if candidate is not null and lower(insert_value) = lower(candidate) then
+      return true;
+    end if;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'companies'
+      and column_name = 'organisation_name'
+  ) then
+    execute
+      'select nullif(trim(organisation_name), '''') from public.companies where id = $1'
+      into candidate
+      using company_id;
+
+    if candidate is not null and lower(insert_value) = lower(candidate) then
+      return true;
+    end if;
+  end if;
+
+  return false;
+end;
 $$;
 
 create or replace function public.drevora_set_updated_at()

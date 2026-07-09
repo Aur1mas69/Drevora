@@ -51,3 +51,12 @@ export function getSetting<K extends keyof CompanySettings>(key: K): CompanySett
 export function getCompanyTimezone(): string {
   return globalSettings?.timezone?.trim() || 'Europe/London'
 }
+
+/** Company text stored on rows such as documents, drivers, vehicle_check_templates. */
+export function resolveCompanyTextScope(
+  settings?: CompanySettings | null,
+): string | null {
+  const fromSettings = settings?.name?.trim()
+  if (fromSettings) return fromSettings
+  return globalSettings?.name?.trim() || null
+}

@@ -1,16 +1,66 @@
 import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
-import type { VehicleCheck } from '@/lib/vehicleCheckTypes'
+import type { VehicleCheck, VehicleCheckItem } from '@/lib/vehicleCheckTypes'
 import { getResultBadgeClass, getStatusBadgeClass } from '@/lib/vehicleCheckUtils'
+import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
+import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
 import { X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 type VehicleCheckDrawerProps = {
   check: VehicleCheck | null
   isOpen: boolean
   onClose: () => void
   onEdit?: () => void
+}
+
+function VehicleCheckPhotoThumb({ item }: { item: VehicleCheckItem }) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPhoto() {
+      if (!item.photoUrl?.trim()) {
+        setPhotoUrl(null)
+        return
+      }
+
+      try {
+        const signedUrl = await getVehicleCheckPhotoSignedUrl(item.photoUrl)
+        if (!cancelled) setPhotoUrl(signedUrl)
+      } catch {
+        if (!cancelled) setPhotoUrl(null)
+      }
+    }
+
+    void loadPhoto()
+
+    return () => {
+      cancelled = true
+    }
+  }, [item.photoUrl])
+
+  if (!photoUrl) return null
+
+  return (
+    <a
+      href={photoUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
+    >
+      <img
+        src={photoUrl}
+        alt={`${item.itemName} defect`}
+        className="h-28 w-full object-cover"
+      />
+      <span className="block truncate px-2 py-1.5 text-xs font-medium text-slate-600">
+        {item.itemName}
+      </span>
+    </a>
+  )
 }
 
 export function VehicleCheckDrawer({
@@ -145,7 +195,11 @@ export function VehicleCheckDrawer({
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Duration</dt>
-                <dd className="text-right text-slate-700">Not recorded</dd>
+                <dd className="text-right tabular-nums text-slate-700">
+                  {check.durationSeconds != null
+                    ? formatInspectionDuration(check.durationSeconds)
+                    : 'Not recorded'}
+                </dd>
               </div>
               <div>
                 <dt className="text-slate-500">Overall notes</dt>
@@ -196,22 +250,7 @@ export function VehicleCheckDrawer({
               </h3>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 {photoItems.map((item) => (
-                  <a
-                    key={item.id}
-                    href={item.photoUrl ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
-                  >
-                    <img
-                      src={item.photoUrl ?? undefined}
-                      alt={`${item.itemName} defect`}
-                      className="h-28 w-full object-cover"
-                    />
-                    <span className="block truncate px-2 py-1.5 text-xs font-medium text-slate-600">
-                      {item.itemName}
-                    </span>
-                  </a>
+                  <VehicleCheckPhotoThumb key={item.id} item={item} />
                 ))}
               </div>
             </section>

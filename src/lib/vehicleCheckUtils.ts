@@ -24,6 +24,78 @@ export function resolveVehicleCheckItemDescription(
   return fromTemplate || null
 }
 
+export function getVehicleCheckTemplateGuidance(
+  item: Pick<VehicleCheckItemInput, 'templateItem'>,
+): string | null {
+  const guidance = item.templateItem?.description?.trim()
+  return guidance || null
+}
+
+export function getVehicleCheckItemKey(
+  item: Pick<VehicleCheckItemInput, 'category' | 'itemName'>,
+): string {
+  return `${item.category}-${item.itemName}`
+}
+
+export function isVehicleCheckItemAnswered(item: VehicleCheckItemInput): boolean {
+  return item.isAnswered === true
+}
+
+export function buildExpectedChecklistItems(
+  items: VehicleCheckItemInput[],
+  sections?: VehicleChecklistSection[],
+): VehicleCheckItemInput[] {
+  if (sections && sections.length > 0) {
+    return sections.flatMap(({ section, itemNames }) =>
+      itemNames.map((itemName) => {
+        return (
+          items.find((entry) => entry.category === section && entry.itemName === itemName) ?? {
+            category: section,
+            itemName,
+            result: 'Pass' as VehicleCheckItemResult,
+            comment: '',
+            isAnswered: false,
+          }
+        )
+      }),
+    )
+  }
+
+  return items
+}
+
+export function getChecklistAnswerProgress(
+  items: VehicleCheckItemInput[],
+  sections?: VehicleChecklistSection[],
+): { answeredCount: number; totalCount: number } {
+  const expectedItems = buildExpectedChecklistItems(items, sections)
+  const answeredCount = expectedItems.filter(isVehicleCheckItemAnswered).length
+
+  return {
+    answeredCount,
+    totalCount: expectedItems.length,
+  }
+}
+
+export function getUnansweredChecklistItemKeys(
+  items: VehicleCheckItemInput[],
+  sections?: VehicleChecklistSection[],
+): Set<string> {
+  return new Set(
+    buildExpectedChecklistItems(items, sections)
+      .filter((item) => !isVehicleCheckItemAnswered(item))
+      .map(getVehicleCheckItemKey),
+  )
+}
+
+export function isChecklistFullyAnswered(
+  items: VehicleCheckItemInput[],
+  sections?: VehicleChecklistSection[],
+): boolean {
+  const { answeredCount, totalCount } = getChecklistAnswerProgress(items, sections)
+  return totalCount > 0 && answeredCount === totalCount
+}
+
 export function enrichVehicleCheckItemsWithTemplates(
   items: VehicleCheckItem[],
   templates: VehicleCheckTemplateItem[],
@@ -32,15 +104,22 @@ export function enrichVehicleCheckItemsWithTemplates(
     const template = templates.find(
       (entry) => entry.section === item.category && entry.label === item.itemName,
     )
-    const templateItem = template ? { description: template.description } : null
+    const templateItem = template
+      ? {
+          description: template.description,
+          allowNotes: template.allowNotes,
+          allowPhoto: template.allowPhoto,
+          failOnDefect: template.failOnDefect,
+        }
+      : null
 
     return {
       ...item,
       templateItem,
-      description: resolveVehicleCheckItemDescription({
-        description: null,
-        templateItem,
-      }),
+      description: null,
+      allowNotes: template?.allowNotes ?? item.allowNotes,
+      allowPhoto: template?.allowPhoto ?? item.allowPhoto,
+      failOnDefect: template?.failOnDefect ?? item.failOnDefect,
     }
   })
 }
@@ -57,10 +136,7 @@ export function createChecklistItemsFromTemplates(
       result: 'Pass' as VehicleCheckItemResult,
       comment: '',
       templateItem,
-      description: resolveVehicleCheckItemDescription({
-        description: null,
-        templateItem,
-      }),
+      isAnswered: false,
       allowNotes: template.allowNotes,
       allowPhoto: template.allowPhoto,
       failOnDefect: template.failOnDefect,
@@ -105,12 +181,11 @@ export function mergeChecklistWithExistingItems(
       itemName: template.label,
       result: match?.result ?? ('Pass' as VehicleCheckItemResult),
       comment: match?.comment ?? '',
-      photoUrl: match?.photoUrl,
+      photoUrl: match?.photoUrl ?? null,
+      photoFile: match?.photoFile ?? null,
+      photoPreviewUrl: match?.photoPreviewUrl ?? null,
       templateItem,
-      description: resolveVehicleCheckItemDescription({
-        description: null,
-        templateItem,
-      }),
+      isAnswered: Boolean(match),
       allowNotes: template.allowNotes,
       allowPhoto: template.allowPhoto,
       failOnDefect: template.failOnDefect,
@@ -118,9 +193,12 @@ export function mergeChecklistWithExistingItems(
   })
 }
 
-export function computeOverallResult(items: Pick<VehicleCheckItemInput, 'result'>[]): VehicleCheckResult {
-  if (items.some((item) => item.result === 'Fail')) return 'Fail'
-  if (items.some((item) => item.result === 'Advisory')) return 'Advisory'
+export function computeOverallResult(
+  items: Pick<VehicleCheckItemInput, 'result' | 'isAnswered'>[],
+): VehicleCheckResult {
+  const answeredItems = items.filter((item) => item.isAnswered === true)
+  // Defect (Advisory) drives overall result. N/A is stored as Fail and does not fail the inspection.
+  if (answeredItems.some((item) => item.result === 'Advisory')) return 'Advisory'
   return 'Pass'
 }
 
@@ -177,6 +255,8 @@ export function getStatusBadgeClass(status: VehicleCheckListItem['status']): str
     case 'Pending':
       return 'bg-amber-50 text-amber-700 ring-amber-100'
   }
+
+  return 'bg-slate-50 text-slate-700 ring-slate-100'
 }
 
 export function getResultBadgeClass(result: VehicleCheckResult): string {

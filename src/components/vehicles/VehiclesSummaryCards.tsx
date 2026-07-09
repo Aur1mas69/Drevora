@@ -98,8 +98,10 @@ function VehicleKpiCard({
               {value}
             </p>
           )}
-          <p className={`mt-2 text-xs font-semibold leading-snug sm:text-sm ${style.labelClass}`}>
-            {label}
+          <p
+            className={`mt-2 text-xs font-semibold leading-snug sm:text-sm ${style.labelClass}`}
+          >
+            <span className="line-clamp-2">{label}</span>
           </p>
           <p className={`mt-0.5 hidden text-[11px] leading-snug sm:block ${style.subtitleClass}`}>
             {helper}
@@ -115,7 +117,7 @@ export function VehiclesSummaryCards({
   isLoading = false,
 }: VehiclesSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
       {cards.map((card) => (
         <VehicleKpiCard
           key={card.key}

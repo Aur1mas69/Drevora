@@ -6,6 +6,7 @@ import {
   type RowAction,
 } from '@/components/ui/RowActionsMenu'
 import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
+import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import {
   formatVehicleCheckResultLabel,
   getResultBadgeClass,
@@ -13,10 +14,9 @@ import {
 } from '@/lib/vehicleCheckUtils'
 import {
   adminHeading,
-  adminTableHeadText,
   adminTableHeader,
   adminTableRow,
-  adminTableShellSm,
+  adminTableShell,
   adminText,
   adminTextStrong,
 } from '@/lib/adminUiStyles'
@@ -54,8 +54,11 @@ export function VehicleChecksDataTable({
   onDelete,
 }: VehicleChecksDataTableProps) {
   const { formatDate, compactTables } = useCompanySettings()
-  const rowPadding = compactTables ? 'py-1' : 'py-1.5'
-  const cellText = compactTables ? 'text-[11px]' : 'text-xs'
+  const rowPadding = compactTables ? 'py-3' : 'py-4'
+  const headerPadding = compactTables ? 'px-4 py-3' : 'px-4 py-3.5'
+  const cellPadding = `px-4 ${rowPadding}`
+  const badgeClassName =
+    'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 sm:px-3 sm:py-1.5 sm:text-sm'
 
   function formatCheckDateTime(check: VehicleCheckListItem): string {
     const datePart = formatDate(check.inspectionDate)
@@ -81,48 +84,68 @@ export function VehicleChecksDataTable({
     return 'Vehicle details'
   }
 
+  function getDurationLabel(check: VehicleCheckListItem): string {
+    if (check.durationSeconds == null) return '—'
+    return formatInspectionDuration(check.durationSeconds)
+  }
+
   return (
-    <div className={adminTableShellSm}>
-      <div className="max-h-[calc(100vh-24rem)] overflow-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left">
+    <div
+      className={`${adminTableShell} shadow-[0_8px_24px_rgba(33,142,231,0.08)] ring-1 ring-[#D3E9FC]/80`}
+    >
+      <div className="max-h-[calc(100vh-22rem)] overflow-auto">
+        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
           <thead className={adminTableHeader}>
-            <tr className={adminTableHeadText}>
-              <th className="px-3 py-2">Date / Time</th>
-              <th className="px-3 py-2">Vehicle</th>
-              <th className="px-3 py-2">Worker</th>
-              <th className="px-3 py-2">Result</th>
-              <th className="px-3 py-2">Defects</th>
-              <th className="px-3 py-2">Duration</th>
-              <th className="px-3 py-2">Status</th>
-              <TableActionsHeader />
+            <tr className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF] sm:text-sm sm:tracking-[0.06em]">
+              <th className={headerPadding}>Date / Time</th>
+              <th className={headerPadding}>Vehicle</th>
+              <th className={headerPadding}>Worker</th>
+              <th className={headerPadding}>Result</th>
+              <th className={headerPadding}>Defects</th>
+              <th className={headerPadding}>Duration</th>
+              <th className={headerPadding}>Status</th>
+              <TableActionsHeader className={headerPadding} />
             </tr>
           </thead>
           <tbody>
             {checks.map((check) => (
-              <tr key={check.id} className={`${adminTableRow} ${cellText}`}>
-                <td className={`px-3 ${rowPadding} tabular-nums ${adminTextStrong}`}>
+              <tr
+                key={check.id}
+                className={`${adminTableRow} min-h-[68px] text-sm sm:min-h-[72px]`}
+              >
+                <td className={`${cellPadding} align-middle tabular-nums font-medium ${adminTextStrong}`}>
                   {formatCheckDateTime(check)}
                 </td>
-                <td className={`px-3 ${rowPadding}`}>
-                  <div className={`font-semibold ${adminHeading}`}>{check.vehicleRegistration}</div>
-                  <div className={`mt-0.5 ${adminText}`}>{getVehicleSubline(check)}</div>
+                <td className={`${cellPadding} align-middle`}>
+                  <div className={`text-sm font-semibold sm:text-base ${adminHeading}`}>
+                    {check.vehicleRegistration}
+                  </div>
+                  <div className={`mt-1 text-xs leading-5 sm:text-sm ${adminText}`}>
+                    {getVehicleSubline(check)}
+                  </div>
                 </td>
-                <td className={`px-3 ${rowPadding} ${adminTextStrong}`}>{check.workerName}</td>
-                <td className={`px-3 ${rowPadding}`}>
+                <td className={`${cellPadding} align-middle font-medium ${adminTextStrong}`}>
+                  {check.workerName}
+                </td>
+                <td className={`${cellPadding} align-middle`}>
                   <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(check.overallResult)}`}
+                    className={`${badgeClassName} ${getResultBadgeClass(check.overallResult)}`}
                   >
                     {formatVehicleCheckResultLabel(check.overallResult)}
                   </span>
                 </td>
-                <td className={`px-3 ${rowPadding} ${check.defectCount > 0 ? 'font-semibold text-amber-700' : adminText}`}>
+                <td
+                  className={`${cellPadding} align-middle font-medium ${
+                    check.defectCount > 0 ? 'font-semibold text-amber-700' : adminText
+                  }`}
+                >
                   {getDefectsLabel(check)}
                 </td>
-                <td className={`px-3 ${rowPadding} ${adminText}`}>—</td>
-                <td className={`px-3 ${rowPadding}`}>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getStatusBadgeClass(check.status)}`}
-                  >
+                <td className={`${cellPadding} align-middle tabular-nums font-medium ${adminTextStrong}`}>
+                  {getDurationLabel(check)}
+                </td>
+                <td className={`${cellPadding} align-middle`}>
+                  <span className={`${badgeClassName} ${getStatusBadgeClass(check.status)}`}>
                     {check.status}
                   </span>
                 </td>

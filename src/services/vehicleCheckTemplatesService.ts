@@ -5,9 +5,11 @@ import type {
   UpdateVehicleCheckTemplateInput,
   UpdateVehicleCheckTemplateItemInput,
   VehicleCheckTemplate,
+  VehicleCheckTemplateCompanyScope,
   VehicleCheckTemplateItem,
   VehicleCheckTemplateWithItems,
 } from '@/lib/vehicleCheckTemplateTypes'
+import { getDefaultDvsaVehicleCheckItems } from '@/lib/defaultDvsaVehicleCheckItems'
 import { requireSupabase } from '@/lib/supabase'
 
 export const VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE = 'vehicle_check_template_items'
@@ -86,6 +88,11 @@ const templateItemWithTemplateSelect = `
   )
 `
 
+const EXTRA_VEHICLE_TYPE_CHECKS_SECTION = 'Extra checks'
+const EXTRA_VEHICLE_TYPE_CHECKS_BASE_SORT_ORDER = 100
+/** Legacy flat-table header marker when section/item_name remain NOT NULL on vehicle_check_templates. */
+const VEHICLE_CHECK_TEMPLATE_LEGACY_HEADER_ITEM_NAME = 'Template header'
+
 export class VehicleCheckTemplatesServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -93,360 +100,55 @@ export class VehicleCheckTemplatesServiceError extends Error {
   }
 }
 
-const DEFAULT_VEHICLE_CHECK_ITEMS: DefaultVehicleCheckTemplateItem[] = [
-  {
-    section: 'Inside cab / front view',
-    label: 'Front view, mirrors, cameras and glass',
-    description:
-      'Check nothing obstructs the front view. Check windscreen, side windows, mirrors and camera systems are clean, secure, working and not cracked, damaged, missing, obscured or excessively tinted.',
-    sortOrder: 1,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Windscreen wipers and washers',
-    description:
-      'Check wipers work and are not missing, damaged or worn. Check the washer system works.',
-    sortOrder: 2,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Dashboard warning lights and gauges',
-    description:
-      'Check instruments, gauges and warning lights work correctly, including engine warning, emissions system, ABS and EBS where fitted.',
-    sortOrder: 3,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Steering',
-    description:
-      'Check steering works correctly, power-assisted steering works, no excessive play, no jamming and no excessive lift or movement in the steering column.',
-    sortOrder: 4,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Horn',
-    description: 'Check the horn works and is easily accessible from the seat.',
-    sortOrder: 5,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Brakes and air build-up',
-    description:
-      'Check air builds up correctly, warning system works, there are no air leaks, footwell is clear, service brake works, parking brake works and brake pedal condition is safe.',
-    sortOrder: 6,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Height marker',
-    description: 'Check the correct vehicle height is displayed in the cab.',
-    sortOrder: 7,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Seatbelts',
-    description:
-      'Check seatbelts are not cut, damaged or frayed, stay secure when plugged in and retract correctly.',
-    sortOrder: 8,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Inside cab / front view',
-    label: 'Cab, doors and steps',
-    description:
-      'Check cab mountings, tilt devices, body panels, doors and steps are secure and safe to use.',
-    sortOrder: 9,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Lights and indicators',
-    description:
-      'Check all lights and indicators work correctly. Check lenses are fitted, clean and the correct colour. Check stop lamps and marker lights work.',
-    sortOrder: 10,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Fuel and oil leaks',
-    description:
-      'Check the fuel filler cap is fitted correctly. With the engine on, check underneath the vehicle for fuel or oil leaks.',
-    sortOrder: 11,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Body, wings and guards security',
-    description:
-      'Check fastening devices, cab doors, trailer doors, body panels, landing legs if fitted, sideguards and rear under-run guards are secure and not damaged.',
-    sortOrder: 12,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Battery security and condition',
-    description: 'Check the battery is secure, in good condition and not leaking.',
-    sortOrder: 13,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Diesel exhaust fluid / AdBlue',
-    description: 'Check the diesel vehicle has enough AdBlue and top up if necessary.',
-    sortOrder: 14,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Excessive engine exhaust smoke',
-    description: 'Check the exhaust does not emit an excessive amount of smoke.',
-    sortOrder: 15,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'High voltage emergency cut-off switch',
-    description:
-      'For electric or hybrid vehicles, check you know where the cut-off switch is located, it operates correctly and high voltage components are secure and not damaged.',
-    sortOrder: 16,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Alternative fuel systems and isolation',
-    description:
-      'Check you know where the fuel isolation switch is located, there are no leaks and visible components are in good condition.',
-    sortOrder: 17,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Spray suppression',
-    description:
-      'Check spray suppression flaps are fitted where required, secure, not damaged and not clogged with mud or debris.',
-    sortOrder: 18,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Tyres and wheel fixing',
-    description:
-      'Check tyres and wheels are secure, tyre tread depth is at least 1mm, tyres are inflated correctly, there are no deep cuts, no visible cord, wheel nuts are tight and no debris is trapped between twin wheels.',
-    sortOrder: 19,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Brake lines and trailer parking brake',
-    description:
-      'Check couplings are free from debris and correctly positioned, there are no leaks, brake lines are not damaged or worn and the trailer parking brake works.',
-    sortOrder: 20,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Electrical connections',
-    description:
-      'Check visible wiring is insulated and safe, wiring is not likely to get caught or damaged, trailer electrical couplings are secure and switches work correctly.',
-    sortOrder: 21,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Coupling security',
-    description:
-      'Check the vehicle and trailer are securely attached, trailer is correctly located in the fifth wheel or coupling and secondary locking devices are in the correct position.',
-    sortOrder: 22,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Security of load',
-    description: 'Check the load is secure and not likely to move. If unsafe, escalate before driving.',
-    sortOrder: 23,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Number plate',
-    description:
-      'Check the number plate is not broken, incomplete, incorrect, badly spaced, dirty, faded or covered.',
-    sortOrder: 24,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Reflectors',
-    description:
-      'Check reflectors are present, secure, not broken, correct colour and not obscured by dirt or other objects.',
-    sortOrder: 25,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Markings and warning plates',
-    description:
-      'Check vehicle markings, including conspicuity markings, are the right colour, visible, securely fastened and not obscured by dirt or other objects. If carrying dangerous goods, check hazard information panels show the correct information, are visible, securely fastened and not obscured.',
-    sortOrder: 26,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-  {
-    section: 'Outside vehicle',
-    label: 'Other equipment',
-    description: 'Check any extra equipment specific to the vehicle, body or operation.',
-    sortOrder: 27,
-    isRequired: true,
-    allowNotes: true,
-    allowPhoto: false,
-    failOnDefect: true,
-    isActive: true,
-    isCustom: false,
-  },
-]
+export function getDefaultVehicleCheckItems(): DefaultVehicleCheckTemplateItem[] {
+  return getDefaultDvsaVehicleCheckItems()
+}
 
 function normalizeOptionalText(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
 }
 
-export function getDefaultVehicleCheckItems(): DefaultVehicleCheckTemplateItem[] {
-  return DEFAULT_VEHICLE_CHECK_ITEMS.map((item) => ({ ...item }))
+function isMissingVehicleCheckTemplateColumnError(error: unknown): boolean {
+  const message =
+    error instanceof VehicleCheckTemplatesServiceError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : ''
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('could not find') ||
+    normalized.includes('schema cache') ||
+    (normalized.includes('column') &&
+      (normalized.includes('does not exist') || normalized.includes('not found')))
+  )
+}
+
+function buildVehicleCheckTemplateInsertPayload(
+  payload: CreateVehicleCheckTemplateInput,
+  name: string,
+): Record<string, unknown> {
+  const vehicleType = normalizeOptionalText(payload.vehicleType)
+
+  return {
+    company: normalizeOptionalText(payload.company),
+    name,
+    vehicle_type: vehicleType,
+    description: normalizeOptionalText(payload.description),
+    is_active: payload.isActive ?? true,
+    // Legacy flat-table NOT NULL columns (safe header placeholders; real items live in vehicle_check_template_items).
+    section: EXTRA_VEHICLE_TYPE_CHECKS_SECTION,
+    item_name: VEHICLE_CHECK_TEMPLATE_LEGACY_HEADER_ITEM_NAME,
+  }
+}
+
+function stripLegacyVehicleCheckTemplateHeaderFields(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  const { section: _section, item_name: _itemName, ...normalized } = payload
+  return normalized
 }
 
 function mapTemplateRow(row: VehicleCheckTemplateRow): VehicleCheckTemplate {
@@ -460,6 +162,17 @@ function mapTemplateRow(row: VehicleCheckTemplateRow): VehicleCheckTemplate {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
+}
+
+function requireCompanyScope(
+  scope?: VehicleCheckTemplateCompanyScope | null,
+): VehicleCheckTemplateCompanyScope {
+  const company = scope?.company?.trim()
+  if (!company) {
+    throw new VehicleCheckTemplatesServiceError('Company is required to manage template checks.')
+  }
+
+  return { company }
 }
 
 function mapTemplateItemRow(row: VehicleCheckTemplateItemRow): VehicleCheckTemplateItem {
@@ -574,45 +287,99 @@ export async function createVehicleCheckTemplate(
     throw new VehicleCheckTemplatesServiceError('Template name is required.')
   }
 
-  const { data, error } = await requireSupabase()
-    .from(VEHICLE_CHECK_TEMPLATES_TABLE)
-    .insert({
-      company: normalizeOptionalText(payload.company),
-      name,
-      vehicle_type: normalizeOptionalText(payload.vehicleType),
-      description: normalizeOptionalText(payload.description),
-      is_active: payload.isActive ?? true,
+  const vehicleType = normalizeOptionalText(payload.vehicleType)
+  if (!vehicleType) {
+    throw new VehicleCheckTemplatesServiceError('Vehicle type is required.')
+  }
+
+  let insertPayload = buildVehicleCheckTemplateInsertPayload(payload, name)
+
+  const supabase = requireSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (import.meta.env.DEV) {
+    console.info('[vehicleCheckTemplatesService] insert vehicle_check_templates', {
+      table: VEHICLE_CHECK_TEMPLATES_TABLE,
+      payload: insertPayload,
+      authUserId: user?.id ?? null,
+      authEmail: user?.email ?? null,
     })
+  }
+
+  let { data, error } = await supabase
+    .from(VEHICLE_CHECK_TEMPLATES_TABLE)
+    .insert(insertPayload)
     .select(templateSelect)
     .single()
 
-  if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if (error && isMissingVehicleCheckTemplateColumnError(error)) {
+    insertPayload = stripLegacyVehicleCheckTemplateHeaderFields(insertPayload)
+    ;({ data, error } = await supabase
+      .from(VEHICLE_CHECK_TEMPLATES_TABLE)
+      .insert(insertPayload)
+      .select(templateSelect)
+      .single())
+  }
+
+  if (error) {
+    if (import.meta.env.DEV) {
+      console.error('[vehicleCheckTemplatesService] insert vehicle_check_templates failed', {
+        payload: insertPayload,
+        authUserId: user?.id ?? null,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      })
+    }
+    throw new VehicleCheckTemplatesServiceError(error.message)
+  }
   return mapTemplateRow(data as unknown as VehicleCheckTemplateRow)
 }
 
 async function findTemplateByCompanyAndVehicleType(
-  company?: string | null,
   vehicleType?: string | null,
+  company?: string | null,
 ): Promise<VehicleCheckTemplate | null> {
-  const normalizedCompany = normalizeOptionalText(company)
   const normalizedVehicleType = normalizeOptionalText(vehicleType)
-  let request = requireSupabase()
-    .from(VEHICLE_CHECK_TEMPLATES_TABLE)
-    .select(templateSelect)
-    .limit(1)
+  const normalizedCompany = normalizeOptionalText(company)
 
-  request = normalizedCompany
-    ? request.eq('company', normalizedCompany)
-    : request.is('company', null)
+  async function runQuery(includeLegacyHeaderFilter: boolean) {
+    let request = requireSupabase()
+      .from(VEHICLE_CHECK_TEMPLATES_TABLE)
+      .select(templateSelect)
+      .limit(1)
 
-  request = normalizedVehicleType
-    ? request.eq('vehicle_type', normalizedVehicleType)
-    : request.is('vehicle_type', null)
+    if (normalizedCompany) {
+      request = request.eq('company', normalizedCompany)
+    } else {
+      request = request.is('company', null)
+    }
 
-  const { data, error } = await request.maybeSingle()
+    request = normalizedVehicleType
+      ? request.eq('vehicle_type', normalizedVehicleType)
+      : request.is('vehicle_type', null)
+
+    if (includeLegacyHeaderFilter) {
+      request = request.or(
+        `item_name.is.null,item_name.eq.${VEHICLE_CHECK_TEMPLATE_LEGACY_HEADER_ITEM_NAME}`,
+      )
+    }
+
+    return request.maybeSingle()
+  }
+
+  let { data, error } = await runQuery(true)
+  if (error && isMissingVehicleCheckTemplateColumnError(error)) {
+    ;({ data, error } = await runQuery(false))
+  }
+
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if (!data) return null
 
-  return data ? mapTemplateRow(data as unknown as VehicleCheckTemplateRow) : null
+  return mapTemplateRow(data as unknown as VehicleCheckTemplateRow)
 }
 
 export async function createDefaultVehicleCheckTemplate(
@@ -625,7 +392,7 @@ export async function createDefaultVehicleCheckTemplate(
     throw new VehicleCheckTemplatesServiceError('Template name is required.')
   }
 
-  const existing = await findTemplateByCompanyAndVehicleType(company, vehicleType)
+  const existing = await findTemplateByCompanyAndVehicleType(vehicleType, company)
   if (existing) {
     throw new VehicleCheckTemplatesServiceError(
       'A vehicle check template already exists for this company and vehicle type.',
@@ -815,13 +582,116 @@ export async function deleteTemplateItem(itemId: string): Promise<void> {
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
 }
 
-export async function fetchTemplateItemsByVehicleType(
+function isVehicleCheckTemplateSchemaMismatch(error: unknown): boolean {
+  const message =
+    error instanceof VehicleCheckTemplatesServiceError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : ''
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('does not exist') ||
+    normalized.includes('could not find the table') ||
+    normalized.includes('vehicle_check_template_items') ||
+    (normalized.includes('column') && normalized.includes('vehicle_check_templates'))
+  )
+}
+
+type LegacyFlatTemplateRow = {
+  id: string
+  vehicle_type: string
+  section: string
+  item_name: string
+  sort_order: number | null
+  is_required: boolean | null
+  is_active: boolean | null
+  guidance?: string | null
+  allow_notes?: boolean | null
+  allow_photo?: boolean | null
+  fail_on_defect?: boolean | null
+  is_custom?: boolean | null
+  created_at: string | null
+}
+
+function mapLegacyFlatTemplateRow(row: LegacyFlatTemplateRow): VehicleCheckTemplateItem {
+  return {
+    id: row.id,
+    templateId: row.id,
+    section: row.section,
+    label: row.item_name,
+    description: normalizeOptionalText(row.guidance ?? null),
+    sortOrder: row.sort_order ?? 0,
+    isRequired: row.is_required ?? true,
+    allowNotes: row.allow_notes ?? true,
+    allowPhoto: row.allow_photo ?? false,
+    failOnDefect: row.fail_on_defect ?? true,
+    isActive: row.is_active ?? true,
+    isCustom: row.is_custom ?? false,
+    createdAt: row.created_at ?? new Date().toISOString(),
+  }
+}
+
+async function fetchLegacyFlatTemplateItemsByVehicleType(
+  vehicleType: string,
+): Promise<VehicleCheckTemplateItem[]> {
+  const legacySelectWithGuidance = `
+    id,
+    vehicle_type,
+    section,
+    item_name,
+    sort_order,
+    is_required,
+    is_active,
+    guidance,
+    allow_notes,
+    allow_photo,
+    fail_on_defect,
+    is_custom,
+    created_at
+  `
+
+  const legacySelectMinimal = `
+    id,
+    vehicle_type,
+    section,
+    item_name,
+    sort_order,
+    is_required,
+    is_active,
+    created_at
+  `
+
+  async function runLegacySelect(select: string) {
+    return requireSupabase()
+      .from(VEHICLE_CHECK_TEMPLATES_TABLE)
+      .select(select)
+      .eq('vehicle_type', vehicleType)
+      .eq('is_active', true)
+      .not('section', 'is', null)
+      .not('item_name', 'is', null)
+      .order('sort_order', { ascending: true })
+      .order('section', { ascending: true })
+      .order('item_name', { ascending: true })
+  }
+
+  let result = await runLegacySelect(legacySelectWithGuidance)
+  if (result.error && result.error.message.toLowerCase().includes('does not exist')) {
+    result = await runLegacySelect(legacySelectMinimal)
+  }
+
+  if (result.error) {
+    throw new VehicleCheckTemplatesServiceError(result.error.message)
+  }
+
+  return ((result.data ?? []) as unknown as LegacyFlatTemplateRow[]).map(mapLegacyFlatTemplateRow)
+}
+
+async function fetchNormalizedTemplateItemsByVehicleType(
   vehicleType: string,
   company?: string | null,
 ): Promise<VehicleCheckTemplateItem[]> {
-  const normalizedType = normalizeOptionalText(vehicleType)
-  if (!normalizedType) return []
-
   const normalizedCompany = normalizeOptionalText(company)
   const { data, error } = await requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
@@ -839,7 +709,7 @@ export async function fetchTemplateItemsByVehicleType(
   for (const row of (data ?? []) as unknown as VehicleCheckTemplateItemWithTemplateJoinRow[]) {
     const template = row.vehicle_check_templates
     const templateVehicleType = template.vehicle_type?.trim().toLowerCase()
-    if (templateVehicleType !== normalizedType.toLowerCase()) continue
+    if (templateVehicleType !== vehicleType.toLowerCase()) continue
 
     const bucket = byTemplateId.get(template.id) ?? {
       company: template.company,
@@ -868,6 +738,108 @@ export async function fetchTemplateItemsByVehicleType(
     )
 }
 
+export async function fetchTemplateItemsByVehicleType(
+  vehicleType: string,
+  company?: string | null,
+): Promise<VehicleCheckTemplateItem[]> {
+  const normalizedType = normalizeOptionalText(vehicleType)
+  if (!normalizedType) return []
+
+  try {
+    const normalizedItems = await fetchNormalizedTemplateItemsByVehicleType(
+      normalizedType,
+      company,
+    )
+    if (normalizedItems.length > 0) {
+      return normalizedItems
+    }
+  } catch (error) {
+    if (!isVehicleCheckTemplateSchemaMismatch(error)) {
+      throw error
+    }
+  }
+
+  return fetchLegacyFlatTemplateItemsByVehicleType(normalizedType)
+}
+
+function isExtraVehicleTypeTemplateItem(item: VehicleCheckTemplateItem): boolean {
+  return item.isCustom || item.sortOrder > EXTRA_VEHICLE_TYPE_CHECKS_BASE_SORT_ORDER
+}
+
+export async function listExtraVehicleTypeTemplateItems(
+  vehicleType: string,
+  scope: VehicleCheckTemplateCompanyScope,
+): Promise<VehicleCheckTemplateItem[]> {
+  const companyScope = requireCompanyScope(scope)
+  const normalizedType = normalizeOptionalText(vehicleType)
+  if (!normalizedType) return []
+
+  const template = await findTemplateByCompanyAndVehicleType(normalizedType, companyScope.company)
+  if (!template) return []
+
+  const items = await listTemplateItems(template.id)
+  return items.filter(isExtraVehicleTypeTemplateItem)
+}
+
+export async function getOrCreateVehicleTypeCheckTemplate(
+  vehicleType: string,
+  scope: VehicleCheckTemplateCompanyScope,
+): Promise<VehicleCheckTemplate> {
+  const companyScope = requireCompanyScope(scope)
+  const normalizedType = normalizeOptionalText(vehicleType)
+  if (!normalizedType) {
+    throw new VehicleCheckTemplatesServiceError('Vehicle type is required.')
+  }
+
+  const existing = await findTemplateByCompanyAndVehicleType(normalizedType, companyScope.company)
+  if (existing) return existing
+
+  return createVehicleCheckTemplate({
+    company: companyScope.company,
+    name: `${normalizedType} Daily Vehicle Check`,
+    vehicleType: normalizedType,
+    description: 'Vehicle-type checklist template for extra checks.',
+    isActive: true,
+  })
+}
+
+export async function addExtraVehicleTypeTemplateItem(
+  vehicleType: string,
+  input: { label: string; description?: string | null },
+  scope: VehicleCheckTemplateCompanyScope,
+): Promise<VehicleCheckTemplateItem> {
+  const companyScope = requireCompanyScope(scope)
+  const label = input.label.trim()
+  if (!label) {
+    throw new VehicleCheckTemplatesServiceError('Check item label is required.')
+  }
+
+  const template = await getOrCreateVehicleTypeCheckTemplate(vehicleType, companyScope)
+  const items = await listTemplateItems(template.id)
+  const extraItems = items.filter(isExtraVehicleTypeTemplateItem)
+  const nextSortOrder =
+    extraItems.length === 0
+      ? EXTRA_VEHICLE_TYPE_CHECKS_BASE_SORT_ORDER + 1
+      : Math.max(
+          EXTRA_VEHICLE_TYPE_CHECKS_BASE_SORT_ORDER + 1,
+          ...extraItems.map((item) => item.sortOrder),
+        ) + 1
+
+  return createTemplateItem({
+    templateId: template.id,
+    section: EXTRA_VEHICLE_TYPE_CHECKS_SECTION,
+    label,
+    description: input.description,
+    sortOrder: nextSortOrder,
+    isRequired: true,
+    allowNotes: true,
+    allowPhoto: false,
+    failOnDefect: true,
+    isActive: true,
+    isCustom: true,
+  })
+}
+
 export const vehicleCheckTemplatesService = {
   getDefaultVehicleCheckItems,
   listVehicleCheckTemplates,
@@ -881,4 +853,7 @@ export const vehicleCheckTemplatesService = {
   updateTemplateItem,
   deleteTemplateItem,
   fetchTemplateItemsByVehicleType,
+  listExtraVehicleTypeTemplateItems,
+  getOrCreateVehicleTypeCheckTemplate,
+  addExtraVehicleTypeTemplateItem,
 }

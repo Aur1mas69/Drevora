@@ -390,7 +390,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
 
   return (
     <>
-      <div className={`${adminGlassToolbar} overflow-visible px-3 py-2.5 sm:px-4`}>
+      <div className={`${adminGlassToolbar} min-w-0 overflow-visible px-3 py-2.5 sm:px-4`}>
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -403,23 +403,23 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
             />
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={onCleanCurrentView}
-              className="h-10 rounded-[12px] border-[#C5DFFB] bg-white/90 px-3 text-xs font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
+              className="h-10 w-full rounded-[12px] border-[#C5DFFB] bg-white/90 px-3 text-xs font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50 sm:w-auto"
             >
               Clean current view
             </Button>
 
-            <div ref={filterRootRef} className="relative">
+            <div ref={filterRootRef} className="relative w-full sm:w-auto">
               <Button
                 type="button"
                 aria-expanded={isFilterOpen}
                 aria-haspopup="dialog"
                 onClick={() => setIsFilterOpen((open) => !open)}
-                className={`h-10 rounded-[12px] px-3 text-xs font-semibold transition-all duration-150 ${
+                className={`h-10 w-full rounded-[12px] px-3 text-xs font-semibold transition-all duration-150 sm:w-auto ${
                   activeFilterCount > 0
                     ? 'bg-[#2563EB] text-white shadow-[0_4px_14px_rgba(37,99,235,0.28)] hover:bg-[#1d4ed8]'
                     : 'border border-[rgba(75,120,220,0.18)] bg-white/90 text-slate-700 shadow-sm hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/50'
@@ -438,7 +438,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
             <Button
               type="button"
               onClick={onNewTimesheet}
-              className="h-10 rounded-[12px] bg-[#2563EB] px-3 text-xs font-semibold text-white shadow-[0_4px_14px_rgba(37,99,235,0.22)] hover:bg-[#1d4ed8]"
+              className="h-10 w-full rounded-[12px] bg-[#2563EB] px-3 text-xs font-semibold text-white shadow-[0_4px_14px_rgba(37,99,235,0.22)] hover:bg-[#1d4ed8] sm:w-auto"
             >
               <Plus className="mr-1.5 size-3.5" />
               New Timesheet

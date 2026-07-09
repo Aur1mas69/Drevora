@@ -172,7 +172,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
           <SummaryCard label="Today's Hours" value="0.00h" icon={Clock3} />
           <SummaryCard label="Break" value="0m" icon={Coffee} />
           <SummaryCard label="Night Hours" value="0.00h" icon={Moon} />

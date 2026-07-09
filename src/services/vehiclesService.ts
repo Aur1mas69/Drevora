@@ -2,9 +2,54 @@ import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { todayString } from '@/lib/vehicleAvailability'
 
-export type VehicleType = 'HGV Truck' | 'Forklift' | 'Trailer'
+export const vehicleTypeOptions = [
+  'Car',
+  'Van',
+  'Pickup',
+  '3.5t Van',
+  '7.5t Lorry',
+  '12t Rigid',
+  '18t Rigid',
+  '26t Rigid',
+  '32t Rigid',
+  'Artic Tractor Unit',
+  'Trailer',
+  'Box Lorry',
+  'Curtain Side Lorry',
+  'Flatbed Lorry',
+  'Tipper',
+  'Grab Lorry',
+  'Skip Lorry',
+  'Hook Loader',
+  'RoRo / Roll-on Roll-off',
+  'Volumetric Concrete Mixer',
+  'Concrete Mixer Drum',
+  'Concrete Pump',
+  'Tanker',
+  'Fuel Tanker',
+  'Water Tanker',
+  'Waste Tanker',
+  'Refrigerated Vehicle',
+  'Low Loader',
+  'Plant / Machinery',
+  'Forklift',
+  'Telehandler',
+  'Yard Vehicle',
+  'Other',
+] as const
 
-export const vehicleTypeOptions: VehicleType[] = ['HGV Truck', 'Forklift', 'Trailer']
+export type VehicleType = (typeof vehicleTypeOptions)[number]
+
+const vehicleTypeOptionSet = new Set<string>(vehicleTypeOptions)
+
+export function getVehicleTypeSelectOptions(currentValue?: string | null): string[] {
+  const trimmed = currentValue?.trim()
+  if (!trimmed || vehicleTypeOptionSet.has(trimmed)) {
+    return [...vehicleTypeOptions]
+  }
+
+  return [trimmed, ...vehicleTypeOptions]
+}
 
 export type VehicleStatus =
   | 'Available'

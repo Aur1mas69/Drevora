@@ -47,7 +47,7 @@ function FleetOperationsInfoPanel({
   if (isProfileLoading) {
     return (
       <div
-        className="relative z-10 w-full min-w-[204px] max-w-[272px] shrink-0 animate-pulse rounded-[18px] border border-white/35 p-4 sm:min-w-[238px]"
+        className="relative z-10 w-full min-w-0 max-w-[272px] shrink-0 animate-pulse rounded-[18px] border border-white/35 p-4 sm:min-w-[238px]"
         style={WEATHER_CARD_STYLE}
         aria-hidden="true"
       >
@@ -63,7 +63,7 @@ function FleetOperationsInfoPanel({
 
   return (
     <aside
-      className="relative z-10 w-full min-w-[204px] max-w-[272px] shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-4 sm:min-w-[238px] sm:p-[1.125rem]"
+      className="relative z-10 w-full min-w-0 max-w-[272px] shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-4 sm:min-w-[238px] sm:p-[1.125rem]"
       style={WEATHER_CARD_STYLE}
       aria-label="Fleet location, weather and time"
     >
@@ -135,7 +135,7 @@ export function FleetOperationsHeader({
         isNight={isNight}
       />
 
-      <div className="relative z-10 flex min-h-[240px] flex-col justify-center px-6 py-8 sm:min-h-[260px] sm:px-9 sm:py-9 lg:min-h-[300px] lg:px-10 lg:py-10">
+      <div className="relative z-10 flex min-h-[240px] flex-col justify-center px-4 py-6 sm:min-h-[260px] sm:px-9 sm:py-9 lg:min-h-[300px] lg:px-10 lg:py-10">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
           <div className="min-w-0 flex-1 space-y-3 sm:space-y-3.5">
             {isProfileLoading ? (

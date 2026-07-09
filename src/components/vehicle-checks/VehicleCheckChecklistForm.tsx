@@ -3,7 +3,14 @@ import type {
   VehicleCheckItemResult,
   VehicleChecklistSection,
 } from '@/lib/vehicleCheckTypes'
-import { resolveVehicleCheckItemDescription } from '@/lib/vehicleCheckUtils'
+import {
+  buildExpectedChecklistItems,
+  getChecklistAnswerProgress,
+  getVehicleCheckItemKey,
+  getVehicleCheckTemplateGuidance,
+  isVehicleCheckItemAnswered,
+} from '@/lib/vehicleCheckUtils'
+import { VehicleCheckDefectPhotoField } from '@/components/vehicle-checks/VehicleCheckDefectPhotoField'
 import { Camera, Info, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -18,13 +25,13 @@ const resultButtonStyles: Record<VehicleCheckItemResult, string> = {
   Advisory:
     'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-400 data-[selected=true]:border-amber-500 data-[selected=true]:bg-amber-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(245,158,11,0.16)]',
   Fail:
-    'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-400 data-[selected=true]:border-rose-500 data-[selected=true]:bg-rose-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(225,29,72,0.16)]',
+    'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 data-[selected=true]:border-slate-500 data-[selected=true]:bg-slate-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(100,116,139,0.16)]',
 }
 
 const resultLabels: Record<VehicleCheckItemResult, string> = {
   Pass: 'OK',
   Advisory: 'Defect',
-  Fail: 'Fail',
+  Fail: 'N/A',
 }
 
 type VehicleCheckChecklistFormProps = {
@@ -33,6 +40,7 @@ type VehicleCheckChecklistFormProps = {
   readOnly?: boolean
   sections?: VehicleChecklistSection[]
   emptyMessage?: string
+  highlightUnanswered?: boolean
 }
 
 export function VehicleCheckChecklistForm({
@@ -41,8 +49,19 @@ export function VehicleCheckChecklistForm({
   readOnly = false,
   sections,
   emptyMessage,
+  highlightUnanswered = false,
 }: VehicleCheckChecklistFormProps) {
   const [helpItem, setHelpItem] = useState<VehicleCheckItemInput | null>(null)
+  const expectedItems = useMemo(
+    () => buildExpectedChecklistItems(items, sections),
+    [items, sections],
+  )
+  const { answeredCount, totalCount } = useMemo(
+    () => getChecklistAnswerProgress(items, sections),
+    [items, sections],
+  )
+  const progressPercent = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
+
   const grouped = useMemo(() => {
     const map = new Map<string, VehicleCheckItemInput[]>()
 
@@ -50,19 +69,15 @@ export function VehicleCheckChecklistForm({
       for (const { section, itemNames } of sections) {
         const categoryItems = itemNames.map((itemName) => {
           return (
-            items.find(
+            expectedItems.find(
               (entry) => entry.category === section && entry.itemName === itemName,
-            ) ??
-            ({
+            ) ?? {
               category: section,
               itemName,
               result: 'Pass' as VehicleCheckItemResult,
               comment: '',
-              description: null,
-              allowNotes: true,
-              allowPhoto: false,
-              failOnDefect: true,
-            } satisfies VehicleCheckItemInput)
+              isAnswered: false,
+            }
           )
         })
         map.set(section, categoryItems)
@@ -70,14 +85,14 @@ export function VehicleCheckChecklistForm({
       return map
     }
 
-    for (const item of items) {
+    for (const item of expectedItems) {
       const group = map.get(item.category) ?? []
       group.push(item)
       map.set(item.category, group)
     }
 
     return map
-  }, [items, sections])
+  }, [expectedItems, sections])
 
   const numberedItems = useMemo(() => {
     let index = 0
@@ -93,6 +108,12 @@ export function VehicleCheckChecklistForm({
     return numbers
   }, [grouped])
 
+  function clearDefectPhoto(item: VehicleCheckItemInput) {
+    if (item.photoPreviewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(item.photoPreviewUrl)
+    }
+  }
+
   function updateItem(
     category: string,
     itemName: string,
@@ -101,6 +122,26 @@ export function VehicleCheckChecklistForm({
     const index = items.findIndex(
       (entry) => entry.category === category && entry.itemName === itemName,
     )
+    const currentItem =
+      index >= 0
+        ? items[index]
+        : ({
+            category,
+            itemName,
+            result: 'Pass' as VehicleCheckItemResult,
+            comment: '',
+            isAnswered: true,
+          } satisfies VehicleCheckItemInput)
+
+    if (patch.result && patch.result !== 'Advisory') {
+      clearDefectPhoto(currentItem)
+      patch = {
+        ...patch,
+        photoUrl: null,
+        photoFile: null,
+        photoPreviewUrl: null,
+      }
+    }
 
     if (index >= 0) {
       const next = items.map((entry, idx) =>
@@ -117,6 +158,7 @@ export function VehicleCheckChecklistForm({
         itemName,
         result: 'Pass',
         comment: '',
+        isAnswered: true,
         ...patch,
       },
     ])
@@ -142,66 +184,110 @@ export function VehicleCheckChecklistForm({
     )
   }
 
+  const helpGuidance = helpItem ? getVehicleCheckTemplateGuidance(helpItem) : null
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {!readOnly && totalCount > 0 ? (
+        <div className="sticky top-0 z-10 rounded-[10px] border border-[#D3E9FC] bg-[#FAFCFF]/95 px-3 py-2 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-[#5499BF]">
+              Checked{' '}
+              <span className="tabular-nums text-[#113C69]">{answeredCount}</span>
+              {' / '}
+              <span className="tabular-nums text-[#113C69]">{totalCount}</span>
+            </p>
+            {highlightUnanswered && answeredCount < totalCount ? (
+              <span className="text-[11px] font-semibold text-amber-700">
+                {totalCount - answeredCount} left
+              </span>
+            ) : null}
+          </div>
+          <div
+            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#E8F3FE]"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={totalCount}
+            aria-valuenow={answeredCount}
+            aria-label={`Checklist progress: ${answeredCount} of ${totalCount} items answered`}
+          >
+            <div
+              className="h-full rounded-full bg-[#218EE7] transition-all duration-200"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {[...grouped.entries()].map(([category, categoryItems]) => (
         <section
           key={category}
-          className="overflow-hidden rounded-[16px] border border-[#D3E9FC] bg-white shadow-[0_8px_24px_rgba(33,142,231,0.08)]"
+          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_6px_18px_rgba(33,142,231,0.06)]"
         >
-          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1.5">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               {category}
             </h3>
           </div>
           <div className="divide-y divide-[#D3E9FC]/70">
             {categoryItems.map((item) => {
-              const key = `${item.category}-${item.itemName}`
+              const key = getVehicleCheckItemKey(item)
               const itemNumber = numberedItems.get(key) ?? 0
-              const guidanceText = resolveVehicleCheckItemDescription(item)
-              const hasGuidance = Boolean(guidanceText)
-              const shouldShowDefectFields = item.result !== 'Pass'
+              const isAnswered = isVehicleCheckItemAnswered(item)
+              const isDefect = item.result === 'Advisory'
               const allowNotes = item.allowNotes ?? true
-              const allowPhoto = item.allowPhoto ?? false
+              const shouldShowDefectNotes = isDefect && allowNotes
+              const shouldShowDefectPhoto = isDefect && !readOnly
+              const showUnansweredHighlight = highlightUnanswered && !isAnswered
 
               return (
-                <div key={key} className="px-3 py-3">
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 min-w-6 text-sm font-bold tabular-nums text-[#218EE7]">
-                      {itemNumber}.
-                    </span>
+                <div
+                  key={key}
+                  className={`px-2.5 py-2 sm:px-3 sm:py-2.5 ${
+                    showUnansweredHighlight
+                      ? 'bg-amber-50/70 ring-1 ring-inset ring-amber-200/90'
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-1.5">
                     <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <h4 className="text-sm font-semibold leading-5 text-[#113C69]">
+                      <div className="flex min-w-0 items-start gap-1.5">
+                        <h4 className="min-w-0 flex-1 text-sm font-semibold leading-5 text-[#113C69]">
+                          <span className="mr-1.5 font-bold tabular-nums text-[#218EE7]">
+                            {itemNumber}.
+                          </span>
                           {item.itemName}
+                          {showUnansweredHighlight ? (
+                            <span className="ml-1.5 text-[11px] font-semibold text-amber-700">
+                              Required
+                            </span>
+                          ) : null}
                         </h4>
-                        {hasGuidance ? (
-                          <button
-                            type="button"
-                            onClick={() => setHelpItem(item)}
-                            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE]"
-                            aria-label={`Show guidance for ${item.itemName}`}
-                          >
-                            <Info className="size-4" />
-                          </button>
-                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setHelpItem(item)}
+                          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE]"
+                          aria-label={`Show guidance for ${item.itemName}`}
+                        >
+                          <Info className="size-3.5" />
+                        </button>
                       </div>
 
                       {readOnly ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${resultButtonStyles[item.result]}`}
                             data-selected="true"
                           >
                             {resultLabels[item.result]}
                           </span>
-                          {item.comment?.trim() ? (
+                          {isDefect && item.comment?.trim() ? (
                             <span className="text-sm text-slate-600">{item.comment}</span>
                           ) : null}
                         </div>
                       ) : (
                         <>
-                          <div className="mt-2 grid grid-cols-3 gap-2">
+                          <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:gap-2">
                             {RESULT_OPTIONS.map((option) => (
                               <button
                                 key={option}
@@ -209,51 +295,64 @@ export function VehicleCheckChecklistForm({
                                 onClick={() =>
                                   updateItem(item.category, item.itemName, {
                                     result: option,
+                                    isAnswered: true,
+                                    comment: option === 'Advisory' ? item.comment ?? '' : '',
                                   })
                                 }
-                                className={`min-h-10 rounded-[12px] border px-2 text-sm font-bold transition-all ${resultButtonStyles[option]}`}
-                                data-selected={item.result === option}
-                                aria-pressed={item.result === option}
+                                className={`min-h-11 rounded-[10px] border px-1.5 text-xs font-bold transition-all active:scale-[0.98] sm:min-h-10 sm:px-2 sm:text-sm ${resultButtonStyles[option]}`}
+                                data-selected={isAnswered && item.result === option}
+                                aria-pressed={isAnswered && item.result === option}
                               >
                                 {resultLabels[option]}
                               </button>
                             ))}
                           </div>
 
-                          {shouldShowDefectFields ? (
-                            <div className="mt-3 space-y-2">
-                              {allowNotes ? (
-                                <textarea
-                                  value={item.comment ?? ''}
-                                  onChange={(event) =>
-                                    updateItem(item.category, item.itemName, {
-                                      comment: event.target.value,
-                                    })
-                                  }
-                                  rows={2}
-                                  placeholder="Add defect notes"
-                                  className={commentClassName}
-                                />
-                              ) : null}
-                              {allowPhoto ? (
-                                <label className="block">
-                                  <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#5499BF]">
-                                    <Camera className="size-3.5" />
-                                    Photo URL
-                                  </span>
-                                  <input
-                                    type="url"
-                                    value={item.photoUrl ?? ''}
-                                    onChange={(event) =>
-                                      updateItem(item.category, item.itemName, {
-                                        photoUrl: event.target.value,
-                                      })
-                                    }
-                                    placeholder="Paste photo URL"
-                                    className={commentClassName}
-                                  />
-                                </label>
-                              ) : null}
+                          {shouldShowDefectNotes ? (
+                            <div className="mt-2">
+                              <textarea
+                                value={item.comment ?? ''}
+                                onChange={(event) =>
+                                  updateItem(item.category, item.itemName, {
+                                    comment: event.target.value,
+                                  })
+                                }
+                                rows={2}
+                                placeholder="Describe the defect…"
+                                className={commentClassName}
+                              />
+                            </div>
+                          ) : null}
+
+                          {shouldShowDefectPhoto ? (
+                            <div className="mt-2">
+                              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#5499BF]">
+                                <Camera className="size-3.5" />
+                                Defect photo
+                              </p>
+                              <VehicleCheckDefectPhotoField
+                                storagePath={
+                                  item.photoFile ? null : item.photoUrl ?? null
+                                }
+                                previewBlobUrl={item.photoPreviewUrl ?? null}
+                                selectedFile={item.photoFile ?? null}
+                                onPhotoSelected={(file, previewUrl) => {
+                                  clearDefectPhoto(item)
+                                  updateItem(item.category, item.itemName, {
+                                    photoFile: file,
+                                    photoPreviewUrl: previewUrl,
+                                    photoUrl: null,
+                                  })
+                                }}
+                                onPhotoRemoved={() => {
+                                  clearDefectPhoto(item)
+                                  updateItem(item.category, item.itemName, {
+                                    photoFile: null,
+                                    photoPreviewUrl: null,
+                                    photoUrl: null,
+                                  })
+                                }}
+                              />
                             </div>
                           ) : null}
                         </>
@@ -276,17 +375,17 @@ export function VehicleCheckChecklistForm({
             onClick={() => setHelpItem(null)}
           />
           <div
-            className="relative max-h-[78vh] w-full max-w-lg overflow-hidden rounded-[20px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]"
+            className="relative max-h-[70vh] w-full max-w-md overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]"
             role="dialog"
             aria-modal="true"
             aria-label={`${helpItem.itemName} guidance`}
           >
             <div className="flex items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
                   Guidance
                 </p>
-                <h3 className="mt-1 text-base font-semibold text-[#113C69]">
+                <h3 className="mt-1 text-sm font-semibold leading-5 text-[#113C69]">
                   {helpItem.itemName}
                 </h3>
               </div>
@@ -299,11 +398,11 @@ export function VehicleCheckChecklistForm({
                 <X className="size-4" />
               </button>
             </div>
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto px-4 py-4">
-              {helpItem && resolveVehicleCheckItemDescription(helpItem) ? (
-                renderGuidanceText(resolveVehicleCheckItemDescription(helpItem)!)
+            <div className="max-h-[50vh] space-y-2 overflow-y-auto px-4 py-3">
+              {helpGuidance ? (
+                renderGuidanceText(helpGuidance)
               ) : (
-                <p className="text-sm text-slate-600">No guidance added for this item.</p>
+                <p className="text-sm text-slate-600">No guidance added yet.</p>
               )}
             </div>
           </div>

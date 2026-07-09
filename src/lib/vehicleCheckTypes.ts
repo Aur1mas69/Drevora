@@ -1,3 +1,7 @@
+export type VehicleCheckOdometerUnit = 'miles' | 'km'
+
+export const DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT: VehicleCheckOdometerUnit = 'miles'
+
 export type VehicleCheckStatus = 'Completed' | 'Pending' | 'In Progress'
 
 export type VehicleCheckResult = 'Pass' | 'Advisory' | 'Fail'
@@ -6,6 +10,9 @@ export type VehicleCheckItemResult = VehicleCheckResult
 
 export type VehicleCheckItemTemplateRef = {
   description: string | null
+  allowNotes?: boolean
+  allowPhoto?: boolean
+  failOnDefect?: boolean
 }
 
 export type VehicleCheckItem = {
@@ -36,9 +43,15 @@ export type VehicleCheckListItem = {
   workerName: string
   inspectionDate: string
   odometer: number | null
+  odometerUnit: VehicleCheckOdometerUnit
   status: VehicleCheckStatus
   overallResult: VehicleCheckResult
   notes: string | null
+  signatureUrl: string | null
+  signedAt: string | null
+  inspectionStartedAt: string | null
+  inspectionCompletedAt: string | null
+  durationSeconds: number | null
   failCount: number
   defectCount: number
 }
@@ -85,20 +98,29 @@ export type VehicleCheckItemInput = {
   result: VehicleCheckItemResult
   comment?: string | null
   photoUrl?: string | null
+  /** Client-only pending defect photo file selected before save/upload. */
+  photoFile?: File | null
+  /** Client-only blob preview URL for a pending photo selection. */
+  photoPreviewUrl?: string | null
   description?: string | null
   templateItem?: VehicleCheckItemTemplateRef | null
   allowNotes?: boolean
   allowPhoto?: boolean
   failOnDefect?: boolean
+  /** Form-only flag: false until the worker selects OK, Defect, or N/A. */
+  isAnswered?: boolean
 }
 
 export type CreateVehicleCheckInput = {
   vehicleId: string
   workerId: string
   inspectionDate: string
-  odometer?: number | null
+  odometer: number
+  odometerUnit?: VehicleCheckOdometerUnit
   status?: VehicleCheckStatus
   notes?: string | null
+  signatureFile: File
+  inspectionStartedAt: string
   items: VehicleCheckItemInput[]
 }
 

@@ -121,15 +121,15 @@ export function VehiclesFilterBar({
           />
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
-          <div ref={filtersRef} className="relative">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+          <div ref={filtersRef} className="relative w-full sm:w-auto">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setIsFiltersOpen((open) => !open)}
               aria-expanded={isFiltersOpen}
               aria-controls="vehicles-filters-panel"
-              className="h-10 rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7]"
+              className="h-10 w-full rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
             >
               <Filter className="mr-1.5 size-4" aria-hidden="true" />
               Filters
@@ -263,7 +263,7 @@ export function VehiclesFilterBar({
             variant="outline"
             size="sm"
             onClick={onExportCsv}
-            className="h-10 rounded-[14px] border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7]"
+            className="h-10 w-full rounded-[14px] border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
           >
             <Download className="mr-1.5 size-4" />
             Export CSV

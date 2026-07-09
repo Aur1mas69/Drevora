@@ -243,14 +243,14 @@ function DriversToolbar({
       <Button
         type="button"
         onClick={onAddDriver}
-        className={workersPrimaryButtonClass}
+        className={`w-full sm:w-auto ${workersPrimaryButtonClass}`}
       >
         <Plus className="size-4" />
         Add Worker
       </Button>
 
       <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-        <div className="relative min-w-0 sm:w-[280px]">
+        <div className="relative min-w-0 w-full sm:w-[280px]">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
           <Input
             type="search"
@@ -261,19 +261,19 @@ function DriversToolbar({
           />
         </div>
 
-        <div className="relative shrink-0">
+        <div className="relative w-full shrink-0 sm:w-auto">
           <Button
             type="button"
             variant="outline"
             onClick={onFilterToggle}
-            className={workersFilterButtonClass}
+            className={`w-full sm:w-auto ${workersFilterButtonClass}`}
           >
             <Filter className="size-4" />
             Filter
           </Button>
 
           {isFilterOpen ? (
-            <div className={`absolute right-0 z-20 mt-3 w-[260px] p-4 ${adminPanel} shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100 dark:ring-white/10`}>
+            <div className={`absolute left-0 right-0 z-20 mt-3 w-full p-4 sm:left-auto sm:right-0 sm:w-[260px] ${adminPanel} shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100 dark:ring-white/10`}>
               <div className="space-y-3">
                 <label className="block">
                   <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
@@ -859,7 +859,7 @@ function DriversPage() {
 
   return (
     <AdminLayout>
-      <section className="space-y-5">
+      <section className="min-w-0 space-y-5">
         <div className={`flex flex-col gap-4 ${adminGlassToolbar}`}>
           <div className="flex flex-col gap-1.5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6] dark:text-blue-400">

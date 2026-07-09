@@ -525,7 +525,7 @@ export default function TimesheetsPage() {
 
   return (
     <AdminLayout premiumBackground>
-      <section className="space-y-3">
+      <section className="min-w-0 space-y-3">
         <div>
           <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#2A376F]">
             Timesheets

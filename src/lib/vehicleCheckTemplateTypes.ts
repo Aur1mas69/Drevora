@@ -37,6 +37,10 @@ export type CreateVehicleCheckTemplateInput = {
   isActive?: boolean
 }
 
+export type VehicleCheckTemplateCompanyScope = {
+  company: string
+}
+
 export type UpdateVehicleCheckTemplateInput = {
   company?: string | null
   name?: string

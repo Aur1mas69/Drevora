@@ -314,7 +314,7 @@ export default function HolidayRequestsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
@@ -330,7 +330,7 @@ export default function HolidayRequestsPage() {
           <Button
             type="button"
             onClick={() => setIsNewModalOpen(true)}
-            className={`shrink-0 ${holidayPrimaryButtonClass}`}
+            className={`w-full shrink-0 sm:w-auto ${holidayPrimaryButtonClass}`}
           >
             <Plus className="mr-1.5 size-4" />
             New Holiday Request

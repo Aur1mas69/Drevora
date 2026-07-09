@@ -1,17 +1,34 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  canCompleteVehicleCheck,
+  VehicleCheckCompletionSection,
+} from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
-import type { VehicleCheckItemInput, VehicleChecklistSection } from '@/lib/vehicleCheckTypes'
+import type { VehicleCheckItemInput, VehicleChecklistSection, VehicleCheckOdometerUnit } from '@/lib/vehicleCheckTypes'
+import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
+import {
+  formatInspectionDuration,
+  isValidInspectionStartedAt,
+} from '@/lib/vehicleCheckDurationUtils'
 import {
   canSubmitVehicleChecklist,
   loadVehicleChecklist,
   type VehicleChecklistLoadStatus,
 } from '@/lib/vehicleCheckTemplateLoader'
-import { computeOverallResult, todayIsoDate } from '@/lib/vehicleCheckUtils'
+import {
+  getRememberedVehicleCheckId,
+  setRememberedVehicleCheckId,
+} from '@/lib/vehicleCheckRememberedVehicle'
+import { computeOverallResult, isChecklistFullyAnswered, todayIsoDate } from '@/lib/vehicleCheckUtils'
+import {
+  findVehicleByRegistrationQuery,
+  vehicleMatchesRegistrationQuery,
+} from '@/lib/vehicleRegistrationSearch'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
-import { ChevronLeft, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, Search, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type NewVehicleCheckModalProps = {
   isOpen: boolean
@@ -23,14 +40,39 @@ type NewVehicleCheckModalProps = {
     vehicleId: string
     workerId: string
     inspectionDate: string
-    odometer: number | null
+    odometer: number
+    odometerUnit: VehicleCheckOdometerUnit
     notes: string
+    signatureFile: File
+    inspectionStartedAt: string
     items: VehicleCheckItemInput[]
   }) => Promise<void>
 }
 
 const selectClassName =
   'mt-1.5 h-10 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+
+function getVehicleMakeModelLabel(vehicle: Vehicle): string {
+  const label = `${vehicle.make} ${vehicle.model}`.trim()
+  return label || 'Make/model not set'
+}
+
+function VehicleSummaryCard({ vehicle }: { vehicle: Vehicle }) {
+  return (
+    <div className="rounded-[12px] border border-[#C5DFFB]/80 bg-[#F5FAFF] px-3.5 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#5499BF]">
+        Selected vehicle
+      </p>
+      <p className="mt-1 text-base font-bold tracking-[0.04em] text-[#113C69]">
+        {vehicle.registration}
+      </p>
+      <p className="mt-1 text-sm font-medium text-[#3D7A9C]">{getVehicleMakeModelLabel(vehicle)}</p>
+      <p className="mt-0.5 text-sm text-[#5499BF]">
+        Type: {vehicle.vehicleType?.trim() || 'Not set on vehicle record'}
+      </p>
+    </div>
+  )
+}
 
 export function NewVehicleCheckModal({
   isOpen,
@@ -42,8 +84,17 @@ export function NewVehicleCheckModal({
 }: NewVehicleCheckModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [vehicleId, setVehicleId] = useState('')
+  const [vehicleSearch, setVehicleSearch] = useState('')
+  const [showVehicleResults, setShowVehicleResults] = useState(false)
+  const [rememberVehicle, setRememberVehicle] = useState(false)
   const [workerId, setWorkerId] = useState('')
   const [odometer, setOdometer] = useState('')
+  const [odometerUnit, setOdometerUnit] = useState<VehicleCheckOdometerUnit>(
+    DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT,
+  )
+  const [signatureFile, setSignatureFile] = useState<File | null>(null)
+  const [inspectionStartedAt, setInspectionStartedAt] = useState<string | null>(null)
+  const [durationNowMs, setDurationNowMs] = useState(() => Date.now())
   const [inspectionDate, setInspectionDate] = useState(todayIsoDate())
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<VehicleCheckItemInput[]>([])
@@ -52,11 +103,9 @@ export function NewVehicleCheckModal({
   const [checklistStatus, setChecklistStatus] = useState<VehicleChecklistLoadStatus>('missing_vehicle_type')
   const [isLoadingChecklist, setIsLoadingChecklist] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const sortedVehicles = useMemo(
-    () => [...vehicles].sort((a, b) => a.registration.localeCompare(b.registration)),
-    [vehicles],
-  )
+  const [showChecklistValidation, setShowChecklistValidation] = useState(false)
+  const [showCompletionValidation, setShowCompletionValidation] = useState(false)
+  const vehicleSearchRef = useRef<HTMLDivElement>(null)
 
   const sortedDrivers = useMemo(
     () =>
@@ -67,18 +116,70 @@ export function NewVehicleCheckModal({
   )
 
   const selectedVehicle = useMemo(
-    () => sortedVehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
-    [sortedVehicles, vehicleId],
+    () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
+    [vehicleId, vehicles],
   )
 
+  const rememberedVehicle = useMemo(() => {
+    const rememberedId = getRememberedVehicleCheckId()
+    if (!rememberedId) return null
+    return vehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
+  }, [vehicles, isOpen])
+
+  const filteredVehicles = useMemo(() => {
+    const matches = vehicles.filter((vehicle) =>
+      vehicleMatchesRegistrationQuery(vehicle, vehicleSearch),
+    )
+
+    return [...matches].sort((a, b) => a.registration.localeCompare(b.registration))
+  }, [vehicleSearch, vehicles])
+
   const overallResult = useMemo(() => computeOverallResult(items), [items])
+
+  const isChecklistReady = useMemo(
+    () => canSubmitVehicleChecklist(checklistStatus, items, checklistSections),
+    [checklistStatus, items, checklistSections],
+  )
+
+  const isCompletionReady = useMemo(
+    () => canCompleteVehicleCheck({ odometer, signatureFile }),
+    [odometer, signatureFile],
+  )
+
+  const isDurationReady = isValidInspectionStartedAt(inspectionStartedAt)
+
+  const elapsedDurationSeconds = useMemo(() => {
+    if (!inspectionStartedAt) return null
+    const startedMs = new Date(inspectionStartedAt).getTime()
+    if (Number.isNaN(startedMs)) return null
+    return Math.max(0, Math.floor((durationNowMs - startedMs) / 1000))
+  }, [durationNowMs, inspectionStartedAt])
+
+  const canSaveInspection =
+    isChecklistReady &&
+    isCompletionReady &&
+    isDurationReady &&
+    checklistStatus === 'ready' &&
+    items.length > 0
+
+  function selectVehicle(vehicle: Vehicle) {
+    setVehicleId(vehicle.id)
+    setVehicleSearch(vehicle.registration)
+    setShowVehicleResults(false)
+    setError(null)
+  }
 
   useEffect(() => {
     if (!isOpen) return
     setStep(1)
-    setVehicleId(sortedVehicles[0]?.id ?? '')
+    setVehicleId('')
+    setVehicleSearch('')
+    setShowVehicleResults(false)
     setWorkerId(sortedDrivers[0]?.id ?? '')
     setOdometer('')
+    setOdometerUnit(DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT)
+    setSignatureFile(null)
+    setInspectionStartedAt(null)
     setInspectionDate(todayIsoDate())
     setNotes('')
     setItems([])
@@ -87,7 +188,39 @@ export function NewVehicleCheckModal({
     setChecklistStatus('missing_vehicle_type')
     setIsLoadingChecklist(false)
     setError(null)
-  }, [isOpen, sortedDrivers, sortedVehicles])
+    setShowChecklistValidation(false)
+    setShowCompletionValidation(false)
+
+    const remembered = rememberedVehicle
+    setRememberVehicle(Boolean(remembered))
+  }, [isOpen, rememberedVehicle, sortedDrivers])
+
+  useEffect(() => {
+    if (isChecklistFullyAnswered(items, checklistSections)) {
+      setShowChecklistValidation(false)
+    }
+  }, [items, checklistSections])
+
+  useEffect(() => {
+    if (isCompletionReady) {
+      setShowCompletionValidation(false)
+    }
+  }, [isCompletionReady])
+
+  useEffect(() => {
+    if (step !== 2 || !selectedVehicle?.currentOdometer || odometer.trim()) return
+    setOdometer(String(selectedVehicle.currentOdometer))
+  }, [step, selectedVehicle, odometer])
+
+  useEffect(() => {
+    if (step !== 2 || !inspectionStartedAt) return
+
+    const intervalId = window.setInterval(() => {
+      setDurationNowMs(Date.now())
+    }, 1000)
+
+    return () => window.clearInterval(intervalId)
+  }, [step, inspectionStartedAt])
 
   useEffect(() => {
     if (!isOpen) return
@@ -96,8 +229,18 @@ export function NewVehicleCheckModal({
       if (event.key === 'Escape' && !isSaving) onClose()
     }
 
+    function handlePointerDown(event: MouseEvent) {
+      if (!vehicleSearchRef.current?.contains(event.target as Node)) {
+        setShowVehicleResults(false)
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handlePointerDown)
+    }
   }, [isOpen, isSaving, onClose])
 
   if (!isOpen) return null
@@ -106,8 +249,21 @@ export function NewVehicleCheckModal({
     event.preventDefault()
     setError(null)
 
-    if (!vehicleId || !workerId) {
-      setError('Please select a vehicle and worker.')
+    const exactMatch = findVehicleByRegistrationQuery(vehicles, vehicleSearch)
+    const vehicle = selectedVehicle ?? exactMatch
+
+    if (!vehicle) {
+      setError('Search and select a vehicle by number plate.')
+      return
+    }
+
+    if (vehicle.id !== vehicleId) {
+      setVehicleId(vehicle.id)
+      setVehicleSearch(vehicle.registration)
+    }
+
+    if (!workerId) {
+      setError('Please select a worker.')
       return
     }
 
@@ -116,16 +272,17 @@ export function NewVehicleCheckModal({
       return
     }
 
+    setRememberedVehicleCheckId(rememberVehicle ? vehicle.id : null)
+
     setIsLoadingChecklist(true)
     try {
-      const checklist = await loadVehicleChecklist(
-        vehicleId,
-        selectedVehicle?.vehicleType,
-      )
+      const checklist = await loadVehicleChecklist(vehicle.id, vehicle.vehicleType)
       setItems(checklist.items)
       setChecklistSections(checklist.sections)
       setChecklistNotice(checklist.notice)
       setChecklistStatus(checklist.status)
+      setInspectionStartedAt(new Date().toISOString())
+      setDurationNowMs(Date.now())
       setStep(2)
     } catch (loadError) {
       setError(
@@ -145,16 +302,39 @@ export function NewVehicleCheckModal({
       return
     }
 
-    if (!canSubmitVehicleChecklist(checklistStatus, items)) {
-      setError(checklistNotice ?? 'Inspection checklist cannot be empty.')
+    if (!canSubmitVehicleChecklist(checklistStatus, items, checklistSections)) {
+      if (checklistStatus !== 'ready' || items.length === 0) {
+        setError(checklistNotice ?? 'Inspection checklist cannot be empty.')
+        return
+      }
+
+      setShowChecklistValidation(true)
+      setError('Please answer every checklist item before saving.')
       return
     }
 
-    const parsedOdometer = odometer.trim() ? Number.parseInt(odometer, 10) : null
-    if (odometer.trim() && (parsedOdometer === null || Number.isNaN(parsedOdometer))) {
-      setError('Mileage must be a valid number.')
+    if (!canCompleteVehicleCheck({ odometer, signatureFile })) {
+      setShowCompletionValidation(true)
+      setError('Please complete mileage and signature before saving.')
       return
     }
+
+    if (!isValidInspectionStartedAt(inspectionStartedAt)) {
+      setError('Inspection duration could not be calculated. Return to Step 1 and open the checklist again.')
+      return
+    }
+
+    setShowChecklistValidation(false)
+    setShowCompletionValidation(false)
+
+    const parsedOdometer = Number.parseInt(odometer.trim(), 10)
+    if (Number.isNaN(parsedOdometer) || parsedOdometer < 0 || !signatureFile) {
+      setShowCompletionValidation(true)
+      setError('Please complete mileage and signature before saving.')
+      return
+    }
+
+    const confirmedStartedAt = inspectionStartedAt as string
 
     try {
       await onSubmit({
@@ -162,7 +342,10 @@ export function NewVehicleCheckModal({
         workerId,
         inspectionDate,
         odometer: parsedOdometer,
+        odometerUnit,
         notes,
+        signatureFile,
+        inspectionStartedAt: confirmedStartedAt,
         items,
       })
       onClose()
@@ -194,8 +377,12 @@ export function NewVehicleCheckModal({
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               {step === 1
-                ? 'Select the vehicle, worker and inspection date.'
-                : 'Mark each item as Pass, Advisory or Fail.'}
+                ? 'Search by number plate, then confirm the vehicle details.'
+                : selectedVehicle
+                  ? `Checklist for ${selectedVehicle.registration}${
+                      selectedVehicle.vehicleType ? ` · ${selectedVehicle.vehicleType}` : ''
+                    }`
+                  : 'Mark each item as Pass, Advisory or Fail.'}
             </p>
           </div>
           <Button
@@ -214,25 +401,86 @@ export function NewVehicleCheckModal({
         <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           {step === 1 ? (
             <form id="vehicle-check-step-1" onSubmit={(event) => void handleContinue(event)} className="space-y-4">
-              <label className="block text-sm font-medium text-slate-700">
-                Vehicle
-                <select
-                  value={vehicleId}
-                  onChange={(event) => setVehicleId(event.target.value)}
-                  className={selectClassName}
-                  required
-                >
-                  {sortedVehicles.length === 0 ? (
-                    <option value="">No vehicles available</option>
-                  ) : (
-                    sortedVehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.registration}
-                        {vehicle.fleetNumber ? ` · ${vehicle.fleetNumber}` : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
+              {rememberedVehicle ? (
+                <div className="rounded-[12px] border border-[#D3E9FC] bg-[#FAFCFF] p-3">
+                  <p className="text-xs font-semibold text-[#5499BF]">Quick select</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => selectVehicle(rememberedVehicle)}
+                    className="mt-2 h-10 w-full justify-start rounded-[12px] border-[#C5DFFB] bg-white px-3 text-left text-sm font-semibold text-[#113C69] hover:bg-[#F5FAFF]"
+                  >
+                    {rememberedVehicle.registration}
+                    <span className="ml-2 font-normal text-[#5499BF]">
+                      {getVehicleMakeModelLabel(rememberedVehicle)}
+                      {rememberedVehicle.vehicleType ? ` · ${rememberedVehicle.vehicleType}` : ''}
+                    </span>
+                  </Button>
+                </div>
+              ) : null}
+
+              <div ref={vehicleSearchRef} className="relative">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="vehicle-check-search">
+                  Number plate
+                </label>
+                <div className="relative mt-1.5">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    id="vehicle-check-search"
+                    type="search"
+                    value={vehicleSearch}
+                    onChange={(event) => {
+                      setVehicleSearch(event.target.value)
+                      setVehicleId('')
+                      setShowVehicleResults(true)
+                      setError(null)
+                    }}
+                    onFocus={() => setShowVehicleResults(true)}
+                    placeholder="Search registration, e.g. PN23 JUF"
+                    autoComplete="off"
+                    className="h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] pl-9"
+                  />
+                </div>
+
+                {showVehicleResults && vehicleSearch.trim() ? (
+                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-[12px] border border-[#C5DFFB] bg-white py-1 shadow-lg">
+                    {filteredVehicles.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-slate-500">No vehicles match that number plate.</p>
+                    ) : (
+                      filteredVehicles.map((vehicle) => (
+                        <button
+                          key={vehicle.id}
+                          type="button"
+                          onClick={() => selectVehicle(vehicle)}
+                          className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm transition-colors hover:bg-[#F5FAFF] ${
+                            vehicle.id === vehicleId ? 'bg-[#EEF6FF]' : ''
+                          }`}
+                        >
+                          <span className="font-semibold text-[#113C69]">{vehicle.registration}</span>
+                          <span className="text-xs text-[#5499BF]">
+                            {getVehicleMakeModelLabel(vehicle)}
+                            {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
+
+              <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={rememberVehicle}
+                  onChange={(event) => setRememberVehicle(event.target.checked)}
+                  className="size-4 rounded border-[#C5DFFB] text-[#2563EB] focus:ring-[#89CFF0]"
+                />
+                Remember this vehicle on this device
               </label>
 
               <label className="block text-sm font-medium text-slate-700">
@@ -255,34 +503,33 @@ export function NewVehicleCheckModal({
                 </select>
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  Mileage
-                  <Input
-                    type="number"
-                    min={0}
-                    value={odometer}
-                    onChange={(event) => setOdometer(event.target.value)}
-                    placeholder="Odometer reading"
-                    className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
-                  />
-                </label>
-                <label className="block text-sm font-medium text-slate-700">
-                  Inspection date
-                  <Input
-                    type="date"
-                    value={inspectionDate}
-                    onChange={(event) => setInspectionDate(event.target.value)}
-                    className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
-                    required
-                  />
-                </label>
-              </div>
+              <label className="block text-sm font-medium text-slate-700">
+                Inspection date
+                <Input
+                  type="date"
+                  value={inspectionDate}
+                  onChange={(event) => setInspectionDate(event.target.value)}
+                  className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
+                  required
+                />
+              </label>
             </form>
           ) : (
             <form id="vehicle-check-step-2" onSubmit={(event) => void handleSave(event)}>
+              {selectedVehicle ? (
+                <div className="mb-4">
+                  <VehicleSummaryCard vehicle={selectedVehicle} />
+                </div>
+              ) : null}
+
               {isLoadingChecklist ? (
                 <p className="mb-3 text-sm text-slate-500">Loading checklist…</p>
+              ) : null}
+
+              {checklistNotice ? (
+                <p className="mb-3 rounded-[10px] bg-[#EEF6FF] px-3 py-2 text-sm text-[#0B68BE]">
+                  {checklistNotice}
+                </p>
               ) : null}
 
               <VehicleCheckChecklistForm
@@ -290,6 +537,7 @@ export function NewVehicleCheckModal({
                 onChange={setItems}
                 sections={checklistSections}
                 emptyMessage={checklistNotice ?? undefined}
+                highlightUnanswered={showChecklistValidation}
               />
 
               <label className="mt-4 block text-sm font-medium text-slate-700">
@@ -312,6 +560,23 @@ export function NewVehicleCheckModal({
                   ) : null}
                 </p>
               ) : null}
+
+              <VehicleCheckCompletionSection
+                odometer={odometer}
+                odometerUnit={odometerUnit}
+                signatureFile={signatureFile}
+                durationLabel={
+                  elapsedDurationSeconds != null
+                    ? formatInspectionDuration(elapsedDurationSeconds)
+                    : null
+                }
+                lastRecordedOdometer={selectedVehicle?.currentOdometer ?? null}
+                showValidation={showCompletionValidation}
+                disabled={isSaving || isLoadingChecklist}
+                onOdometerChange={setOdometer}
+                onOdometerUnitChange={setOdometerUnit}
+                onSignatureChange={setSignatureFile}
+              />
             </form>
           )}
 
@@ -327,7 +592,10 @@ export function NewVehicleCheckModal({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setStep(1)}
+              onClick={() => {
+                setStep(1)
+                setInspectionStartedAt(null)
+              }}
               disabled={isSaving}
               className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600"
             >
@@ -352,11 +620,7 @@ export function NewVehicleCheckModal({
               <Button
                 type="submit"
                 form="vehicle-check-step-1"
-                disabled={
-                  sortedVehicles.length === 0 ||
-                  sortedDrivers.length === 0 ||
-                  isLoadingChecklist
-                }
+                disabled={sortedDrivers.length === 0 || isLoadingChecklist}
                 className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
               >
                 {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}
@@ -365,12 +629,8 @@ export function NewVehicleCheckModal({
               <Button
                 type="submit"
                 form="vehicle-check-step-2"
-                disabled={
-                  isSaving ||
-                  isLoadingChecklist ||
-                  !canSubmitVehicleChecklist(checklistStatus, items)
-                }
-                className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                disabled={isSaving || isLoadingChecklist || !canSaveInspection}
+                className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save Inspection'}
               </Button>

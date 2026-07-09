@@ -308,7 +308,7 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4 xl:gap-6">
+      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 sm:gap-5 xl:grid-cols-4 xl:gap-6">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="mx-auto flex w-full max-w-[12.25rem] flex-col items-center">
             <div className="size-[min(100%,11.75rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:size-[12.25rem]" />
@@ -435,7 +435,7 @@ export function DashboardOverview({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4 xl:gap-6">
+      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 sm:gap-5 xl:grid-cols-4 xl:gap-6">
         <DashboardKpiCard
           title="Active Vehicles"
           value={stats.availableVehicles}

@@ -15,6 +15,7 @@ import AdminLayout from '@/layouts/AdminLayout'
 import type {
   VehicleCheck,
   VehicleCheckListItem,
+  VehicleCheckOdometerUnit,
   VehicleCheckResultFilter,
   VehicleCheckStatusFilter,
   VehicleCheckSummaryStats,
@@ -234,8 +235,11 @@ export default function VehicleChecksPage() {
     vehicleId: string
     workerId: string
     inspectionDate: string
-    odometer: number | null
+    odometer: number
+    odometerUnit: VehicleCheckOdometerUnit
     notes: string
+    signatureFile: File
+    inspectionStartedAt: string
     items: Parameters<typeof createVehicleCheck>[0]['items']
   }) {
     setIsSaving(true)
@@ -245,7 +249,10 @@ export default function VehicleChecksPage() {
         workerId: input.workerId,
         inspectionDate: input.inspectionDate,
         odometer: input.odometer,
+        odometerUnit: input.odometerUnit,
         notes: input.notes,
+        signatureFile: input.signatureFile,
+        inspectionStartedAt: input.inspectionStartedAt,
         items: input.items,
         status: 'Completed',
       })
