@@ -13,9 +13,10 @@ import {
   type DashboardBackgroundMood,
   type WeatherSnapshot,
 } from '@/services/weatherService'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const WEATHER_REFRESH_MS = 30 * 60 * 1000
+const WEATHER_RETRY_LIMIT = 1
 
 export type WeatherDisplayState = 'idle' | 'loading' | 'ready' | 'unavailable'
 
@@ -33,6 +34,20 @@ export type FleetOperationsHeaderState = {
   isProfileLoading: boolean
 }
 
+function resolveWeatherQueryLocation(
+  weatherLocation: string | null | undefined,
+  city: string | null | undefined,
+  country: string | null | undefined,
+): string | null {
+  const configured = weatherLocation?.trim()
+  if (configured) return configured
+
+  const displayLocation = formatCompanyDisplayLocation(city, country)
+  if (displayLocation) return displayLocation
+
+  return city?.trim() || null
+}
+
 export function useFleetOperationsHeader(): FleetOperationsHeaderState {
   const { company, timezone, timeFormat, isLoading: isProfileLoading } = useCompanySettings()
   const [now, setNow] = useState(() => new Date())
@@ -47,46 +62,86 @@ export function useFleetOperationsHeader(): FleetOperationsHeaderState {
   const companyName = company?.name?.trim() || null
   const companyLocation = formatCompanyDisplayLocation(company?.city, company?.country)
   const companyTimezone = timezone
-  const weatherLocation = company?.weatherLocation?.trim() || null
+  const weatherQueryLocation = resolveWeatherQueryLocation(
+    company?.weatherLocation,
+    company?.city,
+    company?.country,
+  )
 
-  const loadWeather = useCallback(
-    async (location: string, timeZone: string) => {
+  useEffect(() => {
+    let cancelled = false
+    let refreshIntervalId: number | undefined
+
+    async function loadWeather(location: string, timeZone: string, attempt: number) {
+      if (cancelled) return
+
       setWeatherDisplay('loading')
 
       try {
         const isNight = isNightHours(new Date(), timeZone)
         const snapshot = await getWeatherForLocation(location, { isNight })
 
+        if (cancelled) return
+
         if (snapshot) {
           setWeather(displayWeatherSnapshot(snapshot, isNight))
           setWeatherDisplay('ready')
-        } else {
-          setWeather(null)
-          setWeatherDisplay('unavailable')
+          return
         }
-      } catch {
+
+        if (attempt < WEATHER_RETRY_LIMIT) {
+          await loadWeather(location, timeZone, attempt + 1)
+          return
+        }
+
+        setWeather(null)
+        setWeatherDisplay('unavailable')
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('[useFleetOperationsHeader] weather request failed:', error)
+        }
+
+        if (cancelled) return
+
+        if (attempt < WEATHER_RETRY_LIMIT) {
+          await loadWeather(location, timeZone, attempt + 1)
+          return
+        }
+
         setWeather(null)
         setWeatherDisplay('unavailable')
       }
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!weatherLocation) {
-      setWeather(null)
-      setWeatherDisplay('unavailable')
-      return
     }
 
-    void loadWeather(weatherLocation, companyTimezone)
+    // Company settings are still loading — keep a loading state, never mark unavailable yet.
+    if (isProfileLoading) {
+      setWeatherDisplay((current) => (current === 'ready' ? current : 'loading'))
+      return () => {
+        cancelled = true
+      }
+    }
 
-    const intervalId = window.setInterval(() => {
-      void loadWeather(weatherLocation, companyTimezone)
+    if (!weatherQueryLocation) {
+      setWeather(null)
+      setWeatherDisplay('unavailable')
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void loadWeather(weatherQueryLocation, companyTimezone, 0)
+
+    refreshIntervalId = window.setInterval(() => {
+      void loadWeather(weatherQueryLocation, companyTimezone, 0)
     }, WEATHER_REFRESH_MS)
 
-    return () => window.clearInterval(intervalId)
-  }, [companyTimezone, loadWeather, weatherLocation])
+    return () => {
+      cancelled = true
+      if (refreshIntervalId !== undefined) {
+        window.clearInterval(refreshIntervalId)
+      }
+    }
+  }, [companyTimezone, isProfileLoading, weatherQueryLocation])
 
   const greeting = useMemo(() => getTimeGreeting(now), [now])
   const operationsDate = useMemo(

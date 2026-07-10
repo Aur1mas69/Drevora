@@ -1,6 +1,11 @@
 import { ConsumablesOverviewCard } from '@/components/dashboard/ConsumablesOverviewCard'
 import { DailyVehicleChecksStatsCard } from '@/components/dashboard/DailyVehicleChecksStatsCard'
 import { DashboardKpiCard } from '@/components/dashboard/DashboardKpiCard'
+import {
+  DashboardKpiSkeleton,
+  DashboardOverviewCardSkeleton,
+  RecentActivitySkeleton,
+} from '@/components/dashboard/DashboardOverviewSkeletons'
 import { DriverReportsOverviewCard } from '@/components/dashboard/DriverReportsOverviewCard'
 import { FleetStatusOverviewCard } from '@/components/dashboard/FleetStatusOverviewCard'
 import { HolidayRequestsOverviewCard } from '@/components/dashboard/HolidayRequestsOverviewCard'
@@ -8,6 +13,7 @@ import { NotesPlansCard } from '@/components/dashboard/NotesPlansCard'
 import { TimesheetOverviewCard } from '@/components/dashboard/TimesheetOverviewCard'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import type { DashboardLoadingState } from '@/hooks/useDashboardStats'
 import {
   markVehicleCheckWarningSeen,
   shouldShowVehicleCheckWarningBadge,
@@ -272,8 +278,18 @@ function RecentActivityItem({
   return <li className={`${itemClassName} list-none`}>{content}</li>
 }
 
-function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[] }) {
+function RecentActivityPanel({
+  activity,
+  isLoading,
+}: {
+  activity: DashboardRecentActivity[]
+  isLoading: boolean
+}) {
   const { formatRelativeDateTime } = useCompanySettings()
+
+  if (isLoading) {
+    return <RecentActivitySkeleton />
+  }
 
   return (
     <section className="flex min-h-0 flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 max-md:shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_4px_14px_rgba(56,189,248,0.1)] sm:min-h-[360px] sm:p-6 md:hover:-translate-y-0.5 md:hover:border-[#0ea5e9] md:hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
@@ -302,32 +318,6 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
         )}
       </div>
     </section>
-  )
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mx-auto flex w-full min-w-0 max-w-full flex-col items-center">
-            <div className="aspect-square w-full max-w-[clamp(6.75rem,34vw,8.75rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:max-w-[11.75rem] lg:max-w-[12.25rem]" />
-            <div className="mt-2 h-3 w-20 animate-pulse rounded bg-[#E8F3FE]/60" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4 sm:space-y-6">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className={`${cardClass} h-44 animate-pulse bg-[#E8F3FE]/60`} />
-            ))}
-          </div>
-          <div className={`${cardClass} h-56 animate-pulse bg-[#E8F3FE]/60`} />
-        </div>
-        <div className={`${cardClass} min-h-[520px] animate-pulse bg-[#E8F3FE]/60`} />
-      </div>
-    </div>
   )
 }
 
@@ -377,10 +367,10 @@ function getVehicleChecksKpiProps(
 
 export function DashboardOverview({
   stats,
-  isLoading,
+  loading,
 }: {
   stats: DashboardStats
-  isLoading: boolean
+  loading: DashboardLoadingState
 }) {
   const { settings, timezone } = useCompanySettings()
   const { session } = useAuth()
@@ -420,91 +410,114 @@ export function DashboardOverview({
     setVehicleCheckWarningSeenVersion((version) => version + 1)
   }, [settings?.id, session?.user.id, stats.vehicleChecksToday, companyToday])
 
-  if (isLoading) {
-    return <DashboardSkeleton />
-  }
+  const availablePercent = useMemo(
+    () => (stats.vehicles > 0 ? (stats.availableVehicles / stats.vehicles) * 100 : undefined),
+    [stats.availableVehicles, stats.vehicles],
+  )
 
-  const availablePercent =
-    stats.vehicles > 0 ? (stats.availableVehicles / stats.vehicles) * 100 : undefined
-  const workingPercent =
-    stats.workers > 0 ? (stats.workingToday / stats.workers) * 100 : undefined
-  const vehicleChecksKpi = getVehicleChecksKpiProps(stats.vehicleChecksToday, {
-    warningSeen:
-      stats.vehicleChecksToday.issuesToday > 0 && !showVehicleCheckWarningBadge,
-  })
+  const workingPercent = useMemo(
+    () => (stats.workers > 0 ? (stats.workingToday / stats.workers) * 100 : undefined),
+    [stats.workers, stats.workingToday],
+  )
+
+  const vehicleChecksKpi = useMemo(
+    () =>
+      getVehicleChecksKpiProps(stats.vehicleChecksToday, {
+        warningSeen:
+          stats.vehicleChecksToday.issuesToday > 0 && !showVehicleCheckWarningBadge,
+      }),
+    [stats.vehicleChecksToday, showVehicleCheckWarningBadge],
+  )
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 pb-2 sm:gap-x-5 sm:gap-y-6 sm:pb-0 xl:grid-cols-4 xl:gap-6">
-        <DashboardKpiCard
-          title="Active Vehicles"
-          value={stats.availableVehicles}
-          helper="Available today"
-          icon={Truck}
-          to="/vehicles"
-          accent="blue"
-          ringPercent={availablePercent}
-        />
-        <DashboardKpiCard
-          title="Workers"
-          value={stats.workingToday}
-          helper="Working status today"
-          icon={Users}
-          to="/drivers"
-          accent="cyan"
-          ringPercent={workingPercent}
-        />
-        <DashboardKpiCard
-          title="Vehicle Checks"
-          value={vehicleChecksKpi.value}
-          helper={vehicleChecksKpi.helper}
-          icon={ClipboardCheck}
-          to="/admin/vehicle-checks"
-          accent={vehicleChecksKpi.accent}
-          issueCount={vehicleChecksKpi.issueCount}
-          showIssueBadge={vehicleChecksKpi.showIssueBadge}
-          helperTone={vehicleChecksKpi.helperTone}
-          onNavigate={handleVehicleChecksNavigate}
-        />
-        <DashboardKpiCard
-          title="Open Reports"
-          value={stats.driverReports.open}
-          helper="Driver reports awaiting action"
-          icon={FileBarChart}
-          to="/admin/driver-reports"
-          accent="warning"
-        />
+        {loading.kpis ? (
+          Array.from({ length: 4 }).map((_, index) => <DashboardKpiSkeleton key={index} />)
+        ) : (
+          <>
+            <DashboardKpiCard
+              title="Active Vehicles"
+              value={stats.availableVehicles}
+              helper="Available today"
+              icon={Truck}
+              to="/vehicles"
+              accent="blue"
+              ringPercent={availablePercent}
+            />
+            <DashboardKpiCard
+              title="Workers"
+              value={stats.workingToday}
+              helper="Working status today"
+              icon={Users}
+              to="/drivers"
+              accent="cyan"
+              ringPercent={workingPercent}
+            />
+            <DashboardKpiCard
+              title="Vehicle Checks"
+              value={vehicleChecksKpi.value}
+              helper={vehicleChecksKpi.helper}
+              icon={ClipboardCheck}
+              to="/admin/vehicle-checks"
+              accent={vehicleChecksKpi.accent}
+              issueCount={vehicleChecksKpi.issueCount}
+              showIssueBadge={vehicleChecksKpi.showIssueBadge}
+              helperTone={vehicleChecksKpi.helperTone}
+              onNavigate={handleVehicleChecksNavigate}
+            />
+            <DashboardKpiCard
+              title="Open Reports"
+              value={stats.driverReports.open}
+              helper="Driver reports awaiting action"
+              icon={FileBarChart}
+              to="/admin/driver-reports"
+              accent="warning"
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-            <TimesheetOverviewCard overview={stats.timesheetOverview} />
-            <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
-            <DriverReportsOverviewCard summary={stats.driverReports} />
-            <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
-            <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
-            <ConsumablesOverviewCard overview={stats.consumablesOverview} />
+            {loading.timesheet ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <TimesheetOverviewCard overview={stats.timesheetOverview} />
+            )}
+            {loading.holidays ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
+            )}
+            {loading.driverReports ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <DriverReportsOverviewCard summary={stats.driverReports} />
+            )}
+            {loading.fleetStatus ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
+            )}
+            {loading.vehicleChecks ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
+            )}
+            {loading.consumables ? (
+              <DashboardOverviewCardSkeleton />
+            ) : (
+              <ConsumablesOverviewCard overview={stats.consumablesOverview} />
+            )}
           </div>
 
           <NotesPlansCard />
         </div>
 
-        <RecentActivityPanel activity={stats.recentActivity} />
+        <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
       </div>
-    </div>
-  )
-}
-
-export function DashboardPageHeader() {
-  return (
-    <div className="mb-4 sm:mb-6">
-      <h1 className="text-xl font-semibold tracking-[-0.04em] text-[#113C69] sm:text-[1.65rem]">
-        Dashboard
-      </h1>
-      <p className="mt-1.5 text-xs leading-5 text-[#3D7A9C] sm:mt-1 sm:text-sm">
-        Overview of your fleet, workers and daily operations.
-      </p>
     </div>
   )
 }

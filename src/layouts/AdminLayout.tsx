@@ -25,6 +25,7 @@ import {
   adminSecondaryNavigationItems,
   type AdminNavItem,
 } from '@/lib/adminNavigation'
+import { preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed'
@@ -778,6 +779,10 @@ function AdminLayout({
     return () => {
       document.documentElement.classList.remove('admin-mobile-scroll')
     }
+  }, [])
+
+  useEffect(() => {
+    preloadAdminDashboardPage()
   }, [])
 
   function toggleMobileMenu() {

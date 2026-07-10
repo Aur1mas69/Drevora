@@ -75,7 +75,7 @@ function FleetOperationsInfoPanel({
           )}
         </p>
 
-        {weatherDisplay === 'loading' ? (
+        {weatherDisplay === 'loading' || weatherDisplay === 'idle' ? (
           <p className="text-xs font-medium text-blue-200/70">Loading weather…</p>
         ) : weatherDisplay === 'ready' && weather ? (
           <div className="flex items-center gap-2">

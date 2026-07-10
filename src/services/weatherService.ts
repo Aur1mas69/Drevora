@@ -68,11 +68,12 @@ function parseLocationQuery(location: string): { name: string; countryCode?: str
 
   if (parts.length >= 2) {
     const countryPart = parts[parts.length - 1]
+    const normalizedCountry = countryPart.toLowerCase()
     const countryCode =
-      countryPart.length === 2
-        ? countryPart.toUpperCase()
-        : countryPart.toLowerCase() === 'uk'
-          ? 'GB'
+      normalizedCountry === 'uk' || normalizedCountry === 'united kingdom' || normalizedCountry === 'gb'
+        ? 'GB'
+        : countryPart.length === 2
+          ? countryPart.toUpperCase()
           : undefined
 
     return {
@@ -125,6 +126,26 @@ export function displayWeatherSnapshot(
   }
 }
 
+async function geocodeSearch(params: URLSearchParams): Promise<GeocodeResult | null> {
+  const response = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`,
+  )
+
+  if (!response.ok) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[weatherService] geocode failed:',
+        response.status,
+        `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`,
+      )
+    }
+    return null
+  }
+
+  const data = (await response.json()) as { results?: GeocodeResult[] }
+  return data.results?.[0] ?? null
+}
+
 async function geocodeLocation(location: string): Promise<GeocodeResult | null> {
   const { name, countryCode } = parseLocationQuery(location)
   const params = new URLSearchParams({
@@ -138,14 +159,21 @@ async function geocodeLocation(location: string): Promise<GeocodeResult | null> 
     params.set('countryCode', countryCode)
   }
 
-  const response = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`,
-  )
+  const primary = await geocodeSearch(params)
+  if (primary) return primary
 
-  if (!response.ok) return null
+  // Fallback: retry without country filter when the configured location is noisy.
+  if (countryCode || name !== location.trim()) {
+    const fallbackParams = new URLSearchParams({
+      name: name || location.trim(),
+      count: '1',
+      language: 'en',
+      format: 'json',
+    })
+    return geocodeSearch(fallbackParams)
+  }
 
-  const data = (await response.json()) as { results?: GeocodeResult[] }
-  return data.results?.[0] ?? null
+  return null
 }
 
 async function fetchCurrentWeather(
@@ -160,8 +188,14 @@ async function fetchCurrentWeather(
     timezone: 'auto',
   })
 
-  const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`)
-  if (!response.ok) return null
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
+  const response = await fetch(forecastUrl)
+  if (!response.ok) {
+    if (import.meta.env.DEV) {
+      console.warn('[weatherService] forecast failed:', response.status, forecastUrl)
+    }
+    return null
+  }
 
   const data = (await response.json()) as {
     current?: {

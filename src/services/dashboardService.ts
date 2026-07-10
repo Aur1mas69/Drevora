@@ -1629,8 +1629,9 @@ function mergeRecentActivity(
 
 async function fetchAllRecentActivity(
   vehicleRegistrations: Map<string, string>,
+  scope?: CompanyActivityScope,
 ): Promise<DashboardRecentActivity[]> {
-  const scope = await fetchCompanyActivityScope()
+  const companyScope = scope ?? (await fetchCompanyActivityScope())
 
   const [
     workers,
@@ -1643,14 +1644,14 @@ async function fetchAllRecentActivity(
     consumableActivity,
     availabilityEvents,
   ] = await Promise.all([
-    fetchRecentWorkers(scope),
+    fetchRecentWorkers(companyScope),
     fetchRecentVehicles(),
-    fetchRecentHolidayActivity(scope),
-    fetchRecentTimesheetActivity(scope),
-    fetchRecentVehicleCheckActivity(scope),
-    fetchRecentDriverReportActivity(scope),
-    fetchRecentDocumentActivity(scope),
-    fetchRecentConsumableActivity(scope),
+    fetchRecentHolidayActivity(companyScope),
+    fetchRecentTimesheetActivity(companyScope),
+    fetchRecentVehicleCheckActivity(companyScope),
+    fetchRecentDriverReportActivity(companyScope),
+    fetchRecentDocumentActivity(companyScope),
+    fetchRecentConsumableActivity(companyScope),
     fetchRecentAvailabilityEvents(vehicleRegistrations),
   ])
 
@@ -1667,6 +1668,153 @@ async function fetchAllRecentActivity(
       availabilityEvents,
     ),
   )
+}
+
+export type DashboardSectionKey =
+  | 'kpis'
+  | 'timesheet'
+  | 'holidays'
+  | 'driverReports'
+  | 'fleetStatus'
+  | 'vehicleChecks'
+  | 'consumables'
+  | 'recentActivity'
+
+type LoadDashboardStatsProgressivelyOptions = {
+  onUpdate: (patch: Partial<DashboardStats>) => void
+  onSectionLoaded: (section: DashboardSectionKey) => void
+  signal?: AbortSignal
+}
+
+function isAborted(signal?: AbortSignal): boolean {
+  return signal?.aborted ?? false
+}
+
+export async function loadDashboardStatsProgressively(
+  options: LoadDashboardStatsProgressivelyOptions,
+): Promise<void> {
+  const { onUpdate, onSectionLoaded, signal } = options
+
+  try {
+    const companyScope = await fetchCompanyActivityScope()
+    if (isAborted(signal)) return
+
+    const vehiclesPromise = fetchDashboardVehicles()
+
+    const workerCountsPromise = Promise.all([
+      countTableRows('drivers'),
+      countTableRows('drivers', { column: 'status', value: 'Working' }),
+    ]).then(([workers, workingToday]) => {
+      if (isAborted(signal)) return
+      onUpdate({ workers, workingToday })
+    })
+
+    void fetchHolidayStatusCounts().then((holidayRequests) => {
+      if (isAborted(signal)) return
+      onUpdate({ holidayRequests })
+      onSectionLoaded('holidays')
+    })
+
+    void fetchTimesheetOverview().then((timesheetOverview) => {
+      if (isAborted(signal)) return
+      onUpdate({ timesheetOverview })
+      onSectionLoaded('timesheet')
+    })
+
+    void fetchConsumablesOverview().then((consumablesOverview) => {
+      if (isAborted(signal)) return
+      onUpdate({ consumablesOverview })
+      onSectionLoaded('consumables')
+    })
+
+    const driverReportsPromise = fetchDriverReportsStatusCounts(companyScope).then(
+      (driverReports) => {
+        if (isAborted(signal)) return driverReports
+        onUpdate({ driverReports })
+        onSectionLoaded('driverReports')
+        return driverReports
+      },
+    )
+
+    const dashboardVehicles = await vehiclesPromise
+    if (isAborted(signal)) return
+
+    const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
+    const vehicleDocumentRowsPromise = fetchVehicleDocumentRows()
+    const driverComplianceRowsPromise = fetchDriverComplianceRows()
+
+    onUpdate({
+      vehicles: dashboardVehicles.length,
+      availableVehicles: vehicleStatusCounts.availableVehicles,
+      offRoadOrOutOfService: vehicleStatusCounts.offRoadOrOutOfService,
+      fleetStatus: {
+        available: vehicleStatusCounts.availableVehicles,
+        offRoad: vehicleStatusCounts.offRoadToday + vehicleStatusCounts.outOfServiceToday,
+        maintenanceDue: vehicleStatusCounts.maintenanceToday,
+      },
+      availabilityAlerts: {
+        offRoadToday: vehicleStatusCounts.offRoadToday,
+        maintenanceToday: vehicleStatusCounts.maintenanceToday,
+        outOfServiceToday: vehicleStatusCounts.outOfServiceToday,
+        goingOffRoadSoon: countUpcomingAvailabilityEvents(dashboardVehicles),
+        documentsExpiringSoon: 0,
+      },
+    })
+    onSectionLoaded('fleetStatus')
+
+    void Promise.all([vehicleDocumentRowsPromise, driverComplianceRowsPromise]).then(
+      ([vehicleDocumentRows, driverComplianceRows]) => {
+        if (isAborted(signal)) return
+        onUpdate({
+          availabilityAlerts: {
+            offRoadToday: vehicleStatusCounts.offRoadToday,
+            maintenanceToday: vehicleStatusCounts.maintenanceToday,
+            outOfServiceToday: vehicleStatusCounts.outOfServiceToday,
+            goingOffRoadSoon: countUpcomingAvailabilityEvents(dashboardVehicles),
+            documentsExpiringSoon: countVehicleDocumentsExpiringSoon(vehicleDocumentRows),
+          },
+          complianceAlerts:
+            countDriverComplianceAlerts(driverComplianceRows) +
+            countVehicleComplianceAlerts(vehicleDocumentRows),
+        })
+      },
+    )
+
+    const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
+    const vehicleChecksPromise = fetchTodayVehicleCheckRows(companyToday).then((todayChecks) => {
+      if (isAborted(signal)) return todayChecks
+      onUpdate({
+        vehicleChecksToday: computeVehicleChecksTodayFromRows(todayChecks, companyScope),
+        dailyVehicleChecksStats: computeDailyVehicleChecksStats(
+          dashboardVehicles,
+          todayChecks,
+          companyScope,
+          companyToday,
+        ),
+      })
+      onSectionLoaded('vehicleChecks')
+      return todayChecks
+    })
+
+    void Promise.all([workerCountsPromise, driverReportsPromise, vehicleChecksPromise]).then(
+      () => {
+        if (isAborted(signal)) return
+        onSectionLoaded('kpis')
+      },
+    )
+
+    const vehicleRegistrations = new Map(
+      dashboardVehicles.map((vehicle) => [vehicle.id, vehicle.registration]),
+    )
+
+    void fetchAllRecentActivity(vehicleRegistrations, companyScope).then((recentActivity) => {
+      if (isAborted(signal)) return
+      onUpdate({ recentActivity })
+      onSectionLoaded('recentActivity')
+    })
+  } catch (error) {
+    console.error('[dashboardService.loadDashboardStatsProgressively] unexpected error:', error)
+  }
 }
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
@@ -1714,7 +1862,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     const vehicleRegistrations = new Map(
       dashboardVehicles.map((vehicle) => [vehicle.id, vehicle.registration]),
     )
-    const recentActivity = await fetchAllRecentActivity(vehicleRegistrations)
+    const recentActivity = await fetchAllRecentActivity(vehicleRegistrations, companyScope)
 
     const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
     const complianceAlerts =
@@ -1766,4 +1914,5 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
 export const dashboardService = {
   fetchDashboardStats,
+  loadDashboardStatsProgressively,
 }

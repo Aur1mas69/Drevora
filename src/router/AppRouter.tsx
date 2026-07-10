@@ -4,11 +4,13 @@ import {
   Route,
   Routes,
 } from 'react-router-dom'
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
+import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout'))
-const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage'))
+const AdminDashboardPage = lazy(loadAdminDashboardPage)
 const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
 const AdminComingSoonPage = lazy(() => import('@/pages/admin/AdminComingSoonPage'))
 const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
@@ -69,6 +71,12 @@ function RequireWorkerAuth() {
 function RequireAuthPage({ children }: { children: ReactNode }) {
   const { isAuthenticated, isAuthLoading, portal } = useAuth()
 
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated && portal === 'admin') {
+      preloadAdminDashboardPage()
+    }
+  }, [isAuthLoading, isAuthenticated, portal])
+
   if (isAuthLoading) {
     return null
   }
@@ -82,6 +90,14 @@ function RequireAuthPage({ children }: { children: ReactNode }) {
   }
 
   return children
+}
+
+function AdminDashboardRoute() {
+  return (
+    <Suspense fallback={<AdminDashboardRouteFallback />}>
+      <AdminDashboardPage />
+    </Suspense>
+  )
 }
 
 function AppRouter() {
@@ -99,7 +115,7 @@ function AppRouter() {
           path="/admin/dashboard"
           element={
             <RequireAuthPage>
-              <AdminDashboardPage />
+              <AdminDashboardRoute />
             </RequireAuthPage>
           }
         />
@@ -107,7 +123,7 @@ function AppRouter() {
           path="/admin"
           element={
             <RequireAuthPage>
-              <AdminDashboardPage />
+              <AdminDashboardRoute />
             </RequireAuthPage>
           }
         />
