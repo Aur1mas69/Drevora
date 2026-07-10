@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>DREVORA | Fleet Management Software for Transport Companies</title>
+    <meta name="description"
+        content="Streamline your transport business with DREVORA. Manage vehicles, driver timesheets, holiday requests, and compliance (MOT/Service) in one simple dashboard. Reduce paperwork and avoid fines.">
+    <meta name="keywords"
+        content="fleet management software, transport operations, driver timesheets, vehicle compliance, MOT alerts, logistics dashboard, fleet tracking, driver reports, transport company software">
+    <meta name="author" content="DREVORA">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.drevora.app/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.drevora.app/">
+    <meta property="og:title" content="DREVORA | Manage Your Fleet & Empower Your Team">
+    <meta property="og:description"
+        content="The all-in-one platform for transport companies. Handle vehicles, workers, timesheets, and compliance from a single source of truth.">
+    <meta property="og:image" content="/images/og-twitter-image.png">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://www.drevora.app/">
+    <meta name="twitter:title" content="DREVORA | Fleet Management Redefined">
+    <meta name="twitter:description"
+        content="Stop fighting disconnected systems. Manage vehicles, drivers, and compliance effortlessly with DREVORA.">
+    <meta name="twitter:image" content="/images/og-twitter-image.png">
+
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="app.css">
+    <script src="app.js" type="module"></script>
+</head>
+
+<body
+    class="bg-gradient-to-b from-surface-gradient-start to-surface-gradient-end text-on-surface font-body-md min-h-screen antialiased selection:bg-primary-container selection:text-on-primary-container">
+    <header id="main-header"
+        class="fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out bg-transparent">
+        <div
+            class="flex justify-between items-center w-full px-4 sm:px-6 md:px-10 py-4 max-w-[1280px] mx-auto relative z-50">
+            <a href="#" class="flex items-center h-10">
+                <img src="images/drevora-logo.png" alt="Drevora Fleet & Team Management"
+                    class="h-full w-auto object-contain">
+            </a>
+
+            <nav class="hidden md:flex items-center gap-8">
+                <a class="font-label-bold text-label-bold text-neutral-800 font-semibold hover:text-primary transition-colors duration-200"
+                    href="#features">Features</a>
+                <a class="font-label-bold text-label-bold text-neutral-800 font-semibold hover:text-primary transition-colors duration-200"
+                    href="#benefits">Benefits</a>
+                <a class="font-label-bold text-label-bold text-neutral-800 font-semibold hover:text-primary transition-colors duration-200"
+                    href="#pricing">Pricing</a>
+
+                <div class="relative group py-2">
+                    <button
+                        class="flex items-center gap-1 font-label-bold text-label-bold text-neutral-800 font-semibold hover:text-primary transition-colors duration-200 focus:outline-none">
+                        More
+                        <i
+                            class="fa-solid fa-chevron-down text-xs text-neutral-500 group-hover:text-primary transition-transform duration-200 group-hover:rotate-180"></i>
+                    </button>
+                    <div
+                        class="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-neutral-100 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 z-50 overflow-hidden">
+                        <div class="py-2">
+                            <a href="#blog"
+                                class="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary font-medium transition-colors">Our blog</a>
+                            <a href="#problems"
+                                class="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary font-medium transition-colors">Common
+                                problems</a>
+                            <a href="#dashboard-preview"
+                                class="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary font-medium transition-colors">Dashboard
+                                preview</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="hidden md:flex items-center gap-6">
+                <a class="font-label-bold text-label-bold text-neutral-800 font-semibold hover:text-primary transition-colors duration-200"
+                    href="https://app.drevora.app/login">Log In</a>
+                <a class="inline-flex items-center justify-center bg-primary text-white font-label-bold text-label-bold px-5 py-2.5 rounded-xl shadow-level-1 hover:bg-opacity-90 transition-all font-semibold"
+                    href="#contact">
+                    Request Demo
+                </a>
+            </div>
+
+            <button id="menu-toggle"
+                class="md:hidden text-neutral-800 p-2 rounded-xl hover:bg-neutral-100 transition-colors focus:outline-none flex items-center justify-center"
+                aria-label="Toggle Menu">
+                <!-- Font Awesome nenaudoja teksto, todėl niekas nemirksės -->
+                <i id="menu-icon" class="fa-solid fa-bars text-[20px]"></i>
+            </button>
+        </div>
+    </header>
+    <div id="mobile-menu"
+        class="fixed inset-0 bg-white/95 backdrop-blur-xl z-40 transform translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-between pt-28 px-6 pb-10 overflow-y-auto overflow-x-hidden">
+
+        <div class="absolute -top-20 -right-20 w-64 h-64 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
+
+        <nav class="flex flex-col space-y-1 relative z-10">
+            <a class="mobile-nav-link flex items-center justify-between py-3.5 px-4 rounded-xl text-lg font-semibold text-neutral-800 hover:bg-primary/5 hover:text-primary transition-all"
+                href="#features">
+                <span>Features</span>
+                <i class="fa-solid fa-angle-right text-neutral-400 text-sm"></i>
+            </a>
+            <a class="mobile-nav-link flex items-center justify-between py-3.5 px-4 rounded-xl text-lg font-semibold text-neutral-800 hover:bg-primary/5 hover:text-primary transition-all"
+                href="#benefits">
+                <span>Benefits</span>
+                <i class="fa-solid fa-angle-right text-neutral-400 text-sm"></i>
+            </a>
+            <a class="mobile-nav-link flex items-center justify-between py-3.5 px-4 rounded-xl text-lg font-semibold text-neutral-800 hover:bg-primary/5 hover:text-primary transition-all"
+                href="#pricing">
+                <span>Pricing</span>
+                <i class="fa-solid fa-angle-right text-neutral-400 text-sm"></i>
+            </a>
+
+            <div class="flex flex-col">
+                <button id="mobile-more-toggle"
+                    class="flex items-center justify-between py-3.5 px-4 rounded-xl text-lg font-semibold text-neutral-800 hover:bg-primary/5 focus:outline-none transition-all">
+                    <span>More</span>
+                    <i class="fa-solid fa-angle-down text-neutral-500 transition-transform duration-200"></i>
+                </button>
+
+                <div id="mobile-more-content"
+                    class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-neutral-50/60 rounded-xl mx-2 mt-1">
+                    <div class="py-1 px-2 flex flex-col">
+                        <a href="#blog"
+                            class="mobile-nav-link block py-3 px-4 text-base font-medium text-neutral-600 hover:text-primary rounded-lg transition-colors">Our
+                            blog</a>
+                        <a href="#problems"
+                            class="mobile-nav-link block py-3 px-4 text-base font-medium text-neutral-600 hover:text-primary rounded-lg transition-colors">Common
+                            problems</a>
+                        <a href="#dashboard-preview"
+                            class="mobile-nav-link block py-3 px-4 text-base font-medium text-neutral-600 hover:text-primary rounded-lg transition-colors">Dashboard
+                            Preview</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex flex-col gap-4 mt-8 relative z-10 border-t border-neutral-100 pt-6">
+            <a href="https://app.drevora.app/login"
+                class="mobile-nav-link w-full py-3.5 text-center font-semibold text-neutral-800 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
+                Log In
+            </a>
+            <a href="#contact"
+                class="mobile-nav-link w-full py-4 text-center font-semibold text-white bg-primary rounded-xl shadow-md hover:bg-opacity-95 transition-all">
+                Request Demo
+            </a>
+        </div>
+    </div>
+    <main>
+        <!-- Hero Section -->
+
+        <section
+            class="relative w-full overflow-hidden bg-background pt-24 pb-20 lg:pt-32 lg:pb-24 flex items-center min-h-[90vh]">
+            <div class="absolute inset-0 z-0 pointer-events-none">
+                <img src="images/hero-bg.png" alt="Hero Full Background"
+                    class="w-full h-full object-cover object-left-top sm:object-center opacity-30 lg:opacity-25">
+            </div>
+            <div
+                class="absolute inset-0 z-10 bg-gradient-to-b from-background/30 via-background/80 to-background lg:bg-gradient-to-r lg:from-background/10 lg:via-background/60 lg:to-background pointer-events-none">
+            </div>
+            <div
+                class="absolute inset-x-0 bottom-0 h-32 z-10 bg-gradient-to-t from-background to-transparent pointer-events-none">
+            </div>
+
+            <div
+                class="relative z-20 max-w-[1280px] mx-auto w-full px-4 sm:px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-center mt-8 lg:mt-0">
+                <div class="lg:col-span-6 flex flex-col items-start space-y-6 lg:space-y-8 z-30">
+                    <div
+                        class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container-lowest/80 border border-primary/20 backdrop-blur-md shadow-sm">
+                        <span
+                            class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,88,190,0.6)]"></span>
+                        <span
+                            class="font-label-caps text-label-caps text-primary uppercase tracking-wider text-xs font-semibold">Built
+                            for transport teams</span>
+                    </div>
+                    <h1
+                        class="font-display-lg text-display-lg-mobile lg:text-[42px] xl:text-[50px] text-on-surface font-black leading-[1.15] tracking-tight max-w-2xl">
+                        Manage your fleet, workers and daily operations with <span class="text-primary">DREVORA — all in
+                            one place.</span>
+                    </h1>
+                    <div class="space-y-4 max-w-xl">
+                        <p class="font-body-lg text-body-lg font-bold text-on-surface leading-snug">
+                            Save time. Reduce paperwork. Keep your transport business moving.
+                        </p>
+                        <p class="font-body-lg text-body-md lg:text-body-lg text-on-surface-variant leading-relaxed">
+                            DREVORA helps transport companies manage vehicles, workers, timesheets, holiday requests,
+                            vehicle checks, driver reports, documents, contacts and consumables from one simple
+                            platform.
+                        </p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                        <a href="#contact"
+                            class="w-full sm:w-auto inline-flex items-center justify-center font-label-bold text-label-bold px-8 py-3.5 bg-primary text-on-primary rounded-xl shadow-level-2 hover:bg-primary-container hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 gap-2 group">
+                            Request Demo
+                            <i
+                                class="fa-solid fa-arrow-right text-sm transform group-hover:translate-x-1.5 transition-transform duration-300"></i>
+                        </a>
+                        <a href="#features"
+                            class="w-full sm:w-auto inline-flex items-center justify-center font-label-bold text-label-bold px-8 py-3.5 bg-surface-container-lowest/80 backdrop-blur-md text-on-surface border border-outline-variant rounded-xl hover:bg-surface-container hover:text-primary transition-all duration-300">
+                            View Features
+                        </a>
+                    </div>
+                    <div
+                        class="pt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-x-4 gap-y-2 text-body-sm text-on-surface-variant/90 border-t border-outline-variant/40 w-full max-w-xl">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-sm text-primary shrink-0"></i>
+                            <span class="font-medium">Secure platform</span>
+                        </div>
+
+                        <span class="hidden sm:inline text-on-surface-variant/40">•</span>
+
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex sm:hidden shrink-0">
+                                <i class="fa-solid fa-circle-check text-sm text-primary"></i>
+                            </span>
+                            <span class="font-medium">Record keeping ready</span>
+                        </div>
+
+                        <span class="hidden sm:inline text-on-surface-variant/40">•</span>
+
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex sm:hidden shrink-0">
+                                <i class="fa-solid fa-circle-check text-sm text-primary"></i>
+                            </span>
+                            <span class="font-medium">No card required for Early Access</span>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    class="lg:col-span-6 relative flex items-center justify-center w-full mt-8 lg:mt-0 pr-2 sm:pr-6 lg:pr-2 pl-2">
+                    <div
+                        class="absolute inset-0 bg-primary/10 blur-[120px] rounded-full z-10 w-4/5 h-4/5 m-auto pointer-events-none">
+                    </div>
+                    <div
+                        class="hidden lg:block absolute top-[-8%] left-[5%] z-40 bg-surface-container-lowest p-3 rounded-2xl shadow-level-2 border border-outline-variant/60 animate-bounce [animation-duration:4s]">
+                        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <div
+                        class="hidden lg:block absolute bottom-[25%] left-[-8%] z-40 bg-surface-container-lowest p-3 rounded-2xl shadow-level-2 border border-outline-variant/60 animate-bounce [animation-duration:5s]">
+                        <i class="fa-regular fa-truck text-xl text-primary"></i>
+                    </div>
+
+                    <div
+                        class="hidden lg:block absolute bottom-[-4%] right-[25%] z-40 bg-primary p-3 rounded-2xl shadow-level-2 text-on-primary">
+                        <i class="fa-solid fa-check text-base"></i>
+                    </div>
+                    <div class="relative w-full z-20 flex items-center justify-center max-w-[580px] lg:max-w-none">
+                        <div
+                            class="w-full shadow-[0_20px_50px_rgba(0,40,100,0.12)] rounded-2xl border border-outline-variant/40 bg-surface-container-lowest overflow-hidden transition-all duration-500 hover:shadow-[0_24px_60px_rgba(0,40,100,0.18)]">
+                            <img src="images/drevora-dashboard-1.png" alt="Drevora Dashboard"
+                                class="w-full h-auto block object-contain">
+                        </div>
+                        <div
+                            class="absolute -right-1 sm:-right-3 lg:-right-4 -bottom-4 sm:-bottom-6 lg:-bottom-7 z-30 w-[26%] sm:w-[24%] max-w-[130px] min-w-[76px] drop-shadow-[0_25px_35px_rgba(0,20,50,0.28)] transition-transform duration-500 hover:-translate-y-2">
+                            <img src="images/drevora-mobile.png" alt="Drevora Mobile"
+                                class="w-full h-auto block object-contain">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Problems Section -->
+
+        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low"
+            id="problems">
+            <div class="max-w-container-max mx-auto">
+                <div class="text-center mb-12">
+                    <span
+                        class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Common
+                        problems</span>
+                    <h2 class="font-headline-md text-headline-md text-on-surface mb-4">The friction slowing you down
+                    </h2>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">Running a transport
+                        business is complex enough without fighting disconnected systems.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-component-gap">
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-error-container flex items-center justify-center text-on-error-container">
+                            <span class="material-symbols-outlined">description</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Too much paperwork</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Endless manual entry and lost
+                            physical sheets slow down billing and payroll.</p>
+                    </div>
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-accent-warning/20 flex items-center justify-center text-accent-warning">
+                            <span class="material-symbols-outlined">minor_crash</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Missed vehicle checks</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Inconsistent daily walkarounds put
+                            your fleet at risk and risk compliance failures.</p>
+                    </div>
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+                            <span class="material-symbols-outlined">event_busy</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Holiday requests lost</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Juggling emails and texts leads to
+                            scheduling conflicts and unhappy drivers.</p>
+                    </div>
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined">wrong_location</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Hard to track assets</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Not knowing exactly where your
+                            workers and vehicles are leads to missed deadlines and logistics gaps.</p>
+                    </div>
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-accent-danger/20 flex items-center justify-center text-accent-danger">
+                            <span class="material-symbols-outlined">notification_important</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Compliance forgotten</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Missing critical MOT, service, or
+                            license renewal dates results in hefty fines and grounded vehicles.</p>
+                    </div>
+                    <div
+                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
+                        <div
+                            class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                        </div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Costs untracked</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Failing to properly monitor fuel,
+                            parts, and consumables slowly drains your company's profit margins.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="w-full bg-fleet-blue-dark text-on-primary py-16 px-margin-mobile md:px-margin-desktop">
+            <div class="max-w-container-max mx-auto text-center flex flex-col items-center gap-6">
+                <span class="material-symbols-outlined text-4xl text-primary-fixed-dim"
+                    style="font-variation-settings: 'FILL' 1;">dashboard_customize</span>
+                <h2 class="font-headline-md text-headline-md text-on-primary max-w-3xl">One simple dashboard for daily
+                    transport operations.</h2>
+                <p class="font-body-lg text-body-lg text-secondary-fixed-dim max-w-2xl">Replace spreadsheets, paper
+                    trails, and multiple apps with a single source of truth for your entire fleet.</p>
+            </div>
+        </section>
+        <section
+            class="w-full px-margin-mobile md:px-margin-desktop py-section-gap max-w-container-max mx-auto relative overflow-hidden"
+            id="features">
+            <div class="absolute -inset-0 bg-primary-fixed opacity-10 blur-3xl rounded-full z-0 pointer-events-none">
+            </div>
+
+            <div class="relative z-10">
+                <div class="text-center mb-16">
+                    <span
+                        class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Features</span>
+                    <h2 class="font-headline-md text-headline-md text-on-surface">Everything in one place</h2>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-12">
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">groups</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Workers</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Manage your team
+                            information, roles and qualifications.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">local_shipping</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Vehicles</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Keep all your
+                            vehicles, trailers and documents in one place.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">schedule</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Timesheets</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Drivers submit
+                            timesheets and you stay compliant with ease.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">beach_access</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Holidays</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Request, approve and
+                            track holidays in real time.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">fact_check</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Vehicle Checks</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Daily vehicle
+                            inspections from drivers, straight to your dashboard.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">warning</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Driver Reports</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Drivers report issues
+                            and incidents on the go.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">folder_open</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Documents</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Store and manage all
+                            your important documents securely.</p>
+                    </div>
+                    <div
+                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
+                            <span class="material-symbols-outlined text-3xl">receipt_long</span>
+                        </div>
+                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Consumables</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Track fuel, AdBlue
+                            and other consumables effortlessly.</p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Preview section -->
+
+        <section class="w-full px-4 sm:px-6 lg:px-10 py-section-gap bg-surface-container-low overflow-hidden relative"
+            id="dashboard-preview">
+            <div
+                class="absolute right-0 top-1/4 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-primary-fixed opacity-20 blur-3xl rounded-full z-0 pointer-events-none">
+            </div>
+
+            <div
+                class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
+                <div class="lg:col-span-5 flex flex-col items-start space-y-8">
+                    <div>
+                        <span
+                            class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Dashboard
+                            preview</span>
+                        <h2 class="font-headline-md text-headline-md text-on-surface leading-tight">
+                            A clean dashboard <br class="hidden sm:block">Built for speed
+                        </h2>
+                    </div>
+                    <div class="space-y-4 w-full">
+                        <div
+                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span
+                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">01</span>
+                            <div>
+                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Real-time
+                                    Overview</h3>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">See active vehicles,
+                                    pending timesheets, and today's status at a single glance.</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span
+                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">02</span>
+                            <div>
+                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Beautiful
+                                    dashboard</h3>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">A visually appealing and
+                                    intuitive interface that provides a comprehensive view of all your operations.</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span
+                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">03</span>
+                            <div>
+                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Easy management
+                                </h3>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">Simplify your workflow with
+                                    intuitive controls and seamless navigation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-7 w-full flex flex-col items-center">
+                    <div
+                        class="w-full bg-surface-container-lowest p-2 rounded-2xl border border-outline-variant shadow-2xl ring-4 ring-primary/5 overflow-hidden">
+                        <div class="flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-b border-surface-container">
+                            <div class="w-2 h-2 rounded-full bg-error/60"></div>
+                            <div class="w-2 h-2 rounded-full bg-accent-warning/60"></div>
+                            <div class="w-2 h-2 rounded-full bg-accent-success/60"></div>
+                        </div>
+                        <div id="dashboard-slider"
+                            class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth rounded-xl bg-surface-container"
+                            style="scrollbar-width: none; -ms-overflow-style: none;">
+                            <a href="images/drevora-dashboard-1.png" target="_blank" rel="noopener noreferrer"
+                                class="w-full shrink-0 snap-start block overflow-hidden cursor-zoom-in">
+                                <img src="images/drevora-dashboard-1.png" alt="Drevora Main Dashboard"
+                                    class="w-full h-auto block">
+                            </a>
+                            <a href="images/drevora-dashboard-2.png" target="_blank" rel="noopener noreferrer"
+                                class="w-full shrink-0 snap-start block overflow-hidden cursor-zoom-in">
+                                <img src="images/drevora-dashboard-2.png" alt="Drevora Analytics View"
+                                    class="w-full h-auto block filter hue-rotate-15">
+                            </a>
+                            <a href="images/drevora-dashboard-3.png" target="_blank" rel="noopener noreferrer"
+                                class="w-full shrink-0 snap-start block overflow-hidden cursor-zoom-in">
+                                <img src="images/drevora-dashboard-3.png" alt="Drevora Fleet View"
+                                    class="w-full h-auto block filter saturate-150">
+                            </a>
+                            <a href="images/drevora-dashboard-4.png" target="_blank" rel="noopener noreferrer"
+                                class="w-full shrink-0 snap-start block overflow-hidden cursor-zoom-in">
+                                <img src="images/drevora-dashboard-4.png" alt="Drevora Vehicle Details View"
+                                    class="w-full h-auto block filter contrast-125">
+                            </a>
+                            <a href="images/drevora-dashboard-5.png" target="_blank" rel="noopener noreferrer"
+                                class="w-full shrink-0 snap-start block overflow-hidden cursor-zoom-in">
+                                <img src="images/drevora-dashboard-5.png" alt="Drevora Timesheet View"
+                                    class="w-full h-auto block filter brightness-110">
+                            </a>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2.5 mt-6" id="slider-dots">
+                        <button data-index="0" class="dot w-7 h-2.5 rounded-full bg-primary transition-all duration-300"
+                            aria-label="Go to slide 1"></button>
+                        <button data-index="1"
+                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
+                            aria-label="Go to slide 2"></button>
+                        <button data-index="2"
+                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
+                            aria-label="Go to slide 3"></button>
+                        <button data-index="3"
+                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
+                            aria-label="Go to slide 4"></button>
+                        <button data-index="4"
+                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
+                            aria-label="Go to slide 5"></button>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+
+        <section
+            class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-lowest border-t border-outline-variant/30"
+            id="benefits">
+            <div class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+                <div class="lg:col-span-5 flex flex-col items-start space-y-6 lg:sticky lg:top-28">
+                    <span class="font-label-caps text-label-caps text-primary tracking-widest uppercase block">Why
+                        Choose Drevora (Benefits)</span>
+                    <h2 class="font-headline-md text-headline-md text-on-surface leading-tight">
+                        Built to transform your <br>
+                        <span class="text-primary">transport operations</span>
+                    </h2>
+                    <p class="font-body-lg text-body-md text-on-surface-variant max-w-md">
+                        Move away from chaotic spreadsheets and lost messages. Experience a smarter way to manage your
+                        fleet, drivers, and daily business compliance.
+                    </p>
+                    <div class="pt-2">
+                        <a href="#pricing"
+                            class="inline-flex items-center justify-center font-label-bold text-label-bold px-6 py-3 bg-primary text-on-primary rounded-xl shadow-level-1 hover:bg-primary-container transition-all">
+                            Start Your Free Trial
+                        </a>
+                    </div>
+                </div>
+                <div class="lg:col-span-7 space-y-4">
+                    <div
+                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-2xl">auto_delete</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Reduce paperwork
+                            </h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Eliminate heavy folders and
+                                manual data entry. Move everything to digital forms that your drivers can fill out in
+                                seconds.</p>
+                        </div>
+                    </div>
+                    <div
+                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-2xl">folder_managed</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Keep records
+                                organised</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">No more searching through lost
+                                text messages. Timesheets, holiday requests, and vehicle histories are instantly
+                                searchable and securely backed up.</p>
+                        </div>
+                    </div>
+                    <div
+                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-2xl">visibility</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Improve visibility
+                            </h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Know exactly who is working,
+                                which vehicles are on the road, and who is on leave at any given moment through a clean,
+                                real-time dashboard.</p>
+                        </div>
+                    </div>
+                    <div
+                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-2xl">gavel</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Help with
+                                compliance</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Stay ahead of law regulations.
+                                Get proactive alerts for upcoming MOTs, service dates, and expiring driver
+                                qualifications to avoid fines.</p>
+                        </div>
+                    </div>
+                    <div
+                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                            <span class="material-symbols-outlined text-2xl">hub</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">One central
+                                operations hub</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Bring your entire transport
+                                business into a single, cohesive workspace. Run payroll, approve holidays, and check
+                                fleet health without switching tabs.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+
+        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low"
+            id="pricing">
+            <div class="max-w-container-max mx-auto">
+                <div class="text-center mb-16">
+                    <h2 class="font-headline-md text-headline-md text-on-surface mb-4">Simple, transparent pricing</h2>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant">Choose the plan that fits your fleet
+                        size. Scale as you grow.</p>
+                </div>
+                <div class="flex flex-col lg:flex-row justify-center items-center lg:items-stretch gap-6 lg:gap-8 w-full">
+                    <div
+                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border border-outline-variant/40 bg-gradient-to-b from-surface-container-lowest via-white to-primary/[0.04] shadow-[0_8px_30px_rgba(0,50,100,0.08)] hover:shadow-[0_16px_40px_rgba(0,80,160,0.12)] hover:-translate-y-1 hover:border-primary/25 transition-all duration-300 overflow-hidden">
+                        <div
+                            class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/8 to-transparent pointer-events-none">
+                        </div>
+                        <div class="relative mb-6 border-b border-outline-variant/25 pb-6">
+                            <div
+                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 ring-1 ring-primary/15 shadow-sm">
+                                <i class="fa-solid fa-truck text-lg"></i>
+                            </div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Starter Fleet</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Up to 10 vehicles
+                                connected</p>
+                            <div class="mt-4 flex items-baseline gap-1">
+                                <span class="font-display-lg text-display-lg text-on-surface">£69.99</span>
+                                <span class="text-on-surface-variant">/mo</span>
+                            </div>
+                        </div>
+                        <ul class="flex-1 space-y-3.5 mb-8">
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Fleet Management</strong></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dashboard</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Workers</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicles</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Timesheets</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Holiday Requests</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicle Checks</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Driver Reports</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
+                                        Observations)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Compliance</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Consumables</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dedicated Support</strong></div>
+                            </li>
+                        </ul>
+                        <div class="text-center mb-4">
+                            <span
+                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
+                                <i class="fa-solid fa-gift text-xs"></i>
+                                1 month free
+                            </span>
+                        </div>
+                        <button
+                            class="w-full py-3.5 rounded-xl border-2 border-primary/30 font-label-bold text-label-bold text-primary bg-white/50 hover:bg-primary/5 hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">Start
+                            Free Trial</button>
+                    </div>
+                    <div
+                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border-2 border-primary/35 bg-gradient-to-b from-surface-container-lowest via-primary/[0.03] to-primary/[0.08] shadow-[0_12px_40px_rgba(0,80,160,0.14)] hover:shadow-[0_20px_50px_rgba(0,80,160,0.18)] hover:-translate-y-1 hover:border-primary/50 transition-all duration-300 overflow-hidden lg:-translate-y-2 ring-1 ring-primary/15">
+                        <div
+                            class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/12 to-transparent pointer-events-none">
+                        </div>
+                        <div class="relative mb-3 flex justify-center">
+                            <span
+                                class="inline-flex items-center gap-1.5 bg-gradient-to-r from-primary to-primary/85 text-on-primary text-[11px] font-bold tracking-wider uppercase px-4 py-1.5 rounded-full shadow-md shadow-primary/20">
+                                <i class="fa-solid fa-star text-[10px]"></i>
+                                Most Popular
+                            </span>
+                        </div>
+                        <div class="relative mb-6 border-b border-primary/15 pb-6">
+                            <div
+                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary mb-4 ring-1 ring-primary/20 shadow-sm">
+                                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+                            </div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Growing Fleet</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Up to 25 vehicles
+                                connected</p>
+                            <div class="mt-4 flex items-baseline gap-1">
+                                <span class="font-display-lg text-display-lg text-on-surface">£119.99</span>
+                                <span class="text-on-surface-variant">/mo</span>
+                            </div>
+                        </div>
+                        <ul class="flex-1 space-y-3.5 mb-8">
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Fleet Management</strong></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dashboard</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Workers</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicles</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Timesheets</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Holiday Requests</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicle Checks</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Driver Reports</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
+                                        Observations)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Compliance</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Consumables</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dedicated Support</strong></div>
+                            </li>
+                        </ul>
+                        <div class="text-center mb-4">
+                            <span
+                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
+                                <i class="fa-solid fa-gift text-xs"></i>
+                                1 month free
+                            </span>
+                        </div>
+                        <button
+                            class="w-full py-3.5 rounded-xl bg-primary text-on-primary font-label-bold text-label-bold hover:bg-primary-container shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">Start
+                            Free Trial</button>
+                    </div>
+                    <div
+                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border border-outline-variant/40 bg-gradient-to-b from-surface-container-lowest via-white to-primary/[0.04] shadow-[0_8px_30px_rgba(0,50,100,0.08)] hover:shadow-[0_16px_40px_rgba(0,80,160,0.12)] hover:-translate-y-1 hover:border-primary/25 transition-all duration-300 overflow-hidden">
+                        <div
+                            class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/8 to-transparent pointer-events-none">
+                        </div>
+                        <div class="relative mb-6 border-b border-outline-variant/25 pb-6">
+                            <div
+                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 ring-1 ring-primary/15 shadow-sm">
+                                <i class="fa-solid fa-shield-halved text-lg"></i>
+                            </div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Pro Fleet</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">50+ vehicles connected</p>
+                            <div class="mt-4 flex items-baseline gap-1">
+                                <span class="font-display-lg text-display-lg text-on-surface">£199.99</span>
+                                <span class="text-on-surface-variant">/mo</span>
+                            </div>
+                        </div>
+                        <ul class="flex-1 space-y-3.5 mb-8">
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Fleet Management</strong></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dashboard</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Workers</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicles</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Timesheets</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Holiday Requests</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Vehicle Checks</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Driver Reports</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
+                                        Observations)</span></div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Compliance</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Consumables</strong> <span
+                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
+                                <span
+                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
+                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
+                                </span>
+                                <div><strong>Dedicated Support</strong></div>
+                            </li>
+                        </ul>
+                        <div class="text-center mb-4">
+                            <span
+                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
+                                <i class="fa-solid fa-gift text-xs"></i>
+                                1 month free
+                            </span>
+                        </div>
+                        <button
+                            class="w-full py-3.5 rounded-xl border-2 border-primary/30 font-label-bold text-label-bold text-primary bg-white/50 hover:bg-primary/5 hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">Start
+                            Free Trial</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+
+        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap max-w-container-max mx-auto"
+            id="contact">
+            <div
+                class="bg-surface-container-lowest rounded-xl shadow-level-2 p-8 md:p-12 max-w-3xl mx-auto border border-outline-variant/20">
+                <div class="text-center mb-10">
+                    <h2 class="font-headline-md text-headline-md text-on-surface mb-3">Ready to streamline your fleet?
+                    </h2>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant">Request a personalized demo and see how
+                        DREVORA fits your operations.</p>
+                </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant/90 text-center">
+                        Prefer email? Contact us at
+                        <a href="mailto:Admin@drevora.uk"
+                            class="text-primary hover:underline font-medium">Admin@drevora.uk</a>
+                    </p>
+                <form id="demo-request-form" class="space-y-6" novalidate>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                                for="demo-full-name">Full Name</label>
+                            <input id="demo-full-name" name="fullName"
+                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                placeholder="John Doe" type="text" required>
+                        </div>
+                        <div>
+                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                                for="demo-company-name">Company
+                                Name</label>
+                            <input id="demo-company-name" name="companyName"
+                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                placeholder="Transport Co." type="text" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                                for="demo-work-email">Work Email</label>
+                            <input id="demo-work-email" name="workEmail"
+                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                placeholder="john@company.com" type="email" required>
+                        </div>
+                        <div>
+                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                                for="demo-vehicle-count">Number of
+                                Vehicles</label>
+                            <select id="demo-vehicle-count" name="vehicleCount"
+                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow appearance-none"
+                                required>
+                                <option value="1 - 10">1 - 10</option>
+                                <option value="11 - 25">11 - 25</option>
+                                <option value="26 - 50">26 - 50</option>
+                                <option value="50+">50+</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                            for="demo-message">Message
+                            (Optional)</label>
+                        <textarea id="demo-message" name="message"
+                            class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                            placeholder="Tell us about your specific needs..." rows="4"></textarea>
+                    </div>
+                    <div id="demo-request-status" class="hidden rounded-lg px-4 py-3 text-sm font-medium" role="status"
+                        aria-live="polite"></div>
+                    <button id="demo-request-submit"
+                        class="w-full py-4 rounded-lg bg-primary text-on-primary font-label-bold text-label-bold text-lg hover:bg-primary-container shadow-md transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                        type="submit">
+                        Request Demo
+                    </button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-surface-container-lowest w-full border-t border-outline-variant/60">
+        <div
+            class="w-full pt-16 pb-12 px-margin-mobile md:px-margin-desktop grid grid-cols-1 md:grid-cols-12 gap-y-10 md:gap-x-gutter max-w-container-max mx-auto">
+            <div class="md:col-span-6 flex flex-col items-start gap-4">
+                <a href="#" class="block h-8">
+                    <img src="images/drevora-logo.png" alt="Drevora Logo" class="h-full w-auto object-contain">
+                </a>
+                <p class="font-body-sm text-body-sm text-on-secondary-container max-w-xs mt-2 leading-relaxed">
+                    All-in-one transport operations platform built to streamline fleet management, timesheets,
+                    and daily business compliance.
+                </p>
+                <p class="font-body-sm text-body-sm text-on-secondary-container/90 max-w-sm leading-relaxed font-medium">
+                    Install DREVORA on your phone home screen.
+                </p>
+                <div class="flex flex-col items-start gap-2 w-full max-w-sm">
+                    <a href="https://app.drevora.app/login"
+                        class="inline-flex items-center justify-center gap-2 font-label-bold text-label-bold px-5 py-2.5 bg-primary text-on-primary rounded-xl shadow-level-1 hover:bg-primary-container hover:shadow-lg transition-all duration-200">
+                        <span class="material-symbols-outlined text-base">open_in_new</span>
+                        Open DREVORA Web App
+                    </a>
+                    <p class="font-body-sm text-[13px] text-on-secondary-container/80 leading-relaxed">
+                        Open DREVORA on your phone, then add it to your home screen.
+                    </p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2.5 w-full max-w-md">
+                    <div
+                        class="flex-1 rounded-xl border border-outline-variant/50 bg-surface-container-low/60 px-3.5 py-3">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <i class="fab fa-apple text-base text-on-surface"></i>
+                            <span class="font-label-bold text-[12px] text-on-surface font-semibold">iPhone</span>
+                        </div>
+                        <p class="font-body-sm text-[12px] text-on-secondary-container leading-relaxed">
+                            Open in Safari → tap Share → Add to Home Screen
+                        </p>
+                    </div>
+                    <div
+                        class="flex-1 rounded-xl border border-outline-variant/50 bg-surface-container-low/60 px-3.5 py-3">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <i class="fab fa-android text-base text-primary"></i>
+                            <span class="font-label-bold text-[12px] text-on-surface font-semibold">Android</span>
+                        </div>
+                        <p class="font-body-sm text-[12px] text-on-secondary-container leading-relaxed">
+                            Open in Chrome → tap menu → Install app
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 my-2 w-full sm:w-auto">
+                    <span
+                        class="inline-flex items-center gap-3 bg-on-surface text-surface px-4 py-2 rounded-xl shadow-level-1 opacity-90 cursor-default"
+                        aria-label="Google Play app coming soon">
+                        <i class="fab fa-google-play text-xl opacity-90"></i>
+                        <div class="flex flex-col text-left">
+                            <span
+                                class="text-[9px] font-medium tracking-wider uppercase opacity-80 leading-none">Coming
+                                soon on</span>
+                            <span class="text-sm font-bold tracking-wide leading-tight mt-0.5">Google Play</span>
+                        </div>
+                    </span>
+                    <span
+                        class="inline-flex items-center gap-3 bg-on-surface text-surface px-4 py-2 rounded-xl shadow-level-1 opacity-90 cursor-default"
+                        aria-label="App Store app coming soon">
+                        <i class="fab fa-apple text-2xl opacity-90"></i>
+                        <div class="flex flex-col text-left">
+                            <span
+                                class="text-[9px] font-medium tracking-wider uppercase opacity-80 leading-none">Coming
+                                soon on</span>
+                            <span class="text-sm font-bold tracking-wide leading-tight mt-0.5">App Store</span>
+                        </div>
+                    </span>
+                </div>
+                <div class="flex flex-col gap-1.5 pt-1">
+                    <a href="mailto:Admin@drevora.uk"
+                        class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">mail</span> Admin@drevora.uk
+                    </a>
+                </div>
+            </div>
+            <div class="md:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-8 md:justify-items-end">
+                <div class="flex flex-col gap-3.5 min-w-[120px]">
+                    <span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider uppercase">
+                        Product
+                    </span>
+                    <div class="flex flex-col gap-2.5">
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#features">Features</a>
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#benefits">Benefits</a>
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#pricing">Pricing</a>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-3.5 min-w-[120px]">
+                    <span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider uppercase">
+                        Legal
+                    </span>
+                    <div class="flex flex-col gap-2.5">
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#">Privacy Policy</a>
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#">Terms of Service</a>
+                        <a class="font-body-sm text-body-sm text-on-secondary-container hover:text-primary transition-colors"
+                            href="#">Cookies Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div
+            class="w-full border-t border-outline-variant/30 py-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p class="font-body-sm text-[13px] text-on-secondary-container/80 text-center sm:text-left">
+                &copy; <span id="footer-year">2026</span> DREVORA. All rights reserved.
+            </p>
+            <div class="flex items-center gap-4 text-on-secondary-container/60">
+                <a href="#" class="hover:text-primary transition-colors">
+                    <span class="font-body-sm text-xs uppercase font-bold tracking-widest">Facebook</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>
