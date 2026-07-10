@@ -18,25 +18,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    updateHeaderStyles()
+    function isMobileMenuOpen() {
+        return mobileMenu.classList.contains('translate-x-0')
+    }
 
-    window.addEventListener('scroll', updateHeaderStyles)
+    function closeMobileMenu() {
+        mobileMenu.classList.remove('translate-x-0')
+        mobileMenu.classList.add('translate-x-full')
+        menuIcon.classList.remove('fa-xmark')
+        menuIcon.classList.add('fa-bars')
+        document.body.style.overflow = ''
+        menuToggle.setAttribute('aria-expanded', 'false')
+    }
+
+    function openMobileMenu() {
+        mobileMenu.classList.remove('translate-x-full')
+        mobileMenu.classList.add('translate-x-0')
+        menuIcon.classList.remove('fa-bars')
+        menuIcon.classList.add('fa-xmark')
+        document.body.style.overflow = 'hidden'
+        menuToggle.setAttribute('aria-expanded', 'true')
+    }
+
+    updateHeaderStyles()
+    menuToggle.setAttribute('aria-expanded', 'false')
+
+    let headerTicking = false
+    window.addEventListener(
+        'scroll',
+        () => {
+            if (headerTicking) return
+            headerTicking = true
+            requestAnimationFrame(() => {
+                updateHeaderStyles()
+                headerTicking = false
+            })
+        },
+        { passive: true },
+    )
 
     menuToggle.addEventListener('click', () => {
-        const isOpen = mobileMenu.classList.contains('translate-x-0')
-
-        if (isOpen) {
-            mobileMenu.classList.remove('translate-x-0')
-            mobileMenu.classList.add('translate-x-full')
-            menuIcon.classList.remove('fa-xmark')
-            menuIcon.classList.add('fa-bars')
-            document.body.style.overflow = ''
+        if (isMobileMenuOpen()) {
+            closeMobileMenu()
         } else {
-            mobileMenu.classList.remove('translate-x-full')
-            mobileMenu.classList.add('translate-x-0')
-            menuIcon.classList.remove('fa-bars')
-            menuIcon.classList.add('fa-xmark')
-            document.body.style.overflow = 'hidden'
+            openMobileMenu()
+        }
+    })
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768 && isMobileMenuOpen()) {
+            closeMobileMenu()
+        }
+    })
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isMobileMenuOpen()) {
+            closeMobileMenu()
         }
     })
 
@@ -45,10 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isExpanded) {
             mobileMoreContent.style.maxHeight = '0px'
-            mobileMoreChevron.style.transform = 'rotate(0deg)'
+            if (mobileMoreChevron) mobileMoreChevron.style.transform = 'rotate(0deg)'
         } else {
             mobileMoreContent.style.maxHeight = mobileMoreContent.scrollHeight + 'px'
-            mobileMoreChevron.style.transform = 'rotate(180deg)'
+            if (mobileMoreChevron) mobileMoreChevron.style.transform = 'rotate(180deg)'
         }
     })
 
@@ -57,22 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const href = link.getAttribute('href')
 
             if (!href || !href.startsWith('#')) {
-                document.body.style.overflow = ''
-                mobileMenu.classList.remove('translate-x-0')
-                mobileMenu.classList.add('translate-x-full')
-                menuIcon.classList.remove('fa-xmark')
-                menuIcon.classList.add('fa-bars')
+                closeMobileMenu()
                 return
             }
 
             e.preventDefault()
-
-            document.body.style.overflow = ''
-            mobileMenu.classList.remove('translate-x-0')
-            mobileMenu.classList.add('translate-x-full')
-
-            menuIcon.classList.remove('fa-xmark')
-            menuIcon.classList.add('fa-bars')
+            closeMobileMenu()
 
             const targetElement = document.querySelector(href)
 
@@ -93,6 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const slider = document.getElementById('dashboard-slider')
     const dots = document.querySelectorAll('#slider-dots .dot')
 
+    if (!slider || dots.length === 0) return
+
     let autoplayInterval
     const autoplayDelay = 4000
 
@@ -109,6 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startAutoplay() {
+        if (window.innerWidth < 768) return
+
+        clearInterval(autoplayInterval)
         autoplayInterval = setInterval(() => {
             const width = slider.clientWidth
             if (width === 0) return
@@ -117,13 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let nextIdx = currentIdx + 1
 
             if (nextIdx >= dots.length) {
-                nextIdx = 0;
+                nextIdx = 0
             }
 
             slider.scrollTo({
                 left: nextIdx * width,
-                behavior: 'smooth'
-            });
+                behavior: 'smooth',
+            })
         }, autoplayDelay)
     }
 
@@ -134,9 +166,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     slider.addEventListener('scroll', () => {
         const width = slider.clientWidth
+        if (width === 0) return
         const activeIndex = Math.round(slider.scrollLeft / width)
         updateDots(activeIndex)
-    })
+    }, { passive: true })
 
     dots.forEach(dot => {
         dot.addEventListener('click', () => {
@@ -145,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             slider.scrollTo({
                 left: index * width,
-                behavior: 'smooth'
+                behavior: 'smooth',
             })
 
             resetAutoplay()
@@ -154,6 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     slider.addEventListener('touchstart', () => clearInterval(autoplayInterval), { passive: true })
     slider.addEventListener('touchend', () => startAutoplay(), { passive: true })
+
+    window.addEventListener('resize', () => {
+        clearInterval(autoplayInterval)
+        startAutoplay()
+    })
 
     startAutoplay()
 })
