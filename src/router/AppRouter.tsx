@@ -4,34 +4,49 @@ import {
   Route,
   Routes,
 } from 'react-router-dom'
-import type { ReactNode } from 'react'
-import MainLayout from '@/layouts/MainLayout'
-import AdminDashboardPage from '@/pages/AdminDashboardPage'
-import AdminLoginPage from '@/pages/AdminLoginPage'
-import AdminComingSoonPage from '@/pages/admin/AdminComingSoonPage'
-import ContactsPage from '@/pages/ContactsPage'
-import DocumentsPage from '@/pages/DocumentsPage'
-import DriverReportsPage from '@/pages/DriverReportsPage'
-import ConsumablesPage from '@/pages/ConsumablesPage'
-import VehicleComplianceProfilePage from '@/pages/VehicleComplianceProfilePage'
-import WorkerComplianceProfilePage from '@/pages/WorkerComplianceProfilePage'
-import DashboardPage from '@/pages/DashboardPage'
-import DriverDetailsPage from '@/pages/DriverDetailsPage'
-import DriverLoginPage from '@/pages/DriverLoginPage'
-import WorkerLoginPage from '@/pages/WorkerLoginPage'
-import DriversPage from '@/pages/DriversPage'
-import HistoryPage from '@/pages/HistoryPage'
-import MyHolidaysPage from '@/pages/MyHolidaysPage'
-import NotFoundPage from '@/pages/NotFoundPage'
-import ProfilePage from '@/pages/ProfilePage'
-import FaqHelpPage from '@/pages/FaqHelpPage'
-import SettingsPage from '@/pages/SettingsPage'
-import HolidayRequestsPage from '@/pages/HolidayRequestsPage'
-import VehicleChecksPage from '@/pages/VehicleChecksPage'
-import TimesheetsPage from '@/pages/TimesheetsPage'
-import VehicleDetailsPage from '@/pages/VehicleDetailsPage'
-import VehiclesPage from '@/pages/VehiclesPage'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+
+const MainLayout = lazy(() => import('@/layouts/MainLayout'))
+const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage'))
+const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
+const AdminComingSoonPage = lazy(() => import('@/pages/admin/AdminComingSoonPage'))
+const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
+const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'))
+const DriverReportsPage = lazy(() => import('@/pages/DriverReportsPage'))
+const ConsumablesPage = lazy(() => import('@/pages/ConsumablesPage'))
+const VehicleComplianceProfilePage = lazy(
+  () => import('@/pages/VehicleComplianceProfilePage'),
+)
+const WorkerComplianceProfilePage = lazy(
+  () => import('@/pages/WorkerComplianceProfilePage'),
+)
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const DriverDetailsPage = lazy(() => import('@/pages/DriverDetailsPage'))
+const DriverLoginPage = lazy(() => import('@/pages/DriverLoginPage'))
+const WorkerLoginPage = lazy(() => import('@/pages/WorkerLoginPage'))
+const DriversPage = lazy(() => import('@/pages/DriversPage'))
+const HistoryPage = lazy(() => import('@/pages/HistoryPage'))
+const MyHolidaysPage = lazy(() => import('@/pages/MyHolidaysPage'))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
+const FaqHelpPage = lazy(() => import('@/pages/FaqHelpPage'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
+const HolidayRequestsPage = lazy(() => import('@/pages/HolidayRequestsPage'))
+const VehicleChecksPage = lazy(() => import('@/pages/VehicleChecksPage'))
+const TimesheetsPage = lazy(() => import('@/pages/TimesheetsPage'))
+const VehicleDetailsPage = lazy(() => import('@/pages/VehicleDetailsPage'))
+const VehiclesPage = lazy(() => import('@/pages/VehiclesPage'))
+
+function RouteLoadingFallback() {
+  return (
+    <div
+      className="min-h-dvh bg-[#F6F9FF]"
+      aria-label="Loading page"
+      role="status"
+    />
+  )
+}
 
 function RequireWorkerAuth() {
   const { isAuthenticated, isAuthLoading, portal } = useAuth()
@@ -72,7 +87,8 @@ function RequireAuthPage({ children }: { children: ReactNode }) {
 function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<AdminLoginPage />} />
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -327,7 +343,8 @@ function AppRouter() {
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -23,7 +30,6 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed'
 import { Button } from '@/components/ui/button'
 import { getCompanyDisplayName } from '@/lib/company'
-import { requireSupabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 function sidebarNavLinkClass(isActive: boolean, collapsed: boolean): string {
@@ -454,30 +460,10 @@ function AccountMenu() {
   const { session } = useAuth()
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const [email, setEmail] = useState(session?.user.email ?? '')
   const { logOut, isLoggingOut, logoutError, clearLogoutError } = useAdminLogout()
 
+  const email = session?.user.email ?? ''
   const displayName = getDisplayName(email)
-
-  useEffect(() => {
-    if (session?.user.email) {
-      setEmail(session.user.email)
-      return
-    }
-
-    async function loadEmail() {
-      try {
-        const { data, error } = await requireSupabase().auth.getUser()
-        if (!error && data.user?.email) {
-          setEmail(data.user.email)
-        }
-      } catch {
-        // Ignore profile load errors in the account menu.
-      }
-    }
-
-    void loadEmail()
-  }, [session])
 
   useEffect(() => {
     if (!open) return
@@ -723,9 +709,10 @@ function MobileNavDrawer({
 
 function TopBar() {
   const [now, setNow] = useState(() => new Date())
-  const [displayName, setDisplayName] = useState('there')
+  const { session } = useAuth()
   const { settings, formatOperationsDateTime } = useCompanySettings()
   const companyName = getCompanyDisplayName(settings?.name)
+  const displayName = getDisplayName(session?.user.email)
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -733,28 +720,6 @@ function TopBar() {
     }, 60_000)
 
     return () => window.clearInterval(intervalId)
-  }, [])
-
-  useEffect(() => {
-    async function loadHeaderProfile() {
-      const { data, error } = await requireSupabase().auth.getUser()
-
-      if (error || !data.user) {
-        return
-      }
-
-      const metadata = data.user.user_metadata
-      const fullName =
-        typeof metadata.full_name === 'string'
-          ? metadata.full_name
-          : typeof metadata.name === 'string'
-            ? metadata.name
-            : undefined
-
-      setDisplayName(getDisplayName(data.user.email, fullName))
-    }
-
-    void loadHeaderProfile()
   }, [])
 
   return (
@@ -808,6 +773,13 @@ function AdminLayout({
       ? ''
       : `drevora-app-shell--${backgroundMood}`
 
+  useLayoutEffect(() => {
+    document.documentElement.classList.add('admin-mobile-scroll')
+    return () => {
+      document.documentElement.classList.remove('admin-mobile-scroll')
+    }
+  }, [])
+
   function toggleMobileMenu() {
     setMobileMenuOpen((open) => !open)
   }
@@ -852,7 +824,9 @@ function AdminLayout({
             menuOpen={mobileMenuOpen}
             onToggleMenu={toggleMobileMenu}
           />
-          <MobileNavDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+          {mobileMenuOpen ? (
+            <MobileNavDrawer open onClose={() => setMobileMenuOpen(false)} />
+          ) : null}
 
           <main className="admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7 lg:overflow-x-clip">
             <div

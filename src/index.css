@@ -280,15 +280,9 @@ body {
 }
 
 @media (max-width: 639px) {
-  .drevora-app-shell__orb--center {
+  .drevora-app-shell__orb,
+  .drevora-app-shell__noise {
     display: none;
-  }
-
-  .drevora-app-shell__orb--top-left,
-  .drevora-app-shell__orb--bottom-right {
-    opacity: 0.2;
-    transform: scale(0.65);
-    filter: blur(80px);
   }
 
   .drevora-app-shell {
@@ -325,7 +319,7 @@ body {
 
 /* Admin mobile: document/body owns vertical scroll (iOS one-finger) */
 @media (max-width: 1023px) {
-  html:has(.drevora-app-shell) {
+  html.admin-mobile-scroll {
     min-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
@@ -333,7 +327,7 @@ body {
     touch-action: pan-y;
   }
 
-  body:has(.drevora-app-shell) {
+  html.admin-mobile-scroll body {
     position: static;
     height: auto;
     min-height: 100dvh;
@@ -344,11 +338,11 @@ body {
     overscroll-behavior-y: auto;
   }
 
-  #root:has(.drevora-app-shell),
-  .drevora-app-shell,
-  .drevora-app-shell > .relative.flex,
-  .drevora-app-shell .admin-main-column,
-  .drevora-app-shell .admin-main-content {
+  html.admin-mobile-scroll #root,
+  html.admin-mobile-scroll .drevora-app-shell,
+  html.admin-mobile-scroll .drevora-app-shell > .relative.flex,
+  html.admin-mobile-scroll .drevora-app-shell .admin-main-column,
+  html.admin-mobile-scroll .drevora-app-shell .admin-main-content {
     position: relative;
     height: auto;
     min-height: 0;
@@ -357,7 +351,7 @@ body {
     touch-action: pan-y;
   }
 
-  .drevora-app-shell {
+  html.admin-mobile-scroll .drevora-app-shell {
     min-height: 100dvh;
   }
 
