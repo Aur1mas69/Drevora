@@ -21,7 +21,7 @@ function MainLayout() {
   }
 
   return (
-    <div className="min-h-svh overflow-x-hidden bg-[#F6F9FF] text-slate-950">
+    <div className="worker-mobile-layout bg-[#F6F9FF] text-slate-950">
       <main className="mx-auto w-full min-w-0 max-w-4xl px-4 pt-5 pb-28 sm:px-6 sm:pt-8 lg:pb-32">
         <Outlet />
       </main>

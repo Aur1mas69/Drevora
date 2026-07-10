@@ -21,7 +21,6 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed'
-import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { Button } from '@/components/ui/button'
 import { getCompanyDisplayName } from '@/lib/company'
 import { requireSupabase } from '@/lib/supabase'
@@ -650,8 +649,6 @@ function MobileNavDrawer({
   open: boolean
   onClose: () => void
 }) {
-  useBodyScrollLock(open)
-
   useEffect(() => {
     if (!open) return
 
@@ -681,8 +678,10 @@ function MobileNavDrawer({
         tabIndex={open ? 0 : -1}
         onClick={onClose}
         className={cn(
-          'fixed inset-0 z-[100] bg-slate-950/45 transition-opacity duration-300 lg:hidden',
-          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+          'admin-mobile-drawer-backdrop fixed inset-0 z-[100] bg-slate-950/45 transition-opacity duration-300 lg:hidden',
+          open
+            ? 'admin-mobile-drawer-backdrop--open pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0',
         )}
       />
 
@@ -695,7 +694,7 @@ function MobileNavDrawer({
         className={cn(
           'admin-mobile-drawer fixed inset-y-0 left-0 z-[110] flex h-svh w-[min(280px,calc(100vw-2rem))] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-[transform,visibility] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden',
           open
-            ? 'visible translate-x-0'
+            ? 'admin-mobile-drawer--open visible translate-x-0'
             : 'invisible -translate-x-full pointer-events-none',
         )}
       >
@@ -818,6 +817,15 @@ function AdminLayout({
   }, [location.pathname])
 
   useEffect(() => {
+    if (window.innerWidth >= 1024) return
+
+    document.body.style.removeProperty('overflow')
+    document.body.style.removeProperty('position')
+    document.body.style.removeProperty('top')
+    document.documentElement.style.removeProperty('overflow')
+  }, [location.pathname])
+
+  useEffect(() => {
     function handleResize() {
       if (window.innerWidth >= 1024) {
         setMobileMenuOpen(false)
@@ -830,23 +838,23 @@ function AdminLayout({
 
   return (
     <div
-      className={`drevora-app-shell relative min-h-dvh overflow-x-hidden text-slate-950 dark:text-slate-100 ${moodClass}`}
+      className={`drevora-app-shell relative min-h-dvh text-slate-950 dark:text-slate-100 lg:overflow-x-clip ${moodClass}`}
     >
       <AppBackground />
-      <div className="relative flex w-full min-w-0 items-start overflow-x-hidden">
+      <div className="relative flex w-full min-w-0 items-start lg:overflow-x-clip">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebarCollapsed}
         />
 
-        <div className="relative z-10 w-full min-w-0 max-w-full flex-1 overflow-x-hidden pt-14 lg:pt-0">
+        <div className="admin-main-column relative z-10 w-full min-w-0 max-w-full flex-1 pt-14 lg:pt-0 lg:overflow-x-clip">
           <MobileNavHeader
             menuOpen={mobileMenuOpen}
             onToggleMenu={toggleMobileMenu}
           />
           <MobileNavDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
-          <main className="w-full min-w-0 overflow-x-hidden px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7">
+          <main className="admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7 lg:overflow-x-clip">
             <div
               className={`mx-auto w-full min-w-0 ${wideContent ? 'max-w-[1520px]' : 'max-w-7xl'} ${premiumBackground ? 'space-y-5 sm:space-y-8' : 'space-y-5'}`}
             >
