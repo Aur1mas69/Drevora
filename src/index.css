@@ -55,11 +55,16 @@
 
 body {
   margin: 0;
-  min-height: 100svh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
-  min-height: 100svh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 @theme inline {
@@ -148,6 +153,8 @@ body {
   }
   html {
     @apply font-sans;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 }
 
@@ -279,8 +286,40 @@ body {
 
   .drevora-app-shell__orb--top-left,
   .drevora-app-shell__orb--bottom-right {
-    opacity: 0.35;
-    transform: scale(0.72);
+    opacity: 0.2;
+    transform: scale(0.65);
+    filter: blur(80px);
+  }
+
+  .drevora-app-shell {
+    --drevora-card-shadow: 0 8px 24px rgba(30, 70, 140, 0.06);
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-kpi-grid > * {
+    min-width: 0;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .admin-mobile-header,
+  .admin-mobile-drawer {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .admin-mobile-header {
+    background: rgba(252, 253, 255, 0.98) !important;
+  }
+
+  .admin-mobile-drawer {
+    background: rgba(252, 253, 255, 0.99) !important;
+  }
+
+  .fleet-weather-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
@@ -294,5 +333,14 @@ body {
   .drevora-app-shell--rain,
   .drevora-app-shell--night {
     transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

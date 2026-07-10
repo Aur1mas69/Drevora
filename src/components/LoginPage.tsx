@@ -10,7 +10,8 @@ import {
 import { ArrowLeft } from 'lucide-react'
 
 type LoginPageProps = {
-  onBack: () => void
+  onBack?: () => void
+  backHref?: string
   onSignInSuccess: (session: AuthSession) => void
   title?: string
   description?: string
@@ -21,6 +22,7 @@ const inputClassName =
 
 function LoginPage({
   onBack,
+  backHref,
   onSignInSuccess,
   title = 'DREVORA',
   description = 'Driver portal',
@@ -53,15 +55,28 @@ function LoginPage({
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-[#0A0D1A] px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onBack}
-          className="mb-8 -ml-2 text-slate-400 hover:bg-white/5 hover:text-white"
-        >
-          <ArrowLeft className="size-4" />
-          Back to home
-        </Button>
+        {backHref ? (
+          <Button
+            asChild
+            variant="ghost"
+            className="mb-8 -ml-2 text-slate-400 hover:bg-white/5 hover:text-white"
+          >
+            <a href={backHref}>
+              <ArrowLeft className="size-4" />
+              Back to home
+            </a>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onBack}
+            className="mb-8 -ml-2 text-slate-400 hover:bg-white/5 hover:text-white"
+          >
+            <ArrowLeft className="size-4" />
+            Back to home
+          </Button>
+        )}
 
         <div className="flex flex-col items-center">
           <img

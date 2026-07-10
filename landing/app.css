@@ -130,20 +130,7 @@
 }
 
 html {
-    @apply scroll-smooth overflow-x-hidden;
-    max-width: 100%;
-}
-
-body {
-    overflow-x: hidden;
-    max-width: 100%;
-    width: 100%;
-    -webkit-overflow-scrolling: touch;
-}
-
-main {
-    overflow-x: hidden;
-    max-width: 100%;
+    @apply scroll-smooth;
 }
 
 .material-symbols-outlined {
@@ -168,32 +155,66 @@ button {
     @apply hidden;
 }
 
-/* Reserve space for landing images to reduce layout shift */
-picture {
+/* Hero background — full-bleed cover, not a content column */
+.hero-bg-picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.hero-bg-picture img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+}
+
+/* Content screenshots only */
+.hero-dashboard-frame picture,
+.hero-mobile-frame picture,
+#dashboard-slider picture {
     display: contents;
 }
 
-picture img {
-    max-width: 100%;
+.product-screenshot,
+.hero-dashboard-frame .product-screenshot,
+.hero-mobile-frame .product-screenshot,
+#dashboard-slider .product-screenshot {
+    width: 100%;
     height: auto;
+    max-width: 100%;
+    object-fit: contain;
 }
 
-.hero-dashboard-frame picture img {
+.hero-dashboard-frame .product-screenshot {
     aspect-ratio: 2169 / 1264;
 }
 
-.hero-mobile-frame picture img {
+.hero-mobile-frame .product-screenshot {
     aspect-ratio: 354 / 706;
 }
 
-#dashboard-slider picture img {
+#dashboard-slider .product-screenshot {
     aspect-ratio: 2169 / 1264;
 }
 
 /* ------------------------------------------------------------------ */
-/* Mobile-first layout and performance (< 768px)                       */
+/* Mobile layout and performance (< 768px)                             */
 /* ------------------------------------------------------------------ */
 @media (max-width: 767px) {
+    html,
+    body,
+    main {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+
+    body {
+        width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+
     section {
         scroll-margin-top: 4.5rem;
     }
@@ -204,7 +225,7 @@ picture img {
         padding-bottom: 2.5rem;
     }
 
-    .hero-headline {
+    .hero-section h1 {
         font-size: clamp(1.65rem, 5.2vw + 0.85rem, 2.15rem);
         line-height: 1.2;
         max-width: 100%;
@@ -256,11 +277,11 @@ picture img {
     }
 
     #main-header {
-        backdrop-filter: none !important;
+        backdrop-filter: none;
     }
 
-    #dashboard-slider picture img {
-        filter: none !important;
+    #dashboard-slider .product-screenshot {
+        filter: none;
     }
 
     .mobile-soft-shadow {
@@ -277,18 +298,6 @@ picture img {
     }
 }
 
-@media (min-width: 1024px) {
-    .hero-headline {
-        font-size: 42px;
-    }
-}
-
-@media (min-width: 1280px) {
-    .hero-headline {
-        font-size: 50px;
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     html {
         scroll-behavior: auto;
@@ -301,4 +310,62 @@ picture img {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+.navbar-logo-link {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 190px;
+  height: 44px;
+  overflow: visible;
+}
+
+#main-header .navbar-logo {
+  display: block !important;
+  width: 190px !important;
+  max-width: 190px !important;
+  height: auto !important;
+  max-height: 44px !important;
+  object-fit: contain !important;
+  flex-shrink: 0;
+}
+
+.footer-logo-link {
+  display: block;
+  width: 260px;
+  height: auto;
+  flex: 0 0 auto;
+}
+
+footer .footer-logo {
+  display: block !important;
+  width: 260px !important;
+  max-width: 260px !important;
+  height: auto !important;
+  max-height: 70px !important;
+  object-fit: contain !important;
+}
+
+@media (max-width: 767px) {
+  .navbar-logo-link {
+    width: 145px;
+    height: 36px;
+  }
+
+  #main-header .navbar-logo {
+    width: 145px !important;
+    max-width: 145px !important;
+    max-height: 36px !important;
+  }
+
+  .footer-logo-link {
+    width: 205px;
+  }
+
+  footer .footer-logo {
+    width: 205px !important;
+    max-width: 205px !important;
+    max-height: 55px !important;
+  }
 }

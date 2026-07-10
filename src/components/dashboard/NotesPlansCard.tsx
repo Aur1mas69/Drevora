@@ -421,7 +421,7 @@ export function NotesPlansCard() {
           </p>
         ) : null}
 
-        <div className="max-h-[320px] overflow-y-auto pr-1">
+        <div className="max-md:max-h-none max-md:overflow-visible md:max-h-[320px] md:overflow-y-auto md:pr-1">
           {isLoading ? (
             <div className="space-y-2.5">
               {Array.from({ length: 3 }).map((_, index) => (

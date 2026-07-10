@@ -17,7 +17,7 @@ function AdminLoginPage() {
     <LoginPageContent
       title="DREVORA"
       description="Admin login"
-      onBack={() => navigate('/login', { replace: true })}
+      backHref="https://drevora.app"
       onSignInSuccess={(session) => {
         setAuthenticatedSession(session, 'admin')
         navigate('/admin', { replace: true })

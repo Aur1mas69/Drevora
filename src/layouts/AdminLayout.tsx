@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed'
+import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { Button } from '@/components/ui/button'
 import { getCompanyDisplayName } from '@/lib/company'
 import { requireSupabase } from '@/lib/supabase'
@@ -614,25 +615,25 @@ function Sidebar({
 }
 
 function MobileNavHeader({
-  onOpenMenu,
+  onToggleMenu,
   menuOpen,
 }: {
-  onOpenMenu: () => void
+  onToggleMenu: () => void
   menuOpen: boolean
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-4 shadow-sm shadow-blue-100/30 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:hidden">
+    <header className="admin-mobile-header fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-3 shadow-sm shadow-blue-100/30 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none sm:gap-3 sm:px-4 lg:hidden">
       <SidebarBrand compact />
       <div className="flex shrink-0 items-center gap-2">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Open navigation menu"
+          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={menuOpen}
           aria-controls="admin-mobile-nav-drawer"
-          onClick={onOpenMenu}
-          className="size-10 shrink-0 rounded-[1rem] bg-white/90 text-slate-600 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
+          onClick={onToggleMenu}
+          className="size-11 shrink-0 rounded-[1rem] bg-white/90 text-slate-600 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
         >
           <Menu className="size-5" strokeWidth={2} />
         </Button>
@@ -649,6 +650,8 @@ function MobileNavDrawer({
   open: boolean
   onClose: () => void
 }) {
+  useBodyScrollLock(open)
+
   useEffect(() => {
     if (!open) return
 
@@ -658,12 +661,9 @@ function MobileNavDrawer({
       }
     }
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [open, onClose])
@@ -693,7 +693,7 @@ function MobileNavDrawer({
         aria-modal={open}
         aria-label="Admin navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-[110] flex h-svh w-[min(280px,calc(100vw-2rem))] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-[transform,visibility] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden',
+          'admin-mobile-drawer fixed inset-y-0 left-0 z-[110] flex h-svh w-[min(280px,calc(100vw-2rem))] max-w-full flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/98 shadow-[10px_0_40px_rgba(30,70,140,0.12)] backdrop-blur-xl transition-[transform,visibility] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/98 dark:shadow-none lg:hidden',
           open
             ? 'visible translate-x-0'
             : 'invisible -translate-x-full pointer-events-none',
@@ -809,17 +809,28 @@ function AdminLayout({
       ? ''
       : `drevora-app-shell--${backgroundMood}`
 
-  function closeMobileMenu() {
-    setMobileMenuOpen(false)
+  function toggleMobileMenu() {
+    setMobileMenuOpen((open) => !open)
   }
 
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize, { passive: true })
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <div
-      className={`drevora-app-shell relative min-h-svh overflow-x-hidden text-slate-950 dark:text-slate-100 ${moodClass}`}
+      className={`drevora-app-shell relative min-h-dvh overflow-x-hidden text-slate-950 dark:text-slate-100 ${moodClass}`}
     >
       <AppBackground />
       <div className="relative flex w-full min-w-0 items-start overflow-x-hidden">
@@ -831,9 +842,9 @@ function AdminLayout({
         <div className="relative z-10 w-full min-w-0 max-w-full flex-1 overflow-x-hidden pt-14 lg:pt-0">
           <MobileNavHeader
             menuOpen={mobileMenuOpen}
-            onOpenMenu={() => setMobileMenuOpen(true)}
+            onToggleMenu={toggleMobileMenu}
           />
-          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobileMenu} />
+          <MobileNavDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
           <main className="w-full min-w-0 overflow-x-hidden px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7">
             <div

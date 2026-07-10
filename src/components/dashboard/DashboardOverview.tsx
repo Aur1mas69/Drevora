@@ -276,7 +276,7 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
   const { formatRelativeDateTime } = useCompanySettings()
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 sm:min-h-[360px] sm:p-6 sm:hover:-translate-y-0.5 sm:hover:border-[#0ea5e9] sm:hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
+    <section className="flex min-h-0 flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 max-md:shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_4px_14px_rgba(56,189,248,0.1)] sm:min-h-[360px] sm:p-6 md:hover:-translate-y-0.5 md:hover:border-[#0ea5e9] md:hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
       <div className="shrink-0 border-b border-[#D3E9FC] pb-4">
         <h3 className="text-base font-bold tracking-[-0.02em] text-[#113C69]">Recent Activity</h3>
         <p className="mt-1 text-xs leading-5 text-[#3D7A9C]">
@@ -284,7 +284,7 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
         </p>
       </div>
 
-      <div className="relative z-[1] mt-4 min-h-0 flex-1 overflow-y-auto pr-1 pointer-events-auto xl:max-h-[calc(100vh-14rem)]">
+      <div className="relative z-[1] mt-4 min-h-0 flex-1 max-md:overflow-visible xl:overflow-y-auto xl:max-h-[calc(100dvh-14rem)] xl:pr-1">
         {activity.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-[#D3E9FC] bg-white/70 px-4 py-10 text-center">
             <p className="text-sm font-medium text-[#3D7A9C]">No recent activity yet.</p>
@@ -308,10 +308,10 @@ function RecentActivityPanel({ activity }: { activity: DashboardRecentActivity[]
 function DashboardSkeleton() {
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
+      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mx-auto flex w-full min-w-0 max-w-[9rem] flex-col items-center sm:max-w-[12.25rem]">
-            <div className="size-[min(100%,9rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:size-[min(100%,11.75rem)] lg:size-[12.25rem]" />
+          <div key={index} className="mx-auto flex w-full min-w-0 max-w-full flex-col items-center">
+            <div className="aspect-square w-full max-w-[clamp(6.75rem,34vw,8.75rem)] animate-pulse rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:max-w-[11.75rem] lg:max-w-[12.25rem]" />
             <div className="mt-2 h-3 w-20 animate-pulse rounded bg-[#E8F3FE]/60" />
           </div>
         ))}
@@ -435,7 +435,7 @@ export function DashboardOverview({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
+      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 pb-2 sm:gap-x-5 sm:gap-y-6 sm:pb-0 xl:grid-cols-4 xl:gap-6">
         <DashboardKpiCard
           title="Active Vehicles"
           value={stats.availableVehicles}

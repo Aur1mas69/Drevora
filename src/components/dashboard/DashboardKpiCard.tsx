@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 
 type Accent = 'blue' | 'cyan' | 'green' | 'warning' | 'danger' | 'neutral'
 
-const CIRCLE_SIZE_CLASS = 'size-[min(100%,9rem)] sm:size-[min(100%,11.75rem)] lg:size-[12.25rem]'
+const KPI_CIRCLE_SIZE_CLASS =
+  'w-full max-w-[clamp(6.75rem,34vw,8.75rem)] aspect-square sm:max-w-[11.75rem] lg:max-w-[12.25rem]'
 
 const accentStyles: Record<
   Accent,
@@ -35,7 +36,7 @@ const accentStyles: Record<
     ringTrack: '#C5E4FC',
     baseBorder: 'border-[#89CFF0]',
     baseGradient: 'bg-gradient-to-br from-[#E8F3FE] via-[#DFEEFF] to-[#D3E9FC]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(33,142,231,0.14)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(33,142,231,0.14)] max-md:shadow-[0_4px_14px_rgba(33,142,231,0.1)]',
     labelColor: 'text-[#0B68BE]',
     hoverBorder: 'group-hover:border-[#218EE7]',
     hoverShadow:
@@ -55,7 +56,7 @@ const accentStyles: Record<
     ringTrack: '#D0E0FF',
     baseBorder: 'border-[#A8C4FF]',
     baseGradient: 'bg-gradient-to-br from-[#EDF3FF] via-[#E4ECFF] to-[#D6E4FF]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(91,141,239,0.14)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(91,141,239,0.14)] max-md:shadow-[0_4px_14px_rgba(91,141,239,0.1)]',
     labelColor: 'text-[#2E5BB5]',
     hoverBorder: 'group-hover:border-[#5B8DEF]',
     hoverShadow:
@@ -75,7 +76,7 @@ const accentStyles: Record<
     ringTrack: '#BBF7D0',
     baseBorder: 'border-emerald-200',
     baseGradient: 'bg-gradient-to-br from-emerald-50 via-teal-50/90 to-[#D1FAE5]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(16,185,129,0.12)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(16,185,129,0.12)] max-md:shadow-[0_4px_14px_rgba(16,185,129,0.08)]',
     labelColor: 'text-emerald-800',
     hoverBorder: 'group-hover:border-emerald-400',
     hoverShadow:
@@ -95,7 +96,7 @@ const accentStyles: Record<
     ringTrack: '#FDE68A',
     baseBorder: 'border-amber-200',
     baseGradient: 'bg-gradient-to-br from-amber-50 via-orange-50/90 to-[#FFEDD5]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(245,158,11,0.12)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(245,158,11,0.12)] max-md:shadow-[0_4px_14px_rgba(245,158,11,0.08)]',
     labelColor: 'text-amber-800',
     hoverBorder: 'group-hover:border-amber-400',
     hoverShadow:
@@ -115,7 +116,7 @@ const accentStyles: Record<
     ringTrack: '#FECDD3',
     baseBorder: 'border-rose-300',
     baseGradient: 'bg-gradient-to-br from-rose-50 via-orange-50/80 to-[#FFE4E6]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(225,29,72,0.14)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(225,29,72,0.14)] max-md:shadow-[0_4px_14px_rgba(225,29,72,0.1)]',
     labelColor: 'text-rose-800',
     hoverBorder: 'group-hover:border-rose-400',
     hoverShadow:
@@ -135,7 +136,7 @@ const accentStyles: Record<
     ringTrack: '#E8F3FE',
     baseBorder: 'border-[#D3E9FC]',
     baseGradient: 'bg-gradient-to-br from-[#F5FAFF] via-[#EFF7FF] to-[#E8F3FE]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(137,207,240,0.1)]',
+    baseShadow: 'shadow-[0_8px_24px_rgba(137,207,240,0.1)] max-md:shadow-[0_4px_14px_rgba(137,207,240,0.08)]',
     labelColor: 'text-[#5499BF]',
     hoverBorder: 'group-hover:border-[#BFE3F5]',
     hoverShadow:
@@ -217,13 +218,13 @@ export function DashboardKpiCard({
   const issueBadgeVisible = showIssueBadge ?? issueCount > 0
 
   const circleClassName = [
-    'relative flex size-full flex-col items-center justify-center rounded-full border-2',
+    'flex size-full min-h-0 flex-col items-center justify-center rounded-full border-2',
     styles.baseGradient,
     styles.baseBorder,
     styles.baseShadow,
-    'px-4 text-center',
+    'px-2 text-center sm:px-4',
     'transition-all duration-300 ease-out',
-    'sm:group-hover:-translate-y-1',
+    'md:group-hover:-translate-y-1',
     styles.hoverBorder,
     styles.hoverShadow,
     styles.hoverGradient,
@@ -234,17 +235,8 @@ export function DashboardKpiCard({
   ].join(' ')
 
   const widget = (
-    <div className="mx-auto flex w-full min-w-0 max-w-[9rem] flex-col items-center sm:max-w-[12.25rem]">
-      <div className={`relative shrink-0 ${CIRCLE_SIZE_CLASS}`}>
-        {issueBadgeVisible ? (
-          <div
-            className="absolute -right-0.5 top-0 z-10 flex size-6 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(225,29,72,0.35)] sm:size-7 sm:text-[11px]"
-            aria-hidden="true"
-          >
-            {issueCount > 9 ? '9+' : issueCount}
-          </div>
-        ) : null}
-
+    <div className="mx-auto flex w-full min-w-0 max-w-full flex-col items-center">
+      <div className={`relative shrink-0 ${KPI_CIRCLE_SIZE_CLASS}`}>
         {showRing ? (
           <div className="pointer-events-none absolute inset-0">
             <CircularProgressRing
@@ -255,26 +247,47 @@ export function DashboardKpiCard({
           </div>
         ) : null}
 
-        <div className={showRing ? 'absolute inset-[5px]' : 'size-full'}>
+        <div
+          className={
+            showRing
+              ? 'flex size-full flex-col p-[5px]'
+              : 'flex size-full flex-col'
+          }
+        >
           <div className={circleClassName}>
+            {issueBadgeVisible ? (
+              <div className="flex w-full shrink-0 justify-end px-1.5 pt-1 sm:px-2 sm:pt-1.5">
+                <span
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[9px] font-bold leading-none text-white shadow-sm sm:size-6 sm:text-[10px]"
+                  aria-hidden="true"
+                >
+                  {issueCount > 9 ? '9+' : issueCount}
+                </span>
+              </div>
+            ) : null}
+
             <div
-              className={`pointer-events-none absolute inset-4 rounded-full blur-xl transition-all duration-300 ${styles.glow}`}
+              className={`pointer-events-none absolute inset-4 hidden rounded-full blur-xl transition-all duration-300 md:block ${styles.glow}`}
               aria-hidden="true"
             />
 
-            <div className="relative flex w-full max-w-[7.25rem] flex-col items-center justify-center gap-1.5 sm:max-w-[8.5rem] sm:gap-2">
+            <div
+              className={`relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-1 px-1 sm:gap-1.5 sm:px-2 md:gap-2 ${
+                issueBadgeVisible ? '-mt-1 sm:-mt-1.5' : ''
+              }`}
+            >
               <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-300 sm:size-10 sm:group-hover:scale-105 ${styles.icon} ${styles.iconHover}`}
+                className={`flex size-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 sm:size-9 md:size-10 md:group-hover:scale-105 ${styles.icon} ${styles.iconHover}`}
               >
-                <Icon className="size-4 sm:size-[18px]" strokeWidth={2.1} aria-hidden="true" />
+                <Icon className="size-3.5 sm:size-4 md:size-[18px]" strokeWidth={2.1} aria-hidden="true" />
               </div>
 
-              <p className="w-full text-[1.65rem] font-bold leading-none tracking-[-0.04em] text-[#113C69] sm:text-[2rem] lg:text-[2.15rem]">
+              <p className="w-full text-[clamp(1.35rem,5vw,1.65rem)] font-bold leading-none tracking-[-0.04em] text-[#113C69] sm:text-[2rem] lg:text-[2.15rem]">
                 {value}
               </p>
 
               <p
-                className={`w-full px-0.5 text-[11px] font-semibold leading-snug sm:text-xs ${styles.labelColor}`}
+                className={`w-full break-words px-0.5 text-[clamp(0.625rem,2.8vw,0.6875rem)] font-semibold leading-snug sm:text-xs ${styles.labelColor}`}
               >
                 {title}
               </p>
@@ -284,7 +297,7 @@ export function DashboardKpiCard({
       </div>
 
       <p
-        className={`mt-2 w-full max-w-[9rem] px-0.5 text-center text-[10px] leading-snug sm:max-w-[12.25rem] sm:px-1 sm:text-[11px] ${
+        className={`mt-2 w-full min-w-0 px-0.5 text-center text-[10px] leading-snug break-words sm:px-1 sm:text-[11px] ${
           helperTone === 'danger'
             ? 'font-semibold text-rose-600'
             : 'text-[#3D7A9C]'
@@ -308,12 +321,12 @@ export function DashboardKpiCard({
         to={to}
         aria-label={`${title}: ${value}. ${helper}`}
         onClick={() => onNavigate?.()}
-        className={`group block min-w-0 transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] ${styles.focusRing}`}
+        className={`group block min-h-11 min-w-0 overflow-hidden transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] ${styles.focusRing}`}
       >
         {widget}
       </Link>
     )
   }
 
-  return <div className="group min-w-0">{widget}</div>
+  return <div className="group min-w-0 overflow-hidden">{widget}</div>
 }

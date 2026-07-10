@@ -47,7 +47,7 @@ function FleetOperationsInfoPanel({
   if (isProfileLoading) {
     return (
       <div
-        className="relative z-10 w-full min-w-0 max-w-none shrink-0 animate-pulse rounded-[18px] border border-white/35 p-3.5 sm:max-w-[272px] sm:min-w-[238px] sm:p-4"
+        className="relative z-10 w-full min-w-0 max-w-none shrink-0 animate-pulse rounded-[18px] border border-white/35 p-3.5 fleet-weather-card sm:max-w-[272px] sm:min-w-[238px] sm:p-4"
         style={WEATHER_CARD_STYLE}
         aria-hidden="true"
       >
@@ -63,7 +63,7 @@ function FleetOperationsInfoPanel({
 
   return (
     <aside
-      className="relative z-10 w-full min-w-0 max-w-none shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-3.5 sm:max-w-[272px] sm:min-w-[238px] sm:p-[1.125rem]"
+      className="fleet-weather-card relative z-10 w-full min-w-0 max-w-none shrink-0 overflow-hidden rounded-[18px] border border-white/35 p-3.5 sm:max-w-[272px] sm:min-w-[238px] sm:p-[1.125rem]"
       style={WEATHER_CARD_STYLE}
       aria-label="Fleet location, weather and time"
     >

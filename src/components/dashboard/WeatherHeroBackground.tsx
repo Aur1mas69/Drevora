@@ -6,7 +6,7 @@ import {
   HERO_IMAGE_DARK_OVERLAY,
 } from '@/lib/getHeroBackground'
 import type { WeatherCondition } from '@/services/weatherService'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
 type WeatherHeroBackgroundProps = {
@@ -30,6 +30,7 @@ export function WeatherHeroBackground({
 
   const [activeSrc, setActiveSrc] = useState(preferredSrc)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
     setActiveSrc(preferredSrc)
@@ -39,22 +40,26 @@ export function WeatherHeroBackground({
   const backgroundUrl =
     failedSrc === activeSrc ? HERO_BACKGROUND_FALLBACK : activeSrc
 
+  const motionTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.85, ease: 'easeInOut' as const }
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <AnimatePresence mode="sync">
         <motion.div
           key={backgroundUrl}
-          className="absolute inset-0 transition-[background-position] duration-1000 ease-out"
+          className="absolute inset-0 max-md:transition-none md:transition-[background-position] md:duration-1000 md:ease-out"
           style={{
             backgroundImage: `url(${backgroundUrl})`,
             backgroundSize: 'cover',
             backgroundPosition,
             backgroundRepeat: 'no-repeat',
           }}
-          initial={{ opacity: 0 }}
+          initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.85, ease: 'easeInOut' }}
+          exit={{ opacity: prefersReducedMotion ? 1 : 0 }}
+          transition={motionTransition}
         />
       </AnimatePresence>
 
@@ -70,12 +75,12 @@ export function WeatherHeroBackground({
       />
 
       <div
-        className="absolute inset-0 transition-[background] duration-1000 ease-out"
+        className="absolute inset-0 max-md:transition-none md:transition-[background] md:duration-1000 md:ease-out"
         style={{ background: HERO_IMAGE_DARK_OVERLAY }}
       />
 
       <div
-        className="absolute inset-0 transition-[background] duration-1000 ease-out"
+        className="absolute inset-0 max-md:transition-none md:transition-[background] md:duration-1000 md:ease-out"
         style={{ background: HERO_IMAGE_BLUE_OVERLAY }}
       />
     </div>
