@@ -1,23 +1,19 @@
-function isMobileViewport() {
-    return window.matchMedia('(max-width: 767px)').matches
+function restoreMobileScroll() {
+    document.documentElement.style.removeProperty('overflow')
+    document.documentElement.style.removeProperty('overflow-y')
+    document.documentElement.style.removeProperty('position')
+    document.body.style.removeProperty('overflow')
+    document.body.style.removeProperty('overflow-y')
+    document.body.style.removeProperty('position')
+    document.body.style.removeProperty('top')
+    document.body.style.removeProperty('width')
+    document.body.classList.remove('no-scroll', 'menu-open', 'modal-open')
 }
 
-function restorePageScroll() {
-    document.body.style.overflow = ''
-    document.documentElement.style.overflow = ''
-    document.body.classList.remove('menu-open', 'modal-open', 'no-scroll')
-}
+window.addEventListener('pageshow', restoreMobileScroll)
+window.addEventListener('load', restoreMobileScroll)
 
-function lockPageScrollForMenu() {
-    if (!isMobileViewport()) return
-
-    document.body.classList.add('menu-open', 'no-scroll')
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    restorePageScroll()
+document.addEventListener('DOMContentLoaded', () => {    restoreMobileScroll()
 
     const header = document.getElementById('main-header')
     const menuToggle = document.getElementById('menu-toggle')
@@ -53,19 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
         menuIcon.classList.remove('fa-xmark')
         menuIcon.classList.add('fa-bars')
         menuToggle.setAttribute('aria-expanded', 'false')
-        restorePageScroll()
+        restoreMobileScroll()
     }
 
     function openMobileMenu() {
-        if (!isMobileViewport()) return
-
         mobileMenu.classList.add('mobile-menu-panel--open', 'translate-x-0')
         mobileMenu.classList.remove('translate-x-full')
         mobileMenu.setAttribute('aria-hidden', 'false')
         menuIcon.classList.remove('fa-bars')
         menuIcon.classList.add('fa-xmark')
         menuToggle.setAttribute('aria-expanded', 'true')
-        lockPageScrollForMenu()
+        restoreMobileScroll()
     }
 
     updateHeaderStyles()
@@ -95,6 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     window.addEventListener('resize', () => {
+        restoreMobileScroll()
+        if (window.innerWidth >= 768) {
+            closeMobileMenu()
+        }
+    })
+
+    window.addEventListener('orientationchange', () => {
+        restoreMobileScroll()
         if (window.innerWidth >= 768) {
             closeMobileMenu()
         }
@@ -108,11 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('hashchange', () => {
         closeMobileMenu()
-        restorePageScroll()
+        restoreMobileScroll()
     })
 
     window.addEventListener('pageshow', () => {
-        restorePageScroll()
+        restoreMobileScroll()
         if (!isMobileMenuOpen()) {
             closeMobileMenu()
         }
@@ -140,21 +142,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!href || !href.startsWith('#')) {
                 closeMobileMenu()
+                restoreMobileScroll()
                 return
             }
 
             e.preventDefault()
             closeMobileMenu()
+            restoreMobileScroll()
 
             const targetElement = document.querySelector(href)
 
             if (targetElement) {
                 setTimeout(() => {
                     targetElement.scrollIntoView({ behavior: 'smooth' })
+                    restoreMobileScroll()
                 }, 200)
             }
         })
     })
+
+    document.querySelectorAll('a[href="#contact"]').forEach((link) => {
+        link.addEventListener('click', () => {
+            closeMobileMenu()
+            restoreMobileScroll()
+            setTimeout(restoreMobileScroll, 300)
+        })
+    })
+
+    const contactSection = document.getElementById('contact')
+    if (contactSection) {
+        contactSection.addEventListener('focusin', restoreMobileScroll)
+    }
 
     const footerYear = document.getElementById('footer-year')
     if (footerYear) {
@@ -244,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startAutoplay()
 })
 
-// Demo request form (inline section — no modal; defensive scroll restore after submit)
+// Demo request form (inline section — no modal)
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('demo-request-form')
@@ -329,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             submitBtn.disabled = false
             submitBtn.textContent = defaultBtnText
-            restorePageScroll()
+            restoreMobileScroll()
         }
     })
 })

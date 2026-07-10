@@ -228,24 +228,23 @@ button {
     }
 
     /* Closed menu must not intercept touches over the page */
-    .mobile-menu-panel {
-        pointer-events: none;
-        visibility: hidden;
+    .mobile-menu-panel:not(.mobile-menu-panel--open) {
+        display: none !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
+    .mobile-menu-panel.mobile-menu-panel--open {
+        display: flex !important;
+        pointer-events: auto !important;
+        visibility: visible !important;
         backdrop-filter: none;
         background: rgba(255, 255, 255, 0.98);
     }
 
-    .mobile-menu-panel.mobile-menu-panel--open {
-        pointer-events: auto;
-        visibility: visible;
-    }
-
-    section {
-        scroll-margin-top: 4.5rem;
-    }
-
     .hero-section {
-        min-height: 0;
+        min-height: auto !important;
+        max-height: none !important;
         padding-top: 5.5rem;
         padding-bottom: 2.5rem;
     }
@@ -254,6 +253,10 @@ button {
         font-size: clamp(1.65rem, 5.2vw + 0.85rem, 2.15rem);
         line-height: 1.2;
         max-width: 100%;
+    }
+
+    section {
+        scroll-margin-top: 4.5rem;
     }
 
     .hero-mockup-wrap {
@@ -387,5 +390,68 @@ footer .footer-logo {
     width: 205px !important;
     max-width: 205px !important;
     max-height: 55px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  html {
+    position: static !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  #app,
+  #root,
+  main,
+  .page-wrapper,
+  .site-wrapper {
+    position: relative !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
+  }
+
+  /* Page sections must not trap vertical scroll on touch devices */
+  .hero-section,
+  section.overflow-hidden,
+  section.relative.overflow-hidden {
+    overflow: visible !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Decorative layers never capture touch */
+  .hero-section .absolute,
+  .hero-section .hero-glow-blur,
+  section .absolute.pointer-events-none,
+  section .blur-3xl {
+    pointer-events: none !important;
+  }
+
+  /* Closed menu must never cover the page (fixed inset-0 ghost overlay) */
+  #mobile-menu.mobile-menu-panel:not(.mobile-menu-panel--open) {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
   }
 }
