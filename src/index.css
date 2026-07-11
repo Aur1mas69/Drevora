@@ -212,27 +212,21 @@ body {
   background-size: 180px 180px;
 }
 
-/* Admin dashboard — main content background + card shadow */
+/* Admin dashboard — baby-blue background on the main scroll column only */
 .admin-main-column.admin-dashboard {
   --drevora-card-shadow: 0 4px 16px rgba(22, 58, 99, 0.06);
-  min-height: calc(100dvh - 3.5rem);
-  background:
+  --admin-dashboard-background:
     radial-gradient(
       circle at 18% 12%,
       rgba(255, 255, 255, 0.92) 0%,
       rgba(255, 255, 255, 0) 34%
     ),
-    linear-gradient(135deg, #eef7ff 0%, #ddeeff 52%, #cfe6ff 100%) !important;
-}
-
-@media (min-width: 1024px) {
-  .admin-main-column.admin-dashboard {
-    min-height: 100dvh;
-  }
+    linear-gradient(135deg, #eef7ff 0%, #ddeeff 52%, #cfe6ff 100%);
+  background: var(--admin-dashboard-background) !important;
 }
 
 .admin-main-column.admin-dashboard .admin-main-content {
-  background: transparent;
+  background: transparent !important;
 }
 
 /* Admin dashboard — overview card surfaces (not KPI circles or Notes/Plans amber card) */
@@ -418,6 +412,54 @@ body {
   .admin-mobile-drawer:not(.admin-mobile-drawer--open) {
     display: none !important;
     pointer-events: none !important;
+  }
+}
+
+/* Admin desktop: lock document scroll; main column owns vertical scroll */
+@media (min-width: 1024px) {
+  html.admin-mobile-scroll {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  html.admin-mobile-scroll body {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  html.admin-mobile-scroll #root {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.admin-mobile-scroll .drevora-app-shell {
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  html.admin-mobile-scroll .drevora-app-shell > .relative.flex {
+    height: 100%;
+    min-height: 0;
+  }
+
+  html.admin-mobile-scroll .drevora-app-shell .admin-main-column {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.admin-mobile-scroll .drevora-app-shell .admin-main-content {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
   }
 }
 

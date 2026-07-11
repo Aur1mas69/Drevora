@@ -411,11 +411,13 @@ function SidebarNavigation({
   onNavigate?: () => void
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-      <AdminSidebarMainNav collapsed={collapsed} onNavigate={onNavigate} />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        <AdminSidebarMainNav collapsed={collapsed} onNavigate={onNavigate} />
+      </div>
       <div
         className={cn(
-          'mt-auto shrink-0',
+          'mt-auto shrink-0 pb-4',
           collapsed ? 'pt-4' : 'pt-5',
           sidebarFooterDividerClass,
         )}
@@ -564,8 +566,8 @@ function Sidebar({
   return (
     <aside
       className={cn(
-        'relative z-10 hidden h-svh max-h-svh shrink-0 flex-col border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl transition-[width,padding] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:sticky lg:top-0 lg:flex',
-        collapsed ? 'w-20 px-2 py-4' : 'w-[240px] px-3 py-6',
+        'relative z-10 hidden h-dvh max-h-dvh shrink-0 flex-col overflow-hidden border-r border-[#D7E8FF]/70 bg-[#FCFDFF]/94 shadow-[10px_0_40px_rgba(30,70,140,0.06)] backdrop-blur-xl transition-[width,padding] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col',
+        collapsed ? 'w-20 px-2 pt-4 pb-0' : 'w-[240px] px-3 pt-6 pb-0',
       )}
     >
       <div className="group/rail pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-3 translate-x-1/2 lg:block">
@@ -822,10 +824,13 @@ function AdminLayout({
 
   return (
     <div
-      className={`drevora-app-shell relative min-h-dvh text-slate-950 dark:text-slate-100 lg:overflow-x-clip ${moodClass}`}
+      className={cn(
+        'drevora-app-shell relative min-h-dvh text-slate-950 dark:text-slate-100 lg:h-dvh lg:max-h-dvh lg:overflow-hidden lg:overflow-x-clip',
+        moodClass,
+      )}
     >
       <AppBackground />
-      <div className="relative flex w-full min-w-0 items-start lg:overflow-x-clip">
+      <div className="relative flex h-full w-full min-w-0 items-start lg:h-full lg:overflow-x-clip">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebarCollapsed}
@@ -833,9 +838,9 @@ function AdminLayout({
 
         <div
           className={cn(
-            'admin-main-column relative z-10 w-full min-w-0 max-w-full flex-1 pt-14 lg:min-h-dvh lg:pt-0 lg:overflow-x-clip',
-            adminDashboard &&
-              'admin-dashboard min-h-[calc(100dvh-3.5rem)] bg-gradient-to-br from-[#F7FBFF] via-[#EAF5FF] to-[#DCEEFF] lg:min-h-dvh',
+            'admin-main-column relative z-10 w-full min-w-0 max-w-full flex-1 pt-14 transition-[margin] duration-300 ease-out lg:pt-0 lg:overflow-x-clip',
+            sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[240px]',
+            adminDashboard && 'admin-dashboard',
           )}
         >
           <MobileNavHeader
@@ -848,8 +853,8 @@ function AdminLayout({
 
           <main
             className={cn(
-              'admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7 lg:overflow-x-clip',
-              adminDashboard && 'min-h-full bg-transparent',
+              'admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:overflow-x-clip',
+              adminDashboard ? 'lg:py-7 lg:pb-6' : 'lg:py-7 lg:pb-7',
             )}
           >
             <div

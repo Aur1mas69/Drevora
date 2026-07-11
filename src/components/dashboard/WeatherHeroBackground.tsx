@@ -1,6 +1,5 @@
 import {
   getHeroBackground,
-  getHeroBackgroundPosition,
   HERO_BACKGROUND_FALLBACK,
   HERO_IMAGE_BLUE_OVERLAY,
   HERO_IMAGE_DARK_OVERLAY,
@@ -23,11 +22,6 @@ export function WeatherHeroBackground({
     [isNight, weatherCondition],
   )
 
-  const backgroundPosition = useMemo(
-    () => getHeroBackgroundPosition(weatherCondition, isNight),
-    [isNight, weatherCondition],
-  )
-
   const [activeSrc, setActiveSrc] = useState(preferredSrc)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const prefersReducedMotion = useReducedMotion()
@@ -47,32 +41,23 @@ export function WeatherHeroBackground({
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <AnimatePresence mode="sync">
-        <motion.div
+        <motion.img
           key={backgroundUrl}
-          className="absolute inset-0 max-md:transition-none md:transition-[background-position] md:duration-1000 md:ease-out"
-          style={{
-            backgroundImage: `url(${backgroundUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition,
-            backgroundRepeat: 'no-repeat',
-          }}
+          src={backgroundUrl}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover object-[60%_center] md:object-center"
           initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: prefersReducedMotion ? 1 : 0 }}
           transition={motionTransition}
+          onError={() => {
+            if (backgroundUrl !== HERO_BACKGROUND_FALLBACK) {
+              setFailedSrc(backgroundUrl)
+            }
+          }}
         />
       </AnimatePresence>
-
-      <img
-        src={backgroundUrl}
-        alt=""
-        className="hidden"
-        onError={() => {
-          if (backgroundUrl !== HERO_BACKGROUND_FALLBACK) {
-            setFailedSrc(backgroundUrl)
-          }
-        }}
-      />
 
       <div
         className="absolute inset-0 max-md:transition-none md:transition-[background] md:duration-1000 md:ease-out"

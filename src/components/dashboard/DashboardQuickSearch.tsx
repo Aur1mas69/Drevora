@@ -19,16 +19,24 @@ const quickSearchInputClass =
 const moduleBadgeClassMap: Record<QuickSearchModule, string> = {
   Workers: 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/70',
   Vehicles: 'bg-[#E6F9FC] text-[#0E8FA8] ring-[#B8EBF5]/70',
+  Timesheets: 'bg-[#EDE9FE] text-[#6D28D9] ring-[#DDD6FE]/70',
+  'Holiday Requests': 'bg-[#FCE7F3] text-[#BE185D] ring-[#FBCFE8]/70',
+  'Vehicle Checks': 'bg-[#DCFCE7] text-[#15803D] ring-[#BBF7D0]/70',
   'Driver Reports': 'bg-[#FFEDD5] text-[#C45F08] ring-[#FFDDB8]/70',
   Documents: 'bg-[#EEF2F6] text-[#475569] ring-[#D5DEE8]/70',
+  Contacts: 'bg-[#E0F2FE] text-[#0369A1] ring-[#BAE6FD]/70',
   Consumables: 'bg-[#FEF3D6] text-[#9A7209] ring-[#F5E6B8]/70',
 }
 
 const moduleOrder: QuickSearchModule[] = [
   'Workers',
   'Vehicles',
+  'Timesheets',
+  'Holiday Requests',
+  'Vehicle Checks',
   'Driver Reports',
   'Documents',
+  'Contacts',
   'Consumables',
 ]
 
@@ -36,8 +44,12 @@ function countResults(results: QuickSearchGroupedResults): number {
   return (
     results.workers.length +
     results.vehicles.length +
+    results.timesheets.length +
+    results.holidayRequests.length +
+    results.vehicleChecks.length +
     results.driverReports.length +
     results.documents.length +
+    results.contacts.length +
     results.consumables.length
   )
 }
@@ -51,10 +63,18 @@ function getModuleResults(
       return results.workers
     case 'Vehicles':
       return results.vehicles
+    case 'Timesheets':
+      return results.timesheets
+    case 'Holiday Requests':
+      return results.holidayRequests
+    case 'Vehicle Checks':
+      return results.vehicleChecks
     case 'Driver Reports':
       return results.driverReports
     case 'Documents':
       return results.documents
+    case 'Contacts':
+      return results.contacts
     case 'Consumables':
       return results.consumables
   }
