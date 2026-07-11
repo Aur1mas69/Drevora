@@ -6,7 +6,7 @@ export default defineConfig({
         allowedHosts: true
     },
 
-    base: '',
+    base: '/',
     plugins: [
         tailwindcss(),
     ],
