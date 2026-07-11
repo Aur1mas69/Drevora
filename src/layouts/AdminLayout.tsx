@@ -18,8 +18,8 @@ import {
   X,
 } from 'lucide-react'
 import { AuthServiceError } from '@/services/authService'
+import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import drevoraMark from '@/assets/drevora-mark.png'
-import drevoraWordmark from '@/assets/drevora-wordmark.svg'
 import {
   adminMainNavigationItems,
   adminSecondaryNavigationItems,
@@ -194,11 +194,11 @@ function SidebarBrand({
   }
 
   return (
-    <div className="px-5 py-5">
+    <div className="flex min-h-[80px] w-full items-center justify-center overflow-visible py-2">
       <img
-        src={drevoraWordmark}
+        src={drevoraLogoFull}
         alt="DREVORA"
-        className="block h-10 max-w-[168px] w-auto object-contain"
+        className="block h-auto w-[220px] max-w-none object-contain"
         draggable={false}
       />
     </div>
@@ -568,30 +568,35 @@ function Sidebar({
         collapsed ? 'w-20 px-2 py-4' : 'w-[240px] px-3 py-6',
       )}
     >
-      <div
-        className={cn(
-          'flex items-start gap-2',
-          collapsed ? 'flex-col items-center' : 'justify-between px-2',
-        )}
-      >
-        <SidebarBrand collapsed={collapsed} />
+      <div className="group/rail pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-3 translate-x-1/2 lg:block">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="pointer-events-auto absolute inset-0 w-full cursor-pointer select-none border-0 bg-transparent p-0 transition-colors hover:bg-[#E8F4FF]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/25 dark:hover:bg-slate-800/55"
+        />
         <Button
           type="button"
           variant="ghost"
           size="icon"
           onClick={onToggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={cn(
-            'shrink-0 rounded-[0.9rem] text-slate-500 transition-colors hover:bg-[rgba(79,141,255,0.12)] hover:text-[#2F73FF] dark:text-slate-400 dark:hover:text-blue-300',
-            collapsed ? 'size-9' : 'size-9',
-          )}
+          className="pointer-events-auto absolute top-[80px] left-1/2 z-40 size-8 -translate-x-1/2 rounded-full border border-[#D7E8FF] bg-[#FCFDFF] text-slate-500 shadow-[0_4px_14px_rgba(33,142,231,0.14)] transition-all group-hover/rail:border-[#BFE3F5] group-hover/rail:text-[#2F73FF] group-hover/rail:shadow-[0_6px_18px_rgba(33,142,231,0.18)] hover:border-[#BFE3F5] hover:bg-white hover:text-[#2F73FF] hover:shadow-[0_6px_18px_rgba(33,142,231,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:group-hover/rail:border-slate-600 dark:group-hover/rail:text-blue-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-blue-300"
         >
           {collapsed ? (
-            <PanelLeftOpen className="size-[18px]" strokeWidth={1.9} />
+            <PanelLeftOpen className="size-[16px]" strokeWidth={1.9} />
           ) : (
-            <PanelLeftClose className="size-[18px]" strokeWidth={1.9} />
+            <PanelLeftClose className="size-[16px]" strokeWidth={1.9} />
           )}
         </Button>
+      </div>
+      <div
+        className={cn(
+          'flex items-start gap-2',
+          collapsed ? 'flex-col items-center' : 'w-full px-2',
+        )}
+      >
+        <SidebarBrand collapsed={collapsed} />
       </div>
       <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', collapsed ? 'mt-4' : 'mt-8')}>
         <SidebarNavigation collapsed={collapsed} />
@@ -757,6 +762,7 @@ function AdminLayout({
   premiumBackground = false,
   wideContent = false,
   backgroundMood = 'default',
+  adminDashboard = false,
 }: {
   children: ReactNode
   headerExtra?: ReactNode
@@ -764,6 +770,7 @@ function AdminLayout({
   premiumBackground?: boolean
   wideContent?: boolean
   backgroundMood?: 'default' | 'sunny' | 'cloudy' | 'rain' | 'night'
+  adminDashboard?: boolean
 }) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -824,7 +831,13 @@ function AdminLayout({
           onToggleCollapsed={toggleSidebarCollapsed}
         />
 
-        <div className="admin-main-column relative z-10 w-full min-w-0 max-w-full flex-1 pt-14 lg:pt-0 lg:overflow-x-clip">
+        <div
+          className={cn(
+            'admin-main-column relative z-10 w-full min-w-0 max-w-full flex-1 pt-14 lg:min-h-dvh lg:pt-0 lg:overflow-x-clip',
+            adminDashboard &&
+              'admin-dashboard min-h-[calc(100dvh-3.5rem)] bg-gradient-to-br from-[#F7FBFF] via-[#EAF5FF] to-[#DCEEFF] lg:min-h-dvh',
+          )}
+        >
           <MobileNavHeader
             menuOpen={mobileMenuOpen}
             onToggleMenu={toggleMobileMenu}
@@ -833,7 +846,12 @@ function AdminLayout({
             <MobileNavDrawer open onClose={() => setMobileMenuOpen(false)} />
           ) : null}
 
-          <main className="admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7 lg:overflow-x-clip">
+          <main
+            className={cn(
+              'admin-main-content w-full min-w-0 px-4 py-4 pb-6 sm:px-6 lg:px-8 lg:py-7 lg:pb-7 lg:overflow-x-clip',
+              adminDashboard && 'min-h-full bg-transparent',
+            )}
+          >
             <div
               className={`mx-auto w-full min-w-0 ${wideContent ? 'max-w-[1520px]' : 'max-w-7xl'} ${premiumBackground ? 'space-y-5 sm:space-y-8' : 'space-y-5'}`}
             >

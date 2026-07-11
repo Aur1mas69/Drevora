@@ -14,8 +14,8 @@ const STATUS_COLORS = {
   pending: '#fbbf24',
   approved: '#10b981',
   declined: '#ef4444',
-  total: '#218EE7',
-  empty: '#D3E9FC',
+  total: '#3B82F6',
+  empty: '#DCEEFF',
 } as const
 
 function buildChartSegments(summary: DashboardHolidaySummary): StatusSegment[] {
@@ -85,8 +85,8 @@ function HolidayDonutChart({ segments, total }: { segments: StatusSegment[]; tot
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-bold leading-none tabular-nums text-[#113C69]">{total}</span>
-        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#3D7A9C]">
+        <span className="text-xl font-bold leading-none tabular-nums text-[#163A63]">{total}</span>
+        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D]">
           Total
         </span>
       </div>
@@ -105,9 +105,9 @@ function StatusLegend({ segments }: { segments: StatusSegment[] }) {
               style={{ backgroundColor: segment.color }}
               aria-hidden="true"
             />
-            <span className="truncate font-medium text-[#113C69]">{segment.label}</span>
+            <span className="truncate font-medium text-[#163A63]">{segment.label}</span>
           </span>
-          <span className="shrink-0 font-semibold tabular-nums text-[#0B68BE]">{segment.value}</span>
+          <span className="shrink-0 font-semibold tabular-nums text-[#3B82F6]">{segment.value}</span>
         </li>
       ))}
     </ul>
@@ -127,12 +127,12 @@ export function HolidayRequestsOverviewCard({
     <section className={`${dashboardOverviewCardClass} p-4`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#113C69]">
+          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
             Holiday Requests
           </h3>
-          <p className="mt-0.5 text-xs text-[#3D7A9C]">Current overview</p>
+          <p className="mt-0.5 text-xs text-[#5D7C9D]">Current overview</p>
         </div>
-        <Link to="/admin/holidays" className="text-xs font-semibold text-[#218EE7] hover:underline">
+        <Link to="/admin/holidays" className="text-xs font-semibold text-[#3B82F6] hover:underline">
           View
         </Link>
       </div>

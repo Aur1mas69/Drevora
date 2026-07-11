@@ -66,7 +66,7 @@ function DailyChecksStatRowItem({
       : 0
 
   return (
-    <li className="rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-3 transition-colors hover:bg-[#E8F3FE]/70">
+    <li className="rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-3 transition-colors hover:bg-[#DCEEFF]/70">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div
@@ -75,16 +75,16 @@ function DailyChecksStatRowItem({
             <Icon className={`size-4 ${row.iconClass}`} strokeWidth={2.1} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#113C69]">{row.label}</p>
-            <p className="text-xs text-[#3D7A9C]">{row.helper}</p>
+            <p className="text-sm font-semibold text-[#163A63]">{row.label}</p>
+            <p className="text-xs text-[#5D7C9D]">{row.helper}</p>
           </div>
         </div>
-        <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#113C69]">
+        <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63]">
           {row.value}
         </span>
       </div>
       <div
-        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#E8F3FE] ring-1 ring-[#D3E9FC]/80"
+        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#CFE3F5]/80"
         role="presentation"
         aria-hidden="true"
       >
@@ -109,22 +109,22 @@ export function DailyVehicleChecksStatsCard({
     <section className={`${dashboardOverviewCardClass} p-5`}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#113C69]">
+          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
             Daily Vehicle Checks Stats
           </h3>
-          <p className="mt-0.5 text-xs text-[#3D7A9C]">Today&apos;s vehicle check overview</p>
+          <p className="mt-0.5 text-xs text-[#5D7C9D]">Today&apos;s vehicle check overview</p>
         </div>
         <Link
           to="/admin/vehicle-checks"
-          className="text-xs font-semibold text-[#218EE7] hover:underline"
+          className="text-xs font-semibold text-[#3B82F6] hover:underline"
         >
           View
         </Link>
       </div>
 
       {totalVehicles === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-6 text-center">
-          <p className="text-sm font-medium text-[#3D7A9C]">No active vehicles found.</p>
+        <div className="rounded-xl border border-dashed border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-6 text-center">
+          <p className="text-sm font-medium text-[#5D7C9D]">No active vehicles found.</p>
         </div>
       ) : (
         <>
@@ -138,9 +138,9 @@ export function DailyVehicleChecksStatsCard({
             ))}
           </ul>
 
-          <p className="mt-3 text-xs font-medium text-[#3D7A9C]">
+          <p className="mt-3 text-xs font-medium text-[#5D7C9D]">
             Total vehicles{' '}
-            <span className="font-bold tabular-nums text-[#113C69]">{totalVehicles}</span>
+            <span className="font-bold tabular-nums text-[#163A63]">{totalVehicles}</span>
           </p>
         </>
       )}

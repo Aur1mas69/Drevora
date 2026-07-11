@@ -1,20 +1,19 @@
 import { dashboardOverviewCardBase } from '@/components/dashboard/dashboardOverviewCardStyles'
 
-const cardClass =
-  'rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/95 to-[#EEF6FF]/90 shadow-sm shadow-[#BDDDFB]/25'
+const cardClass = dashboardOverviewCardBase
 
 export function DashboardKpiSkeleton() {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-full flex-col items-center">
-      <div className="aspect-square w-full max-w-[clamp(6.75rem,34vw,8.75rem)] rounded-full border-2 border-[#D3E9FC] bg-[#E8F3FE]/60 sm:max-w-[11.75rem] lg:max-w-[12.25rem]" />
-      <div className="mt-2 h-3 w-20 rounded bg-[#E8F3FE]/60" />
+      <div className="aspect-square w-full max-w-[clamp(6.75rem,34vw,8.75rem)] rounded-full border-2 border-[#CFE3F5] bg-[#DCEEFF]/60 sm:max-w-[11.75rem] lg:max-w-[12.25rem]" />
+      <div className="mt-2 h-3 w-20 rounded bg-[#DCEEFF]/60" />
     </div>
   )
 }
 
 export function DashboardOverviewCardSkeleton() {
   return (
-    <div className={`${dashboardOverviewCardBase} h-44 bg-[#E8F3FE]/40`} aria-hidden="true" />
+    <div className={`${dashboardOverviewCardBase} h-44 bg-[#F8FBFF]/40`} aria-hidden="true" />
   )
 }
 
@@ -24,15 +23,15 @@ export function RecentActivitySkeleton() {
       className={`${cardClass} flex min-h-[360px] flex-col p-4 sm:min-h-[360px] sm:p-6 xl:min-h-[520px]`}
       aria-hidden="true"
     >
-      <div className="shrink-0 border-b border-[#D3E9FC] pb-4">
-        <h3 className="text-base font-bold tracking-[-0.02em] text-[#113C69]">Recent Activity</h3>
-        <p className="mt-1 text-xs leading-5 text-[#3D7A9C]">
+      <div className="shrink-0 border-b border-[#CFE3F5] pb-4">
+        <h3 className="text-base font-bold tracking-[-0.02em] text-[#163A63]">Recent Activity</h3>
+        <p className="mt-1 text-xs leading-5 text-[#5D7C9D]">
           Latest changes across your operation
         </p>
       </div>
       <div className="mt-4 space-y-2.5">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="h-[4.25rem] rounded-xl border border-[#D3E9FC] bg-[#E8F3FE]/50" />
+          <div key={index} className="h-[4.25rem] rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80" />
         ))}
       </div>
     </section>
@@ -54,7 +53,7 @@ export function DashboardOverviewSkeleton() {
               <DashboardOverviewCardSkeleton key={index} />
             ))}
           </div>
-          <div className={`${cardClass} h-56 bg-[#E8F3FE]/40`} aria-hidden="true" />
+          <div className={`${cardClass} h-56 bg-[#F8FBFF]/40`} aria-hidden="true" />
         </div>
         <RecentActivitySkeleton />
       </div>

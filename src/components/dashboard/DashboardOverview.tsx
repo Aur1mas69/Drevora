@@ -34,7 +34,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 const cardClass =
-  'rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/95 to-[#EEF6FF]/90 shadow-sm shadow-[#BDDDFB]/25'
+  'rounded-2xl border border-[#CFE3F5] bg-[rgba(255,255,255,0.82)] shadow-sm shadow-[rgba(22,58,99,0.06)]'
 
 type ActivityAccent = {
   label: string
@@ -61,11 +61,11 @@ function getActivityAccent(activity: DashboardRecentActivity): ActivityAccent {
     case 'worker':
       return {
         label: 'Worker',
-        stripeClass: 'border-l-[#218EE7]',
-        boxClass: 'border-[#C5DFFB]/80 bg-[#F5FAFF]/95',
+        stripeClass: 'border-l-[#3B82F6]',
+        boxClass: 'border-[#CFE3F5]/80 bg-[#F8FBFF]/95',
         hoverClass:
-          'hover:border-[#A8D4F7] hover:bg-[#EFF7FF] hover:shadow-md hover:shadow-[#218EE7]/10',
-        pillClass: 'bg-[#E8F3FE] text-[#0B68BE] ring-1 ring-[#C5DFFB]/50',
+          'hover:border-[#CFE3F5] hover:bg-[#F8FBFF] hover:shadow-md hover:shadow-[rgba(22,58,99,0.06)]',
+        pillClass: 'bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]/50',
       }
     case 'vehicle':
       return {
@@ -249,8 +249,8 @@ function RecentActivityItem({
       >
         {accent.label}
       </span>
-      <p className="text-sm font-bold leading-snug text-[#113C69]">{getTimelineTitle(item)}</p>
-      <p className="mt-1 text-xs font-medium text-[#5499BF]">
+      <p className="text-sm font-bold leading-snug text-[#163A63]">{getTimelineTitle(item)}</p>
+      <p className="mt-1 text-xs font-medium text-[#5D7C9D]">
         {formatRelativeDateTime(item.createdAt)}
       </p>
     </>
@@ -292,18 +292,18 @@ function RecentActivityPanel({
   }
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border-[3px] border-[#38bdf8] bg-[rgba(255,255,255,0.82)] p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_4px_18px_rgba(56,189,248,0.14),0_16px_42px_rgba(33,142,231,0.16)] ring-1 ring-[#BAE6FD]/60 transition-all duration-300 max-md:shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_4px_14px_rgba(56,189,248,0.1)] sm:min-h-[360px] sm:p-6 md:hover:-translate-y-0.5 md:hover:border-[#0ea5e9] md:hover:shadow-[0_0_0_1px_rgba(14,165,233,0.32),0_8px_24px_rgba(56,189,248,0.18),0_22px_48px_rgba(33,142,231,0.22)] xl:min-h-[520px] xl:sticky xl:top-6">
-      <div className="shrink-0 border-b border-[#D3E9FC] pb-4">
-        <h3 className="text-base font-bold tracking-[-0.02em] text-[#113C69]">Recent Activity</h3>
-        <p className="mt-1 text-xs leading-5 text-[#3D7A9C]">
+    <section className="flex min-h-0 flex-col rounded-2xl border border-[#CFE3F5] bg-[rgba(255,255,255,0.82)] p-4 shadow-sm shadow-[rgba(22,58,99,0.06)] transition-all duration-300 sm:min-h-[360px] sm:p-6 md:hover:-translate-y-0.5 md:hover:border-[#CFE3F5] md:hover:shadow-[0_4px_16px_rgba(22,58,99,0.08)] xl:min-h-[520px] xl:sticky xl:top-6">
+      <div className="shrink-0 border-b border-[#CFE3F5] pb-4">
+        <h3 className="text-base font-bold tracking-[-0.02em] text-[#163A63]">Recent Activity</h3>
+        <p className="mt-1 text-xs leading-5 text-[#5D7C9D]">
           Latest changes across your operation
         </p>
       </div>
 
       <div className="relative z-[1] mt-4 min-h-0 flex-1 max-md:overflow-visible xl:overflow-y-auto xl:max-h-[calc(100dvh-14rem)] xl:pr-1">
         {activity.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#D3E9FC] bg-white/70 px-4 py-10 text-center">
-            <p className="text-sm font-medium text-[#3D7A9C]">No recent activity yet.</p>
+          <div className="rounded-xl border-2 border-dashed border-[#CFE3F5] bg-[#F8FBFF]/70 px-4 py-10 text-center">
+            <p className="text-sm font-medium text-[#5D7C9D]">No recent activity yet.</p>
           </div>
         ) : (
           <ul className="relative z-[1] space-y-2.5">
@@ -525,25 +525,25 @@ export function DashboardOverview({
 export function DashboardOnboardingCard() {
   return (
     <div className={`${cardClass} px-6 py-12 text-center`}>
-      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#E8F3FE] text-[#218EE7] ring-1 ring-[#D3E9FC]">
+      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]">
         <Users className="size-7" strokeWidth={2} />
       </div>
-      <p className="mt-4 text-xl font-semibold tracking-[-0.03em] text-[#113C69]">
+      <p className="mt-4 text-xl font-semibold tracking-[-0.03em] text-[#163A63]">
         Welcome to DREVORA
       </p>
-      <p className="mt-2 text-sm text-[#3D7A9C]">
+      <p className="mt-2 text-sm text-[#5D7C9D]">
         Add workers and vehicles to unlock your operations dashboard.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <Link
           to="/drivers"
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#0B68BE]"
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-[#3B82F6] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#2563EB]"
         >
           Add Worker
         </Link>
         <Link
           to="/vehicles"
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-[#D3E9FC] bg-white px-4 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-[#CFE3F5] bg-white px-4 text-sm font-semibold text-[#3B82F6] hover:bg-[#F8FBFF]"
         >
           Add Vehicle
         </Link>

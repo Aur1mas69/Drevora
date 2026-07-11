@@ -69,14 +69,14 @@ function DeleteNoteDialog({
       >
         <h2
           id="delete-dashboard-note-title"
-          className="text-xl font-semibold leading-snug tracking-[-0.03em] text-[#113C69]"
+          className="text-xl font-semibold leading-snug tracking-[-0.03em] text-[#163A63]"
         >
           Delete note?
         </h2>
         <p className="mt-2 text-sm font-medium leading-6 text-[#92400E]/80">
           This reminder will be permanently removed.
         </p>
-        <p className="mt-4 rounded-[14px] border border-[#FDE68A]/70 border-l-[3px] border-l-[#F59E0B] bg-[#FFFDF4] px-4 py-3 text-sm font-medium leading-snug text-[#113C69]">
+        <p className="mt-4 rounded-[14px] border border-[#FDE68A]/70 border-l-[3px] border-l-[#F59E0B] bg-[#FFFDF4] px-4 py-3 text-sm font-medium leading-snug text-[#163A63]">
           {note.note}
         </p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -138,7 +138,7 @@ function NoteItem({
         <div className="min-w-0 flex-1">
           <p
             className={[
-              'text-sm font-medium leading-snug text-[#113C69]',
+              'text-sm font-medium leading-snug text-[#163A63]',
               isDone ? 'line-through decoration-[#94A3B8]/70' : '',
             ].join(' ')}
           >
@@ -352,7 +352,7 @@ export function NotesPlansCard() {
                 <StickyNote className="size-4 text-[#D97706]" strokeWidth={2.1} aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#113C69]">
+                <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
                   Notes / Plans
                 </h3>
                 <p className="mt-0.5 text-xs text-[#92400E]/75">
@@ -382,7 +382,7 @@ export function NotesPlansCard() {
               onChange={(event) => setNewNoteText(event.target.value)}
               rows={3}
               placeholder="Write a quick reminder…"
-              className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#113C69] outline-none placeholder:text-[#B45309]/45 focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
+              className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#163A63] outline-none placeholder:text-[#B45309]/45 focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
             />
             <div className="mt-2 flex justify-end gap-2">
               <button
@@ -449,7 +449,7 @@ export function NotesPlansCard() {
                       value={editText}
                       onChange={(event) => setEditText(event.target.value)}
                       rows={3}
-                      className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#113C69] outline-none focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
+                      className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#163A63] outline-none focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
                     />
                     <div className="mt-2 flex justify-end gap-2">
                       <button

@@ -52,7 +52,7 @@ function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
   const Icon = row.icon
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-3 transition-colors hover:bg-[#E8F3FE]/70">
+    <li className="flex items-center justify-between gap-3 rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-3 transition-colors hover:bg-[#DCEEFF]/70">
       <div className="flex min-w-0 items-center gap-3">
         <div
           className={`flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ${row.iconWrapClass}`}
@@ -60,11 +60,11 @@ function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
           <Icon className={`size-4 ${row.iconClass}`} strokeWidth={2.1} aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#113C69]">{row.label}</p>
-          <p className="text-xs text-[#3D7A9C]">{row.helper}</p>
+          <p className="text-sm font-semibold text-[#163A63]">{row.label}</p>
+          <p className="text-xs text-[#5D7C9D]">{row.helper}</p>
         </div>
       </div>
-      <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#113C69]">
+      <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63]">
         {row.value}
       </span>
     </li>
@@ -82,10 +82,10 @@ export function FleetStatusOverviewCard({
     <section className={`${dashboardOverviewCardClass} p-5`}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#113C69]">Fleet Status</h3>
-          <p className="mt-0.5 text-xs text-[#3D7A9C]">Current fleet availability</p>
+          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">Fleet Status</h3>
+          <p className="mt-0.5 text-xs text-[#5D7C9D]">Current fleet availability</p>
         </div>
-        <Link to="/vehicles" className="text-xs font-semibold text-[#218EE7] hover:underline">
+        <Link to="/vehicles" className="text-xs font-semibold text-[#3B82F6] hover:underline">
           View
         </Link>
       </div>

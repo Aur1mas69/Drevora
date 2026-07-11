@@ -212,6 +212,61 @@ body {
   background-size: 180px 180px;
 }
 
+/* Admin dashboard — main content background + card shadow */
+.admin-main-column.admin-dashboard {
+  --drevora-card-shadow: 0 4px 16px rgba(22, 58, 99, 0.06);
+  min-height: calc(100dvh - 3.5rem);
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(255, 255, 255, 0) 34%
+    ),
+    linear-gradient(135deg, #eef7ff 0%, #ddeeff 52%, #cfe6ff 100%) !important;
+}
+
+@media (min-width: 1024px) {
+  .admin-main-column.admin-dashboard {
+    min-height: 100dvh;
+  }
+}
+
+.admin-main-column.admin-dashboard .admin-main-content {
+  background: transparent;
+}
+
+/* Admin dashboard — overview card surfaces (not KPI circles or Notes/Plans amber card) */
+.admin-dashboard .admin-main-content section.rounded-2xl[class*='border-[#CFE3F5]'],
+.admin-dashboard
+  .admin-main-content
+  div.rounded-2xl.border[class*='border-[#CFE3F5]'][class*='bg-[rgba(255,255,255'] {
+  background: linear-gradient(145deg, rgba(248, 252, 255, 0.94), rgba(232, 244, 255, 0.88)) !important;
+  border-color: #c6dff4 !important;
+  box-shadow: 0 10px 28px rgba(91, 145, 190, 0.12) !important;
+}
+
+/* Admin dashboard — nested rows and statistic boxes */
+.admin-dashboard
+  .admin-main-content
+  section.rounded-2xl[class*='border-[#CFE3F5]']
+  li.rounded-xl[class*='border-[#CFE3F5]'],
+.admin-dashboard
+  .admin-main-content
+  section.rounded-2xl[class*='border-[#CFE3F5]']
+  .rounded-lg.border[class*='border-[#CFE3F5]'],
+.admin-dashboard
+  .admin-main-content
+  section.rounded-2xl[class*='border-[#CFE3F5]']
+  .rounded-xl.border[class*='border-[#CFE3F5]']:not([class*='border-l-[3px]']) {
+  background: rgba(244, 249, 255, 0.9) !important;
+  border-color: #d2e5f5 !important;
+}
+
+.admin-main-column.admin-dashboard
+  [data-slot='card']:is(.bg-white, .bg-white\/95, .bg-white\/80, .bg-white\/72) {
+  box-shadow: var(--drevora-card-shadow);
+}
+
 /* White cards float above the richer background */
 .drevora-app-shell main [data-slot='card']:is(.bg-white, .bg-white\/95, .bg-white\/80, .bg-white\/72) {
   box-shadow: var(--drevora-card-shadow);

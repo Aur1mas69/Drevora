@@ -23,9 +23,14 @@ function AdminDashboardPage() {
     <AdminLayout
       premiumBackground
       wideContent
-      customHeader={<FleetOperationsHeader {...fleetHeader} />}
+      adminDashboard
+      customHeader={
+        <>
+          <DashboardQuickSearch />
+          <FleetOperationsHeader {...fleetHeader} />
+        </>
+      }
     >
-      <DashboardQuickSearch />
       <DashboardPageHeader />
 
       {isEmptyWorkspace ? (

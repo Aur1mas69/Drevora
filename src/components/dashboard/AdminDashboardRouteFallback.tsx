@@ -18,7 +18,7 @@ function QuickSearchFallback() {
 
 export default function AdminDashboardRouteFallback() {
   return (
-    <AdminLayout premiumBackground wideContent customHeader={<DashboardHeroFallback />}>
+    <AdminLayout premiumBackground wideContent adminDashboard customHeader={<DashboardHeroFallback />}>
       <QuickSearchFallback />
       <DashboardPageHeader />
       <DashboardOverviewSkeleton />

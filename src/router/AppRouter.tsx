@@ -27,6 +27,9 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const DriverDetailsPage = lazy(() => import('@/pages/DriverDetailsPage'))
 const DriverLoginPage = lazy(() => import('@/pages/DriverLoginPage'))
 const WorkerLoginPage = lazy(() => import('@/pages/WorkerLoginPage'))
+const LoginTwilightPreviewPage = lazy(
+  () => import('@/pages/LoginTwilightPreviewPage'),
+)
 const DriversPage = lazy(() => import('@/pages/DriversPage'))
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'))
 const MyHolidaysPage = lazy(() => import('@/pages/MyHolidaysPage'))
@@ -106,11 +109,15 @@ function AppRouter() {
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<AdminLoginPage />} />
+        <Route path="/login" element={<LoginTwilightPreviewPage />} />
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
         <Route path="/admin-login" element={<Navigate to="/login" replace />} />
         <Route path="/driver-login" element={<DriverLoginPage />} />
         <Route path="/worker-login" element={<WorkerLoginPage />} />
+        <Route
+          path="/login-design-preview"
+          element={<LoginTwilightPreviewPage />}
+        />
         <Route
           path="/admin/dashboard"
           element={
