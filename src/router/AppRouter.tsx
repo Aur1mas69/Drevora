@@ -11,7 +11,6 @@ import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDa
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout'))
 const AdminDashboardPage = lazy(loadAdminDashboardPage)
-const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
 const AdminComingSoonPage = lazy(() => import('@/pages/admin/AdminComingSoonPage'))
 const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
 const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'))
