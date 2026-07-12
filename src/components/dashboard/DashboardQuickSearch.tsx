@@ -216,8 +216,7 @@ export function DashboardQuickSearch() {
   const showEmpty = showPanel && !isLoading && !searchError && totalResults === 0
 
   return (
-    <section className="mb-4 sm:mb-5 lg:mb-6" aria-label="Search">
-      <div ref={rootRef} className="relative w-full lg:max-w-[620px]">
+    <div ref={rootRef} className="relative w-full" aria-label="Search">
         <Search
           className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
           aria-hidden="true"
@@ -307,7 +306,6 @@ export function DashboardQuickSearch() {
             ) : null}
           </div>
         ) : null}
-      </div>
-    </section>
+    </div>
   )
 }

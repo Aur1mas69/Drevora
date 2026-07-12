@@ -26,4 +26,7 @@ dist-ssr
 .vercel
 .env*
 
+# Demo seed manifest (IDs of generated rows only)
+scripts/.demo-data-manifest.json
+
 supabase/.temp/

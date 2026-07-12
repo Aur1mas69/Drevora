@@ -610,9 +610,11 @@ function Sidebar({
 function MobileNavHeader({
   onToggleMenu,
   menuOpen,
+  showAccountMenu = true,
 }: {
   onToggleMenu: () => void
   menuOpen: boolean
+  showAccountMenu?: boolean
 }) {
   return (
     <header className="admin-mobile-header fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-3 shadow-sm shadow-blue-100/30 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none sm:gap-3 sm:px-4 lg:hidden">
@@ -630,7 +632,7 @@ function MobileNavHeader({
         >
           <Menu className="size-5" strokeWidth={2} />
         </Button>
-        <AccountMenu />
+        {showAccountMenu ? <AccountMenu /> : null}
       </div>
     </header>
   )
@@ -715,6 +717,20 @@ function MobileNavDrawer({
   )
 }
 
+function NotificationBellButton() {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Notifications"
+      className="size-10 shrink-0 rounded-[1rem] bg-white/90 text-slate-500 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
+    >
+      <Bell className="size-[18px]" />
+    </Button>
+  )
+}
+
 function TopBar() {
   const [now, setNow] = useState(() => new Date())
   const { session } = useAuth()
@@ -743,14 +759,7 @@ function TopBar() {
       </div>
 
       <div className="hidden items-center gap-2.5 lg:flex">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-10 rounded-[1rem] bg-white/90 text-slate-500 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
-        >
-          <Bell className="size-[18px]" />
-        </Button>
+        <NotificationBellButton />
         <AccountMenu />
       </div>
     </header>
@@ -761,6 +770,7 @@ function AdminLayout({
   children,
   headerExtra,
   customHeader,
+  headerSearch,
   premiumBackground = false,
   wideContent = false,
   backgroundMood = 'default',
@@ -769,6 +779,7 @@ function AdminLayout({
   children: ReactNode
   headerExtra?: ReactNode
   customHeader?: ReactNode
+  headerSearch?: ReactNode
   premiumBackground?: boolean
   wideContent?: boolean
   backgroundMood?: 'default' | 'sunny' | 'cloudy' | 'rain' | 'night'
@@ -846,6 +857,7 @@ function AdminLayout({
           <MobileNavHeader
             menuOpen={mobileMenuOpen}
             onToggleMenu={toggleMobileMenu}
+            showAccountMenu={!customHeader}
           />
           {mobileMenuOpen ? (
             <MobileNavDrawer open onClose={() => setMobileMenuOpen(false)} />
@@ -862,8 +874,16 @@ function AdminLayout({
             >
               {customHeader ? (
                 <div className="relative min-w-0">
-                  <div className="absolute top-0 right-0 z-20 hidden lg:block">
-                    <AccountMenu />
+                  <div className="mb-4 flex items-center justify-end sm:mb-5 lg:mb-6">
+                    <div className="flex min-w-0 max-w-full items-center gap-3">
+                      {headerSearch ? (
+                        <div className="hidden min-w-0 sm:block sm:w-[min(100%,240px)] md:w-[280px] lg:w-[320px] lg:shrink-0">
+                          {headerSearch}
+                        </div>
+                      ) : null}
+                      <NotificationBellButton />
+                      <AccountMenu />
+                    </div>
                   </div>
                   {customHeader}
                 </div>

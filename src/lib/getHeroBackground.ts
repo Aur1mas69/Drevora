@@ -79,10 +79,10 @@ export function getHeroBackgroundPosition(
   return HERO_BACKGROUND_POSITION[key]
 }
 
-export const HERO_IMAGE_DARK_OVERLAY = 'rgba(10, 25, 60, 0.18)'
+export const HERO_IMAGE_DARK_OVERLAY = 'rgba(10, 25, 60, 0.08)'
 
 export const HERO_IMAGE_BLUE_OVERLAY =
-  'linear-gradient(90deg, rgba(235,245,255,.88), rgba(220,235,255,.45), rgba(20,40,80,.18))'
+  'linear-gradient(90deg, rgba(235,245,255,.42), rgba(220,235,255,.18), rgba(20,40,80,.10))'
 
 /** Light overlay for sunny/cloudy/snow; dark overlay for rain/night. */
 export function isDarkHeroOverlay(

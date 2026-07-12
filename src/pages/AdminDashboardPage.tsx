@@ -24,12 +24,8 @@ function AdminDashboardPage() {
       premiumBackground
       wideContent
       adminDashboard
-      customHeader={
-        <>
-          <DashboardQuickSearch />
-          <FleetOperationsHeader {...fleetHeader} />
-        </>
-      }
+      headerSearch={<DashboardQuickSearch />}
+      customHeader={<FleetOperationsHeader {...fleetHeader} />}
     >
       <DashboardPageHeader />
 

@@ -46,7 +46,7 @@ export function WeatherHeroBackground({
           src={backgroundUrl}
           alt=""
           draggable={false}
-          className="absolute inset-0 h-full w-full object-cover object-[60%_center] md:object-center"
+          className="absolute inset-0 h-full w-full object-cover object-[center_52%] sm:object-[center_58%] md:object-[center_58%]"
           initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: prefersReducedMotion ? 1 : 0 }}

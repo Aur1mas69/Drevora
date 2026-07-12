@@ -54,7 +54,7 @@
             class="flex justify-between items-center w-full px-4 sm:px-6 md:px-10 py-4 max-w-[1280px] mx-auto relative z-50">
             <a href="#" class="navbar-logo-link">
                 <img
-                    src="images/drevora-logo.png"
+                    src="/drevora-logo-full.png"
                     alt="Drevora Fleet & Team Management"
                     class="navbar-logo"
                 >
@@ -269,16 +269,12 @@
                         <i class="fa-regular fa-truck text-xl text-primary"></i>
                     </div>
 
-                    <div
-                        class="hidden lg:block absolute bottom-[-4%] right-[25%] z-40 bg-primary p-3 rounded-2xl shadow-level-2 text-on-primary">
-                        <i class="fa-solid fa-check text-base"></i>
-                    </div>
-                    <div class="hero-mockup-wrap relative w-full z-20 flex items-center justify-center max-w-[580px] lg:max-w-none">
+                    <div class="hero-mockup-wrap relative w-full z-20 flex items-center justify-center">
                         <div
-                            class="hero-dashboard-frame w-full shadow-[0_20px_50px_rgba(0,40,100,0.12)] rounded-2xl border border-outline-variant/40 bg-surface-container-lowest overflow-hidden transition-all duration-500 hover:shadow-[0_24px_60px_rgba(0,40,100,0.18)]">
+                            class="hero-dashboard-frame w-full bg-transparent overflow-visible">
                             <picture>
-                                <source srcset="images/drevora-dashboard-1.webp" type="image/webp">
-                                <img src="images/drevora-dashboard-1.png" alt="Drevora Dashboard"
+                                <source srcset="./images/drevora-dashboard-1.webp" type="image/webp">
+                                <img src="./images/drevora-dashboard-1.png" alt="Drevora Dashboard"
                                     loading="lazy" decoding="async"
                                     class="product-screenshot w-full h-auto block object-contain">
                             </picture>
@@ -1116,53 +1112,50 @@
 
         <!-- Contact Section -->
 
-        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap max-w-container-max mx-auto"
+        <section class="demo-request-section w-full px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto"
             id="contact">
-            <div
-                class="bg-surface-container-lowest rounded-xl shadow-level-2 p-8 md:p-12 max-w-3xl mx-auto border border-outline-variant/20">
-                <div class="text-center mb-10">
-                    <h2 class="font-headline-md text-headline-md text-on-surface mb-3">Ready to streamline your fleet?
+            <div class="demo-request-card">
+                <div class="demo-request-header">
+                    <h2 class="font-headline-md text-headline-md text-on-surface">Ready to streamline your fleet?
                     </h2>
                     <p class="font-body-lg text-body-lg text-on-surface-variant">Request a personalized demo and see how
                         DREVORA fits your operations.</p>
-                </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant/90 text-center">
+                    <p class="demo-request-email-pill font-body-sm text-body-sm">
                         Prefer email? Contact us at
                         <a href="mailto:Admin@drevora.uk"
                             class="text-primary hover:underline font-medium">Admin@drevora.uk</a>
                     </p>
-                <form id="demo-request-form" class="space-y-6" novalidate>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                </div>
+                <form id="demo-request-form" class="demo-request-form" novalidate>
+                    <div class="demo-request-grid">
+                        <div class="demo-request-field">
+                            <label class="demo-request-label"
                                 for="demo-full-name">Full Name</label>
                             <input id="demo-full-name" name="fullName"
-                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                class="demo-request-input"
                                 placeholder="John Doe" type="text" required>
                         </div>
-                        <div>
-                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                        <div class="demo-request-field">
+                            <label class="demo-request-label"
                                 for="demo-company-name">Company
                                 Name</label>
                             <input id="demo-company-name" name="companyName"
-                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                class="demo-request-input"
                                 placeholder="Transport Co." type="text" required>
                         </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                        <div class="demo-request-field">
+                            <label class="demo-request-label"
                                 for="demo-work-email">Work Email</label>
                             <input id="demo-work-email" name="workEmail"
-                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+                                class="demo-request-input"
                                 placeholder="john@company.com" type="email" required>
                         </div>
-                        <div>
-                            <label class="block font-label-bold text-label-bold text-on-surface mb-2"
+                        <div class="demo-request-field">
+                            <label class="demo-request-label"
                                 for="demo-vehicle-count">Number of
                                 Vehicles</label>
                             <select id="demo-vehicle-count" name="vehicleCount"
-                                class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow appearance-none"
+                                class="demo-request-input demo-request-select"
                                 required>
                                 <option value="1 - 10">1 - 10</option>
                                 <option value="11 - 25">11 - 25</option>
@@ -1170,19 +1163,19 @@
                                 <option value="50+">50+</option>
                             </select>
                         </div>
-                    </div>
-                    <div>
-                        <label class="block font-label-bold text-label-bold text-on-surface mb-2"
-                            for="demo-message">Message
-                            (Optional)</label>
-                        <textarea id="demo-message" name="message"
-                            class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
-                            placeholder="Tell us about your specific needs..." rows="4"></textarea>
+                        <div class="demo-request-field demo-request-field--full">
+                            <label class="demo-request-label"
+                                for="demo-message">Message
+                                (Optional)</label>
+                            <textarea id="demo-message" name="message"
+                                class="demo-request-input demo-request-textarea"
+                                placeholder="Tell us about your specific needs..." rows="4"></textarea>
+                        </div>
                     </div>
                     <div id="demo-request-status" class="hidden rounded-lg px-4 py-3 text-sm font-medium" role="status"
                         aria-live="polite"></div>
                     <button id="demo-request-submit"
-                        class="w-full py-4 rounded-lg bg-primary text-on-primary font-label-bold text-label-bold text-lg hover:bg-primary-container shadow-md transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                        class="demo-request-submit"
                         type="submit">
                         Request Demo
                     </button>
@@ -1197,7 +1190,7 @@
             <div class="md:col-span-6 flex flex-col items-start gap-4">
                 <a href="#" class="footer-logo-link">
                     <img
-                        src="images/drevora-logo.png"
+                        src="/drevora-logo-full.png"
                         alt="Drevora Logo"
                         class="footer-logo"
                     >
