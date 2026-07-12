@@ -13,13 +13,18 @@ import {
 } from '@/services/dashboardNotesService'
 import {
   Check,
+  CircleAlert,
+  Eye,
   Loader2,
   Pencil,
   Plus,
   StickyNote,
   Trash2,
+  X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+const PREVIEW_OPEN_LIMIT = 2
 
 function getNotesErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof DashboardNotesTableMissingError) {
@@ -36,8 +41,17 @@ function getNotesErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function sortNotes(rows: DashboardNote[]): DashboardNote[] {
+  return [...rows].sort((first, second) => {
+    if (first.status !== second.status) {
+      return first.status === 'open' ? -1 : 1
+    }
+    return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
+  })
+}
+
 const notesPlansCardClass =
-  'rounded-2xl border border-[#FDE68A]/80 bg-gradient-to-br from-[#FFF8E7]/98 to-[#FFF7D6]/95 shadow-sm shadow-[#FBBF24]/15 transition-all duration-[180ms] ease-out hover:-translate-y-[3px] hover:border-[#FBBF24]/75 hover:shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_18px_40px_rgba(245,158,11,0.16)] active:-translate-y-px active:scale-[0.99] active:shadow-[0_8px_20px_rgba(245,158,11,0.12)]'
+  'relative overflow-visible rounded-[18px] border border-[#FDA4AF]/70 bg-[linear-gradient(145deg,rgba(255,251,251,0.98)_0%,rgba(255,241,242,0.96)_45%,rgba(255,228,230,0.92)_100%)] p-3.5 shadow-[0_8px_22px_rgba(244,63,94,0.10)] transition-all duration-[200ms] ease-out hover:-translate-y-[2px] hover:border-[#FB7185]/80 hover:shadow-[0_12px_28px_rgba(244,63,94,0.14)] active:-translate-y-px active:scale-[0.99] sm:p-4'
 
 function DeleteNoteDialog({
   note,
@@ -60,9 +74,9 @@ function DeleteNoteDialog({
   }, [isDeleting, onCancel])
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div
-        className="w-full max-w-md rounded-[20px] border border-[#FDE68A]/80 bg-[#FFFBF0] p-5 shadow-[0_30px_80px_rgba(146,64,14,0.14)] sm:p-6"
+        className="w-full max-w-md rounded-[20px] border border-[#FECDD3] bg-[#FFFBFB] p-5 shadow-[0_30px_80px_rgba(190,18,60,0.14)] sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-dashboard-note-title"
@@ -73,10 +87,10 @@ function DeleteNoteDialog({
         >
           Delete note?
         </h2>
-        <p className="mt-2 text-sm font-medium leading-6 text-[#92400E]/80">
+        <p className="mt-2 text-sm font-medium leading-6 text-[#9F1239]/75">
           This reminder will be permanently removed.
         </p>
-        <p className="mt-4 rounded-[14px] border border-[#FDE68A]/70 border-l-[3px] border-l-[#F59E0B] bg-[#FFFDF4] px-4 py-3 text-sm font-medium leading-snug text-[#163A63]">
+        <p className="mt-4 rounded-[14px] border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] px-4 py-3 text-sm font-medium leading-snug text-[#163A63]">
           {note.note}
         </p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -92,105 +106,491 @@ function DeleteNoteDialog({
   )
 }
 
-function NoteItem({
+function CompactNotePreview({
   note,
-  formatDate,
   isBusy,
+  onOpen,
   onToggleDone,
-  onEdit,
   onDelete,
 }: {
   note: DashboardNote
-  formatDate: (value: string) => string
   isBusy: boolean
+  onOpen: (note: DashboardNote) => void
   onToggleDone: (note: DashboardNote) => void
-  onEdit: (note: DashboardNote) => void
   onDelete: (note: DashboardNote) => void
 }) {
-  const isDone = note.status === 'done'
-
   return (
-    <li
-      className={[
-        'group/note relative rounded-xl border border-l-[3px] px-3.5 py-3 shadow-sm transition-all duration-200',
-        isDone
-          ? 'border-[#E7E5E4]/80 border-l-[#A8A29E] bg-[#FAFAF9]/90 opacity-75'
-          : 'border-[#FDE68A]/60 border-l-[#F59E0B] bg-[#FFFDF4] shadow-[#FBBF24]/10 hover:-translate-y-0.5 hover:border-[#FBBF24]/80 hover:bg-[#FFFBE8] hover:shadow-[0_8px_20px_rgba(245,158,11,0.12)] active:translate-y-0 active:scale-[0.995]',
-      ].join(' ')}
-    >
-      <div className="flex items-start gap-3">
+    <li>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(note)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onOpen(note)
+          }
+        }}
+        className="group/note relative flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-[#FECDD3]/80 border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2]/90 px-2.5 py-2 text-left shadow-[0_2px_8px_rgba(244,63,94,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185]/70 hover:bg-[#FFE4E6]/90 hover:shadow-[0_8px_18px_rgba(244,63,94,0.10)]"
+      >
         <button
           type="button"
-          aria-label={isDone ? 'Mark note as open' : 'Mark note as done'}
+          aria-label="Mark note as done"
           disabled={isBusy}
-          onClick={() => onToggleDone(note)}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleDone(note)
+          }}
           className={[
-            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors',
-            isDone
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-              : 'border-[#FCD34D]/80 bg-white text-transparent hover:border-[#F59E0B] group-hover/note:text-[#D97706]',
+            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-[#FDA4AF]/80 bg-white text-transparent transition-colors hover:border-[#F43F5E] group-hover/note:text-[#E11D48]',
             isBusy ? 'cursor-not-allowed opacity-60' : '',
           ].join(' ')}
         >
           <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
         </button>
 
-        <div className="min-w-0 flex-1">
-          <p
-            className={[
-              'text-sm font-medium leading-snug text-[#163A63]',
-              isDone ? 'line-through decoration-[#94A3B8]/70' : '',
-            ].join(' ')}
-          >
-            {note.note}
-          </p>
+        <p className="min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug text-[#163A63]">
+          {note.note}
+        </p>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span
-              className={[
-                'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]',
-                isDone
-                  ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80'
-                  : 'bg-[#FEF3C7] text-[#B45309] ring-1 ring-[#FDE68A]/70',
-              ].join(' ')}
-            >
-              {isDone ? 'Done' : 'Open'}
-            </span>
-            {note.dueDate ? (
-              <span className="text-[11px] font-medium text-[#B45309]/80">
-                Due {formatDate(note.dueDate)}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/note:opacity-100">
-          <button
-            type="button"
-            aria-label="Edit note"
-            disabled={isBusy}
-            onClick={() => onEdit(note)}
-            className="flex size-7 items-center justify-center rounded-lg text-[#B45309]/80 transition-colors hover:bg-[#FEF3C7] hover:text-[#92400E] disabled:opacity-50"
-          >
-            <Pencil className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete note"
-            disabled={isBusy}
-            onClick={() => onDelete(note)}
-            className="flex size-7 items-center justify-center rounded-lg text-[#B45309]/80 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-          >
-            <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
-          </button>
-        </div>
+        <button
+          type="button"
+          aria-label="Delete note"
+          disabled={isBusy}
+          onClick={(event) => {
+            event.stopPropagation()
+            onDelete(note)
+          }}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#9F1239]/70 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+        >
+          <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+        </button>
       </div>
     </li>
   )
 }
 
+function NotesPlansModal({
+  notes,
+  openCount,
+  focusedNoteId,
+  formatDateTime,
+  busyNoteId,
+  editingNote,
+  editText,
+  isSavingEdit,
+  isAdding,
+  newNoteText,
+  isSavingNew,
+  onClose,
+  onToggleDone,
+  onDelete,
+  onStartEdit,
+  onEditTextChange,
+  onCancelEdit,
+  onSaveEdit,
+  onFocusNote,
+  onToggleAdding,
+  onNewNoteTextChange,
+  onCreateNote,
+  onCancelAdding,
+}: {
+  notes: DashboardNote[]
+  openCount: number
+  focusedNoteId: string | null
+  formatDateTime: (value: string) => string
+  busyNoteId: string | null
+  editingNote: DashboardNote | null
+  editText: string
+  isSavingEdit: boolean
+  isAdding: boolean
+  newNoteText: string
+  isSavingNew: boolean
+  onClose: () => void
+  onToggleDone: (note: DashboardNote) => void
+  onDelete: (note: DashboardNote) => void
+  onStartEdit: (note: DashboardNote) => void
+  onEditTextChange: (value: string) => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
+  onFocusNote: (noteId: string) => void
+  onToggleAdding: () => void
+  onNewNoteTextChange: (value: string) => void
+  onCreateNote: () => void
+  onCancelAdding: () => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const rowRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    if (!focusedNoteId) return
+    const node = rowRefs.current[focusedNoteId]
+    if (!node) return
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [focusedNoteId, notes])
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/45 px-0 py-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8">
+      <div
+        className="flex h-[min(92dvh,100%)] w-full max-w-[960px] flex-col overflow-hidden rounded-t-[20px] border border-[#C6DFF4] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FBFF_100%)] shadow-[0_30px_80px_rgba(30,64,175,0.18)] sm:h-auto sm:max-h-[min(85dvh,52rem)] sm:rounded-[20px]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notes-plans-modal-title"
+      >
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#D2E5F5] px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h2
+              id="notes-plans-modal-title"
+              className="text-lg font-semibold tracking-[-0.02em] text-[#163A63] sm:text-xl"
+            >
+              Notes / Plans
+            </h2>
+            <p className="mt-0.5 text-xs font-medium text-[#5D7C9D] sm:text-[13px]">
+              {openCount} open note{openCount === 1 ? '' : 's'}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggleAdding}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#C6DFF4] bg-[#F0F7FF] px-2.5 py-1.5 text-xs font-semibold text-[#2563EB] transition-colors hover:bg-[#E0EFFF]"
+            >
+              <Plus className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
+              Add note
+            </button>
+            <button
+              type="button"
+              aria-label="Close notes"
+              onClick={onClose}
+              className="inline-flex size-9 items-center justify-center rounded-lg border border-[#D2E5F5] bg-white text-[#5D7C9D] transition-colors hover:bg-[#F0F7FF] hover:text-[#163A63]"
+            >
+              <X className="size-4" strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        {isAdding ? (
+          <div className="shrink-0 border-b border-[#D2E5F5] bg-[#F8FBFF] px-4 py-3 sm:px-6">
+            <textarea
+              value={newNoteText}
+              onChange={(event) => onNewNoteTextChange(event.target.value)}
+              rows={3}
+              placeholder="Write a quick reminder…"
+              className="w-full resize-none rounded-xl border border-[#C6DFF4] bg-white px-3 py-2 text-sm text-[#163A63] outline-none placeholder:text-[#5D7C9D]/55 focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isSavingNew}
+                onClick={onCancelAdding}
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingNew || !newNoteText.trim()}
+                onClick={onCreateNote}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#1D4ED8] disabled:opacity-50"
+              >
+                {isSavingNew ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save note'
+                )}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
+          {notes.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#C6DFF4] bg-[#F8FBFF]/80 px-4 py-12 text-center">
+              <p className="text-sm font-medium text-[#5D7C9D]">No notes yet. Add your first plan.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop / tablet table */}
+              <div className="hidden overflow-hidden rounded-[16px] border border-[#D2E5F5] md:block">
+                <table className="w-full table-fixed border-collapse text-left">
+                  <thead className="bg-[#F0F7FF]">
+                    <tr className="border-b border-[#D2E5F5] text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D]">
+                      <th className="w-[100px] px-3 py-3">Status</th>
+                      <th className="px-3 py-3">Note / Plan</th>
+                      <th className="w-[140px] px-3 py-3">Created</th>
+                      <th className="w-[140px] px-3 py-3">Updated</th>
+                      <th className="w-[168px] px-3 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notes.map((note) => {
+                      const isDone = note.status === 'done'
+                      const isFocused = focusedNoteId === note.id
+                      const isEditing = editingNote?.id === note.id
+
+                      return (
+                        <tr
+                          key={note.id}
+                          ref={(node) => {
+                            rowRefs.current[note.id] = node
+                          }}
+                          className={[
+                            'align-top border-b border-[#E8F3FE] last:border-b-0 transition-colors',
+                            isFocused
+                              ? 'bg-[#FFF1F2] ring-2 ring-inset ring-[#FB7185]/70'
+                              : isDone
+                                ? 'bg-[#FAFCFF]/80'
+                                : 'bg-white',
+                          ].join(' ')}
+                        >
+                          <td className="px-3 py-3">
+                            <span
+                              className={[
+                                'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]',
+                                isDone
+                                  ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80'
+                                  : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80',
+                              ].join(' ')}
+                            >
+                              {isDone ? 'Done' : 'Open'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3">
+                            {isEditing ? (
+                              <div>
+                                <textarea
+                                  value={editText}
+                                  onChange={(event) => onEditTextChange(event.target.value)}
+                                  rows={3}
+                                  className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+                                />
+                                <div className="mt-2 flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isSavingEdit}
+                                    onClick={onCancelEdit}
+                                    className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSavingEdit || !editText.trim()}
+                                    onClick={onSaveEdit}
+                                    className="rounded-lg bg-[#2563EB] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#1D4ED8] disabled:opacity-50"
+                                  >
+                                    {isSavingEdit ? 'Saving…' : 'Save'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p
+                                className={[
+                                  'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63]',
+                                  isDone ? 'line-through decoration-[#94A3B8]/60' : '',
+                                ].join(' ')}
+                              >
+                                {note.note}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D]">
+                            {formatDateTime(note.createdAt)}
+                          </td>
+                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D]">
+                            {formatDateTime(note.updatedAt)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex flex-wrap items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                aria-label="View note"
+                                onClick={() => onFocusNote(note.id)}
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63]"
+                              >
+                                <Eye className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={isDone ? 'Reopen note' : 'Mark complete'}
+                                disabled={busyNoteId === note.id}
+                                onClick={() => onToggleDone(note)}
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
+                              >
+                                <Check className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Edit note"
+                                disabled={busyNoteId === note.id}
+                                onClick={() => onStartEdit(note)}
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63] disabled:opacity-50"
+                              >
+                                <Pencil className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Delete note"
+                                disabled={busyNoteId === note.id}
+                                onClick={() => onDelete(note)}
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                              >
+                                <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile stacked list */}
+              <ul className="space-y-2.5 md:hidden">
+                {notes.map((note) => {
+                  const isDone = note.status === 'done'
+                  const isFocused = focusedNoteId === note.id
+                  const isEditing = editingNote?.id === note.id
+
+                  return (
+                    <li
+                      key={note.id}
+                      ref={(node) => {
+                        rowRefs.current[note.id] = node
+                      }}
+                      className={[
+                        'rounded-xl border border-[#D2E5F5] bg-white p-3 shadow-sm transition-colors',
+                        isFocused ? 'border-[#FB7185] bg-[#FFF1F2] ring-2 ring-[#FB7185]/40' : '',
+                      ].join(' ')}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span
+                          className={[
+                            'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]',
+                            isDone
+                              ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80'
+                              : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80',
+                          ].join(' ')}
+                        >
+                          {isDone ? 'Done' : 'Open'}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            aria-label="View note"
+                            onClick={() => onFocusNote(note.id)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                          >
+                            <Eye className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={isDone ? 'Reopen note' : 'Mark complete'}
+                            disabled={busyNoteId === note.id}
+                            onClick={() => onToggleDone(note)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
+                          >
+                            <Check className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Edit note"
+                            disabled={busyNoteId === note.id}
+                            onClick={() => onStartEdit(note)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE] disabled:opacity-50"
+                          >
+                            <Pencil className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Delete note"
+                            disabled={busyNoteId === note.id}
+                            onClick={() => onDelete(note)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                          >
+                            <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {isEditing ? (
+                        <div>
+                          <textarea
+                            value={editText}
+                            onChange={(event) => onEditTextChange(event.target.value)}
+                            rows={3}
+                            className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+                          />
+                          <div className="mt-2 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={isSavingEdit}
+                              onClick={onCancelEdit}
+                              className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSavingEdit || !editText.trim()}
+                              onClick={onSaveEdit}
+                              className="rounded-lg bg-[#2563EB] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#1D4ED8] disabled:opacity-50"
+                            >
+                              {isSavingEdit ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p
+                          className={[
+                            'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63]',
+                            isDone ? 'line-through decoration-[#94A3B8]/60' : '',
+                          ].join(' ')}
+                        >
+                          {note.note}
+                        </p>
+                      )}
+
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#5D7C9D]">
+                        <span>Created {formatDateTime(note.createdAt)}</span>
+                        <span>Updated {formatDateTime(note.updatedAt)}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function NotesPlansCard() {
-  const { settings, formatDate } = useCompanySettings()
+  const { settings, formatDateTime } = useCompanySettings()
   const { session } = useAuth()
   const companyId = settings?.id
 
@@ -206,6 +606,16 @@ export function NotesPlansCard() {
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<DashboardNote | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null)
+  const [isAddingInModal, setIsAddingInModal] = useState(false)
+
+  const openNotes = useMemo(
+    () => notes.filter((note) => note.status === 'open'),
+    [notes],
+  )
+  const openCount = openNotes.length
+  const previewNotes = openNotes.slice(0, PREVIEW_OPEN_LIMIT)
 
   const loadNotes = useCallback(async () => {
     if (!companyId) {
@@ -219,7 +629,7 @@ export function NotesPlansCard() {
 
     try {
       const rows = await fetchDashboardNotes(companyId)
-      setNotes(rows)
+      setNotes(sortNotes(rows))
     } catch (error) {
       setLoadError(getNotesErrorMessage(error, 'Unable to load notes.'))
       setNotes([])
@@ -247,16 +657,11 @@ export function NotesPlansCard() {
         createdBy: session?.user.id ?? null,
         note: text,
       })
-      setNotes((current) =>
-        [...current, created].sort((first, second) => {
-          if (first.status !== second.status) {
-            return first.status === 'open' ? -1 : 1
-          }
-          return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
-        }),
-      )
+      setNotes((current) => sortNotes([...current, created]))
       setNewNoteText('')
       setIsAdding(false)
+      setIsAddingInModal(false)
+      setFocusedNoteId(created.id)
     } catch (error) {
       setLoadError(getNotesErrorMessage(error, 'Unable to save note.'))
     } finally {
@@ -276,17 +681,11 @@ export function NotesPlansCard() {
     try {
       const updated = await updateDashboardNote(editingNote.id, companyId, { note: text })
       setNotes((current) =>
-        current
-          .map((row) => (row.id === updated.id ? updated : row))
-          .sort((first, second) => {
-            if (first.status !== second.status) {
-              return first.status === 'open' ? -1 : 1
-            }
-            return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
-          }),
+        sortNotes(current.map((row) => (row.id === updated.id ? updated : row))),
       )
       setEditingNote(null)
       setEditText('')
+      setFocusedNoteId(updated.id)
     } catch (error) {
       setLoadError(getNotesErrorMessage(error, 'Unable to update note.'))
     } finally {
@@ -303,14 +702,7 @@ export function NotesPlansCard() {
     try {
       const updated = await toggleDashboardNoteDone(note)
       setNotes((current) =>
-        current
-          .map((row) => (row.id === updated.id ? updated : row))
-          .sort((first, second) => {
-            if (first.status !== second.status) {
-              return first.status === 'open' ? -1 : 1
-            }
-            return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime()
-          }),
+        sortNotes(current.map((row) => (row.id === updated.id ? updated : row))),
       )
     } catch (error) {
       setLoadError(getNotesErrorMessage(error, 'Unable to update note status.'))
@@ -328,6 +720,7 @@ export function NotesPlansCard() {
     try {
       await deleteDashboardNote(deleteTarget.id, companyId)
       setNotes((current) => current.filter((row) => row.id !== deleteTarget.id))
+      if (focusedNoteId === deleteTarget.id) setFocusedNoteId(null)
       setDeleteTarget(null)
     } catch (error) {
       setLoadError(getNotesErrorMessage(error, 'Unable to delete note.'))
@@ -336,166 +729,199 @@ export function NotesPlansCard() {
     }
   }
 
+  function openModal(noteId?: string) {
+    setShowAll(true)
+    setFocusedNoteId(noteId ?? null)
+    setIsAdding(false)
+  }
+
+  function closeModal() {
+    setShowAll(false)
+    setFocusedNoteId(null)
+    setEditingNote(null)
+    setEditText('')
+    setIsAddingInModal(false)
+    setNewNoteText('')
+  }
+
   function startEdit(note: DashboardNote) {
     setEditingNote(note)
     setEditText(note.note)
     setIsAdding(false)
+    setIsAddingInModal(false)
   }
 
   return (
     <>
-      <section className={`${notesPlansCardClass} p-5`}>
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[#FEF3C7] ring-1 ring-[#FDE68A]/80">
-                <StickyNote className="size-4 text-[#D97706]" strokeWidth={2.1} aria-hidden="true" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
-                  Notes / Plans
-                </h3>
-                <p className="mt-0.5 text-xs text-[#92400E]/75">
-                  Quick reminders for your operation
-                </p>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setIsAdding((value) => !value)
-              setEditingNote(null)
-              setEditText('')
-            }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#FCD34D]/80 bg-[#FFFBEB] px-2.5 py-1.5 text-xs font-semibold text-[#B45309] shadow-sm shadow-[#FBBF24]/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FBBF24] hover:bg-[#FEF3C7] hover:shadow-[0_6px_16px_rgba(245,158,11,0.14)] active:translate-y-0 active:scale-[0.98]"
+      <section className={notesPlansCardClass}>
+        {openCount > 0 ? (
+          <span
+            className="notes-alert-badge pointer-events-none absolute top-0 right-5 z-20 inline-flex min-w-[26px] -translate-y-1/2 items-center justify-center gap-0.5 rounded-full bg-[#E11D48] px-1.5 py-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+            aria-label={`${openCount} open notes`}
           >
-            <Plus className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
-            Add note
-          </button>
-        </div>
+            <CircleAlert className="size-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+            <span className="tabular-nums">{openCount > 9 ? '9+' : openCount}</span>
+          </span>
+        ) : null}
 
-        {isAdding ? (
-          <div className="mb-4 rounded-xl border border-[#FDE68A]/70 border-l-[3px] border-l-[#F59E0B] bg-[#FFFDF4] p-3 shadow-sm">
-            <textarea
-              value={newNoteText}
-              onChange={(event) => setNewNoteText(event.target.value)}
-              rows={3}
-              placeholder="Write a quick reminder…"
-              className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#163A63] outline-none placeholder:text-[#B45309]/45 focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
-            />
-            <div className="mt-2 flex justify-end gap-2">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#FFE4E6] ring-1 ring-[#FECDD3]/90">
+                <StickyNote className="size-3.5 text-[#E11D48]" strokeWidth={2.1} aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <h3 className="text-[13px] font-semibold tracking-[-0.02em] text-[#163A63] sm:text-sm">
+                    Notes / Plans
+                  </h3>
+                  {openCount > 0 ? (
+                    <span className="text-[11px] font-semibold tabular-nums text-[#BE123C]">
+                      {openCount} open
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-[#5D7C9D]">No open notes</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
-                disabled={isSavingNew}
-                onClick={() => {
-                  setIsAdding(false)
-                  setNewNoteText('')
-                }}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#B45309]/80 hover:bg-[#FEF3C7]/80"
+                onClick={() => openModal()}
+                className="text-[11px] font-semibold text-[#E11D48] transition-colors hover:text-[#BE123C] hover:underline"
               >
-                Cancel
+                View all
               </button>
               <button
                 type="button"
-                disabled={isSavingNew || !newNoteText.trim()}
-                onClick={() => void handleCreateNote()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#FBBF24]/25 transition-colors hover:bg-[#D97706] disabled:opacity-50"
+                aria-label="Add note"
+                onClick={() => {
+                  setIsAdding((value) => !value)
+                  setEditingNote(null)
+                  setEditText('')
+                }}
+                className="inline-flex size-8 items-center justify-center rounded-lg border border-[#FDA4AF]/80 bg-[#FFF1F2] text-[#BE123C] shadow-sm shadow-rose-500/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185] hover:bg-[#FFE4E6] active:translate-y-0 active:scale-[0.98]"
               >
-                {isSavingNew ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                    Saving…
-                  </>
-                ) : (
-                  'Save note'
-                )}
+                <Plus className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
               </button>
             </div>
           </div>
-        ) : null}
 
-        {loadError ? (
-          <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
-            {loadError}
-          </p>
-        ) : null}
+          {isAdding ? (
+            <div className="mb-2.5 rounded-xl border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] p-2.5 shadow-sm">
+              <textarea
+                value={newNoteText}
+                onChange={(event) => setNewNoteText(event.target.value)}
+                rows={2}
+                placeholder="Write a quick reminder…"
+                className="w-full resize-none rounded-lg border border-[#FECDD3] bg-white/95 px-2.5 py-1.5 text-[13px] text-[#163A63] outline-none placeholder:text-[#9F1239]/40 focus:border-[#FB7185] focus:ring-2 focus:ring-[#FECDD3]/50"
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isSavingNew}
+                  onClick={() => {
+                    setIsAdding(false)
+                    setNewNoteText('')
+                  }}
+                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#9F1239]/80 hover:bg-[#FFE4E6]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingNew || !newNoteText.trim()}
+                  onClick={() => void handleCreateNote()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#E11D48] px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm shadow-rose-500/20 transition-colors hover:bg-[#BE123C] disabled:opacity-50"
+                >
+                  {isSavingNew ? (
+                    <>
+                      <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save note'
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
-        <div className="max-md:max-h-none max-md:overflow-visible md:max-h-[320px] md:overflow-y-auto md:pr-1">
-          {isLoading ? (
-            <div className="space-y-2.5">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-16 animate-pulse rounded-xl border border-[#FDE68A]/50 bg-[#FEF3C7]/40"
-                />
-              ))}
-            </div>
-          ) : notes.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#FCD34D]/70 bg-[#FFFDF4]/90 px-4 py-8 text-center">
-              <p className="text-sm font-medium text-[#92400E]/75">
-                No notes yet. Add your first plan.
-              </p>
-            </div>
-          ) : (
-            <ul className="space-y-2.5">
-              {notes.map((note) =>
-                editingNote?.id === note.id ? (
-                  <li
-                    key={note.id}
-                    className="rounded-xl border border-[#FDE68A]/70 border-l-[3px] border-l-[#F59E0B] bg-[#FFFDF4] p-3 shadow-sm"
-                  >
-                    <textarea
-                      value={editText}
-                      onChange={(event) => setEditText(event.target.value)}
-                      rows={3}
-                      className="w-full resize-none rounded-lg border border-[#FDE68A]/60 bg-white/95 px-3 py-2 text-sm text-[#163A63] outline-none focus:border-[#FBBF24] focus:ring-2 focus:ring-[#FDE68A]/50"
-                    />
-                    <div className="mt-2 flex justify-end gap-2">
-                      <button
-                        type="button"
-                        disabled={isSavingEdit}
-                        onClick={() => {
-                          setEditingNote(null)
-                          setEditText('')
-                        }}
-                        className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#B45309]/80 hover:bg-[#FEF3C7]/80"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSavingEdit || !editText.trim()}
-                        onClick={() => void handleSaveEdit()}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#FBBF24]/25 transition-colors hover:bg-[#D97706] disabled:opacity-50"
-                      >
-                        {isSavingEdit ? (
-                          <>
-                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                            Saving…
-                          </>
-                        ) : (
-                          'Save'
-                        )}
-                      </button>
-                    </div>
-                  </li>
-                ) : (
-                  <NoteItem
+          {loadError ? (
+            <p className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700">
+              {loadError}
+            </p>
+          ) : null}
+
+          <div>
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-11 animate-pulse rounded-xl border border-[#FECDD3]/60 bg-[#FFE4E6]/50"
+                  />
+                ))}
+              </div>
+            ) : openCount === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#FDA4AF]/60 bg-[#FFF1F2]/70 px-3 py-4 text-center">
+                <p className="text-[12px] font-medium text-[#5D7C9D]">No open notes</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {previewNotes.map((note) => (
+                  <CompactNotePreview
                     key={note.id}
                     note={note}
-                    formatDate={formatDate}
                     isBusy={busyNoteId === note.id}
+                    onOpen={(row) => openModal(row.id)}
                     onToggleDone={(row) => void handleToggleDone(row)}
-                    onEdit={startEdit}
                     onDelete={setDeleteTarget}
                   />
-                ),
-              )}
-            </ul>
-          )}
-        </div>
+                ))}
+              </ul>
+            )}
+          </div>
       </section>
+
+      {showAll ? (
+        <NotesPlansModal
+          notes={notes}
+          openCount={openCount}
+          focusedNoteId={focusedNoteId}
+          formatDateTime={formatDateTime}
+          busyNoteId={busyNoteId}
+          editingNote={editingNote}
+          editText={editText}
+          isSavingEdit={isSavingEdit}
+          isAdding={isAddingInModal}
+          newNoteText={newNoteText}
+          isSavingNew={isSavingNew}
+          onClose={closeModal}
+          onToggleDone={(row) => void handleToggleDone(row)}
+          onDelete={setDeleteTarget}
+          onStartEdit={startEdit}
+          onEditTextChange={setEditText}
+          onCancelEdit={() => {
+            setEditingNote(null)
+            setEditText('')
+          }}
+          onSaveEdit={() => void handleSaveEdit()}
+          onFocusNote={setFocusedNoteId}
+          onToggleAdding={() => {
+            setIsAddingInModal((value) => !value)
+            setEditingNote(null)
+            setEditText('')
+          }}
+          onNewNoteTextChange={setNewNoteText}
+          onCreateNote={() => void handleCreateNote()}
+          onCancelAdding={() => {
+            setIsAddingInModal(false)
+            setNewNoteText('')
+          }}
+        />
+      ) : null}
 
       {deleteTarget ? (
         <DeleteNoteDialog

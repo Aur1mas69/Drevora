@@ -14,6 +14,7 @@ import { WorkerExpiryDateValue } from '@/components/workers/WorkerExpiryDateValu
 import {
   formatWorkerProfileDate,
   getWorkerDefaultVehicleLabel,
+  getWorkerExpiryDateStatus,
   isWorkerAddressEmpty,
 } from '@/lib/workerProfileUtils'
 import { WorkerLicenceCategoryBadges } from '@/components/workers/WorkerLicenceCategoryBadges'
@@ -101,13 +102,44 @@ function StatusBadge({ status }: { status: DriverStatus }) {
 function ComplianceDateField({
   label,
   value,
+  emptyLabel = 'Not set',
+  showStatus = false,
 }: {
   label: string
   value: string | null | undefined
+  emptyLabel?: string
+  showStatus?: boolean
 }) {
+  const status = getWorkerExpiryDateStatus(value)
+  const statusLabel =
+    status === 'missing'
+      ? 'Not recorded'
+      : status === 'valid'
+        ? 'Valid'
+        : status === 'expiring'
+          ? 'Expiring Soon'
+          : 'Expired'
+
   return (
     <ProfileField label={label}>
-      <WorkerExpiryDateValue value={value} emphasized />
+      <div className="flex flex-wrap items-center gap-2">
+        <WorkerExpiryDateValue value={value} emphasized emptyLabel={emptyLabel} />
+        {showStatus ? (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
+              status === 'valid'
+                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                : status === 'expiring'
+                  ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                  : status === 'expired'
+                    ? 'bg-rose-50 text-rose-700 ring-rose-200'
+                    : 'bg-slate-100 text-slate-600 ring-slate-200'
+            }`}
+          >
+            {statusLabel}
+          </span>
+        ) : null}
+      </div>
     </ProfileField>
   )
 }
@@ -263,6 +295,8 @@ export function WorkerProfileOverview({ driver }: WorkerProfileOverviewProps) {
         <ComplianceDateField
           label="D4 / Medical Expiry"
           value={driver.medicalExpiry}
+          emptyLabel="Not recorded"
+          showStatus
         />
       </ProfileSectionCard>
 

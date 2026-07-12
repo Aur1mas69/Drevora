@@ -1,8 +1,11 @@
-import { dashboardOverviewCardClass } from '@/components/dashboard/dashboardOverviewCardStyles'
+import {
+  dashboardOverviewCardClass,
+  dashboardOverviewInnerRowClass,
+} from '@/components/dashboard/dashboardOverviewCardStyles'
+import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import type { DashboardDailyVehicleChecksStats } from '@/services/dashboardService'
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle, Clock, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 type DailyChecksStatRow = {
   key: string
@@ -66,7 +69,7 @@ function DailyChecksStatRowItem({
       : 0
 
   return (
-    <li className="rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-3 transition-colors hover:bg-[#DCEEFF]/70">
+    <li className={dashboardOverviewInnerRowClass}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div
@@ -84,7 +87,7 @@ function DailyChecksStatRowItem({
         </span>
       </div>
       <div
-        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#CFE3F5]/80"
+        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#D2E5F5]/80"
         role="presentation"
         aria-hidden="true"
       >
@@ -106,29 +109,20 @@ export function DailyVehicleChecksStatsCard({
   const rows = buildDailyChecksStatRows(stats)
 
   return (
-    <section className={`${dashboardOverviewCardClass} p-5`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
-            Daily Vehicle Checks Stats
-          </h3>
-          <p className="mt-0.5 text-xs text-[#5D7C9D]">Today&apos;s vehicle check overview</p>
-        </div>
-        <Link
-          to="/admin/vehicle-checks"
-          className="text-xs font-semibold text-[#3B82F6] hover:underline"
-        >
-          View
-        </Link>
-      </div>
+    <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
+      <DashboardOverviewCardHeader
+        title="Daily Vehicle Checks Stats"
+        subtitle="Today&apos;s vehicle check overview"
+        actionTo="/admin/vehicle-checks"
+      />
 
       {totalVehicles === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-[#D2E5F5] bg-[#F8FBFF]/80 px-4 py-6 text-center">
           <p className="text-sm font-medium text-[#5D7C9D]">No active vehicles found.</p>
         </div>
       ) : (
         <>
-          <ul className="space-y-2.5">
+          <ul className="mt-auto space-y-2.5">
             {rows.map((row) => (
               <DailyChecksStatRowItem
                 key={row.key}

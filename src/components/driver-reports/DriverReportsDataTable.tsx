@@ -11,6 +11,7 @@ import {
   getDriverReportStatusLabel,
   getReportDescriptionSnippet,
 } from '@/lib/driverReportUtils'
+import { adminTableEntityName } from '@/lib/adminUiStyles'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import {
   driverReportMobileCardClass,
@@ -95,14 +96,16 @@ export function DriverReportsDataTable({
               {reports.map((report) => (
                 <tr key={report.id} className={driverReportTableRowClass}>
                   <td className="max-w-[240px] px-4 py-3">
-                    <p className="font-semibold text-[#113C69]">{report.title}</p>
+                    <p className={`truncate ${adminTableEntityName}`}>{report.title}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-[#5499BF]">
                       {getReportDescriptionSnippet(report.description)}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-sm text-[#113C69]">{report.reportType}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-[#113C69]">
-                    {report.workerName ?? '—'}
+                  <td className="max-w-[160px] px-4 py-3">
+                    <span className={`block truncate ${adminTableEntityName}`}>
+                      {report.workerName ?? '—'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-[#113C69]">
                     {report.vehicleLabel ?? '—'}
@@ -135,7 +138,7 @@ export function DriverReportsDataTable({
           <article key={report.id} className={driverReportMobileCardClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold text-[#113C69]">{report.title}</p>
+                <p className={`truncate ${adminTableEntityName}`}>{report.title}</p>
                 <p className="mt-1 text-xs text-[#5499BF]">
                   {getReportDescriptionSnippet(report.description, 96)}
                 </p>
@@ -154,7 +157,9 @@ export function DriverReportsDataTable({
               </div>
               <div>
                 <dt className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Worker</dt>
-                <dd className="mt-0.5 font-medium text-[#113C69]">{report.workerName ?? '—'}</dd>
+                <dd className={`mt-0.5 truncate ${adminTableEntityName}`}>
+                  {report.workerName ?? '—'}
+                </dd>
               </div>
               <div>
                 <dt className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Vehicle</dt>

@@ -38,11 +38,11 @@ export default function FaqHelpPage() {
               </p>
             </div>
             <a
-              href="mailto:support@drevora.app"
+              href="mailto:admin@drevora.uk"
               className="inline-flex items-center gap-2 self-start rounded-[12px] bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white no-underline transition-colors hover:bg-[#1d4ed8] sm:self-center"
             >
               <Mail className="size-4" strokeWidth={2} />
-              support@drevora.app
+              admin@drevora.uk
             </a>
           </div>
         </div>

@@ -2,6 +2,11 @@ import type { VehicleCheckItemInput, VehicleChecklistSection } from '@/lib/vehic
 import type { DefaultVehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import {
+  findDefaultDvsaItemByLabel,
+  getDefaultDvsaVehicleCheckItems,
+  normalizeDvsaChecklistLabel,
+} from '@/lib/defaultDvsaVehicleCheckItems'
+import {
   createChecklistItemsFromTemplates,
   groupTemplatesBySection,
   isChecklistFullyAnswered,
@@ -64,7 +69,40 @@ function isExtraCheckTemplateItem(item: VehicleCheckTemplateItem): boolean {
 }
 
 function normalizeTemplateItemLabel(label: string): string {
-  return label.trim().toLowerCase()
+  return normalizeDvsaChecklistLabel(label)
+}
+
+function looksLikeDvsaBasicChecklist(items: VehicleCheckTemplateItem[]): boolean {
+  if (items.length < 20) return false
+  const labels = items.map((item) => normalizeTemplateItemLabel(item.label))
+  return (
+    labels.some((label) => label.includes('front view')) &&
+    labels.some((label) => label.includes('tyres and wheel')) &&
+    labels.some((label) => label.includes('security of load'))
+  )
+}
+
+function enrichDvsaGuidanceOnItems(
+  items: VehicleCheckTemplateItem[],
+): VehicleCheckTemplateItem[] {
+  return items.map((item) => {
+    const existing = item.description?.trim()
+    if (existing) return item
+
+    const matched =
+      findDefaultDvsaItemByLabel(item.label) ??
+      getDefaultDvsaVehicleCheckItems().find((entry) => entry.sortOrder === item.sortOrder)
+
+    if (!matched) return item
+
+    return {
+      ...item,
+      section: matched.section,
+      label: matched.label,
+      description: matched.description,
+      sortOrder: matched.sortOrder,
+    }
+  })
 }
 
 function mergeBasicAndExtraChecklistTemplates(
@@ -74,7 +112,14 @@ function mergeBasicAndExtraChecklistTemplates(
   const dbBasicItems = dbTemplates.filter((item) => !isExtraCheckTemplateItem(item))
   const dbExtraItems = dbTemplates.filter(isExtraCheckTemplateItem)
 
-  const basicItems = dbBasicItems.length > 0 ? dbBasicItems : basicFallback
+  const shouldUseFallback =
+    dbBasicItems.length === 0 ||
+    (!looksLikeDvsaBasicChecklist(dbBasicItems) &&
+      dbBasicItems.every((item) => !item.description?.trim()))
+
+  const basicItems = shouldUseFallback
+    ? basicFallback
+    : enrichDvsaGuidanceOnItems(dbBasicItems)
 
   const basicLabels = new Set(basicItems.map((item) => normalizeTemplateItemLabel(item.label)))
   const uniqueExtraItems = dbExtraItems.filter(

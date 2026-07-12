@@ -24,6 +24,7 @@ import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
 import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
+import { DocumentsSettingsPanel } from '@/components/settings/DocumentsSettingsPanel'
 import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -357,6 +358,12 @@ function SettingsPage() {
             {activeTab === 'consumables' ? (
               <div className="sm:col-span-2">
                 <ConsumablesDefaultPricesPanel embeddedInSettings />
+              </div>
+            ) : null}
+
+            {activeTab === 'documents' ? (
+              <div className="sm:col-span-2">
+                <DocumentsSettingsPanel form={form} onChange={updateForm} />
               </div>
             ) : null}
 

@@ -11,6 +11,12 @@ import { FleetStatusOverviewCard } from '@/components/dashboard/FleetStatusOverv
 import { HolidayRequestsOverviewCard } from '@/components/dashboard/HolidayRequestsOverviewCard'
 import { NotesPlansCard } from '@/components/dashboard/NotesPlansCard'
 import { TimesheetOverviewCard } from '@/components/dashboard/TimesheetOverviewCard'
+import {
+  dashboardOverviewCardStaticClass,
+  dashboardOverviewCardSubtitleClass,
+  dashboardOverviewCardTitleClass,
+  dashboardOverviewDividerClass,
+} from '@/components/dashboard/dashboardOverviewCardStyles'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { DashboardLoadingState } from '@/hooks/useDashboardStats'
@@ -32,9 +38,6 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-
-const cardClass =
-  'rounded-2xl border border-[#CFE3F5] bg-[rgba(255,255,255,0.82)] shadow-sm shadow-[rgba(22,58,99,0.06)]'
 
 type ActivityAccent = {
   label: string
@@ -292,17 +295,19 @@ function RecentActivityPanel({
   }
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border border-[#CFE3F5] bg-[rgba(255,255,255,0.82)] p-4 shadow-sm shadow-[rgba(22,58,99,0.06)] transition-all duration-300 sm:min-h-[360px] sm:p-6 md:hover:-translate-y-0.5 md:hover:border-[#CFE3F5] md:hover:shadow-[0_4px_16px_rgba(22,58,99,0.08)] xl:min-h-[520px] xl:sticky xl:top-6">
-      <div className="shrink-0 border-b border-[#CFE3F5] pb-4">
-        <h3 className="text-base font-bold tracking-[-0.02em] text-[#163A63]">Recent Activity</h3>
-        <p className="mt-1 text-xs leading-5 text-[#5D7C9D]">
+    <section
+      className={`${dashboardOverviewCardStaticClass} flex min-h-0 flex-col transition-shadow duration-[200ms] ease-out sm:min-h-[360px] md:hover:shadow-[0_12px_28px_rgba(30,64,175,0.12)] xl:min-h-[520px] xl:sticky xl:top-6`}
+    >
+      <div className={`shrink-0 border-b ${dashboardOverviewDividerClass} pb-4`}>
+        <h3 className={dashboardOverviewCardTitleClass}>Recent Activity</h3>
+        <p className={dashboardOverviewCardSubtitleClass}>
           Latest changes across your operation
         </p>
       </div>
 
       <div className="relative z-[1] mt-4 min-h-0 flex-1 max-md:overflow-visible xl:overflow-y-auto xl:max-h-[calc(100dvh-14rem)] xl:pr-1">
         {activity.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#CFE3F5] bg-[#F8FBFF]/70 px-4 py-10 text-center">
+          <div className="rounded-xl border-2 border-dashed border-[#D2E5F5] bg-[#F8FBFF]/70 px-4 py-10 text-center">
             <p className="text-sm font-medium text-[#5D7C9D]">No recent activity yet.</p>
           </div>
         ) : (
@@ -431,7 +436,7 @@ export function DashboardOverview({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 pb-2 sm:gap-x-5 sm:gap-y-6 sm:pb-0 xl:grid-cols-4 xl:gap-6">
+      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 overflow-visible pt-3 pb-2 sm:gap-x-5 sm:gap-y-6 sm:pt-4 sm:pb-0 xl:grid-cols-4 xl:gap-6">
         {loading.kpis ? (
           Array.from({ length: 4 }).map((_, index) => <DashboardKpiSkeleton key={index} />)
         ) : (
@@ -478,9 +483,9 @@ export function DashboardOverview({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4 sm:space-y-6">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 overflow-visible sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <div className="grid min-w-0 items-start gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {loading.timesheet ? (
               <DashboardOverviewCardSkeleton />
             ) : (
@@ -512,11 +517,12 @@ export function DashboardOverview({
               <ConsumablesOverviewCard overview={stats.consumablesOverview} />
             )}
           </div>
-
-          <NotesPlansCard />
         </div>
 
-        <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
+        <div className="flex min-w-0 flex-col gap-4 overflow-visible sm:gap-6">
+          <NotesPlansCard />
+          <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
+        </div>
       </div>
     </div>
   )
@@ -524,7 +530,7 @@ export function DashboardOverview({
 
 export function DashboardOnboardingCard() {
   return (
-    <div className={`${cardClass} px-6 py-12 text-center`}>
+    <div className={`${dashboardOverviewCardStaticClass} px-6 py-12 text-center`}>
       <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]">
         <Users className="size-7" strokeWidth={2} />
       </div>

@@ -608,6 +608,7 @@ type LegacyFlatTemplateRow = {
   is_required: boolean | null
   is_active: boolean | null
   guidance?: string | null
+  description?: string | null
   allow_notes?: boolean | null
   allow_photo?: boolean | null
   fail_on_defect?: boolean | null
@@ -621,7 +622,7 @@ function mapLegacyFlatTemplateRow(row: LegacyFlatTemplateRow): VehicleCheckTempl
     templateId: row.id,
     section: row.section,
     label: row.item_name,
-    description: normalizeOptionalText(row.guidance ?? null),
+    description: normalizeOptionalText(row.guidance ?? row.description ?? null),
     sortOrder: row.sort_order ?? 0,
     isRequired: row.is_required ?? true,
     allowNotes: row.allow_notes ?? true,
@@ -645,10 +646,23 @@ async function fetchLegacyFlatTemplateItemsByVehicleType(
     is_required,
     is_active,
     guidance,
+    description,
     allow_notes,
     allow_photo,
     fail_on_defect,
     is_custom,
+    created_at
+  `
+
+  const legacySelectWithDescription = `
+    id,
+    vehicle_type,
+    section,
+    item_name,
+    sort_order,
+    is_required,
+    is_active,
+    description,
     created_at
   `
 
@@ -678,6 +692,9 @@ async function fetchLegacyFlatTemplateItemsByVehicleType(
 
   let result = await runLegacySelect(legacySelectWithGuidance)
   if (result.error && result.error.message.toLowerCase().includes('does not exist')) {
+    result = await runLegacySelect(legacySelectWithDescription)
+  }
+  if (result.error && result.error.message.toLowerCase().includes('does not exist')) {
     result = await runLegacySelect(legacySelectMinimal)
   }
 
@@ -685,7 +702,9 @@ async function fetchLegacyFlatTemplateItemsByVehicleType(
     throw new VehicleCheckTemplatesServiceError(result.error.message)
   }
 
-  return ((result.data ?? []) as unknown as LegacyFlatTemplateRow[]).map(mapLegacyFlatTemplateRow)
+  return ((result.data ?? []) as unknown as LegacyFlatTemplateRow[])
+    .filter((row) => row.item_name !== VEHICLE_CHECK_TEMPLATE_LEGACY_HEADER_ITEM_NAME)
+    .map(mapLegacyFlatTemplateRow)
 }
 
 async function fetchNormalizedTemplateItemsByVehicleType(

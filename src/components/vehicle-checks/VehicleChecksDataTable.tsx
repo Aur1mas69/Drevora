@@ -13,7 +13,7 @@ import {
   getStatusBadgeClass,
 } from '@/lib/vehicleCheckUtils'
 import {
-  adminHeading,
+  adminTableEntityName,
   adminTableHeader,
   adminTableRow,
   adminTableShell,
@@ -117,15 +117,17 @@ export function VehicleChecksDataTable({
                   {formatCheckDateTime(check)}
                 </td>
                 <td className={`${cellPadding} align-middle`}>
-                  <div className={`text-sm font-semibold sm:text-base ${adminHeading}`}>
+                  <div className={`truncate ${adminTableEntityName}`}>
                     {check.vehicleRegistration}
                   </div>
                   <div className={`mt-1 text-xs leading-5 sm:text-sm ${adminText}`}>
                     {getVehicleSubline(check)}
                   </div>
                 </td>
-                <td className={`${cellPadding} align-middle font-medium ${adminTextStrong}`}>
-                  {check.workerName}
+                <td className={`${cellPadding} align-middle`}>
+                  <span className={`block truncate ${adminTableEntityName}`}>
+                    {check.workerName}
+                  </span>
                 </td>
                 <td className={`${cellPadding} align-middle`}>
                   <span

@@ -9,8 +9,10 @@ import type { Document, DocumentsCentreTab } from '@/lib/documentTypes'
 import {
   documentStatusClassMap,
   getDocumentStatusLabel,
+  getDocumentViewTarget,
   hasDocumentFile,
 } from '@/lib/documentUtils'
+import { adminTableEntityName } from '@/lib/adminUiStyles'
 import { Eye, ExternalLink, Pencil, Trash2 } from 'lucide-react'
 import {
   documentMobileCardClass,
@@ -52,11 +54,29 @@ function DocumentActionsMenu({
   onDelete: () => void
   onOpenFile: () => void
 }) {
+  const viewTarget = getDocumentViewTarget(document)
   const actions: RowAction[] = [
-    { id: 'view', label: 'View', icon: Eye, onClick: onView },
-    { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
-    { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
+    {
+      id: 'view',
+      label: viewTarget.kind === 'none' ? 'No file uploaded' : 'View',
+      icon: Eye,
+      onClick: onView,
+    },
   ]
+
+  if (document.source !== 'legacy_worker' && document.source !== 'worker_compliance') {
+    actions.push({ id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit })
+  }
+
+  if (document.source !== 'legacy_worker') {
+    actions.push({
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      tone: 'danger',
+      onClick: onDelete,
+    })
+  }
 
   if (hasDocumentFile(document)) {
     actions.unshift({
@@ -79,9 +99,9 @@ export function DocumentsDataTable({
   onDelete,
   onOpenFile,
 }: DocumentsDataTableProps) {
-  const showWorker = tab === 'workers' || tab === 'expiring-soon' || tab === 'expired'
-  const showVehicle = tab === 'vehicles' || tab === 'expiring-soon' || tab === 'expired'
-  const showScopeColumn = tab === 'expiring-soon' || tab === 'expired'
+  const showWorker = tab === 'workers' || tab === 'expiring-soon' || tab === 'expired' || tab === 'all'
+  const showVehicle = tab === 'vehicles' || tab === 'expiring-soon' || tab === 'expired' || tab === 'all'
+  const showScopeColumn = tab === 'expiring-soon' || tab === 'expired' || tab === 'all'
 
   return (
     <>
@@ -112,8 +132,10 @@ export function DocumentsDataTable({
               {documents.map((document) => (
                 <tr key={document.id} className={documentTableRowClass}>
                   {showWorker ? (
-                    <td className="px-4 py-3 text-sm font-medium text-[#113C69]">
-                      {document.appliesTo === 'worker' ? document.workerName ?? '—' : '—'}
+                    <td className="max-w-[180px] px-4 py-3">
+                      <span className={`block truncate ${adminTableEntityName}`}>
+                        {document.appliesTo === 'worker' ? document.workerName ?? '—' : '—'}
+                      </span>
                     </td>
                   ) : null}
                   {showVehicle ? (
@@ -126,8 +148,8 @@ export function DocumentsDataTable({
                       {document.appliesTo}
                     </td>
                   ) : null}
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-[#113C69]">{document.documentName}</p>
+                  <td className="max-w-[240px] px-4 py-3">
+                    <p className={`truncate ${adminTableEntityName}`}>{document.documentName}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-[#113C69]">{document.documentType}</td>
                   <td className="px-4 py-3 text-sm text-[#5499BF]">
@@ -149,7 +171,7 @@ export function DocumentsDataTable({
                         View
                       </button>
                     ) : (
-                      <span className="text-sm text-[#5499BF]">—</span>
+                      <span className="text-sm text-[#5499BF]">No file uploaded</span>
                     )}
                   </td>
                   <TableActionsCell>
@@ -173,10 +195,10 @@ export function DocumentsDataTable({
           <article key={document.id} className={documentMobileCardClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold text-[#113C69]">{document.documentName}</p>
+                <p className={`truncate ${adminTableEntityName}`}>{document.documentName}</p>
                 <p className="mt-0.5 text-xs text-[#5499BF]">{document.documentType}</p>
                 {document.workerName ? (
-                  <p className="mt-1 text-xs font-medium text-[#113C69]">{document.workerName}</p>
+                  <p className={`mt-1 truncate ${adminTableEntityName}`}>{document.workerName}</p>
                 ) : null}
                 {document.vehicleLabel ? (
                   <p className="mt-1 text-xs font-medium text-[#113C69]">{document.vehicleLabel}</p>

@@ -2,7 +2,7 @@ import type { DashboardHolidaySummary } from '@/services/dashboardService'
 import {
   dashboardOverviewCardClass,
 } from '@/components/dashboard/dashboardOverviewCardStyles'
-import { Link } from 'react-router-dom'
+import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 
 type StatusSegment = {
   label: string
@@ -124,20 +124,14 @@ export function HolidayRequestsOverviewCard({
   const legendSegments = buildLegendSegments(summary, total)
 
   return (
-    <section className={`${dashboardOverviewCardClass} p-4`}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">
-            Holiday Requests
-          </h3>
-          <p className="mt-0.5 text-xs text-[#5D7C9D]">Current overview</p>
-        </div>
-        <Link to="/admin/holidays" className="text-xs font-semibold text-[#3B82F6] hover:underline">
-          View
-        </Link>
-      </div>
+    <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
+      <DashboardOverviewCardHeader
+        title="Holiday Requests"
+        subtitle="Current overview"
+        actionTo="/admin/holidays"
+      />
 
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
         <HolidayDonutChart segments={chartSegments} total={total} />
         <StatusLegend segments={legendSegments} />
       </div>

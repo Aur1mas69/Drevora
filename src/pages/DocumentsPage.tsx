@@ -1,5 +1,4 @@
 import { DeleteDocumentModal } from '@/components/documents/DeleteDocumentModal'
-import { DocumentDrawer } from '@/components/documents/DocumentDrawer'
 import {
   DocumentFormModal,
   documentFormValuesToInput,
@@ -8,6 +7,7 @@ import { getDocumentStoragePath } from '@/components/documents/DocumentFileField
 import { DocumentsDataTable } from '@/components/documents/DocumentsDataTable'
 import { DocumentsEmptyState } from '@/components/documents/DocumentsEmptyState'
 import { DocumentsPagination } from '@/components/documents/DocumentsPagination'
+import { DocumentsSummaryCards } from '@/components/documents/DocumentsSummaryCards'
 import { DocumentsToolbar } from '@/components/documents/DocumentsToolbar'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -22,7 +22,12 @@ import type {
   DocumentTypeFilter,
 } from '@/lib/documentTypes'
 import { DEFAULT_DOCUMENT_PAGE_SIZE } from '@/lib/documentTypes'
-import { filterDocumentsByQuery } from '@/lib/documentUtils'
+import { isMedicalDocumentType } from '@/lib/documentTypes'
+import {
+  computeDocumentSummaryStats,
+  filterDocumentsByQuery,
+  getDocumentViewTarget,
+} from '@/lib/documentUtils'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import {
   applyDocumentFileChanges,
@@ -40,10 +45,11 @@ import {
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 function parseTab(value: string | null): DocumentsCentreTab {
   if (
+    value === 'all' ||
     value === 'company' ||
     value === 'workers' ||
     value === 'vehicles' ||
@@ -52,7 +58,7 @@ function parseTab(value: string | null): DocumentsCentreTab {
   ) {
     return value
   }
-  return 'company'
+  return 'all'
 }
 
 function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
@@ -62,6 +68,7 @@ function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
 }
 
 export default function DocumentsPage() {
+  const navigate = useNavigate()
   const { formatDate, settings: companySettings } = useCompanySettings()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -91,7 +98,6 @@ export default function DocumentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
   const [editRecord, setEditRecord] = useState<Document | null>(null)
-  const [viewRecord, setViewRecord] = useState<Document | null>(null)
   const [deleteRecord, setDeleteRecord] = useState<Document | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -99,6 +105,7 @@ export default function DocumentsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const hasActiveFilters =
+    activeTab !== 'all' ||
     debouncedSearch.trim().length > 0 ||
     typeFilter !== 'all' ||
     appliesToFilter !== 'all' ||
@@ -184,6 +191,8 @@ export default function DocumentsPage() {
     ],
   )
 
+  const summaryStats = useMemo(() => computeDocumentSummaryStats(items), [items])
+
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * pageSize
     return filteredItems.slice(start, start + pageSize)
@@ -193,7 +202,11 @@ export default function DocumentsPage() {
     setActiveTab(tab)
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
-      next.set('tab', tab)
+      if (tab === 'all') {
+        next.delete('tab')
+      } else {
+        next.set('tab', tab)
+      }
       return next
     })
   }
@@ -207,7 +220,6 @@ export default function DocumentsPage() {
   function openEditModal(record: Document) {
     setFormMode('edit')
     setEditRecord(record)
-    setViewRecord(null)
     setIsFormOpen(true)
   }
 
@@ -223,7 +235,10 @@ export default function DocumentsPage() {
 
   async function handleOpenFile(record: Document) {
     const path = getDocumentStoragePath(record)
-    if (!path) return
+    if (!path) {
+      showToast('Only the expiry record exists — no file has been uploaded.')
+      return
+    }
 
     try {
       const url = await getDocumentFileSignedUrl(path)
@@ -237,12 +252,42 @@ export default function DocumentsPage() {
     }
   }
 
+  function handleView(record: Document) {
+    const target = getDocumentViewTarget(record)
+
+    if (target.kind === 'file') {
+      void handleOpenFile(record)
+      return
+    }
+
+    if (target.kind === 'worker') {
+      navigate(`/drivers/${target.workerId}`)
+      return
+    }
+
+    if (target.kind === 'vehicle') {
+      navigate(`/vehicles/${target.vehicleId}?tab=documents`)
+      return
+    }
+
+    showToast('Only the expiry record exists — no file has been uploaded.')
+  }
+
   async function handleFormSubmit(payload: DocumentFormSubmitPayload) {
     setIsSaving(true)
     const companyId = companySettings?.id
+    const allowMedicalUploads = companySettings?.allowMedicalDocumentUploads === true
     const input = documentFormValuesToInput(payload.values)
 
     try {
+      if (isMedicalDocumentType(input.documentType) && !allowMedicalUploads) {
+        if (!editRecord || payload.file || payload.removeFile) {
+          throw new DocumentsServiceError(
+            'Medical document uploads are disabled. Enable “Allow medical document uploads” in Settings → Documents.',
+          )
+        }
+      }
+
       if (formMode === 'create') {
         const created = await createDocument(input)
 
@@ -302,7 +347,7 @@ export default function DocumentsPage() {
         }
       }
 
-      await deleteDocument(deleteRecord.id)
+      await deleteDocument(deleteRecord.id, deleteRecord.source ?? 'documents')
       showToast('Document deleted')
       setDeleteRecord(null)
       await loadDocuments()
@@ -334,9 +379,14 @@ export default function DocumentsPage() {
           </p>
         </div>
 
-        <DocumentsToolbar
+        <DocumentsSummaryCards
+          stats={summaryStats}
+          isLoading={isLoading}
           activeTab={activeTab}
-          onTabChange={handleTabChange}
+          onSelect={handleTabChange}
+        />
+
+        <DocumentsToolbar
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
           typeFilter={typeFilter}
@@ -368,14 +418,18 @@ export default function DocumentsPage() {
         ) : showEmptyState ? (
           <DocumentsEmptyState hasActiveFilters={false} onAddFirst={openCreateModal} />
         ) : filteredItems.length === 0 ? (
-          <DocumentsEmptyState hasActiveFilters={hasActiveFilters} onAddFirst={openCreateModal} />
+          <DocumentsEmptyState
+            hasActiveFilters={hasActiveFilters}
+            activeTab={activeTab}
+            onAddFirst={openCreateModal}
+          />
         ) : (
           <div className={documentPageCardClass}>
             <DocumentsDataTable
               documents={paginatedItems}
               tab={activeTab}
               formatDate={formatDate}
-              onView={setViewRecord}
+              onView={handleView}
               onEdit={openEditModal}
               onDelete={setDeleteRecord}
               onOpenFile={(record) => void handleOpenFile(record)}
@@ -400,18 +454,10 @@ export default function DocumentsPage() {
         defaultAppliesTo={defaultAppliesToForTab(activeTab)}
         defaultWorkerId={workerFilter !== 'all' ? workerFilter : undefined}
         defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : undefined}
+        allowMedicalDocumentUploads={companySettings?.allowMedicalDocumentUploads === true}
         isSaving={isSaving}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleFormSubmit}
-      />
-
-      <DocumentDrawer
-        record={viewRecord}
-        isOpen={viewRecord !== null}
-        formatDate={formatDate}
-        onClose={() => setViewRecord(null)}
-        onEdit={openEditModal}
-        onOpenFile={(record) => void handleOpenFile(record)}
       />
 
       {deleteRecord ? (

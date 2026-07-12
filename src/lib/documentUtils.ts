@@ -8,8 +8,10 @@ import type {
 } from '@/lib/documentTypes'
 import {
   COMPANY_DOCUMENT_TYPES,
+  MEDICAL_DOCUMENT_TYPE,
   VEHICLE_DOCUMENT_TYPES,
   WORKER_DOCUMENT_TYPES,
+  isMedicalDocumentType,
 } from '@/lib/documentTypes'
 import type { CreateDocumentInput } from '@/lib/documentTypes'
 
@@ -59,18 +61,47 @@ export const documentStatusClassMap: Record<DocumentStatus, string> = {
   no_expiry: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
 
-export function getDocumentTypesForAppliesTo(appliesTo: DocumentAppliesTo): readonly string[] {
+export function getDocumentTypesForAppliesTo(
+  appliesTo: DocumentAppliesTo,
+  options?: { allowMedicalDocumentUploads?: boolean },
+): readonly string[] {
+  let types: readonly string[]
   switch (appliesTo) {
     case 'company':
-      return COMPANY_DOCUMENT_TYPES
+      types = COMPANY_DOCUMENT_TYPES
+      break
     case 'worker':
-      return WORKER_DOCUMENT_TYPES
+      types = WORKER_DOCUMENT_TYPES
+      break
     case 'vehicle':
-      return VEHICLE_DOCUMENT_TYPES
+      types = VEHICLE_DOCUMENT_TYPES
+      break
     default:
-      return []
+      types = []
   }
+
+  if (appliesTo === 'worker' && options?.allowMedicalDocumentUploads === false) {
+    return types.filter((type) => !isMedicalDocumentType(type))
+  }
+
+  return types
 }
+
+export function workerDocumentTypesInclude(
+  existingTypes: Set<string>,
+  documentType: string,
+): boolean {
+  if (isMedicalDocumentType(documentType)) {
+    for (const existing of existingTypes) {
+      if (isMedicalDocumentType(existing)) return true
+    }
+    return false
+  }
+
+  return existingTypes.has(documentType)
+}
+
+export { MEDICAL_DOCUMENT_TYPE, isMedicalDocumentType }
 
 export function buildEmptyDocumentFormValues(
   appliesTo: DocumentAppliesTo = 'company',
@@ -144,6 +175,8 @@ export function filterDocumentsByTab(
   tab: DocumentsCentreTab,
 ): Document[] {
   switch (tab) {
+    case 'all':
+      return documents
     case 'company':
       return documents.filter((doc) => doc.appliesTo === 'company')
     case 'workers':
@@ -157,6 +190,33 @@ export function filterDocumentsByTab(
     default:
       return documents
   }
+}
+
+export type DocumentSummaryStats = {
+  company: number
+  workers: number
+  vehicles: number
+  expiringSoon: number
+  expired: number
+}
+
+/** Counts from the full documents list (not the filtered table rows). */
+export function computeDocumentSummaryStats(documents: Document[]): DocumentSummaryStats {
+  let company = 0
+  let workers = 0
+  let vehicles = 0
+  let expiringSoon = 0
+  let expired = 0
+
+  for (const doc of documents) {
+    if (doc.appliesTo === 'company') company += 1
+    if (doc.appliesTo === 'worker') workers += 1
+    if (doc.appliesTo === 'vehicle') vehicles += 1
+    if (doc.status === 'expiring_soon') expiringSoon += 1
+    if (doc.status === 'expired') expired += 1
+  }
+
+  return { company, workers, vehicles, expiringSoon, expired }
 }
 
 export function filterDocumentsByQuery(documents: Document[], query: DocumentsQuery): Document[] {
@@ -209,4 +269,23 @@ export function filterDocumentsByQuery(documents: Document[], query: DocumentsQu
 
 export function hasDocumentFile(document: Document): boolean {
   return Boolean(document.filePath?.trim() || document.fileUrl?.trim())
+}
+
+export type DocumentViewTarget =
+  | { kind: 'file' }
+  | { kind: 'worker'; workerId: string }
+  | { kind: 'vehicle'; vehicleId: string }
+  | { kind: 'none' }
+
+/** Resolve what the Documents table “View” action should do for a row. */
+export function getDocumentViewTarget(document: Document): DocumentViewTarget {
+  if (hasDocumentFile(document)) return { kind: 'file' }
+
+  const workerId = document.workerId?.trim()
+  if (workerId) return { kind: 'worker', workerId }
+
+  const vehicleId = document.vehicleId?.trim()
+  if (vehicleId) return { kind: 'vehicle', vehicleId }
+
+  return { kind: 'none' }
 }

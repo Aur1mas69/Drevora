@@ -905,17 +905,30 @@ function mapDriverRow(row: DriverRow): Driver {
 }
 
 async function queryDrivers(select: string): Promise<Driver[]> {
-  const { data, error } = await requireSupabase()
-    .from('drivers')
-    .select(select)
-    .order('created_at', { ascending: false })
+  const pageSize = 1000
+  let from = 0
+  const rows: unknown[] = []
 
-  if (error) {
-    throw error
+  // Page through results so PostgREST max-rows never silently truncates the workers list.
+  while (true) {
+    const { data, error } = await requireSupabase()
+      .from('drivers')
+      .select(select)
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1)
+
+    if (error) {
+      throw error
+    }
+
+    const batch = data ?? []
+    rows.push(...batch)
+    if (batch.length < pageSize) break
+    from += pageSize
   }
 
   return enrichDriversWithDefaultVehicles(
-    (data ?? []).map((row) => mapDriverRow(row as unknown as DriverRow)),
+    rows.map((row) => mapDriverRow(row as unknown as DriverRow)),
   )
 }
 

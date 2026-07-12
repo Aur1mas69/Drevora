@@ -8,8 +8,9 @@ import {
   contactToFormValues,
   validateContactForm,
 } from '@/lib/contactUtils'
+import type { Driver } from '@/services/driversService'
 import { X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { contactFieldClass, contactTextareaClass } from './contactUiStyles'
 
@@ -17,6 +18,7 @@ type ContactFormModalProps = {
   isOpen: boolean
   mode: 'create' | 'edit'
   contact: Contact | null
+  workers: Driver[]
   isSaving?: boolean
   onClose: () => void
   onSubmit: (values: ReturnType<typeof contactFormValuesToInput>) => Promise<void>
@@ -27,10 +29,23 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1 text-xs font-medium text-rose-600">{message}</p>
 }
 
+function workerDisplayEmail(worker: Driver): string {
+  const email = worker.email?.trim() ?? ''
+  if (!email || email.toLowerCase().endsWith('@workers.internal')) return ''
+  return email
+}
+
+function workerLabel(worker: Driver): string {
+  const name = `${worker.firstName} ${worker.lastName}`.trim() || 'Unnamed worker'
+  const code = worker.workerCode?.trim()
+  return code ? `${name} (${code})` : name
+}
+
 export function ContactFormModal({
   isOpen,
   mode,
   contact,
+  workers,
   isSaving = false,
   onClose,
   onSubmit,
@@ -39,6 +54,16 @@ export function ContactFormModal({
   const [values, setValues] = useState<ContactFormValues>(buildEmptyContactFormValues())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const selectableWorkers = useMemo(
+    () =>
+      [...workers]
+        .filter((worker) => worker.status !== 'Suspended')
+        .sort((left, right) =>
+          `${left.firstName} ${left.lastName}`.localeCompare(`${right.firstName} ${right.lastName}`),
+        ),
+    [workers],
+  )
 
   useEffect(() => {
     if (!isOpen) return
@@ -50,6 +75,30 @@ export function ContactFormModal({
   function updateField<K extends keyof ContactFormValues>(key: K, value: ContactFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }))
     setErrors((current) => ({ ...current, [key]: '' }))
+  }
+
+  function handleLinkedWorkerChange(workerId: string) {
+    if (!workerId) {
+      setValues((current) => ({ ...current, workerId: '' }))
+      return
+    }
+
+    const worker = workers.find((item) => item.id === workerId)
+    if (!worker) {
+      updateField('workerId', workerId)
+      return
+    }
+
+    setValues((current) => ({
+      ...current,
+      workerId,
+      category: 'worker',
+      name: `${worker.firstName} ${worker.lastName}`.trim() || current.name,
+      phone: worker.phone?.trim() || current.phone,
+      email: workerDisplayEmail(worker) || current.email,
+      roleTitle: worker.role || current.roleTitle,
+    }))
+    setErrors((current) => ({ ...current, name: '', organisation: '' }))
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -108,6 +157,26 @@ export function ContactFormModal({
 
         <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+            <label className="block text-sm font-medium text-slate-700">
+              Linked Worker
+              <select
+                value={values.workerId}
+                onChange={(event) => handleLinkedWorkerChange(event.target.value)}
+                className={contactFieldClass}
+                aria-label="Linked Worker"
+              >
+                <option value="">None</option>
+                {selectableWorkers.map((worker) => (
+                  <option key={worker.id} value={worker.id}>
+                    {workerLabel(worker)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs font-medium text-[#5499BF]">
+                Optional. Prefills name, phone and email from the Worker profile.
+              </p>
+            </label>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block min-w-0 text-sm font-medium text-slate-700">
                 Contact name

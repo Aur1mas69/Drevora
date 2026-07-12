@@ -17,6 +17,7 @@ import {
 } from '@/lib/consumableUtils'
 import {
   adminHeading,
+  adminTableEntityName,
   adminTableHeader,
   adminTableRow,
   adminText,
@@ -73,7 +74,7 @@ function ConsumableMobileCard({
           >
             {item.consumableType}
           </span>
-          <p className="mt-2 truncate text-base font-semibold text-[#113C69]">
+          <p className={`mt-2 truncate ${adminTableEntityName}`}>
             {item.itemName?.trim() || item.consumableType}
           </p>
           <p className="mt-1 text-sm text-[#3D7A9C]">{item.vehicleLabel ?? '—'}</p>
@@ -167,7 +168,7 @@ export function ConsumablesDataTable({
                   <td className={`px-4 ${rowPadding} whitespace-nowrap text-base font-semibold ${adminHeading}`}>
                     {item.vehicleLabel ?? '—'}
                   </td>
-                  <td className={`max-w-[180px] truncate px-4 ${rowPadding} text-sm ${adminText}`}>
+                  <td className={`max-w-[180px] truncate px-4 ${rowPadding} ${adminTableEntityName}`}>
                     {item.workerName ?? '—'}
                   </td>
                   <td className={`px-4 ${rowPadding}`}>
@@ -177,7 +178,7 @@ export function ConsumablesDataTable({
                       {item.consumableType}
                     </span>
                   </td>
-                  <td className={`max-w-[240px] truncate px-4 ${rowPadding} text-sm ${adminText}`}>
+                  <td className={`max-w-[240px] truncate px-4 ${rowPadding} ${adminTableEntityName}`}>
                     {item.itemName?.trim() || '—'}
                   </td>
                   <td className={`px-4 ${rowPadding} whitespace-nowrap tabular-nums text-base font-semibold ${adminTextStrong}`}>

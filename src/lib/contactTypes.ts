@@ -6,9 +6,13 @@ export type ContactCategory =
   | 'insurance'
   | 'accountant'
   | 'emergency'
+  | 'worker'
   | 'other'
 
 export type ContactStatus = 'active' | 'inactive'
+
+/** Where the Contacts directory row was resolved from. */
+export type ContactSource = 'contact' | 'worker'
 
 export type ContactCategoryFilter = ContactCategory | 'all'
 export type ContactStatusFilter = ContactStatus | 'all'
@@ -33,6 +37,10 @@ export type Contact = {
   country: string | null
   notes: string | null
   status: ContactStatus
+  workerId: string | null
+  workerCode: string | null
+  /** `worker` rows are virtual directory entries sourced from public.drivers. */
+  source: ContactSource
   createdAt: string
   updatedAt: string
 }
@@ -50,6 +58,14 @@ export type ContactsPageResult = {
   totalCount: number
   page: number
   pageSize: number
+}
+
+export type ContactSummaryCounts = {
+  workerContacts: number
+  support: number
+  service: number
+  office: number
+  insurance: number
 }
 
 export type CreateContactInput = {
@@ -70,6 +86,7 @@ export type CreateContactInput = {
   country?: string | null
   notes?: string | null
   status?: ContactStatus
+  workerId?: string | null
 }
 
 export type UpdateContactInput = Partial<CreateContactInput>
@@ -92,6 +109,7 @@ export type ContactFormValues = {
   country: string
   notes: string
   status: ContactStatus
+  workerId: string
 }
 
 export const CONTACT_CATEGORIES: { value: ContactCategory; label: string }[] = [
@@ -102,9 +120,22 @@ export const CONTACT_CATEGORIES: { value: ContactCategory; label: string }[] = [
   { value: 'insurance', label: 'Insurance' },
   { value: 'accountant', label: 'Accountant' },
   { value: 'emergency', label: 'Emergency' },
+  { value: 'worker', label: 'Worker' },
   { value: 'other', label: 'Other' },
 ]
 
 export const DEFAULT_CONTACT_PAGE_SIZE = 25
 
 export const CONTACT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const
+
+export function isWorkerDirectoryContact(contact: Pick<Contact, 'source'>): boolean {
+  return contact.source === 'worker'
+}
+
+export function getWorkerProfileId(contact: Pick<Contact, 'source' | 'workerId' | 'id'>): string | null {
+  if (contact.workerId?.trim()) return contact.workerId.trim()
+  if (contact.source === 'worker' && contact.id.startsWith('worker:')) {
+    return contact.id.slice('worker:'.length) || null
+  }
+  return null
+}

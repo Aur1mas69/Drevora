@@ -1,9 +1,7 @@
 import type { DashboardDriverReportsSummary } from '@/services/dashboardService'
-import {
-  dashboardOverviewCardClass,
-} from '@/components/dashboard/dashboardOverviewCardStyles'
+import { dashboardOverviewCardClass } from '@/components/dashboard/dashboardOverviewCardStyles'
+import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import { FileText } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 type StatusRow = {
   label: string
@@ -59,18 +57,15 @@ export function DriverReportsOverviewCard({
   const statusRows = buildStatusRows(summary)
 
   return (
-    <section className={`${dashboardOverviewCardClass} p-5`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">Driver Reports</h3>
-        <Link
-          to="/admin/driver-reports"
-          className="text-xs font-semibold text-[#3B82F6] hover:underline"
-        >
-          View all
-        </Link>
-      </div>
+    <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
+      <DashboardOverviewCardHeader
+        title="Driver Reports"
+        subtitle="Open issues and progress"
+        actionLabel="View all"
+        actionTo="/admin/driver-reports"
+      />
 
-      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <ul className="flex w-full min-w-0 flex-1 flex-col gap-3">
           {statusRows.map((row) => (
             <li key={row.label} className="flex items-center justify-between gap-4">

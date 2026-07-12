@@ -254,6 +254,7 @@ export type CompanySettings = {
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
   paidBreaks: boolean
+  allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
   overtimeMultiplier: OvertimeMultiplier
@@ -300,6 +301,7 @@ export type CompanySettingsInput = {
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
   paidBreaks: boolean
+  allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
   overtimeMultiplier: OvertimeMultiplier
@@ -345,6 +347,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   defaultDriverRole: 'Driver',
   defaultBreakMinutes: 30,
   paidBreaks: false,
+  allowMedicalDocumentUploads: false,
   overtimeAfterHours: 10.5,
   overtimeMode: 'Manual',
   overtimeMultiplier: 1.5,
@@ -377,6 +380,7 @@ export type CompanySettingsTab =
   | 'timesheets'
   | 'holidays'
   | 'consumables'
+  | 'documents'
   | 'appearance'
   | 'notifications'
   | 'security'
@@ -390,6 +394,7 @@ export const COMPANY_SETTINGS_TABS: {
   { id: 'timesheets', label: 'Timesheets' },
   { id: 'holidays', label: 'Holidays' },
   { id: 'consumables', label: 'Consumables' },
+  { id: 'documents', label: 'Documents' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'security', label: 'Security' },

@@ -12,6 +12,7 @@ import {
   vehicleTableShellClass,
 } from '@/components/vehicles/vehicleUiStyles'
 import { Button } from '@/components/ui/button'
+import { adminTableEntityName } from '@/lib/adminUiStyles'
 import {
   formatShortDate,
   formatStartsInText,
@@ -228,7 +229,7 @@ export function VehiclesDataTable({
                 <td className="px-4 py-3">
                   <Link
                     to={`/vehicles/${vehicle.id}`}
-                    className="text-sm font-bold text-[#113C69] transition-colors hover:text-[#218EE7]"
+                    className={`${adminTableEntityName} transition-colors hover:text-[#218EE7]`}
                   >
                     {vehicle.registration}
                   </Link>
@@ -245,7 +246,7 @@ export function VehiclesDataTable({
                   </span>
                 </td>
                 <td className="max-w-[160px] px-4 py-3">
-                  <span className="block truncate text-sm font-medium text-[#5499BF]">
+                  <span className={`block truncate ${adminTableEntityName}`}>
                     {getDriverLabel(vehicle, drivers)}
                   </span>
                 </td>

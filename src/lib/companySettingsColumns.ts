@@ -21,6 +21,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'default_driver_role',
   'default_break_minutes',
   'paid_breaks',
+  'allow_medical_document_uploads',
   'overtime_after_hours',
   'overtime_mode',
   'overtime_multiplier',
@@ -105,6 +106,11 @@ export const COMPANY_SETTINGS_WEEK_NUMBERING_COLUMNS = [
   'timesheet_week_reset_day',
 ] as const
 
+/** Medical document upload toggle — optional until migration is applied. */
+export const COMPANY_SETTINGS_MEDICAL_UPLOAD_COLUMNS = [
+  'allow_medical_document_uploads',
+] as const
+
 /** Holiday counting columns — optional until migration is applied. */
 export const COMPANY_SETTINGS_HOLIDAY_COUNTING_COLUMNS = [
   'holiday_counting_method',
@@ -169,6 +175,10 @@ export const companySettingsHolidayCountingSelect = `
   holiday_entitlement_rules
 ` as const
 
+export const companySettingsMedicalUploadSelect = `
+  allow_medical_document_uploads
+` as const
+
 export const companySettingsConsumablePricesSelect = `
   consumable_default_prices
 ` as const
@@ -193,6 +203,7 @@ export const companySettingsSelect = `
   default_driver_role,
   default_break_minutes,
   paid_breaks,
+  allow_medical_document_uploads,
   overtime_after_hours,
   overtime_mode,
   overtime_multiplier,

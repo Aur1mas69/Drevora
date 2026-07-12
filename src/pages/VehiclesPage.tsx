@@ -35,6 +35,7 @@ import {
   type StatusFilter,
 } from '@/components/vehicles/VehiclesFilterBar'
 import { VehiclesSummaryCards } from '@/components/vehicles/VehiclesSummaryCards'
+import type { VehicleKpiKey } from '@/components/vehicles/vehicleSummaryKpiStyles'
 import {
   computeFleetSummaryStats,
   exportVehiclesToCsv,
@@ -66,10 +67,33 @@ import {
 function parseVehicleStatusFilter(value: string | null): StatusFilter {
   if (!value) return 'All'
   if (value === 'Unavailable') return 'Unavailable'
+  if (value === 'MaintenanceDue') return 'MaintenanceDue'
   if (vehicleStatuses.includes(value as VehicleStatus)) {
     return value as VehicleStatus
   }
   return 'All'
+}
+
+function getActiveVehicleQuickFilter(
+  statusFilter: StatusFilter,
+  motFilter: DocumentFilter,
+  insuranceFilter: DocumentFilter,
+): VehicleKpiKey | null {
+  if (motFilter === 'All' && insuranceFilter === 'All') {
+    if (statusFilter === 'Available') return 'available'
+    if (statusFilter === 'Unavailable') return 'offRoad'
+    if (statusFilter === 'MaintenanceDue') return 'maintenanceDue'
+  }
+
+  if (statusFilter === 'All' && motFilter === 'Expiring Soon' && insuranceFilter === 'All') {
+    return 'motExpiringSoon'
+  }
+
+  if (statusFilter === 'All' && motFilter === 'All' && insuranceFilter === 'Expiring Soon') {
+    return 'insuranceExpiringSoon'
+  }
+
+  return null
 }
 
 function VehiclesPage() {
@@ -185,7 +209,9 @@ function VehiclesPage() {
         statusFilter === 'All' ||
         (statusFilter === 'Unavailable'
           ? currentStatus === 'Off Road' || currentStatus === 'Out of Service'
-          : currentStatus === statusFilter)
+          : statusFilter === 'MaintenanceDue'
+            ? currentStatus === 'Maintenance' || currentStatus === 'Workshop'
+            : currentStatus === statusFilter)
       const matchesDriver =
         driverFilter === 'All' ||
         (driverFilter === 'Unassigned'
@@ -240,6 +266,49 @@ function VehiclesPage() {
       },
       { replace: true },
     )
+  }
+
+  function handleQuickFilterSelect(key: VehicleKpiKey) {
+    const activeKey = getActiveVehicleQuickFilter(
+      statusFilter,
+      motFilter,
+      insuranceFilter,
+    )
+
+    if (activeKey === key) {
+      handleStatusFilterChange('All')
+      setMotFilter('All')
+      setInsuranceFilter('All')
+      return
+    }
+
+    switch (key) {
+      case 'available':
+        handleStatusFilterChange('Available')
+        setMotFilter('All')
+        setInsuranceFilter('All')
+        break
+      case 'offRoad':
+        handleStatusFilterChange('Unavailable')
+        setMotFilter('All')
+        setInsuranceFilter('All')
+        break
+      case 'maintenanceDue':
+        handleStatusFilterChange('MaintenanceDue')
+        setMotFilter('All')
+        setInsuranceFilter('All')
+        break
+      case 'motExpiringSoon':
+        handleStatusFilterChange('All')
+        setMotFilter('Expiring Soon')
+        setInsuranceFilter('All')
+        break
+      case 'insuranceExpiringSoon':
+        handleStatusFilterChange('All')
+        setMotFilter('All')
+        setInsuranceFilter('Expiring Soon')
+        break
+    }
   }
 
   function clearAllFilters() {
@@ -479,7 +548,16 @@ function VehiclesPage() {
           </Button>
         </div>
 
-        <VehiclesSummaryCards stats={summaryStats} isLoading={isLoading} />
+        <VehiclesSummaryCards
+          stats={summaryStats}
+          isLoading={isLoading}
+          activeKey={getActiveVehicleQuickFilter(
+            statusFilter,
+            motFilter,
+            insuranceFilter,
+          )}
+          onSelect={handleQuickFilterSelect}
+        />
 
         {!isLoading && !loadError && vehicles.length > 0 ? (
           <>

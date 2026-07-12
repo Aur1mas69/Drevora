@@ -139,7 +139,7 @@ export const WORKER_COMPLIANCE_DOCUMENT_TYPES = [
   'CPC',
   'Tachograph Card',
   'ADR',
-  'Medical',
+  'D4 / Medical',
   'HIAB',
   'Forklift Licence',
   'Loader Licence',

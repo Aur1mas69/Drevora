@@ -45,7 +45,8 @@ export function DeleteContactModal({
           Delete contact?
         </h2>
         <p className="mt-2 text-sm font-medium leading-6 text-[#5499BF]">
-          This contact will be permanently removed from your directory.
+          This removes the Contacts directory entry only. It never deletes a Worker profile,
+          timesheets, documents or any other Worker data.
         </p>
 
         <div className="mt-4 rounded-[14px] border border-[#D3E9FC] bg-[#F5FAFF] px-4 py-3 text-sm font-medium text-[#113C69]">

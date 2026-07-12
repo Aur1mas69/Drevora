@@ -19,7 +19,7 @@ export const ROLE_DOCUMENT_SUGGESTIONS: Record<string, string[]> = {
     'CPC',
     'Tachograph Card',
     'ADR',
-    'Medical',
+    'D4 / Medical',
     'HIAB',
     'Forklift Licence',
     'Loader Licence',
@@ -45,7 +45,7 @@ const LEGACY_WORKER_FIELDS: { field: keyof Driver; documentType: string }[] = [
   { field: 'drivingLicenceExpiry', documentType: 'Driving Licence' },
   { field: 'cpcExpiry', documentType: 'CPC' },
   { field: 'driverCardExpiry', documentType: 'Tachograph Card' },
-  { field: 'medicalExpiry', documentType: 'Medical' },
+  { field: 'medicalExpiry', documentType: 'D4 / Medical' },
   { field: 'adrExpiry', documentType: 'ADR' },
   { field: 'hiabExpiry', documentType: 'HIAB' },
 ]

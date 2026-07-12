@@ -1,5 +1,6 @@
 import type {
   Contact,
+  ContactSummaryCounts,
   ContactsPageResult,
   ContactsQuery,
   CreateContactInput,
@@ -10,6 +11,7 @@ import { isContactCategory, isContactStatus } from '@/lib/contactUtils'
 import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
+import { fetchDrivers, type Driver } from '@/services/driversService'
 
 type ContactRow = {
   id: string
@@ -31,11 +33,37 @@ type ContactRow = {
   country: string | null
   notes: string | null
   status: string
+  worker_id?: string | null
   created_at: string
   updated_at: string
 }
 
 const contactSelect = `
+  id,
+  company,
+  name,
+  organisation,
+  category,
+  phone,
+  email,
+  website,
+  role_title,
+  vat_number,
+  account_reference,
+  address_line_1,
+  address_line_2,
+  town_city,
+  county,
+  postcode,
+  country,
+  notes,
+  status,
+  worker_id,
+  created_at,
+  updated_at
+`
+
+const contactSelectLegacy = `
   id,
   company,
   name,
@@ -71,6 +99,20 @@ function resolveCompanyScope(): string | null {
   return name || null
 }
 
+function isInternalPlaceholderEmail(email: string | null | undefined): boolean {
+  return Boolean(email?.trim().toLowerCase().endsWith('@workers.internal'))
+}
+
+function displayWorkerEmail(email: string | null | undefined): string | null {
+  const trimmed = email?.trim() || null
+  if (!trimmed || isInternalPlaceholderEmail(trimmed)) return null
+  return trimmed
+}
+
+function mapDriverStatusToContactStatus(status: Driver['status']): Contact['status'] {
+  return status === 'Suspended' ? 'inactive' : 'active'
+}
+
 function mapRow(row: ContactRow): Contact {
   return {
     id: row.id,
@@ -92,8 +134,41 @@ function mapRow(row: ContactRow): Contact {
     country: row.country,
     notes: row.notes,
     status: isContactStatus(row.status) ? row.status : 'active',
+    workerId: row.worker_id?.trim() || null,
+    workerCode: null,
+    source: 'contact',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+function mapDriverToWorkerContact(driver: Driver): Contact {
+  const fullName = `${driver.firstName} ${driver.lastName}`.trim() || 'Unnamed worker'
+  return {
+    id: `worker:${driver.id}`,
+    company: driver.company || null,
+    name: fullName,
+    organisation: null,
+    category: 'worker',
+    phone: driver.phone?.trim() || null,
+    email: displayWorkerEmail(driver.email),
+    website: null,
+    roleTitle: driver.role || null,
+    vatNumber: null,
+    accountReference: driver.workerCode?.trim() || null,
+    addressLine1: driver.addressLine1,
+    addressLine2: driver.addressLine2,
+    townCity: driver.townCity,
+    county: driver.county,
+    postcode: driver.postcode,
+    country: driver.country,
+    notes: null,
+    status: mapDriverStatusToContactStatus(driver.status),
+    workerId: driver.id,
+    workerCode: driver.workerCode?.trim() || null,
+    source: 'worker',
+    createdAt: driver.createdAt,
+    updatedAt: driver.createdAt,
   }
 }
 
@@ -107,19 +182,44 @@ function isMissingContactsTableError(message: string): boolean {
   )
 }
 
-function buildSearchFilter(search: string): string {
-  const term = search.trim().replace(/[%_,]/g, ' ')
-  if (!term) return ''
-  const pattern = `%${term}%`
-  return [
-    `name.ilike.${pattern}`,
-    `organisation.ilike.${pattern}`,
-    `phone.ilike.${pattern}`,
-    `email.ilike.${pattern}`,
-    `town_city.ilike.${pattern}`,
-    `postcode.ilike.${pattern}`,
-    `notes.ilike.${pattern}`,
-  ].join(',')
+function isMissingWorkerIdColumnError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('worker_id') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('could not find'))
+  )
+}
+
+function contactMatchesSearch(contact: Contact, search: string): boolean {
+  const term = search.trim().toLowerCase()
+  if (!term) return true
+
+  const haystack = [
+    contact.name,
+    contact.organisation,
+    contact.phone,
+    contact.email,
+    contact.workerCode,
+    contact.accountReference,
+    contact.townCity,
+    contact.postcode,
+    contact.notes,
+    contact.roleTitle,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return haystack.includes(term)
+}
+
+function compareContacts(left: Contact, right: Contact): number {
+  const leftName = (left.name ?? left.organisation ?? '').toLowerCase()
+  const rightName = (right.name ?? right.organisation ?? '').toLowerCase()
+  if (leftName !== rightName) return leftName.localeCompare(rightName)
+  return left.id.localeCompare(right.id)
 }
 
 function toDbPayload(input: CreateContactInput | UpdateContactInput): Record<string, unknown> {
@@ -146,49 +246,31 @@ function toDbPayload(input: CreateContactInput | UpdateContactInput): Record<str
   if (input.country !== undefined) payload.country = input.country?.trim() || null
   if (input.notes !== undefined) payload.notes = input.notes?.trim() || null
   if (input.status !== undefined) payload.status = input.status
+  if (input.workerId !== undefined) payload.worker_id = input.workerId?.trim() || null
 
   return payload
 }
 
-export async function fetchContacts(query: ContactsQuery = {}): Promise<ContactsPageResult> {
-  const page = Math.max(1, query.page ?? 1)
-  const pageSize = query.pageSize ?? DEFAULT_CONTACT_PAGE_SIZE
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
-
-  let request = requireSupabase()
-    .from('contacts')
-    .select(contactSelect, { count: 'exact' })
-
+async function fetchContactRows(): Promise<ContactRow[]> {
   const company = resolveCompanyScope()
-  if (company) {
-    request = request.eq('company', company)
+
+  async function runSelect(select: string) {
+    let request = requireSupabase().from('contacts').select(select)
+    if (company) request = request.eq('company', company)
+    return request.order('name', { ascending: true, nullsFirst: false })
   }
 
-  if (query.category && query.category !== 'all') {
-    request = request.eq('category', query.category)
-  }
+  let { data, error } = await runSelect(contactSelect)
 
-  if (query.status && query.status !== 'all') {
-    request = request.eq('status', query.status)
+  if (error && isMissingWorkerIdColumnError(error.message)) {
+    ;({ data, error } = await runSelect(contactSelectLegacy))
   }
-
-  const searchFilter = query.search ? buildSearchFilter(query.search) : ''
-  if (searchFilter) {
-    request = request.or(searchFilter)
-  }
-
-  const { data, error, count } = await request
-    .order('name', { ascending: true, nullsFirst: false })
-    .order('organisation', { ascending: true, nullsFirst: false })
-    .range(from, to)
 
   logSupabaseQuery({
-    service: 'contactsService.fetchContacts',
+    service: 'contactsService.fetchContactRows',
     table: 'contacts',
     data,
     error,
-    count,
   })
 
   if (error) {
@@ -197,17 +279,163 @@ export async function fetchContacts(query: ContactsQuery = {}): Promise<Contacts
         'Contacts table is not available yet. Run the contacts migration on your Supabase project.',
       )
     }
+    if (isMissingWorkerIdColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts worker link is not available yet. Run the contacts worker_id migration on your Supabase project.',
+      )
+    }
     throw new ContactsServiceError(error.message)
   }
 
-  const rows = (data ?? []) as unknown as ContactRow[]
+  return (data ?? []) as unknown as ContactRow[]
+}
+
+async function fetchCompanyDrivers(): Promise<Driver[]> {
+  const company = resolveCompanyScope()
+  const drivers = await fetchDrivers()
+  return drivers.filter((driver) => {
+    if (!company) return true
+    return driver.company?.trim() === company
+  })
+}
+
+async function fetchCompanyWorkersWithPhone(): Promise<Driver[]> {
+  const drivers = await fetchCompanyDrivers()
+  return drivers.filter((driver) => Boolean(driver.phone?.trim()))
+}
+
+function buildDirectoryContacts(
+  contactRows: ContactRow[],
+  companyDrivers: Driver[],
+): Contact[] {
+  const workerById = new Map(companyDrivers.map((worker) => [worker.id, worker]))
+  const contacts = contactRows.map((row) => {
+    const mapped = mapRow(row)
+    const linked = mapped.workerId ? workerById.get(mapped.workerId) : undefined
+    if (!linked) return mapped
+    return {
+      ...mapped,
+      workerCode: linked.workerCode?.trim() || mapped.workerCode,
+    }
+  })
+
+  const linkedWorkerIds = new Set(
+    contacts.map((contact) => contact.workerId).filter((id): id is string => Boolean(id)),
+  )
+
+  const workerContacts = companyDrivers
+    .filter((driver) => Boolean(driver.phone?.trim()) && !linkedWorkerIds.has(driver.id))
+    .map(mapDriverToWorkerContact)
+
+  return [...contacts, ...workerContacts]
+}
+
+function filterDirectoryContacts(items: Contact[], query: ContactsQuery): Contact[] {
+  let result = items
+
+  if (query.category && query.category !== 'all') {
+    result = result.filter((contact) => contact.category === query.category)
+  }
+
+  if (query.status && query.status !== 'all') {
+    result = result.filter((contact) => contact.status === query.status)
+  }
+
+  if (query.search?.trim()) {
+    result = result.filter((contact) => contactMatchesSearch(contact, query.search!))
+  }
+
+  return [...result].sort(compareContacts)
+}
+
+export async function fetchContacts(query: ContactsQuery = {}): Promise<ContactsPageResult> {
+  const page = Math.max(1, query.page ?? 1)
+  const pageSize = query.pageSize ?? DEFAULT_CONTACT_PAGE_SIZE
+  const from = (page - 1) * pageSize
+
+  const [contactRows, companyDrivers] = await Promise.all([
+    fetchContactRows(),
+    fetchCompanyDrivers(),
+  ])
+
+  const directory = filterDirectoryContacts(
+    buildDirectoryContacts(contactRows, companyDrivers),
+    query,
+  )
 
   return {
-    items: rows.map(mapRow),
-    totalCount: count ?? rows.length,
+    items: directory.slice(from, from + pageSize),
+    totalCount: directory.length,
     page,
     pageSize,
   }
+}
+
+function normalizeContactCategory(value: string | null | undefined): string {
+  return (value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+function categoryMatches(normalized: string, aliases: string[]): boolean {
+  return aliases.some(
+    (alias) => normalized === alias || normalized.includes(alias),
+  )
+}
+
+export async function fetchContactSummaryCounts(): Promise<ContactSummaryCounts> {
+  try {
+    const [contactRows, workersWithPhone] = await Promise.all([
+      fetchContactRows(),
+      fetchCompanyWorkersWithPhone(),
+    ])
+
+    let support = 0
+    let service = 0
+    let office = 0
+    let insurance = 0
+
+    for (const row of contactRows) {
+      const category = normalizeContactCategory(row.category)
+      if (categoryMatches(category, ['emergency', 'support', 'help'])) support += 1
+      if (categoryMatches(category, ['garage_workshop', 'garage', 'workshop', 'service'])) {
+        service += 1
+      }
+      if (categoryMatches(category, ['accountant', 'office'])) office += 1
+      if (categoryMatches(category, ['insurance'])) insurance += 1
+    }
+
+    return {
+      workerContacts: workersWithPhone.length,
+      support,
+      service,
+      office,
+      insurance,
+    }
+  } catch (error) {
+    if (
+      error instanceof ContactsServiceError &&
+      isMissingContactsTableError(error.message)
+    ) {
+      return {
+        workerContacts: 0,
+        support: 0,
+        service: 0,
+        office: 0,
+        insurance: 0,
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Count of company workers who have a saved phone number (source of truth: drivers.phone).
+ */
+export async function countWorkerPhoneContacts(): Promise<number> {
+  const workers = await fetchCompanyWorkersWithPhone()
+  return workers.length
 }
 
 export async function createContact(input: CreateContactInput): Promise<Contact> {
@@ -232,6 +460,14 @@ export async function createContact(input: CreateContactInput): Promise<Contact>
   })
 
   if (error) {
+    if (isMissingWorkerIdColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts worker link is not available yet. Run the contacts worker_id migration on your Supabase project.',
+      )
+    }
+    if (error.message.toLowerCase().includes('contacts_worker_id_unique')) {
+      throw new ContactsServiceError('That worker is already linked to another contact.')
+    }
     throw new ContactsServiceError(error.message)
   }
 
@@ -239,6 +475,12 @@ export async function createContact(input: CreateContactInput): Promise<Contact>
 }
 
 export async function updateContact(id: string, input: UpdateContactInput): Promise<Contact> {
+  if (id.startsWith('worker:')) {
+    throw new ContactsServiceError(
+      'Worker phone contacts are managed on the Worker profile. Open the worker to edit details.',
+    )
+  }
+
   const payload = {
     ...toDbPayload(input),
     updated_at: new Date().toISOString(),
@@ -261,13 +503,42 @@ export async function updateContact(id: string, input: UpdateContactInput): Prom
   })
 
   if (error) {
+    if (isMissingWorkerIdColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts worker link is not available yet. Run the contacts worker_id migration on your Supabase project.',
+      )
+    }
+    if (error.message.toLowerCase().includes('contacts_worker_id_unique')) {
+      throw new ContactsServiceError('That worker is already linked to another contact.')
+    }
     throw new ContactsServiceError(error.message)
   }
 
   return mapRow(data as unknown as ContactRow)
 }
 
+/** Clears contacts.worker_id only. Never deletes the Worker / drivers row. */
+export async function unlinkContactWorker(id: string): Promise<Contact> {
+  if (id.startsWith('worker:')) {
+    throw new ContactsServiceError('This Worker contact is not a linked Contacts row.')
+  }
+
+  return updateContact(id, {
+    workerId: null,
+    category: 'other',
+  })
+}
+
+/**
+ * Deletes only the Contacts row. Never deletes drivers / Worker profile data.
+ */
 export async function deleteContact(id: string): Promise<void> {
+  if (id.startsWith('worker:')) {
+    throw new ContactsServiceError(
+      'Worker phone contacts cannot be deleted from Contacts. Open the Worker profile instead.',
+    )
+  }
+
   let request = requireSupabase().from('contacts').delete().eq('id', id)
 
   const company = resolveCompanyScope()
@@ -291,7 +562,10 @@ export async function deleteContact(id: string): Promise<void> {
 
 export const contactsService = {
   fetchContacts,
+  fetchContactSummaryCounts,
+  countWorkerPhoneContacts,
   createContact,
   updateContact,
+  unlinkContactWorker,
   deleteContact,
 }

@@ -14,6 +14,7 @@ import {
 } from '@/lib/timesheetUtils'
 import {
   adminHeading,
+  adminTableEntityName,
   adminTableHeadText,
   adminTableHeader,
   adminTableRow,
@@ -107,7 +108,6 @@ export function TimesheetsDataTable({
   const { compactTables } = useCompanySettings()
   const rowPadding = compactTables ? 'py-1' : 'py-1.5'
   const cellText = compactTables ? 'text-[11px]' : 'text-xs'
-  const workerNameText = compactTables ? 'text-sm' : 'text-base'
   const allSelected =
     timesheets.length > 0 && timesheets.every((sheet) => selectedIds.has(sheet.id))
   const someSelected = timesheets.some((sheet) => selectedIds.has(sheet.id))
@@ -158,7 +158,7 @@ export function TimesheetsDataTable({
                   <button
                     type="button"
                     onClick={() => onEdit(sheet)}
-                    className={`text-left font-semibold leading-snug text-[#113C69] dark:text-slate-100 ${workerNameText} hover:text-[#2563EB] dark:hover:text-blue-300`}
+                    className={`max-w-full truncate text-left ${adminTableEntityName} hover:text-[#2563EB] dark:hover:text-blue-300`}
                   >
                     {sheet.driverName}
                   </button>

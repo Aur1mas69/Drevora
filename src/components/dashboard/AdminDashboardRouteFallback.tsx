@@ -20,10 +20,10 @@ export default function AdminDashboardRouteFallback() {
       premiumBackground
       wideContent
       adminDashboard
+      headerLeading={<DashboardPageHeader />}
       headerSearch={<QuickSearchFallback />}
       customHeader={<DashboardHeroFallback />}
     >
-      <DashboardPageHeader />
       <DashboardOverviewSkeleton />
     </AdminLayout>
   )

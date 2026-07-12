@@ -22,6 +22,26 @@ export const WORKER_DOCUMENT_TYPES = [
   'Other',
 ] as const
 
+/** Canonical type shown in Documents Centre for D4 / medical certificate rows. */
+export const MEDICAL_DOCUMENT_TYPE = 'D4 / Medical'
+
+/** Historical aliases that must dedupe against MEDICAL_DOCUMENT_TYPE. */
+export const MEDICAL_DOCUMENT_TYPE_ALIASES = [
+  'D4 / Medical',
+  'Medical',
+  'Medical Certificate',
+] as const
+
+export function isMedicalDocumentType(documentType: string | null | undefined): boolean {
+  const normalized = documentType?.trim()
+  if (!normalized) return false
+  return (MEDICAL_DOCUMENT_TYPE_ALIASES as readonly string[]).includes(normalized)
+}
+
+export function normalizeMedicalDocumentType(documentType: string): string {
+  return isMedicalDocumentType(documentType) ? MEDICAL_DOCUMENT_TYPE : documentType
+}
+
 export const VEHICLE_DOCUMENT_TYPES = [
   'MOT',
   'Insurance',
@@ -42,6 +62,12 @@ export const DOCUMENT_STATUSES = ['valid', 'expiring_soon', 'expired', 'no_expir
 
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number]
 
+export type DocumentSource =
+  | 'documents'
+  | 'worker_compliance'
+  | 'vehicle_compliance'
+  | 'legacy_worker'
+
 export type Document = {
   id: string
   company: string | null
@@ -61,16 +87,19 @@ export type Document = {
   status: DocumentStatus
   createdAt: string
   updatedAt: string
+  /** Where the row was resolved from (Documents Centre may merge multiple sources). */
+  source?: DocumentSource
 }
 
 export type DocumentsCentreTab =
+  | 'all'
   | 'company'
   | 'workers'
   | 'vehicles'
   | 'expiring-soon'
   | 'expired'
 
-export const DOCUMENTS_CENTRE_TABS: { id: DocumentsCentreTab; label: string }[] = [
+export const DOCUMENTS_CENTRE_TABS: { id: Exclude<DocumentsCentreTab, 'all'>; label: string }[] = [
   { id: 'company', label: 'Company' },
   { id: 'workers', label: 'Workers' },
   { id: 'vehicles', label: 'Vehicles' },

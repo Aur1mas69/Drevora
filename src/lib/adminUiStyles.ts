@@ -72,6 +72,10 @@ export const adminHeading = 'text-[#2A376F] dark:text-slate-100'
 
 export const adminHeadingLg = 'text-slate-950 dark:text-slate-100'
 
+/** Primary entity name in data tables (worker, registration, document title, etc.). */
+export const adminTableEntityName =
+  'text-sm font-semibold leading-[1.35] text-[#113C69] dark:text-slate-100'
+
 export const adminText = 'text-slate-600 dark:text-slate-300'
 
 export const adminTextStrong = 'text-slate-700 dark:text-slate-300'

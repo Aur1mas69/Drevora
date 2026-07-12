@@ -12,7 +12,7 @@ import {
 } from '@/lib/vehicleCheckUtils'
 import { VehicleCheckDefectPhotoField } from '@/components/vehicle-checks/VehicleCheckDefectPhotoField'
 import { Camera, Info, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 const RESULT_OPTIONS: VehicleCheckItemResult[] = ['Pass', 'Advisory', 'Fail']
 
@@ -165,15 +165,44 @@ export function VehicleCheckChecklistForm({
   }
 
   function renderGuidanceText(text: string) {
-    return text.split('\n').map((line, index) => {
+    const blocks: ReactNode[] = []
+    let bulletBuffer: string[] = []
+
+    function flushBullets(keyPrefix: string) {
+      if (bulletBuffer.length === 0) return
+      blocks.push(
+        <ul key={`${keyPrefix}-ul`} className="list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+          {bulletBuffer.map((entry, index) => (
+            <li key={`${keyPrefix}-li-${index}`}>{entry}</li>
+          ))}
+        </ul>,
+      )
+      bulletBuffer = []
+    }
+
+    text.split('\n').forEach((line, index) => {
       const trimmed = line.trim()
-      if (!trimmed) return <br key={index} />
-      return (
-        <p key={index} className="text-sm leading-6 text-slate-700">
+      if (!trimmed) {
+        flushBullets(`gap-${index}`)
+        blocks.push(<div key={`spacer-${index}`} className="h-2" />)
+        return
+      }
+
+      if (trimmed.startsWith('- ')) {
+        bulletBuffer.push(trimmed.slice(2).trim())
+        return
+      }
+
+      flushBullets(`before-${index}`)
+      blocks.push(
+        <p key={`p-${index}`} className="text-sm leading-6 text-slate-700">
           {trimmed}
-        </p>
+        </p>,
       )
     })
+
+    flushBullets('end')
+    return blocks
   }
 
   if (emptyMessage && grouped.size === 0) {

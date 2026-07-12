@@ -308,6 +308,7 @@ create table if not exists public.companies (
   default_driver_role text not null default 'Driver',
   default_break_minutes integer not null default 30,
   paid_breaks boolean not null default false,
+  allow_medical_document_uploads boolean not null default false,
   overtime_after_hours numeric not null default 10.5,
   round_time_minutes integer not null default 0,
   require_manager_approval boolean not null default true,
@@ -1222,6 +1223,7 @@ create table if not exists public.contacts (
   country text default 'United Kingdom',
   notes text,
   status text not null default 'active',
+  worker_id uuid references public.drivers (id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   constraint contacts_category_check check (
@@ -1233,6 +1235,7 @@ create table if not exists public.contacts (
       'insurance',
       'accountant',
       'emergency',
+      'worker',
       'other'
     )
   ),
@@ -1244,6 +1247,10 @@ create index if not exists contacts_category_idx on public.contacts (category);
 create index if not exists contacts_status_idx on public.contacts (status);
 create index if not exists contacts_name_idx on public.contacts (name);
 create index if not exists contacts_organisation_idx on public.contacts (organisation);
+create index if not exists contacts_worker_id_idx on public.contacts (worker_id);
+create unique index if not exists contacts_worker_id_unique_idx
+  on public.contacts (worker_id)
+  where worker_id is not null;
 
 drop trigger if exists contacts_set_updated_at on public.contacts;
 

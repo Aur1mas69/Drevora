@@ -1,6 +1,10 @@
-import { dashboardOverviewCardBase } from '@/components/dashboard/dashboardOverviewCardStyles'
-
-const cardClass = dashboardOverviewCardBase
+import {
+  dashboardOverviewCardBase,
+  dashboardOverviewCardStaticClass,
+  dashboardOverviewCardSubtitleClass,
+  dashboardOverviewCardTitleClass,
+  dashboardOverviewDividerClass,
+} from '@/components/dashboard/dashboardOverviewCardStyles'
 
 export function DashboardKpiSkeleton() {
   return (
@@ -13,25 +17,28 @@ export function DashboardKpiSkeleton() {
 
 export function DashboardOverviewCardSkeleton() {
   return (
-    <div className={`${dashboardOverviewCardBase} h-44 bg-[#F8FBFF]/40`} aria-hidden="true" />
+    <div
+      className={`${dashboardOverviewCardBase} h-44 bg-[#F8FBFF]/40`}
+      aria-hidden="true"
+    />
   )
 }
 
 export function RecentActivitySkeleton() {
   return (
     <section
-      className={`${cardClass} flex min-h-[360px] flex-col p-4 sm:min-h-[360px] sm:p-6 xl:min-h-[520px]`}
+      className={`${dashboardOverviewCardStaticClass} flex min-h-[360px] flex-col sm:min-h-[360px] xl:min-h-[520px]`}
       aria-hidden="true"
     >
-      <div className="shrink-0 border-b border-[#CFE3F5] pb-4">
-        <h3 className="text-base font-bold tracking-[-0.02em] text-[#163A63]">Recent Activity</h3>
-        <p className="mt-1 text-xs leading-5 text-[#5D7C9D]">
+      <div className={`shrink-0 border-b ${dashboardOverviewDividerClass} pb-4`}>
+        <h3 className={dashboardOverviewCardTitleClass}>Recent Activity</h3>
+        <p className={dashboardOverviewCardSubtitleClass}>
           Latest changes across your operation
         </p>
       </div>
       <div className="mt-4 space-y-2.5">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="h-[4.25rem] rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80" />
+          <div key={index} className="h-[4.25rem] rounded-xl border border-[#D2E5F5] bg-[#F8FBFF]/80" />
         ))}
       </div>
     </section>
@@ -48,12 +55,12 @@ export function DashboardOverviewSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <DashboardOverviewCardSkeleton key={index} />
             ))}
           </div>
-          <div className={`${cardClass} h-56 bg-[#F8FBFF]/40`} aria-hidden="true" />
+          <div className={`${dashboardOverviewCardBase} h-56 bg-[#F8FBFF]/40`} aria-hidden="true" />
         </div>
         <RecentActivitySkeleton />
       </div>

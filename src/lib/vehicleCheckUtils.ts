@@ -25,10 +25,13 @@ export function resolveVehicleCheckItemDescription(
 }
 
 export function getVehicleCheckTemplateGuidance(
-  item: Pick<VehicleCheckItemInput, 'templateItem'>,
+  item: Pick<VehicleCheckItemInput, 'templateItem' | 'description'>,
 ): string | null {
-  const guidance = item.templateItem?.description?.trim()
-  return guidance || null
+  const fromTemplate = item.templateItem?.description?.trim()
+  if (fromTemplate) return fromTemplate
+
+  const fromItem = item.description?.trim()
+  return fromItem || null
 }
 
 export function getVehicleCheckItemKey(

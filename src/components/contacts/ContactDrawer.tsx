@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Contact } from '@/lib/contactTypes'
+import { getWorkerProfileId, isWorkerDirectoryContact } from '@/lib/contactTypes'
 import {
   formatContactAddress,
   getCategoryBadgeClass,
@@ -10,7 +11,7 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/contactUtils'
-import { Pencil, X } from 'lucide-react'
+import { Link2Off, Pencil, UserRound, X } from 'lucide-react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -19,6 +20,8 @@ type ContactDrawerProps = {
   isOpen: boolean
   onClose: () => void
   onEdit?: (contact: Contact) => void
+  onUnlinkWorker?: (contact: Contact) => void
+  onViewWorker?: (contact: Contact) => void
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -32,7 +35,14 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawerProps) {
+export function ContactDrawer({
+  contact,
+  isOpen,
+  onClose,
+  onEdit,
+  onUnlinkWorker,
+  onViewWorker,
+}: ContactDrawerProps) {
   const { formatDateTime } = useCompanySettings()
   useBodyScrollLock(isOpen)
 
@@ -49,6 +59,9 @@ export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawe
 
   if (!isOpen || !contact || typeof document === 'undefined') return null
 
+  const isWorkerRow = isWorkerDirectoryContact(contact)
+  const workerId = getWorkerProfileId(contact)
+
   return createPortal(
     <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/35 backdrop-blur-sm">
       <button
@@ -61,7 +74,7 @@ export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawe
         <div className="flex items-start justify-between border-b border-[#D3E9FC]/70 px-5 py-4">
           <div className="min-w-0 pr-3">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#218EE7]">
-              Contact details
+              {isWorkerRow ? 'Worker contact' : 'Contact details'}
             </p>
             <h2 className="mt-1 text-xl font-semibold text-[#113C69]">
               {getContactPrimaryName(contact)}
@@ -93,6 +106,9 @@ export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawe
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <dl className="space-y-3 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-4">
+            {contact.workerCode ? (
+              <DetailRow label="Worker ID" value={contact.workerCode} />
+            ) : null}
             <DetailRow label="Company" value={contact.organisation?.trim() || '—'} />
             <DetailRow label="Phone" value={contact.phone?.trim() || '—'} />
             <DetailRow label="Email" value={contact.email?.trim() || '—'} />
@@ -105,12 +121,25 @@ export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawe
             />
             <DetailRow label="Address" value={formatContactAddress(contact)} />
             <DetailRow label="Notes" value={contact.notes?.trim() || '—'} />
-            <DetailRow label="Created" value={formatDateTime(contact.createdAt)} />
+            {contact.createdAt ? (
+              <DetailRow label="Created" value={formatDateTime(contact.createdAt)} />
+            ) : null}
           </dl>
         </div>
 
-        {onEdit ? (
-          <div className="border-t border-[#D3E9FC]/70 px-5 py-4">
+        <div className="space-y-2 border-t border-[#D3E9FC]/70 px-5 py-4">
+          {isWorkerRow && workerId && onViewWorker ? (
+            <Button
+              type="button"
+              onClick={() => onViewWorker(contact)}
+              className="h-10 w-full rounded-[12px] bg-[#218EE7] text-sm font-semibold text-white hover:bg-[#0B68BE]"
+            >
+              <UserRound className="mr-1.5 size-4" />
+              View Worker
+            </Button>
+          ) : null}
+
+          {!isWorkerRow && onEdit ? (
             <Button
               type="button"
               onClick={() => onEdit(contact)}
@@ -119,8 +148,20 @@ export function ContactDrawer({ contact, isOpen, onClose, onEdit }: ContactDrawe
               <Pencil className="mr-1.5 size-4" />
               Edit contact
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+
+          {!isWorkerRow && contact.workerId && onUnlinkWorker ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onUnlinkWorker(contact)}
+              className="h-10 w-full rounded-[12px] border-[#C5DFFB] text-sm font-semibold text-[#0B68BE]"
+            >
+              <Link2Off className="mr-1.5 size-4" />
+              Unassign Worker
+            </Button>
+          ) : null}
+        </div>
       </aside>
     </div>,
     document.body,

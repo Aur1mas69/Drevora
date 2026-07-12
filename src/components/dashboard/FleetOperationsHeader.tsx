@@ -4,7 +4,9 @@ import { hasCompanyDisplayName } from '@/lib/company'
 import { isNightHours } from '@/services/weatherService'
 import { useMemo } from 'react'
 
-const HERO_TEXT_SHADOW = '0 1px 2px rgba(255, 255, 255, 0.45)'
+/** Soft left-edge wash — starts at x=0 of the hero; fades into the image. */
+const HERO_TEXT_READABILITY_GRADIENT =
+  'linear-gradient(90deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.82) 18%, rgba(255,255,255,0.68) 38%, rgba(255,255,255,0.38) 56%, rgba(255,255,255,0.00) 100%)'
 
 const WEATHER_CARD_STYLE = {
   background: 'rgba(21, 34, 21, 0.5)',
@@ -15,7 +17,7 @@ const WEATHER_CARD_STYLE = {
   color: 'rgba(2, 6, 24, 0.99)',
 } as const
 
-type FleetOperationsInfoPanelProps = Pick<
+type FleetOperationsInfoCardProps = Pick<
   FleetOperationsHeaderState,
   'companyLocation' | 'localTime' | 'operationsDate' | 'weather' | 'weatherDisplay' | 'isProfileLoading'
 >
@@ -38,14 +40,14 @@ function LocationPinIcon() {
   )
 }
 
-function FleetOperationsInfoPanel({
+function FleetOperationsInfoCard({
   companyLocation,
   localTime,
   operationsDate,
   weather,
   weatherDisplay,
   isProfileLoading,
-}: FleetOperationsInfoPanelProps) {
+}: FleetOperationsInfoCardProps) {
   if (isProfileLoading) {
     return (
       <div
@@ -137,59 +139,50 @@ export function FleetOperationsHeader({
         isNight={isNight}
       />
 
-      <div className="relative z-10 flex h-full items-center px-4 py-4 sm:px-5 sm:py-5 lg:px-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-[50%] sm:w-[48%] lg:w-[46%]"
+        style={{ background: HERO_TEXT_READABILITY_GRADIENT }}
+      />
+
+      <div className="relative z-10 flex h-full items-center px-4 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-7">
         <div className="flex w-full min-w-0 items-center justify-between gap-3 sm:gap-5">
-          <div className="min-w-0 max-w-[min(100%,28rem)] p-5 sm:p-6">
+          <div className="min-w-0 max-w-[min(52%,20rem)] sm:max-w-[min(48%,26rem)] lg:max-w-[min(44%,32rem)]">
             {isProfileLoading ? (
-              <div className="space-y-2">
-                <div className="h-4 w-32 animate-pulse rounded-full bg-[#0E3267]/20" />
-                <div className="h-8 w-48 max-w-full animate-pulse rounded-xl bg-[#0E3267]/15" />
-                <div className="h-3 w-40 animate-pulse rounded-full bg-[#1E3967]/20" />
-                <div className="h-3 w-28 animate-pulse rounded-full bg-[#475562]/15" />
+              <div className="space-y-1.5">
+                <div className="h-4 w-32 animate-pulse rounded-full bg-[#1E3A5F]/20" />
+                <div className="h-8 w-48 max-w-full animate-pulse rounded-xl bg-[#0F2F5F]/15" />
+                <div className="h-3 w-40 animate-pulse rounded-full bg-[#2563EB]/20" />
+                <div className="h-3 w-28 animate-pulse rounded-full bg-[#334E68]/15" />
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <p
-                  className="text-[18px] font-medium tracking-[-0.02em] text-[#0E3267]"
-                  style={{ textShadow: HERO_TEXT_SHADOW }}
-                >
+              <div className="space-y-1">
+                <p className="text-[16px] font-semibold tracking-[-0.02em] text-[#1E3A5F] sm:text-[17px] lg:text-[18px]">
                   {greeting}
                 </p>
 
                 {hasCompany ? (
-                  <h1
-                    className="text-[26px] font-bold leading-[1.1] tracking-[-0.02em] text-[#0E3267] [overflow-wrap:anywhere] [word-break:break-word] sm:text-[30px] lg:text-[36px]"
-                    style={{ textShadow: HERO_TEXT_SHADOW }}
-                  >
+                  <h1 className="text-[28px] font-bold leading-[1.12] tracking-[-0.02em] text-[#0F2F5F] [overflow-wrap:anywhere] [word-break:break-word] sm:text-[34px] lg:text-[36px]">
                     {companyName}
                   </h1>
                 ) : (
-                  <h1
-                    className="text-[26px] font-bold leading-[1.1] tracking-[-0.02em] text-[#0E3267]/70 [overflow-wrap:anywhere] [word-break:break-word] sm:text-[30px] lg:text-[36px]"
-                    style={{ textShadow: HERO_TEXT_SHADOW }}
-                  >
+                  <h1 className="text-[28px] font-bold leading-[1.12] tracking-[-0.02em] text-[#0F2F5F]/70 [overflow-wrap:anywhere] [word-break:break-word] sm:text-[34px] lg:text-[36px]">
                     Company profile incomplete
                   </h1>
                 )}
 
-                <p
-                  className="pt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#1E3967] sm:text-[11px] sm:tracking-[0.2em]"
-                  style={{ textShadow: HERO_TEXT_SHADOW }}
-                >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563EB] sm:text-[12px] sm:tracking-[0.2em]">
                   Fleet Operations Centre
                 </p>
 
-                <p
-                  className="text-xs font-medium tracking-[-0.01em] text-[#0E3267] sm:text-sm"
-                  style={{ textShadow: HERO_TEXT_SHADOW }}
-                >
+                <p className="text-[13px] font-medium tracking-[-0.01em] text-[#334E68] sm:text-[14px]">
                   Live Fleet Dashboard
                 </p>
               </div>
             )}
           </div>
 
-          <FleetOperationsInfoPanel
+          <FleetOperationsInfoCard
             companyLocation={companyLocation}
             localTime={localTime}
             operationsDate={operationsDate}

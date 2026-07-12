@@ -1,0 +1,61 @@
+---
+description: Permanent DREVORA change safety and regression rules
+alwaysApply: true
+---
+
+# DREVORA CHANGE SAFETY RULES
+
+- Modify only the feature explicitly requested.
+- First identify the exact active route and rendered component.
+- Do not edit duplicate, old, unused, backup or landing files unless the request specifically concerns the landing page.
+- Inspect the existing services and live Supabase schema before changing data logic.
+- Do not guess table names, column names, enum values or route paths.
+- Preserve all existing working behaviour not explicitly requested to change.
+- Do not delete, reset or recreate existing production data.
+- Do not change the database schema unless explicitly required.
+- Database changes must use a safe, idempotent SQL migration.
+- Preserve existing record IDs and historical relationships.
+- Do not create duplicate components, templates, companies or records.
+- Reuse existing shared components, services and filtering logic.
+- Keep company and tenant isolation applied.
+- Never expose Supabase service-role or secret keys in frontend, VITE variables, GitHub or output.
+- Run the application and verify the changed feature locally.
+- Run a build after code changes.
+- Perform regression checks for protected existing behaviour.
+- Report the exact files changed.
+- Report every regression check as PASS, FAIL or NOT TESTED.
+- Do not claim completion if required behaviour was not verified.
+- Do not run destructive database commands or demo seed scripts automatically.
+- Make one focused change at a time.
+
+# VEHICLE CHECKS PROTECTED BEHAVIOUR
+
+When modifying Vehicle Checks, preserve and verify:
+
+- One active Basic DVSA template, without duplicates.
+- All 27 DVSA walkaround items remain in the correct order.
+- Every DVSA item retains its full guidance text.
+- Company custom checklist items remain.
+- Vehicle-category extra checks remain.
+- OK, Defect and N/A controls remain functional.
+- Defect notes and photos remain functional.
+- Odometer and miles/km remain functional.
+- Worker signature remains functional.
+- Inspection start time, completion time and duration remain functional.
+- Existing completed Vehicle Checks and historical results must not be changed or deleted.
+- Worker Vehicle Check flow remains mobile-first.
+- Offline support must not be removed.
+
+# REQUIRED WORKFLOW
+
+Before editing:
+1. Identify the active route and rendered component.
+2. Identify related services and database tables.
+3. List protected existing behaviour.
+
+After editing:
+1. Run typecheck/build.
+2. Test the requested change.
+3. Test protected existing behaviour.
+4. Report exact files changed.
+5. Report PASS, FAIL or NOT TESTED for every check.

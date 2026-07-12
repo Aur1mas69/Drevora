@@ -4,6 +4,7 @@ import {
   companySettingsCoreSelect,
   companySettingsHolidayCountingSelect,
   companySettingsConsumablePricesSelect,
+  companySettingsMedicalUploadSelect,
   companySettingsSelect,
   companySettingsWeekendSelect,
   companySettingsWeekNumberingSelect,
@@ -75,6 +76,7 @@ type CompanyRow = {
   default_driver_role: string | null
   default_break_minutes: number | null
   paid_breaks: boolean | null
+  allow_medical_document_uploads?: boolean | null
   overtime_after_hours: number | null
   overtime_mode: string | null
   overtime_multiplier: number | null
@@ -396,6 +398,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     defaultDriverRole: normalizeDriverRole(row.default_driver_role),
     defaultBreakMinutes: normalizeBreakMinutes(row.default_break_minutes),
     paidBreaks: normalizePaidBreaks(row.paid_breaks),
+    allowMedicalDocumentUploads: normalizePaidBreaks(row.allow_medical_document_uploads),
     overtimeAfterHours: normalizeOvertimeHours(row.overtime_after_hours),
     overtimeMode: normalizeOvertimeMode(row.overtime_mode),
     overtimeMultiplier: normalizeOvertimeMultiplier(row.overtime_multiplier),
@@ -465,6 +468,7 @@ export function companySettingsToFormValues(
     defaultDriverRole: settings.defaultDriverRole,
     defaultBreakMinutes: settings.defaultBreakMinutes,
     paidBreaks: settings.paidBreaks,
+    allowMedicalDocumentUploads: settings.allowMedicalDocumentUploads,
     overtimeAfterHours: settings.overtimeAfterHours,
     overtimeMode: settings.overtimeMode,
     overtimeMultiplier: settings.overtimeMultiplier,
@@ -528,6 +532,11 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   }
   if (input.paidBreaks !== undefined) {
     payload.paid_breaks = normalizePaidBreaks(input.paidBreaks)
+  }
+  if (input.allowMedicalDocumentUploads !== undefined) {
+    payload.allow_medical_document_uploads = normalizePaidBreaks(
+      input.allowMedicalDocumentUploads,
+    )
   }
   if (input.overtimeAfterHours !== undefined) {
     payload.overtime_after_hours = normalizeOvertimeHours(
@@ -816,6 +825,21 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
       table,
       { select: companySettingsWeekNumberingSelect, optional: 'timesheet_week_numbering' },
       weekNumberingError,
+    )
+  }
+
+  const { data: medicalUploadData, error: medicalUploadError } = await queryCompanyRow(
+    companySettingsMedicalUploadSelect,
+  )
+
+  if (!medicalUploadError && medicalUploadData) {
+    merged = { ...merged, ...(medicalUploadData as unknown as Record<string, unknown>) }
+  } else if (medicalUploadError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      { select: companySettingsMedicalUploadSelect, optional: 'allow_medical_document_uploads' },
+      medicalUploadError,
     )
   }
 

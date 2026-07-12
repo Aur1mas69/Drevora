@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import type { Document, DocumentAppliesTo, DocumentFormSubmitPayload } from '@/lib/documentTypes'
+import { isMedicalDocumentType } from '@/lib/documentTypes'
 import {
   buildEmptyDocumentFormValues,
   documentFormValuesToInput,
@@ -25,6 +26,7 @@ type DocumentFormModalProps = {
   defaultAppliesTo?: DocumentAppliesTo
   defaultWorkerId?: string
   defaultVehicleId?: string
+  allowMedicalDocumentUploads?: boolean
   isSaving?: boolean
   onClose: () => void
   onSubmit: (payload: DocumentFormSubmitPayload) => Promise<void>
@@ -44,6 +46,7 @@ export function DocumentFormModal({
   defaultAppliesTo = 'company',
   defaultWorkerId,
   defaultVehicleId,
+  allowMedicalDocumentUploads = false,
   isSaving = false,
   onClose,
   onSubmit,
@@ -55,10 +58,16 @@ export function DocumentFormModal({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const typeOptions = useMemo(
-    () => getDocumentTypesForAppliesTo(values.appliesTo),
-    [values.appliesTo],
-  )
+  const isMedicalType = isMedicalDocumentType(values.documentType)
+  const canChangeMedicalFile = !isMedicalType || allowMedicalDocumentUploads
+
+  const typeOptions = useMemo(() => {
+    return getDocumentTypesForAppliesTo(values.appliesTo, {
+      allowMedicalDocumentUploads:
+        allowMedicalDocumentUploads ||
+        (mode === 'edit' && isMedicalDocumentType(record?.documentType)),
+    })
+  }, [allowMedicalDocumentUploads, mode, record?.documentType, values.appliesTo])
 
   useEffect(() => {
     if (!isOpen) return
@@ -66,8 +75,14 @@ export function DocumentFormModal({
       setValues(documentToFormValues(record))
     } else {
       const base = buildEmptyDocumentFormValues(defaultAppliesTo)
+      const types = getDocumentTypesForAppliesTo(defaultAppliesTo, {
+        allowMedicalDocumentUploads,
+      })
       setValues({
         ...base,
+        documentType: types.includes(base.documentType as never)
+          ? base.documentType
+          : (types[0] ?? 'Other'),
         workerId: defaultWorkerId ?? '',
         vehicleId: defaultVehicleId ?? '',
       })
@@ -76,10 +91,21 @@ export function DocumentFormModal({
     setRemoveFile(false)
     setErrors({})
     setSubmitError(null)
-  }, [defaultAppliesTo, defaultVehicleId, defaultWorkerId, record, isOpen])
+  }, [
+    allowMedicalDocumentUploads,
+    defaultAppliesTo,
+    defaultVehicleId,
+    defaultWorkerId,
+    record,
+    isOpen,
+  ])
 
   function updateAppliesTo(appliesTo: DocumentAppliesTo) {
-    const types = getDocumentTypesForAppliesTo(appliesTo)
+    const types = getDocumentTypesForAppliesTo(appliesTo, {
+      allowMedicalDocumentUploads:
+        allowMedicalDocumentUploads ||
+        (mode === 'edit' && isMedicalDocumentType(record?.documentType)),
+    })
     setValues((current) => ({
       ...current,
       appliesTo,
@@ -96,6 +122,15 @@ export function DocumentFormModal({
     const nextErrors = validateDocumentForm(values)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
+
+    if (isMedicalDocumentType(values.documentType) && !allowMedicalDocumentUploads) {
+      if (mode === 'create' || selectedFile || removeFile) {
+        setSubmitError(
+          'Medical document uploads are disabled. Enable “Allow medical document uploads” in Settings → Documents.',
+        )
+        return
+      }
+    }
 
     setSubmitError(null)
     try {
@@ -278,17 +313,34 @@ export function DocumentFormModal({
             <div className="sm:col-span-2">
               <span className="text-sm font-semibold text-[#113C69]">Attachment</span>
               <div className="mt-1.5">
-                <DocumentFileField
-                  existingPath={record?.filePath ?? record?.fileUrl ?? null}
-                  selectedFile={selectedFile}
-                  removeFile={removeFile}
-                  onSelectFile={setSelectedFile}
-                  onRemoveExisting={() => {
-                    setRemoveFile(true)
-                    setSelectedFile(null)
-                  }}
-                  onClearSelection={() => setSelectedFile(null)}
-                />
+                {isMedicalType && !canChangeMedicalFile ? (
+                  <div className="rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] px-4 py-3 text-sm text-[#5499BF]">
+                    {record?.filePath || record?.fileUrl ? (
+                      <p>
+                        A medical file is already stored. New uploads are disabled until medical
+                        document uploads are enabled in Settings → Documents.
+                      </p>
+                    ) : (
+                      <p>
+                        Medical document uploads are disabled. You can still keep an optional expiry
+                        date. Enable uploads in Settings → Documents when your company has a lawful
+                        reason to retain copies.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <DocumentFileField
+                    existingPath={record?.filePath ?? record?.fileUrl ?? null}
+                    selectedFile={selectedFile}
+                    removeFile={removeFile}
+                    onSelectFile={setSelectedFile}
+                    onRemoveExisting={() => {
+                      setRemoveFile(true)
+                      setSelectedFile(null)
+                    }}
+                    onClearSelection={() => setSelectedFile(null)}
+                  />
+                )}
               </div>
             </div>
 

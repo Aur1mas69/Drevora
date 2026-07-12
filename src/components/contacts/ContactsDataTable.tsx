@@ -7,6 +7,10 @@ import {
 } from '@/components/ui/RowActionsMenu'
 import type { Contact } from '@/lib/contactTypes'
 import {
+  getWorkerProfileId,
+  isWorkerDirectoryContact,
+} from '@/lib/contactTypes'
+import {
   formatContactLocation,
   getCategoryBadgeClass,
   getCategoryLabel,
@@ -15,7 +19,8 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/contactUtils'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { adminTableEntityName } from '@/lib/adminUiStyles'
+import { Eye, Link2Off, Pencil, Trash2, UserRound } from 'lucide-react'
 import {
   contactMobileCardClass,
   contactTableHeadClass,
@@ -28,22 +33,59 @@ type ContactsDataTableProps = {
   onView: (contact: Contact) => void
   onEdit: (contact: Contact) => void
   onDelete: (contact: Contact) => void
+  onUnlinkWorker: (contact: Contact) => void
+  onViewWorker: (contact: Contact) => void
+  onEditWorker: (contact: Contact) => void
 }
 
 function ContactActionsMenu({
+  contact,
   onView,
   onEdit,
   onDelete,
+  onUnlinkWorker,
+  onViewWorker,
+  onEditWorker,
 }: {
+  contact: Contact
   onView: () => void
   onEdit: () => void
   onDelete: () => void
+  onUnlinkWorker: () => void
+  onViewWorker: () => void
+  onEditWorker: () => void
 }) {
-  const actions: RowAction[] = [
+  const actions: RowAction[] = []
+
+  if (isWorkerDirectoryContact(contact)) {
+    actions.push(
+      { id: 'view-worker', label: 'View Worker', icon: UserRound, onClick: onViewWorker },
+      { id: 'edit-worker', label: 'Edit Worker', icon: Pencil, onClick: onEditWorker },
+    )
+    return <RowActionsMenu actions={actions} align="end" />
+  }
+
+  actions.push(
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
     { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
-    { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
-  ]
+  )
+
+  if (contact.workerId) {
+    actions.push({
+      id: 'unlink-worker',
+      label: 'Unassign Worker',
+      icon: Link2Off,
+      onClick: onUnlinkWorker,
+    })
+  }
+
+  actions.push({
+    id: 'delete',
+    label: 'Delete Contact',
+    icon: Trash2,
+    tone: 'danger',
+    onClick: onDelete,
+  })
 
   return <RowActionsMenu actions={actions} align="end" />
 }
@@ -73,6 +115,9 @@ export function ContactsDataTable({
   onView,
   onEdit,
   onDelete,
+  onUnlinkWorker,
+  onViewWorker,
+  onEditWorker,
 }: ContactsDataTableProps) {
   return (
     <>
@@ -94,12 +139,16 @@ export function ContactsDataTable({
             <tbody>
               {contacts.map((contact) => {
                 const secondary = getContactSecondaryLine(contact)
+                const workerCode = contact.workerCode?.trim()
                 return (
                   <tr key={contact.id} className={contactTableRowClass}>
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-[#113C69]">{getContactPrimaryName(contact)}</p>
+                      <p className={adminTableEntityName}>{getContactPrimaryName(contact)}</p>
                       {secondary ? (
                         <p className="mt-0.5 text-xs text-[#5499BF]">{secondary}</p>
+                      ) : null}
+                      {workerCode ? (
+                        <p className="mt-0.5 text-xs font-medium text-[#5499BF]">ID {workerCode}</p>
                       ) : null}
                     </td>
                     <td className="px-4 py-3">
@@ -129,9 +178,13 @@ export function ContactsDataTable({
                     </td>
                     <TableActionsCell>
                       <ContactActionsMenu
+                        contact={contact}
                         onView={() => onView(contact)}
                         onEdit={() => onEdit(contact)}
                         onDelete={() => onDelete(contact)}
+                        onUnlinkWorker={() => onUnlinkWorker(contact)}
+                        onViewWorker={() => onViewWorker(contact)}
+                        onEditWorker={() => onEditWorker(contact)}
                       />
                     </TableActionsCell>
                   </tr>
@@ -147,7 +200,7 @@ export function ContactsDataTable({
           <article key={contact.id} className={contactMobileCardClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold text-[#113C69]">{getContactPrimaryName(contact)}</p>
+                <p className={adminTableEntityName}>{getContactPrimaryName(contact)}</p>
                 {getContactSecondaryLine(contact) ? (
                   <p className="mt-0.5 text-xs text-[#5499BF]">
                     {getContactSecondaryLine(contact)}
@@ -159,9 +212,13 @@ export function ContactsDataTable({
                 </div>
               </div>
               <ContactActionsMenu
+                contact={contact}
                 onView={() => onView(contact)}
                 onEdit={() => onEdit(contact)}
                 onDelete={() => onDelete(contact)}
+                onUnlinkWorker={() => onUnlinkWorker(contact)}
+                onViewWorker={() => onViewWorker(contact)}
+                onEditWorker={() => onEditWorker(contact)}
               />
             </div>
 
@@ -187,10 +244,16 @@ export function ContactsDataTable({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onView(contact)}
+              onClick={() => {
+                if (isWorkerDirectoryContact(contact) && getWorkerProfileId(contact)) {
+                  onViewWorker(contact)
+                  return
+                }
+                onView(contact)
+              }}
               className="mt-3 h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
             >
-              View details
+              {isWorkerDirectoryContact(contact) ? 'View Worker' : 'View details'}
             </Button>
           </article>
         ))}

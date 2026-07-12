@@ -5,7 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Mail,
@@ -229,12 +229,29 @@ function DriverNotFound() {
   )
 }
 
+function parseDriverDetailsTab(value: string | null): DriverDetailsTab | null {
+  if (!value) return null
+  const normalised = value.trim().toLowerCase()
+  if (normalised === 'overview') return 'Overview'
+  if (normalised === 'timesheets') return 'Timesheets'
+  if (normalised === 'holidays') return 'Holidays'
+  if (normalised === 'vehicle checks' || normalised === 'vehicle-checks' || normalised === 'checks') {
+    return 'Vehicle Checks'
+  }
+  if (normalised === 'documents') return 'Documents'
+  if (normalised === 'consumables') return 'Consumables'
+  return null
+}
+
 function DriverDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [driver, setDriver] = useState<Driver | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [activeTab, setActiveTab] = useState<DriverDetailsTab>('Overview')
+  const [activeTab, setActiveTab] = useState<DriverDetailsTab>(() => {
+    return parseDriverDetailsTab(searchParams.get('tab')) ?? 'Overview'
+  })
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [form, setForm] = useState<DriverForm | null>(null)
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
@@ -274,6 +291,11 @@ function DriverDetailsPage() {
   useEffect(() => {
     void loadDriver()
   }, [loadDriver])
+
+  useEffect(() => {
+    const tabFromQuery = parseDriverDetailsTab(searchParams.get('tab'))
+    if (tabFromQuery) setActiveTab(tabFromQuery)
+  }, [searchParams])
 
   useEffect(() => {
     void vehiclesService.fetchVehicles().then(setVehicles).catch(() => {

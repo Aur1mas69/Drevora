@@ -2,11 +2,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type {
   DocumentAppliesToFilter,
-  DocumentsCentreTab,
   DocumentStatusFilter,
   DocumentTypeFilter,
 } from '@/lib/documentTypes'
-import { DOCUMENTS_CENTRE_TABS } from '@/lib/documentTypes'
 import { getDocumentTypesForAppliesTo } from '@/lib/documentUtils'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
@@ -16,14 +14,10 @@ import {
   documentPrimaryButtonClass,
   documentSearchInputClass,
   documentSelectClass,
-  documentTabActiveClass,
-  documentTabInactiveClass,
   documentToolbarClass,
 } from './documentUiStyles'
 
 type DocumentsToolbarProps = {
-  activeTab: DocumentsCentreTab
-  onTabChange: (tab: DocumentsCentreTab) => void
   searchTerm: string
   onSearchTermChange: (value: string) => void
   typeFilter: DocumentTypeFilter
@@ -46,8 +40,6 @@ const filterPanelClass =
   'absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(100vw-2rem,22rem)] rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
 
 export function DocumentsToolbar({
-  activeTab,
-  onTabChange,
   searchTerm,
   onSearchTermChange,
   typeFilter,
@@ -105,53 +97,37 @@ export function DocumentsToolbar({
   )
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-1.5">
-        {DOCUMENTS_CENTRE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm ${
-              activeTab === tab.id ? documentTabActiveClass : documentTabInactiveClass
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+    <div className={documentToolbarClass}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
+            <Input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => onSearchTermChange(event.target.value)}
+              placeholder="Search documents..."
+              className={documentSearchInputClass}
+              aria-label="Search documents"
+            />
+          </div>
 
-      <div className={documentToolbarClass}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1 sm:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
-              <Input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => onSearchTermChange(event.target.value)}
-                placeholder="Search documents..."
-                className={documentSearchInputClass}
-                aria-label="Search documents"
-              />
-            </div>
-
-            <div ref={filtersRef} className="relative shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsFiltersOpen((current) => !current)}
-                className="h-10 rounded-[14px] border-[#C5DFFB]/80 bg-white px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
-                aria-expanded={isFiltersOpen}
-              >
-                <Filter className="mr-1.5 size-4" />
-                Filters
-                {activeFilterCount > 0 ? (
-                  <span className="ml-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[#218EE7] text-[10px] font-bold text-white">
-                    {activeFilterCount}
-                  </span>
-                ) : null}
-              </Button>
+          <div ref={filtersRef} className="relative shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsFiltersOpen((current) => !current)}
+              className="h-10 rounded-[14px] border-[#C5DFFB]/80 bg-white px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+              aria-expanded={isFiltersOpen}
+            >
+              <Filter className="mr-1.5 size-4" />
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="ml-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[#218EE7] text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
 
               {isFiltersOpen ? (
                 <div className={filterPanelClass}>
@@ -261,6 +237,5 @@ export function DocumentsToolbar({
           </Button>
         </div>
       </div>
-    </div>
   )
 }

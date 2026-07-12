@@ -11,6 +11,7 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
+import { adminTableEntityName } from '@/lib/adminUiStyles'
 import { Check, Eye, Pencil, Trash2, X } from 'lucide-react'
 import {
   holidayMobileCardClass,
@@ -118,7 +119,7 @@ function HolidayRequestMobileCard({
     <article className={holidayMobileCardClass}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-[#113C69]">{request.workerName}</p>
+          <p className={`truncate ${adminTableEntityName}`}>{request.workerName}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {request.workerEmploymentType ? (
               <span className="rounded-full bg-[#EFF7FF] px-2 py-0.5 text-[10px] font-bold text-[#0B68BE] ring-1 ring-[#D3E9FC]">
@@ -214,8 +215,10 @@ export function HolidayRequestsDataTable({
             <tbody>
               {requests.map((request) => (
                 <tr key={request.id} className={`${holidayTableRowClass} ${cellText}`}>
-                  <td className={`px-4 ${rowPadding} font-bold text-[#113C69]`}>
-                    {request.workerName}
+                  <td className={`max-w-[200px] px-4 ${rowPadding}`}>
+                    <span className={`block truncate ${adminTableEntityName}`}>
+                      {request.workerName}
+                    </span>
                   </td>
                   <td className={`px-4 ${rowPadding} text-[#5499BF]`}>
                     {request.workerEmploymentType ?? 'Not set'}

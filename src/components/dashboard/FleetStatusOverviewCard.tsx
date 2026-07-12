@@ -1,10 +1,11 @@
 import type { DashboardFleetStatus } from '@/services/dashboardService'
 import {
   dashboardOverviewCardClass,
+  dashboardOverviewInnerRowClass,
 } from '@/components/dashboard/dashboardOverviewCardStyles'
+import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle, Truck, Wrench } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 type FleetStatusRow = {
   key: string
@@ -52,7 +53,7 @@ function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
   const Icon = row.icon
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-[#CFE3F5] bg-[#F8FBFF]/80 px-4 py-3 transition-colors hover:bg-[#DCEEFF]/70">
+    <li className={`flex items-center justify-between gap-3 ${dashboardOverviewInnerRowClass}`}>
       <div className="flex min-w-0 items-center gap-3">
         <div
           className={`flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ${row.iconWrapClass}`}
@@ -79,18 +80,14 @@ export function FleetStatusOverviewCard({
   const rows = buildFleetStatusRows(fleetStatus)
 
   return (
-    <section className={`${dashboardOverviewCardClass} p-5`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#163A63]">Fleet Status</h3>
-          <p className="mt-0.5 text-xs text-[#5D7C9D]">Current fleet availability</p>
-        </div>
-        <Link to="/vehicles" className="text-xs font-semibold text-[#3B82F6] hover:underline">
-          View
-        </Link>
-      </div>
+    <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
+      <DashboardOverviewCardHeader
+        title="Fleet Status"
+        subtitle="Current fleet availability"
+        actionTo="/vehicles"
+      />
 
-      <ul className="space-y-2.5">
+      <ul className="mt-auto space-y-2.5">
         {rows.map((row) => (
           <FleetStatusRowItem key={row.key} row={row} />
         ))}

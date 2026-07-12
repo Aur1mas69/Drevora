@@ -3,19 +3,22 @@ import {
   Archive,
   BarChart3,
   Bell,
-  BookUser,
   Building2,
   CalendarDays,
+  CircleHelp,
   ClipboardCheck,
+  Clock3,
+  ContactRound,
   Download,
+  Droplets,
   FileBarChart,
-  FileText,
-  HelpCircle,
+  FileWarning,
+  Files,
   Key,
   LayoutDashboard,
-  Package,
   Plug,
   Rocket,
+  Scale,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -23,6 +26,7 @@ import {
   Truck,
   UserCog,
   Users,
+  UsersRound,
 } from 'lucide-react'
 
 export type AdminNavItem = {
@@ -39,26 +43,28 @@ export type AdminNavItem = {
 /** Daily-operation modules shown above the sidebar divider. */
 export const adminMainNavigationItems: AdminNavItem[] = [
   { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },
-  { label: 'Workers', to: '/drivers', icon: Users },
+  { label: 'Workers', to: '/drivers', icon: UsersRound },
   { label: 'Vehicles', to: '/vehicles', icon: Truck },
-  { label: 'Timesheets', to: '/admin/timesheets', icon: ClipboardCheck },
+  { label: 'Timesheets', to: '/admin/timesheets', icon: Clock3 },
   { label: 'Holiday Requests', to: '/admin/holidays', icon: CalendarDays },
-  { label: 'Vehicle Checks', to: '/admin/vehicle-checks', icon: ShieldCheck },
-  { label: 'Driver Reports', to: '/admin/driver-reports', icon: FileBarChart },
+  { label: 'Vehicle Checks', to: '/admin/vehicle-checks', icon: ClipboardCheck },
+  { label: 'Consumables', to: '/consumables', icon: Droplets },
+  { label: 'Driver Reports', to: '/admin/driver-reports', icon: FileWarning },
   {
     label: 'Documents',
     to: '/documents',
-    icon: FileText,
+    icon: Files,
     matchPaths: ['/documents', '/compliance'],
   },
-  { label: 'Contacts', to: '/contacts', icon: BookUser },
-  { label: 'Consumables', to: '/consumables', icon: Package },
+  { label: 'Contacts', to: '/contacts', icon: ContactRound },
 ]
 
 /** Settings and support modules shown below the sidebar divider. */
 export const adminSecondaryNavigationItems: AdminNavItem[] = [
   { label: 'Settings', to: '/admin/settings', icon: Settings },
-  { label: 'FAQ / Help', to: '/admin/faq', icon: HelpCircle },
+  { label: 'Terms & Conditions', to: '/terms', icon: Scale },
+  { label: 'Privacy Policy', to: '/privacy', icon: ShieldCheck },
+  { label: 'FAQ / Help', to: '/admin/faq', icon: CircleHelp },
 ]
 
 /** Full sidebar navigation in display order (main, then secondary). */
@@ -101,6 +107,8 @@ export const activeAdminRoutes = new Set([
   '/contacts',
   '/consumables',
   '/admin/settings',
+  '/terms',
+  '/privacy',
   '/admin/faq',
 ])
 
@@ -113,9 +121,6 @@ export function isComingSoonRoute(path: string): boolean {
   if (activeAdminRoutes.has(path)) return false
   if (path.startsWith('/drivers/') || path.startsWith('/vehicles/')) return false
   if (path.startsWith('/compliance/workers/') || path.startsWith('/compliance/vehicles/')) {
-    return false
-  }
-  if (path.startsWith('/documents/workers/') || path.startsWith('/documents/vehicles/')) {
     return false
   }
   return comingSoonAdminRoutes.has(path)

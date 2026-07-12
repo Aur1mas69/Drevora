@@ -5,11 +5,12 @@ import type {
   ConsumableSummaryPeriod,
   ConsumableType,
   ConsumableTypeCardSummary,
+  ConsumableTypeFilter,
   ConsumableTypeQuantityLine,
   ConsumableTypeVehicleBreakdown,
   ConsumableUnit,
 } from '@/lib/consumableTypes'
-import { CONSUMABLE_UNITS, normalizeConsumableTypeKey } from '@/lib/consumableTypes'
+import { CONSUMABLE_TYPES, CONSUMABLE_UNITS, normalizeConsumableTypeKey } from '@/lib/consumableTypes'
 import {
   resolveConsumableDisplayCost,
   type ConsumableDefaultPricesMap,
@@ -457,6 +458,262 @@ export function getConsumableTypeAccent(type: ConsumableType): {
         cardBg: 'from-[#F8FBFF] to-[#EEF6FF]',
       }
   }
+}
+
+/** Hex colours for Recharts (aligned with type accent bars). */
+export function getConsumableTypeChartColor(type: ConsumableType): string {
+  switch (type) {
+    case 'AdBlue':
+      return '#218EE7'
+    case 'Diesel':
+      return '#475569'
+    case 'Petrol':
+      return '#f97316'
+    case 'Engine Oil':
+    case 'Hydraulic Oil':
+      return '#f59e0b'
+    case 'Coolant':
+      return '#f87171'
+    case 'Screenwash':
+      return '#06b6d4'
+    case 'Grease':
+      return '#eab308'
+    case 'Admixture':
+    case 'Concrete Additive':
+      return '#a855f7'
+    default:
+      return '#5499BF'
+  }
+}
+
+export type UsageByTypeChartRow = {
+  consumableType: ConsumableType
+  quantity: number
+  unit: ConsumableUnit
+  label: string
+  color: string
+}
+
+function resolveChartUnit(
+  records: ConsumableSummaryRecord[],
+  typeFilter: ConsumableTypeFilter,
+): ConsumableUnit | null {
+  const scoped =
+    typeFilter === 'all'
+      ? records
+      : records.filter((record) => record.consumableType === typeFilter)
+
+  if (scoped.length === 0) return null
+
+  if (typeFilter === 'all') {
+    const hasLitres = scoped.some((record) => quantityToLitres(record.quantity, record.unit) > 0)
+    return hasLitres ? 'L' : null
+  }
+
+  const byUnit = new Map<ConsumableUnit, number>()
+  for (const record of scoped) {
+    byUnit.set(record.unit, (byUnit.get(record.unit) ?? 0) + record.quantity)
+  }
+
+  const ranked = [...byUnit.entries()].sort((left, right) => right[1] - left[1])
+  return ranked[0]?.[0] ?? null
+}
+
+function quantityForChartUnit(
+  record: ConsumableSummaryRecord,
+  chartUnit: ConsumableUnit,
+): number {
+  if (chartUnit === 'L') return quantityToLitres(record.quantity, record.unit)
+  return record.unit === chartUnit ? record.quantity : 0
+}
+
+export function computeUsageByTypeChartData(
+  records: ConsumableSummaryRecord[],
+  typeFilter: ConsumableTypeFilter = 'all',
+): { unit: ConsumableUnit; rows: UsageByTypeChartRow[] } | null {
+  const unit = resolveChartUnit(records, typeFilter)
+  if (!unit) return null
+
+  const scoped =
+    typeFilter === 'all'
+      ? records
+      : records.filter((record) => record.consumableType === typeFilter)
+
+  const byType = new Map<ConsumableType, number>()
+  for (const record of scoped) {
+    const quantity = quantityForChartUnit(record, unit)
+    if (quantity <= 0) continue
+    byType.set(record.consumableType, (byType.get(record.consumableType) ?? 0) + quantity)
+  }
+
+  const rows = [...byType.entries()]
+    .map(([consumableType, quantity]) => ({
+      consumableType,
+      quantity,
+      unit,
+      label: `${consumableType} — ${formatSummaryQuantity(quantity)} ${unit}`,
+      color: getConsumableTypeChartColor(consumableType),
+    }))
+    .sort((left, right) => right.quantity - left.quantity)
+
+  if (rows.length === 0) return null
+  return { unit, rows }
+}
+
+export type CostByTypeChartRow = {
+  consumableType: ConsumableType
+  cost: number
+  percentage: number
+  color: string
+}
+
+export function computeCostByTypeChartData(
+  records: ConsumableSummaryRecord[],
+): { totalCost: number; rows: CostByTypeChartRow[] } | null {
+  const byType = new Map<ConsumableType, number>()
+
+  for (const record of records) {
+    if (record.cost === null || record.cost === undefined || Number.isNaN(record.cost)) continue
+    byType.set(record.consumableType, (byType.get(record.consumableType) ?? 0) + record.cost)
+  }
+
+  const totalCost = [...byType.values()].reduce((sum, value) => sum + value, 0)
+  if (totalCost <= 0) return null
+
+  const rows = [...byType.entries()]
+    .map(([consumableType, cost]) => ({
+      consumableType,
+      cost,
+      percentage: (cost / totalCost) * 100,
+      color: getConsumableTypeChartColor(consumableType),
+    }))
+    .sort((left, right) => right.cost - left.cost)
+
+  return { totalCost, rows }
+}
+
+export type UsageTrendPoint = {
+  key: string
+  label: string
+  quantity: number
+  unit: ConsumableUnit
+  consumableType: ConsumableType
+}
+
+type TrendBucket = 'day' | 'week' | 'month'
+
+function resolveTrendBucket(
+  period: ConsumableSummaryPeriod,
+  customFrom?: string,
+  customTo?: string,
+): TrendBucket {
+  if (period === 'this_week') return 'day'
+  if (period === 'this_month') return 'day'
+  if (period === 'this_year' || period === 'all_time') return 'month'
+
+  if (customFrom && customTo) {
+    const from = new Date(`${customFrom}T00:00:00`)
+    const to = new Date(`${customTo}T00:00:00`)
+    const days = Math.max(0, Math.round((to.getTime() - from.getTime()) / 86_400_000))
+    if (days <= 45) return 'day'
+    if (days <= 180) return 'week'
+    return 'month'
+  }
+
+  return 'day'
+}
+
+function trendBucketKey(entryDate: string, bucket: TrendBucket): string {
+  if (bucket === 'day') return entryDate.slice(0, 10)
+  if (bucket === 'month') return entryDate.slice(0, 7)
+
+  const date = new Date(`${entryDate.slice(0, 10)}T00:00:00`)
+  return toIsoDate(startOfWeekMonday(date))
+}
+
+function formatTrendLabel(key: string, bucket: TrendBucket): string {
+  if (bucket === 'month') {
+    const [year, month] = key.split('-').map(Number)
+    if (!year || !month) return key
+    return new Date(year, month - 1, 1).toLocaleDateString('en-GB', {
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
+  if (bucket === 'week') {
+    const date = new Date(`${key}T00:00:00`)
+    return `Week of ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+  }
+
+  const date = new Date(`${key}T00:00:00`)
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+/** Prefer AdBlue when present in the filtered dataset; otherwise first CONSUMABLE_TYPES hit. */
+export function resolveDefaultTrendConsumableType(
+  records: ConsumableSummaryRecord[],
+): ConsumableType {
+  const typesInData = new Set(records.map((record) => record.consumableType))
+  if (typesInData.has('AdBlue')) return 'AdBlue'
+  for (const type of CONSUMABLE_TYPES) {
+    if (typesInData.has(type)) return type
+  }
+  return 'AdBlue'
+}
+
+function resolveUnitForConsumableType(
+  records: ConsumableSummaryRecord[],
+  consumableType: ConsumableType,
+): ConsumableUnit {
+  const scoped = records.filter((record) => record.consumableType === consumableType)
+  if (scoped.length === 0) return getDefaultUnitForType(consumableType)
+
+  const byUnit = new Map<ConsumableUnit, number>()
+  for (const record of scoped) {
+    byUnit.set(record.unit, (byUnit.get(record.unit) ?? 0) + record.quantity)
+  }
+
+  const ranked = [...byUnit.entries()].sort((left, right) => right[1] - left[1])
+  return ranked[0]?.[0] ?? getDefaultUnitForType(consumableType)
+}
+
+/**
+ * Single-type usage trend. Never combines consumable types or incompatible units.
+ */
+export function computeUsageOverTimeChartData(
+  records: ConsumableSummaryRecord[],
+  period: ConsumableSummaryPeriod,
+  consumableType: ConsumableType,
+  customFrom?: string,
+  customTo?: string,
+): { unit: ConsumableUnit; consumableType: ConsumableType; points: UsageTrendPoint[] } | null {
+  const scoped = records.filter((record) => record.consumableType === consumableType)
+  if (scoped.length === 0) return null
+
+  const unit = resolveUnitForConsumableType(scoped, consumableType)
+  const bucket = resolveTrendBucket(period, customFrom, customTo)
+  const totals = new Map<string, number>()
+
+  for (const record of scoped) {
+    const quantity = quantityForChartUnit(record, unit)
+    if (quantity <= 0) continue
+    const key = trendBucketKey(record.entryDate, bucket)
+    totals.set(key, (totals.get(key) ?? 0) + quantity)
+  }
+
+  const points = [...totals.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, quantity]) => ({
+      key,
+      label: formatTrendLabel(key, bucket),
+      quantity,
+      unit,
+      consumableType,
+    }))
+
+  if (points.length === 0) return null
+  return { unit, consumableType, points }
 }
 
 function buildQuantityLines(rows: ConsumableSummaryRecord[]): ConsumableTypeQuantityLine[] {

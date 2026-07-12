@@ -23,16 +23,27 @@ import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
 import { WorkerComplianceBadge } from '@/components/workers/WorkerComplianceBadge'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
+import { WorkersSummaryCards } from '@/components/workers/WorkersSummaryCards'
+import {
+  DEFAULT_WORKER_PAGE_SIZE,
+  WorkersPagination,
+} from '@/components/workers/WorkersPagination'
+import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import {
   adminFilterChip,
-  adminGlassToolbar,
   adminHeadingLg,
   adminPanel,
   adminSearchInputLg,
   adminSelect,
   adminSkeletonPulse,
+  adminTableEntityName,
   adminTextMuted,
 } from '@/lib/adminUiStyles'
+import {
+  computeWorkerRoleSummaryStats,
+  workerMatchesRoleQuickFilter,
+  type WorkerRoleQuickFilter,
+} from '@/lib/workerRoleSummary'
 import { getWorkerDefaultVehicleLabel } from '@/lib/workerProfileUtils'
 import {
   driversService,
@@ -48,6 +59,7 @@ import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type StatusFilter = DriverStatus | 'All'
+type RoleFilter = DriverRole | 'All'
 type CreateDriverForm = CreateDriverInput
 type DriverFormErrors = Partial<Record<keyof CreateDriverForm, string>>
 
@@ -220,6 +232,8 @@ function DriversToolbar({
   onSearchTermChange,
   statusFilter,
   onStatusFilterChange,
+  roleFilter,
+  onRoleFilterChange,
   companyFilter,
   onCompanyFilterChange,
   companyOptions,
@@ -231,6 +245,8 @@ function DriversToolbar({
   onSearchTermChange: (value: string) => void
   statusFilter: StatusFilter
   onStatusFilterChange: (value: StatusFilter) => void
+  roleFilter: RoleFilter
+  onRoleFilterChange: (value: RoleFilter) => void
   companyFilter: string
   onCompanyFilterChange: (value: string) => void
   companyOptions: string[]
@@ -258,6 +274,7 @@ function DriversToolbar({
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search workers"
             className={workersSearchInputClass}
+            aria-label="Search workers"
           />
         </div>
 
@@ -267,6 +284,7 @@ function DriversToolbar({
             variant="outline"
             onClick={onFilterToggle}
             className={`w-full sm:w-auto ${workersFilterButtonClass}`}
+            aria-expanded={isFilterOpen}
           >
             <Filter className="size-4" />
             Filter
@@ -285,11 +303,33 @@ function DriversToolbar({
                       onStatusFilterChange(event.target.value as StatusFilter)
                     }
                     className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                    aria-label="Filter by status"
                   >
                     <option value="All">All statuses</option>
                     {driverStatuses.map((status) => (
                       <option key={status} value={status}>
                         {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
+                    Role
+                  </span>
+                  <select
+                    value={roleFilter}
+                    onChange={(event) =>
+                      onRoleFilterChange(event.target.value as RoleFilter)
+                    }
+                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                    aria-label="Filter by role"
+                  >
+                    <option value="All">All roles</option>
+                    {workerRoles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
                       </option>
                     ))}
                   </select>
@@ -303,6 +343,7 @@ function DriversToolbar({
                     value={companyFilter}
                     onChange={(event) => onCompanyFilterChange(event.target.value)}
                     className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                    aria-label="Filter by company"
                   >
                     <option value="All">All companies</option>
                     {companyOptions.map((company) => (
@@ -357,10 +398,20 @@ function DriverRowActions({
 
 function DriversTable({
   drivers,
+  page,
+  pageSize,
+  totalCount,
+  onPageChange,
+  onPageSizeChange,
   onEditDriver,
   onDeleteDriver,
 }: {
   drivers: Driver[]
+  page: number
+  pageSize: number
+  totalCount: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   onEditDriver: (driver: Driver) => void
   onDeleteDriver: (driver: Driver) => void
 }) {
@@ -418,7 +469,7 @@ function DriversTable({
                         driver={driver}
                         className="block max-w-full rounded-sm no-underline transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
                       >
-                        <p className="truncate text-sm font-bold tracking-[-0.01em] text-[#113C69] transition-colors duration-200 hover:text-[#0B68BE] dark:text-slate-100 dark:hover:text-blue-300">
+                        <p className={`truncate ${adminTableEntityName} transition-colors duration-200 hover:text-[#0B68BE] dark:hover:text-blue-300`}>
                           {getDriverName(driver)}
                         </p>
                       </WorkerProfileLink>
@@ -455,6 +506,13 @@ function DriversTable({
             </tbody>
           </table>
         </div>
+        <WorkersPagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       </CardContent>
     </Card>
   )
@@ -597,8 +655,12 @@ function DriversPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('All')
+  const [roleQuickFilter, setRoleQuickFilter] = useState<WorkerRoleQuickFilter | null>(null)
   const [companyFilter, setCompanyFilter] = useState('All')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [tablePage, setTablePage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_WORKER_PAGE_SIZE)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
   const [deletingDriver, setDeletingDriver] = useState<Driver | null>(null)
@@ -620,7 +682,14 @@ function DriversPage() {
 
     try {
       const result = await driversService.fetchDrivers()
-      setDrivers(result)
+      const companyName = getGlobalCompanySettings()?.name?.trim()
+      const scoped = companyName
+        ? result.filter((driver) => driver.company?.trim() === companyName)
+        : result
+
+      // Deduplicate by id in case of overlapping query fallbacks
+      const uniqueById = new Map(scoped.map((driver) => [driver.id, driver]))
+      setDrivers([...uniqueById.values()])
     } catch (error) {
       setLoadError('Please check the workers data and try again.')
     } finally {
@@ -667,6 +736,11 @@ function DriversPage() {
     [drivers],
   )
 
+  const roleSummaryStats = useMemo(
+    () => computeWorkerRoleSummaryStats(drivers),
+    [drivers],
+  )
+
   const filteredDrivers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
@@ -687,10 +761,33 @@ function DriversPage() {
         statusFilter === 'All' || driver.status === statusFilter
       const matchesCompany =
         companyFilter === 'All' || driver.company === companyFilter
+      const matchesRoleFilter =
+        roleFilter === 'All' || driver.role === roleFilter
+      const matchesRoleQuickFilter = workerMatchesRoleQuickFilter(
+        driver.role,
+        roleQuickFilter,
+      )
 
-      return matchesSearch && matchesStatus && matchesCompany
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesCompany &&
+        matchesRoleFilter &&
+        matchesRoleQuickFilter
+      )
     })
-  }, [companyFilter, drivers, searchTerm, statusFilter])
+  }, [companyFilter, drivers, roleFilter, roleQuickFilter, searchTerm, statusFilter])
+
+  useEffect(() => {
+    setTablePage(1)
+  }, [searchTerm, statusFilter, roleFilter, roleQuickFilter, companyFilter, pageSize])
+
+  const paginatedDrivers = useMemo(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / pageSize))
+    const safePage = Math.min(tablePage, totalPages)
+    const start = (safePage - 1) * pageSize
+    return filteredDrivers.slice(start, start + pageSize)
+  }, [filteredDrivers, pageSize, tablePage])
 
   function handleStatusFilterChange(value: StatusFilter) {
     setStatusFilter(value)
@@ -706,6 +803,14 @@ function DriversPage() {
       },
       { replace: true },
     )
+  }
+
+  function handleRoleQuickFilterSelect(key: WorkerRoleQuickFilter) {
+    if (key === 'total') {
+      setRoleQuickFilter(null)
+      return
+    }
+    setRoleQuickFilter((current) => (current === key ? null : key))
   }
 
   function clearStatusFilter() {
@@ -860,24 +965,33 @@ function DriversPage() {
   return (
     <AdminLayout>
       <section className="min-w-0 space-y-5">
-        <div className={`flex flex-col gap-4 ${adminGlassToolbar}`}>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6] dark:text-blue-400">
-              Worker Management
-            </p>
-            <h1 className={`text-3xl font-semibold tracking-[-0.045em] sm:text-[2.4rem] ${adminHeadingLg}`}>
-              Workers
-            </h1>
-            <p className={`max-w-2xl text-sm font-medium leading-6 ${adminTextMuted}`}>
-              Manage workers, roles, licences and compliance.
-            </p>
-          </div>
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
+            Worker Management
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#113C69] sm:text-[1.75rem]">
+            Workers
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-[#5499BF]">
+            Manage workers, roles, licences and compliance.
+          </p>
+        </header>
 
+        <WorkersSummaryCards
+          stats={roleSummaryStats}
+          isLoading={isLoading}
+          activeKey={roleQuickFilter ?? 'total'}
+          onSelect={handleRoleQuickFilterSelect}
+        />
+
+        <div className="space-y-3">
           <DriversToolbar
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
             statusFilter={statusFilter}
             onStatusFilterChange={handleStatusFilterChange}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
             companyFilter={companyFilter}
             onCompanyFilterChange={setCompanyFilter}
             companyOptions={companyOptions}
@@ -907,7 +1021,15 @@ function DriversPage() {
         {!isLoading && !loadError && drivers.length > 0 ? (
           filteredDrivers.length > 0 ? (
             <DriversTable
-              drivers={filteredDrivers}
+              drivers={paginatedDrivers}
+              page={tablePage}
+              pageSize={pageSize}
+              totalCount={filteredDrivers.length}
+              onPageChange={setTablePage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setTablePage(1)
+              }}
               onEditDriver={openEditDriverModal}
               onDeleteDriver={openDeleteDriverModal}
             />

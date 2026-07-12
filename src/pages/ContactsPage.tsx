@@ -3,6 +3,7 @@ import { ContactFormModal } from '@/components/contacts/ContactFormModal'
 import { ContactsDataTable } from '@/components/contacts/ContactsDataTable'
 import { ContactsEmptyState } from '@/components/contacts/ContactsEmptyState'
 import { ContactsPagination } from '@/components/contacts/ContactsPagination'
+import { ContactsSummaryCards } from '@/components/contacts/ContactsSummaryCards'
 import { ContactsToolbar } from '@/components/contacts/ContactsToolbar'
 import { DeleteContactModal } from '@/components/contacts/DeleteContactModal'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -10,23 +11,33 @@ import type {
   Contact,
   ContactCategoryFilter,
   ContactStatusFilter,
+  ContactSummaryCounts,
 } from '@/lib/contactTypes'
-import { DEFAULT_CONTACT_PAGE_SIZE } from '@/lib/contactTypes'
+import { DEFAULT_CONTACT_PAGE_SIZE, getWorkerProfileId } from '@/lib/contactTypes'
 import { contactPageCardClass } from '@/components/contacts/contactUiStyles'
+import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import {
   ContactsServiceError,
   createContact,
   deleteContact,
+  fetchContactSummaryCounts,
   fetchContacts,
+  unlinkContactWorker,
   updateContact,
 } from '@/services/contactsService'
-import { useCallback, useEffect, useState } from 'react'
+import { fetchDrivers, type Driver } from '@/services/driversService'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function ContactsPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Contact[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [workers, setWorkers] = useState<Driver[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [summaryCounts, setSummaryCounts] = useState<ContactSummaryCounts | null>(null)
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<ContactCategoryFilter>('all')
@@ -46,6 +57,12 @@ export default function ContactsPage() {
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 || categoryFilter !== 'all' || statusFilter !== 'active'
 
+  const companyWorkers = useMemo(() => {
+    const companyName = getGlobalCompanySettings()?.name?.trim()
+    if (!companyName) return workers
+    return workers.filter((worker) => worker.company?.trim() === companyName)
+  }, [workers])
+
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
     window.setTimeout(() => setToastMessage(null), 2800)
@@ -59,6 +76,33 @@ export default function ContactsPage() {
   useEffect(() => {
     setPage(1)
   }, [debouncedSearch, categoryFilter, statusFilter, pageSize])
+
+  const loadWorkers = useCallback(async () => {
+    try {
+      const loaded = await fetchDrivers()
+      setWorkers(loaded)
+    } catch {
+      setWorkers([])
+    }
+  }, [])
+
+  const loadSummaryCounts = useCallback(async () => {
+    setIsSummaryLoading(true)
+    try {
+      const counts = await fetchContactSummaryCounts()
+      setSummaryCounts(counts)
+    } catch {
+      setSummaryCounts({
+        workerContacts: 0,
+        support: 0,
+        service: 0,
+        office: 0,
+        insurance: 0,
+      })
+    } finally {
+      setIsSummaryLoading(false)
+    }
+  }, [])
 
   const loadContacts = useCallback(async () => {
     setIsLoading(true)
@@ -91,6 +135,14 @@ export default function ContactsPage() {
     void loadContacts()
   }, [loadContacts])
 
+  useEffect(() => {
+    void loadSummaryCounts()
+  }, [loadSummaryCounts])
+
+  useEffect(() => {
+    void loadWorkers()
+  }, [loadWorkers])
+
   function openCreateModal() {
     setFormMode('create')
     setEditContact(null)
@@ -98,10 +150,20 @@ export default function ContactsPage() {
   }
 
   function openEditModal(contact: Contact) {
+    if (contact.source === 'worker') {
+      const workerId = getWorkerProfileId(contact)
+      if (workerId) navigate(`/drivers/${workerId}`)
+      return
+    }
     setFormMode('edit')
     setEditContact(contact)
     setViewContact(null)
     setIsFormOpen(true)
+  }
+
+  function openWorkerProfile(contact: Contact) {
+    const workerId = getWorkerProfileId(contact)
+    if (workerId) navigate(`/drivers/${workerId}`)
   }
 
   function clearFilters() {
@@ -121,9 +183,24 @@ export default function ContactsPage() {
         await updateContact(editContact.id, input)
         showToast('Contact updated')
       }
-      await loadContacts()
+      await Promise.all([loadContacts(), loadSummaryCounts()])
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleUnlinkWorker(contact: Contact) {
+    try {
+      await unlinkContactWorker(contact.id)
+      showToast('Worker unassigned from contact')
+      setViewContact(null)
+      await Promise.all([loadContacts(), loadSummaryCounts()])
+    } catch (error) {
+      showToast(
+        error instanceof ContactsServiceError
+          ? error.message
+          : 'Unable to unassign worker.',
+      )
     }
   }
 
@@ -136,7 +213,7 @@ export default function ContactsPage() {
       await deleteContact(deleteContactRecord.id)
       showToast('Contact deleted')
       setDeleteContactRecord(null)
-      await loadContacts()
+      await Promise.all([loadContacts(), loadSummaryCounts()])
     } catch (error) {
       setDeleteError(
         error instanceof ContactsServiceError
@@ -162,10 +239,17 @@ export default function ContactsPage() {
               Contacts
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-[#5499BF]">
-              Manage customers, suppliers, garages and important business contacts.
+              Manage customers, suppliers, garages, workers and important business contacts.
             </p>
           </div>
         </header>
+
+        <ContactsSummaryCards
+          counts={summaryCounts}
+          isLoading={isSummaryLoading}
+          activeCategory={categoryFilter}
+          onSelectCategory={setCategoryFilter}
+        />
 
         <ContactsToolbar
           searchTerm={searchTerm}
@@ -202,6 +286,9 @@ export default function ContactsPage() {
               onView={setViewContact}
               onEdit={openEditModal}
               onDelete={setDeleteContactRecord}
+              onUnlinkWorker={(contact) => void handleUnlinkWorker(contact)}
+              onViewWorker={openWorkerProfile}
+              onEditWorker={openWorkerProfile}
             />
             <ContactsPagination
               page={page}
@@ -218,6 +305,7 @@ export default function ContactsPage() {
         isOpen={isFormOpen}
         mode={formMode}
         contact={editContact}
+        workers={companyWorkers}
         isSaving={isSaving}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleSave}
@@ -228,6 +316,8 @@ export default function ContactsPage() {
         isOpen={viewContact !== null}
         onClose={() => setViewContact(null)}
         onEdit={openEditModal}
+        onUnlinkWorker={(contact) => void handleUnlinkWorker(contact)}
+        onViewWorker={openWorkerProfile}
       />
 
       {deleteContactRecord ? (

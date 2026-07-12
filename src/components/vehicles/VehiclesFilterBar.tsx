@@ -14,7 +14,7 @@ import type { VehicleStatus } from '@/services/vehiclesService'
 import { Download, Filter, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-export type StatusFilter = VehicleStatus | 'All' | 'Unavailable'
+export type StatusFilter = VehicleStatus | 'All' | 'Unavailable' | 'MaintenanceDue'
 
 type VehiclesFilterBarProps = {
   searchTerm: string
@@ -175,6 +175,7 @@ export function VehiclesFilterBar({
                     >
                       <option value="All">All statuses</option>
                       <option value="Unavailable">Off Road / OOS</option>
+                      <option value="MaintenanceDue">Maintenance / Workshop</option>
                       {vehicleStatuses.map((status) => (
                         <option key={status} value={status}>
                           {status}

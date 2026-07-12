@@ -1,10 +1,10 @@
-import { FleetOperationsHeader } from '@/components/dashboard/FleetOperationsHeader'
 import {
   DashboardOnboardingCard,
   DashboardOverview,
 } from '@/components/dashboard/DashboardOverview'
 import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader'
 import { DashboardQuickSearch } from '@/components/dashboard/DashboardQuickSearch'
+import { FleetOperationsHeader } from '@/components/dashboard/FleetOperationsHeader'
 import { useDashboardStats } from '@/hooks/useDashboardStats'
 import { useFleetOperationsHeader } from '@/hooks/useFleetOperationsHeader'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -24,11 +24,10 @@ function AdminDashboardPage() {
       premiumBackground
       wideContent
       adminDashboard
+      headerLeading={<DashboardPageHeader />}
       headerSearch={<DashboardQuickSearch />}
       customHeader={<FleetOperationsHeader {...fleetHeader} />}
     >
-      <DashboardPageHeader />
-
       {isEmptyWorkspace ? (
         <div className="space-y-6">
           <DashboardOnboardingCard />

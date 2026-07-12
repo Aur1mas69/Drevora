@@ -35,7 +35,9 @@ const MyHolidaysPage = lazy(() => import('@/pages/MyHolidaysPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
 const FaqHelpPage = lazy(() => import('@/pages/FaqHelpPage'))
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
+const TermsPage = lazy(() => import('@/pages/TermsPage'))
 const HolidayRequestsPage = lazy(() => import('@/pages/HolidayRequestsPage'))
 const VehicleChecksPage = lazy(() => import('@/pages/VehicleChecksPage'))
 const TimesheetsPage = lazy(() => import('@/pages/TimesheetsPage'))
@@ -227,6 +229,22 @@ function AppRouter() {
           element={
             <RequireAuthPage>
               <FaqHelpPage />
+            </RequireAuthPage>
+          }
+        />
+        <Route
+          path="/terms"
+          element={
+            <RequireAuthPage>
+              <TermsPage />
+            </RequireAuthPage>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <RequireAuthPage>
+              <PrivacyPage />
             </RequireAuthPage>
           }
         />

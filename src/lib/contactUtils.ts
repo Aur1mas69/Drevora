@@ -34,6 +34,8 @@ export function getCategoryBadgeClass(category: ContactCategory): string {
       return 'bg-sky-50 text-sky-700 ring-sky-100'
     case 'emergency':
       return 'bg-rose-50 text-rose-700 ring-rose-100'
+    case 'worker':
+      return 'bg-[#E8F3FE] text-[#0B68BE] ring-[#89CFF0]'
     case 'other':
     default:
       return 'bg-slate-100 text-slate-700 ring-slate-200'
@@ -109,6 +111,7 @@ export function buildEmptyContactFormValues(): ContactFormValues {
     country: 'United Kingdom',
     notes: '',
     status: 'active',
+    workerId: '',
   }
 }
 
@@ -131,6 +134,7 @@ export function contactToFormValues(contact: Contact): ContactFormValues {
     country: contact.country ?? 'United Kingdom',
     notes: contact.notes ?? '',
     status: contact.status,
+    workerId: contact.workerId ?? '',
   }
 }
 
@@ -170,5 +174,6 @@ export function contactFormValuesToInput(values: ContactFormValues) {
     country: values.country.trim() || 'United Kingdom',
     notes: values.notes.trim() || null,
     status: values.status,
+    workerId: values.workerId.trim() || null,
   }
 }

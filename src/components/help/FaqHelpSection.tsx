@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import type { FaqItem, FaqSection } from '@/lib/faqContent'
-import { adminHeading, adminInnerSoft, adminPanelSm, adminText, adminTextMuted } from '@/lib/adminUiStyles'
+import { adminHeading, adminPanelSm, adminText, adminTextMuted } from '@/lib/adminUiStyles'
 
 function FaqAccordionItem({ item }: { item: FaqItem }) {
   const [open, setOpen] = useState(false)
@@ -14,17 +14,8 @@ function FaqAccordionItem({ item }: { item: FaqItem }) {
         aria-expanded={open}
         className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white dark:hover:bg-slate-800/60 sm:px-5"
       >
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className={`text-sm font-semibold sm:text-[15px] ${adminHeading}`}>
-              {item.question}
-            </span>
-            {item.comingLater ? (
-              <span className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${adminInnerSoft} text-slate-500 dark:text-slate-400`}>
-                Coming later
-              </span>
-            ) : null}
-          </span>
+        <span className={`min-w-0 flex-1 text-sm font-semibold sm:text-[15px] ${adminHeading}`}>
+          {item.question}
         </span>
         <ChevronDown
           className={`mt-0.5 size-4 shrink-0 text-slate-400 transition-transform duration-200 ${
