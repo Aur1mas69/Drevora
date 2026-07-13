@@ -4,6 +4,8 @@ import {
   writeStoredAuthPortal,
   type AuthPortal,
 } from '@/lib/authPortal'
+import { clearGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import { clearCompanyMembershipCache } from '@/services/companyMembershipService'
 import {
   createContext,
   useCallback,
@@ -71,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null)
     setPortal(null)
     clearStoredAuthPortal()
+    clearCompanyMembershipCache()
+    clearGlobalCompanySettings()
   }, [])
 
   const value = useMemo<AuthContextValue>(

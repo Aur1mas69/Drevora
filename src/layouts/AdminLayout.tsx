@@ -675,11 +675,26 @@ function NotificationBellButton() {
   )
 }
 
+function MembershipStatusBanner() {
+  const { error, isLoading } = useCompanySettings()
+  if (isLoading || !error) return null
+
+  return (
+    <div
+      role="alert"
+      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+    >
+      {error}
+    </div>
+  )
+}
+
 function TopBar() {
   const [now, setNow] = useState(() => new Date())
   const { session } = useAuth()
-  const { settings, formatOperationsDateTime } = useCompanySettings()
-  const companyName = getCompanyDisplayName(settings?.name)
+  const { settings, companyName: membershipCompanyName, formatOperationsDateTime } =
+    useCompanySettings()
+  const companyName = getCompanyDisplayName(membershipCompanyName ?? settings?.name)
   const displayName = getDisplayName(session?.user.email)
 
   useEffect(() => {
@@ -825,6 +840,7 @@ function AdminLayout({
                     : 'space-y-5'
               }`}
             >
+              <MembershipStatusBanner />
               {customHeader ? (
                 <div className="relative min-w-0">
                   <div

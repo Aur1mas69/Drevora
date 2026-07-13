@@ -18,7 +18,15 @@ import type {
 } from '@/lib/companySettingsTypes'
 import { DEFAULT_OVERTIME_MULTIPLIER } from '@/lib/companySettingsTypes'
 import { applyDocumentTheme, subscribeToSystemTheme } from '@/lib/theme'
-import { applyGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import {
+  applyGlobalCompanySettings,
+  clearGlobalCompanySettings,
+} from '@/lib/companySettingsGlobals'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  clearCompanyMembershipCache,
+  resolveCurrentCompanyMembership,
+} from '@/services/companyMembershipService'
 import {
   companySettingsService,
   CompanySettingsServiceError,
@@ -29,14 +37,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 
 type CompanySettingsContextValue = {
   settings: CompanySettings | null
+  companySettings: CompanySettings | null
+  companyId: string | null
+  companyName: string | null
+  membershipRole: string | null
   isLoading: boolean
+  loading: boolean
   isSaving: boolean
+  error: string | null
   timeFormat: CompanyTimeFormat
   dateFormat: CompanyDateFormat
   weekStarts: CompanyWeekStarts
@@ -56,45 +71,133 @@ type CompanySettingsContextValue = {
   formatOperationsDateTime: CompanyDateTimeFormatter['formatOperationsDateTime']
   updateSettings: (patch: Partial<CompanySettingsInput>) => Promise<CompanySettings>
   refreshSettings: () => void
+  refreshCompanySettings: () => void
   /** @deprecated Use settings */
   company: CompanySettings | null
 }
 
 const CompanySettingsContext = createContext<CompanySettingsContextValue | null>(null)
 
+function clearCompanyContextState(
+  setSettings: (value: CompanySettings | null) => void,
+  setCompanyId: (value: string | null) => void,
+  setCompanyName: (value: string | null) => void,
+  setMembershipRole: (value: string | null) => void,
+  setError: (value: string | null) => void,
+): void {
+  clearCompanyMembershipCache()
+  clearGlobalCompanySettings()
+  setSettings(null)
+  setCompanyId(null)
+  setCompanyName(null)
+  setMembershipRole(null)
+  setError(null)
+  applyDocumentTheme('light')
+}
+
 export function CompanySettingsProvider({ children }: { children: ReactNode }) {
+  const { session, isAuthLoading } = useAuth()
   const [settings, setSettings] = useState<CompanySettings | null>(null)
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [companyName, setCompanyName] = useState<string | null>(null)
+  const [membershipRole, setMembershipRole] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [version, setVersion] = useState(0)
+  const loadGenerationRef = useRef(0)
+  const sessionUserId = session?.user.id ?? null
 
-  const loadSettings = useCallback(async () => {
+  const loadSettings = useCallback(async (userId: string | null) => {
+    const generation = ++loadGenerationRef.current
     setIsLoading(true)
 
-    try {
-      const loaded = await companySettingsService.fetchCompanySettings()
-      setSettings(loaded)
-
-      if (loaded) {
-        applyGlobalCompanySettings(loaded)
-        applyDocumentTheme(loaded.theme)
-      } else {
-        applyGlobalCompanySettings(null)
-        applyDocumentTheme('light')
+    if (!userId) {
+      clearCompanyContextState(
+        setSettings,
+        setCompanyId,
+        setCompanyName,
+        setMembershipRole,
+        setError,
+      )
+      if (generation === loadGenerationRef.current) {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to load company settings:', error)
+      return
+    }
+
+    try {
+      // Prevent flashing another company's settings while membership resolves.
+      clearCompanyMembershipCache()
+      clearGlobalCompanySettings()
       setSettings(null)
-      applyGlobalCompanySettings(null)
+      setCompanyId(null)
+      setCompanyName(null)
+      setMembershipRole(null)
+      setError(null)
+
+      const resolution = await resolveCurrentCompanyMembership({ force: true })
+
+      if (generation !== loadGenerationRef.current) {
+        return
+      }
+
+      if (resolution.status === 'ready') {
+        setSettings(resolution.companySettings)
+        setCompanyId(resolution.companyId)
+        setCompanyName(resolution.companyName)
+        setMembershipRole(resolution.membershipRole)
+        setError(null)
+        applyGlobalCompanySettings(resolution.companySettings, {
+          companyId: resolution.companyId,
+        })
+        applyDocumentTheme(resolution.companySettings.theme)
+        return
+      }
+
+      setSettings(null)
+      setCompanyId(null)
+      setCompanyName(null)
+      setMembershipRole(null)
+      clearGlobalCompanySettings()
       applyDocumentTheme('light')
+
+      if (resolution.status === 'unauthenticated') {
+        setError(null)
+        return
+      }
+
+      setError(resolution.message)
+    } catch (loadError) {
+      console.error('Failed to load company membership/settings:', loadError)
+      if (generation !== loadGenerationRef.current) {
+        return
+      }
+      setSettings(null)
+      setCompanyId(null)
+      setCompanyName(null)
+      setMembershipRole(null)
+      clearGlobalCompanySettings()
+      applyDocumentTheme('light')
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : 'Unable to load company membership.',
+      )
     } finally {
-      setIsLoading(false)
+      if (generation === loadGenerationRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    void loadSettings()
-  }, [loadSettings, version])
+    if (isAuthLoading) {
+      return
+    }
+
+    void loadSettings(sessionUserId)
+  }, [isAuthLoading, loadSettings, sessionUserId, version])
 
   useEffect(() => {
     function handleCompanyUpdated() {
@@ -119,17 +222,23 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await companySettingsService.updateCompanySettings(patch)
       setSettings(updated)
-      applyGlobalCompanySettings(updated)
+      setCompanyId(updated.id)
+      setCompanyName(updated.name?.trim() || null)
+      applyGlobalCompanySettings(updated, { companyId: updated.id })
       applyDocumentTheme(updated.theme)
       window.dispatchEvent(new Event(COMPANY_UPDATED_EVENT))
       return updated
-    } catch (error) {
-      throw error instanceof CompanySettingsServiceError
-        ? error
+    } catch (saveError) {
+      throw saveError instanceof CompanySettingsServiceError
+        ? saveError
         : new CompanySettingsServiceError('Failed to save settings')
     } finally {
       setIsSaving(false)
     }
+  }, [])
+
+  const refreshCompanySettings = useCallback(() => {
+    setVersion((current) => current + 1)
   }, [])
 
   const timeFormat = settings?.timeFormat ?? DEFAULT_TIME_FORMAT
@@ -148,9 +257,15 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
 
     return {
       settings,
+      companySettings: settings,
       company: settings,
+      companyId,
+      companyName,
+      membershipRole,
       isLoading,
+      loading: isLoading,
       isSaving,
+      error,
       timeFormat,
       dateFormat,
       weekStarts,
@@ -169,17 +284,23 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
       formatRelativeDateTime: formatter.formatRelativeDateTime,
       formatOperationsDateTime: formatter.formatOperationsDateTime,
       updateSettings,
-      refreshSettings: () => setVersion((current) => current + 1),
+      refreshSettings: refreshCompanySettings,
+      refreshCompanySettings,
     }
   }, [
+    companyId,
+    companyName,
     compactTables,
     dateFormat,
     defaultBreakMinutes,
+    error,
     isLoading,
     isSaving,
+    membershipRole,
     overtimeAfterHours,
     overtimeMode,
     overtimeMultiplier,
+    refreshCompanySettings,
     settings,
     theme,
     timeFormat,

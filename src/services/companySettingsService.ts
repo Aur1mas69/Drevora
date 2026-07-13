@@ -686,12 +686,11 @@ function isMissingColumnError(error: { message?: string; code?: string; details?
   )
 }
 
-async function queryCompanyRow(select: string) {
+async function queryCompanyRow(companyId: string, select: string) {
   return requireSupabase()
     .from('companies')
     .select(select)
-    .order('created_at', { ascending: true })
-    .limit(1)
+    .eq('id', companyId)
     .maybeSingle()
 }
 
@@ -716,9 +715,11 @@ async function fetchAlternateCompanyName(companyId: string): Promise<string | nu
 }
 
 async function mergeOptionalConsumableDefaultPrices(
+  companyId: string,
   row: CompanyRow,
 ): Promise<CompanyRow> {
   const { data: consumablePricesData, error: consumablePricesError } = await queryCompanyRow(
+    companyId,
     companySettingsConsumablePricesSelect,
   )
 
@@ -741,26 +742,26 @@ async function mergeOptionalConsumableDefaultPrices(
   return row
 }
 
-async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
+async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | null> {
   const table = 'companies'
-  const { data, error } = await queryCompanyRow(companySettingsSelect)
+  const { data, error } = await queryCompanyRow(companyId, companySettingsSelect)
 
   logSupabaseQuery({
-    service: 'companySettingsService.fetchCompanySettings',
+    service: 'companySettingsService.fetchCompanySettingsById',
     table,
     data: data ? [data] : [],
     error,
   })
 
   if (!error && data) {
-    return mergeOptionalConsumableDefaultPrices(data as unknown as CompanyRow)
+    return mergeOptionalConsumableDefaultPrices(companyId, data as unknown as CompanyRow)
   }
 
   if (error && !isMissingColumnError(error)) {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsSelect },
+      { select: companySettingsSelect, companyId },
       error,
     )
     throw new CompanySettingsServiceError(error.message)
@@ -770,15 +771,18 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsSelect, fallback: 'core' },
+      { select: companySettingsSelect, fallback: 'core', companyId },
       error,
     )
   }
 
-  const { data: coreData, error: coreError } = await queryCompanyRow(companySettingsCoreSelect)
+  const { data: coreData, error: coreError } = await queryCompanyRow(
+    companyId,
+    companySettingsCoreSelect,
+  )
 
   logSupabaseQuery({
-    service: 'companySettingsService.fetchCompanySettings.coreFallback',
+    service: 'companySettingsService.fetchCompanySettingsById.coreFallback',
     table,
     data: coreData ? [coreData] : [],
     error: coreError,
@@ -788,7 +792,7 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsCoreSelect },
+      { select: companySettingsCoreSelect, companyId },
       coreError,
     )
     throw new CompanySettingsServiceError(coreError.message)
@@ -799,6 +803,7 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
   let merged = { ...(coreData as unknown as Record<string, unknown>) }
 
   const { data: weekendData, error: weekendError } = await queryCompanyRow(
+    companyId,
     companySettingsWeekendSelect,
   )
 
@@ -808,12 +813,13 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsWeekendSelect, optional: 'weekend_overtime' },
+      { select: companySettingsWeekendSelect, optional: 'weekend_overtime', companyId },
       weekendError,
     )
   }
 
   const { data: weekNumberingData, error: weekNumberingError } = await queryCompanyRow(
+    companyId,
     companySettingsWeekNumberingSelect,
   )
 
@@ -823,12 +829,17 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsWeekNumberingSelect, optional: 'timesheet_week_numbering' },
+      {
+        select: companySettingsWeekNumberingSelect,
+        optional: 'timesheet_week_numbering',
+        companyId,
+      },
       weekNumberingError,
     )
   }
 
   const { data: medicalUploadData, error: medicalUploadError } = await queryCompanyRow(
+    companyId,
     companySettingsMedicalUploadSelect,
   )
 
@@ -838,12 +849,17 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsMedicalUploadSelect, optional: 'allow_medical_document_uploads' },
+      {
+        select: companySettingsMedicalUploadSelect,
+        optional: 'allow_medical_document_uploads',
+        companyId,
+      },
       medicalUploadError,
     )
   }
 
   const { data: holidayCountingData, error: holidayCountingError } = await queryCompanyRow(
+    companyId,
     companySettingsHolidayCountingSelect,
   )
 
@@ -853,12 +869,13 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsHolidayCountingSelect, optional: 'holiday_counting' },
+      { select: companySettingsHolidayCountingSelect, optional: 'holiday_counting', companyId },
       holidayCountingError,
     )
   }
 
   const { data: consumablePricesData, error: consumablePricesError } = await queryCompanyRow(
+    companyId,
     companySettingsConsumablePricesSelect,
   )
 
@@ -868,12 +885,27 @@ async function loadCompanySettingsRow(): Promise<CompanyRow | null> {
     logCompanySettingsPersistenceError(
       'select',
       table,
-      { select: companySettingsConsumablePricesSelect, optional: 'consumable_default_prices' },
+      {
+        select: companySettingsConsumablePricesSelect,
+        optional: 'consumable_default_prices',
+        companyId,
+      },
       consumablePricesError,
     )
   }
 
   return merged as unknown as CompanyRow
+}
+
+async function resolveAuthenticatedCompanyId(): Promise<string | null> {
+  const { getVerifiedCompanyId } = await import('@/lib/companySettingsGlobals')
+  const verifiedId = getVerifiedCompanyId()
+  if (verifiedId) {
+    return verifiedId
+  }
+
+  const { resolveCurrentCompanyId } = await import('@/services/companyMembershipService')
+  return resolveCurrentCompanyId()
 }
 
 async function mapLoadedCompanyRow(row: CompanyRow): Promise<CompanySettings> {
@@ -891,13 +923,41 @@ async function mapLoadedCompanyRow(row: CompanyRow): Promise<CompanySettings> {
   return { ...mapped, name: alternateName }
 }
 
+/**
+ * Load company settings for a specific companies.id.
+ * Used after company_members resolves the authenticated tenant.
+ */
+export async function fetchCompanySettingsById(
+  companyId: string,
+): Promise<CompanySettings | null> {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+
+  const normalizedId = companyId.trim()
+  if (!normalizedId) {
+    return null
+  }
+
+  const row = await loadCompanySettingsRow(normalizedId)
+  return row ? mapLoadedCompanyRow(row) : null
+}
+
+/**
+ * Load settings for the authenticated membership company.
+ * Never selects the oldest/first companies row.
+ */
 export async function fetchCompanySettings(): Promise<CompanySettings | null> {
   if (!isSupabaseConfigured) {
     return null
   }
 
-  const row = await loadCompanySettingsRow()
-  return row ? mapLoadedCompanyRow(row) : null
+  const companyId = await resolveAuthenticatedCompanyId()
+  if (!companyId) {
+    return null
+  }
+
+  return fetchCompanySettingsById(companyId)
 }
 
 export async function saveCompanySettings(
@@ -909,43 +969,36 @@ export async function saveCompanySettings(
 export async function updateCompanySettings(
   input: Partial<CompanySettingsInput>,
 ): Promise<CompanySettings> {
+  const companyId = await resolveAuthenticatedCompanyId()
+  if (!companyId) {
+    throw new CompanySettingsServiceError(
+      'No active company membership. Company settings cannot be saved.',
+    )
+  }
+
   const payload = toDbPayload(input)
   if (Object.keys(payload).length === 0) {
-    const existing = await fetchCompanySettings()
+    const existing = await fetchCompanySettingsById(companyId)
     if (!existing) {
       throw new CompanySettingsServiceError('No company settings record found')
     }
     return existing
   }
 
-  const existing = await fetchCompanySettings()
-
-  if (existing) {
-    await updateCompanyRecord(existing.id, payload)
-
-    const refreshed = await fetchCompanySettings()
-    if (!refreshed) {
-      throw new CompanySettingsServiceError('Unable to reload company settings after save')
-    }
-    return refreshed
+  const existing = await fetchCompanySettingsById(companyId)
+  if (!existing) {
+    throw new CompanySettingsServiceError(
+      'Company settings not found for your membership company.',
+    )
   }
 
-  const merged: CompanySettingsInput = { ...DEFAULT_COMPANY_SETTINGS, ...input }
-  const insertPayload = toDbPayload(merged)
-  const { error: insertError } = await requireSupabase()
-    .from('companies')
-    .insert(insertPayload)
+  await updateCompanyRecord(existing.id, payload)
 
-  if (insertError) {
-    logCompanySettingsPersistenceError('insert', 'companies', insertPayload, insertError)
-    throw new CompanySettingsServiceError(insertError.message)
+  const refreshed = await fetchCompanySettingsById(existing.id)
+  if (!refreshed) {
+    throw new CompanySettingsServiceError('Unable to reload company settings after save')
   }
-
-  const created = await fetchCompanySettings()
-  if (!created) {
-    throw new CompanySettingsServiceError('Unable to load company settings after create')
-  }
-  return created
+  return refreshed
 }
 
 export async function updateConsumableDefaultPrices(
@@ -955,7 +1008,14 @@ export async function updateConsumableDefaultPrices(
     throw new CompanySettingsServiceError('Supabase is not configured')
   }
 
-  const existing = await fetchCompanySettings()
+  const companyId = await resolveAuthenticatedCompanyId()
+  if (!companyId) {
+    throw new CompanySettingsServiceError(
+      'No active company membership. Default prices cannot be saved.',
+    )
+  }
+
+  const existing = await fetchCompanySettingsById(companyId)
   if (!existing) {
     throw new CompanySettingsServiceError('Company settings not found')
   }
@@ -979,7 +1039,7 @@ export async function updateConsumableDefaultPrices(
     throw new CompanySettingsServiceError(error.message)
   }
 
-  const refreshed = await fetchCompanySettings()
+  const refreshed = await fetchCompanySettingsById(existing.id)
   if (!refreshed) {
     throw new CompanySettingsServiceError('Unable to reload company settings after save')
   }
@@ -993,6 +1053,7 @@ export async function updateConsumableDefaultPrices(
 
 export const companySettingsService = {
   fetchCompanySettings,
+  fetchCompanySettingsById,
   saveCompanySettings,
   updateCompanySettings,
   updateConsumableDefaultPrices,
