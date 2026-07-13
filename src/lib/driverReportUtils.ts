@@ -104,11 +104,17 @@ export function driverReportFormValuesToInput(
 }
 
 export function computeDriverReportSummaryStats(reports: DriverReport[]): DriverReportSummaryStats {
+  const activeCurrent = reports.filter(
+    (r) => !r.cleanedAt && (r.status === 'New' || r.status === 'In Progress'),
+  )
+
   return {
-    newReports: reports.filter((r) => r.status === 'New').length,
-    inProgress: reports.filter((r) => r.status === 'In Progress').length,
+    newReports: activeCurrent.filter((r) => r.status === 'New').length,
+    inProgress: activeCurrent.filter((r) => r.status === 'In Progress').length,
     closed: reports.filter((r) => r.status === 'Closed').length,
-    criticalHigh: reports.filter((r) => r.priority === 'High' || r.priority === 'Critical').length,
+    criticalHigh: activeCurrent.filter(
+      (r) => r.priority === 'High' || r.priority === 'Critical',
+    ).length,
   }
 }
 
@@ -196,9 +202,13 @@ export function filterDriverReportsByVisibility(
 ): DriverReport[] {
   if (visibilityMode === 'all') return reports
   if (visibilityMode === 'history') {
-    return reports.filter((report) => report.status === 'Closed')
+    return reports.filter((report) => report.status === 'Closed' || Boolean(report.cleanedAt))
   }
-  return reports.filter((report) => report.status === 'New' || report.status === 'In Progress')
+  // Current: open reports that have not been cleaned from the active view
+  return reports.filter(
+    (report) =>
+      !report.cleanedAt && (report.status === 'New' || report.status === 'In Progress'),
+  )
 }
 
 export function getReportDescriptionSnippet(description: string | null, maxLength = 72): string {

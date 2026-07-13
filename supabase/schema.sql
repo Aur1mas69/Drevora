@@ -874,6 +874,7 @@ create table if not exists public.driver_reports (
   office_notes text,
   attachment_url text,
   attachment_path text,
+  cleaned_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint driver_reports_report_type_check check (
@@ -902,6 +903,7 @@ create index if not exists driver_reports_status_idx on public.driver_reports (s
 create index if not exists driver_reports_priority_idx on public.driver_reports (priority);
 create index if not exists driver_reports_report_type_idx on public.driver_reports (report_type);
 create index if not exists driver_reports_created_at_idx on public.driver_reports (created_at desc);
+create index if not exists idx_driver_reports_cleaned_at on public.driver_reports (cleaned_at);
 
 drop trigger if exists driver_reports_set_updated_at on public.driver_reports;
 

@@ -27,6 +27,7 @@ type DriverReportRow = {
   office_notes: string | null
   attachment_url: string | null
   attachment_path: string | null
+  cleaned_at: string | null
   created_at: string
   updated_at: string
 }
@@ -46,6 +47,7 @@ const reportSelect = `
   office_notes,
   attachment_url,
   attachment_path,
+  cleaned_at,
   created_at,
   updated_at
 `
@@ -99,6 +101,7 @@ function mapRow(
     officeNotes: row.office_notes,
     attachmentUrl: row.attachment_url,
     attachmentPath: row.attachment_path,
+    cleanedAt: row.cleaned_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -300,10 +303,104 @@ export async function deleteDriverReport(id: string): Promise<void> {
   if (error) throw new DriverReportsServiceError(error.message)
 }
 
+export type CleanDriverReportsCurrentViewInput = {
+  /** Exact Current-view report IDs currently loaded for this company. */
+  reportIds: string[]
+  /** Exact company text values stored on those rows (tenant scope). */
+  companyValues: string[]
+}
+
+/**
+ * Soft-clean Current-view reports: sets cleaned_at only.
+ * Does not change status and does not delete rows.
+ * Returns the number of rows actually updated (from .select()).
+ */
+export async function cleanDriverReportsCurrentView(
+  input: CleanDriverReportsCurrentViewInput,
+): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const reportIds = [...new Set(input.reportIds.filter(Boolean))]
+  const companyValues = [
+    ...new Set(
+      input.companyValues
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    ),
+  ]
+
+  if (reportIds.length === 0) {
+    return { cleanedCount: 0, cleanedIds: [] }
+  }
+
+  const scopeCompany = resolveCompanyScope()
+  if (!scopeCompany && companyValues.length === 0) {
+    throw new DriverReportsServiceError(
+      'Company scope is required to clean driver reports.',
+    )
+  }
+
+  const cleanedAt = new Date().toISOString()
+
+  let request = requireSupabase()
+    .from('driver_reports')
+    .update({
+      cleaned_at: cleanedAt,
+      updated_at: cleanedAt,
+    })
+    .in('id', reportIds)
+    .in('status', ['New', 'In Progress'])
+    .is('cleaned_at', null)
+
+  // Prefer exact stored company values from the visible Current rows.
+  if (companyValues.length > 0) {
+    request = request.in('company', companyValues)
+  } else if (scopeCompany) {
+    request = request.eq('company', scopeCompany)
+  }
+
+  const { data, error } = await request.select('id, cleaned_at')
+
+  logSupabaseQuery({
+    service: 'driverReportsService.cleanDriverReportsCurrentView',
+    table: 'driver_reports',
+    data,
+    error,
+  })
+
+  if (error) {
+    const message = error.message.toLowerCase()
+    if (
+      message.includes('cleaned_at') &&
+      (message.includes('does not exist') ||
+        message.includes('schema cache') ||
+        message.includes('column'))
+    ) {
+      throw new DriverReportsServiceError(
+        'Driver reports cleanup is not available yet. Ensure cleaned_at exists on driver_reports.',
+      )
+    }
+    throw new DriverReportsServiceError(error.message)
+  }
+
+  const cleanedIds = (data ?? []).map((row) => String((row as { id: string }).id))
+
+  if (import.meta.env.DEV) {
+    console.info('[driverReports] clean current view', {
+      companyScope: scopeCompany,
+      companyValues,
+      statusFilter: ['New', 'In Progress'],
+      requestedIds: reportIds.length,
+      affectedRowCount: cleanedIds.length,
+    })
+  }
+
+  return { cleanedCount: cleanedIds.length, cleanedIds }
+}
+
 export const driverReportsService = {
   fetchDriverReports,
   fetchDriverReportsForVehicle,
   createDriverReport,
   updateDriverReport,
   deleteDriverReport,
+  cleanDriverReportsCurrentView,
 }

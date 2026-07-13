@@ -5,6 +5,7 @@ type CleanCurrentViewModalProps = {
   title?: string
   description?: string
   confirmLabel?: string
+  confirming?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
@@ -14,6 +15,7 @@ export function CleanCurrentViewModal({
   title = 'Clean current view?',
   description = 'This will clean the current view only. Records will remain saved and searchable in history.',
   confirmLabel = 'Clean current view',
+  confirming = false,
   onCancel,
   onConfirm,
 }: CleanCurrentViewModalProps) {
@@ -40,6 +42,7 @@ export function CleanCurrentViewModal({
           <Button
             type="button"
             variant="ghost"
+            disabled={confirming}
             onClick={onCancel}
             className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600 hover:bg-[#F5FAFF] dark:text-slate-300 dark:hover:bg-slate-800"
           >
@@ -47,10 +50,11 @@ export function CleanCurrentViewModal({
           </Button>
           <Button
             type="button"
+            disabled={confirming}
             onClick={onConfirm}
-            className="h-10 rounded-[12px] bg-[#218EE7] px-4 text-sm font-semibold text-white hover:bg-[#0B68BE]"
+            className="h-10 rounded-[12px] bg-[#218EE7] px-4 text-sm font-semibold text-white hover:bg-[#0B68BE] disabled:opacity-70"
           >
-            {confirmLabel}
+            {confirming ? 'Cleaning…' : confirmLabel}
           </Button>
         </div>
       </div>

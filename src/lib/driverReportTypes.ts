@@ -35,6 +35,7 @@ export type DriverReport = {
   officeNotes: string | null
   attachmentUrl: string | null
   attachmentPath: string | null
+  cleanedAt: string | null
   createdAt: string
   updatedAt: string
 }

@@ -39,6 +39,7 @@ import {
   getDriverReportFileSignedUrl,
 } from '@/services/driverReportFileStorageService'
 import {
+  cleanDriverReportsCurrentView,
   createDriverReport,
   deleteDriverReport,
   DriverReportsServiceError,
@@ -90,6 +91,7 @@ export default function DriverReportsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
+  const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
@@ -258,10 +260,44 @@ export default function DriverReportsPage() {
     setStatusFilter('all')
   }
 
-  function handleConfirmCleanCurrentView() {
-    clearFilters()
-    setIsCleanCurrentViewOpen(false)
-    showToast('Active driver reports view cleaned')
+  async function handleConfirmCleanCurrentView() {
+    if (isCleaningCurrentView) return
+
+    const currentEligible = items.filter(
+      (report) =>
+        !report.cleanedAt && (report.status === 'New' || report.status === 'In Progress'),
+    )
+    const reportIds = currentEligible.map((report) => report.id)
+    const companyValues = currentEligible
+      .map((report) => report.company?.trim() ?? '')
+      .filter((value) => value.length > 0)
+
+    setIsCleaningCurrentView(true)
+    try {
+      const { cleanedCount } = await cleanDriverReportsCurrentView({
+        reportIds,
+        companyValues,
+      })
+
+      if (cleanedCount === 0) {
+        showToast('No active reports were cleaned. Please refresh and try again.')
+        return
+      }
+
+      clearFilters()
+      setPage(1)
+      setIsCleanCurrentViewOpen(false)
+      await loadReports()
+      showToast('Active driver reports view cleaned')
+    } catch (error) {
+      showToast(
+        error instanceof DriverReportsServiceError
+          ? error.message
+          : 'Unable to clean active driver reports.',
+      )
+    } finally {
+      setIsCleaningCurrentView(false)
+    }
   }
 
   async function handleOpenAttachment(record: DriverReport) {
@@ -500,10 +536,14 @@ export default function DriverReportsPage() {
       <CleanCurrentViewModal
         open={isCleanCurrentViewOpen}
         title="Clean driver reports current view?"
-        description="This will return Driver Reports to New and In Progress records and clear search/filter selections only. Closed reports remain saved and searchable in History or All."
+        description="This moves New and In Progress reports out of Current by marking them cleaned. Status is unchanged. Cleaned reports stay available in History and All."
         confirmLabel="Clean current view"
-        onCancel={() => setIsCleanCurrentViewOpen(false)}
-        onConfirm={handleConfirmCleanCurrentView}
+        confirming={isCleaningCurrentView}
+        onCancel={() => {
+          if (isCleaningCurrentView) return
+          setIsCleanCurrentViewOpen(false)
+        }}
+        onConfirm={() => void handleConfirmCleanCurrentView()}
       />
 
       {toastMessage ? (
