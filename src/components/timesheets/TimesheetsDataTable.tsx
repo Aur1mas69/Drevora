@@ -9,6 +9,7 @@ import {
   canEditTimesheet,
   formatHours,
   formatSubmittedAtDisplay,
+  formatTimesheetSubmittedAt,
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/timesheetUtils'
@@ -175,7 +176,12 @@ export function TimesheetsDataTable({
                   </span>
                 </td>
                 <td className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${adminTextMuted}`}>
-                  {formatSubmittedAtDisplay(sheet.submittedAt, sheet.status)}
+                  <div>{formatSubmittedAtDisplay(sheet.submittedAt, sheet.status)}</div>
+                  {sheet.cleanedAt ? (
+                    <div className="mt-0.5 text-[10px] font-medium text-[#5499BF] dark:text-slate-500">
+                      Cleaned {formatTimesheetSubmittedAt(sheet.cleanedAt) ?? '—'}
+                    </div>
+                  ) : null}
                 </td>
                 <td className={`px-2.5 py-2 text-right font-semibold tabular-nums ${adminHeading}`}>
                   {formatHours(sheet.workedHours)}

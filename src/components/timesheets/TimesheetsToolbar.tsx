@@ -1,14 +1,13 @@
+import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  adminGlassToolbar,
-  adminSearchInput,
-  adminSelectSm,
-} from '@/lib/adminUiStyles'
-import type { TimesheetsSortField, TimesheetsSortDirection } from '@/lib/timesheetTypes'
+import { adminSelectSm } from '@/lib/adminUiStyles'
+import type {
+  TimesheetsSortField,
+  TimesheetsSortDirection,
+  TimesheetsViewMode,
+} from '@/lib/timesheetTypes'
 import type { TimesheetRoleFilter, TimesheetStatusFilter } from '@/lib/timesheetUtils'
 import type { DriverRole } from '@/services/driversService'
-import { ChevronDown, Filter, Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -17,7 +16,10 @@ const selectClassName = adminSelectSm
 const labelClassName = `text-[11px] font-semibold text-[#113C69] dark:text-slate-200`
 
 const filterPanelClassName =
-  'rounded-2xl border border-[#D3E9FC] bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-slate-900'
+  'max-h-[min(85dvh,40rem)] overflow-y-auto rounded-2xl border border-[#D3E9FC] bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-slate-900'
+
+const cleanCurrentViewButtonClass =
+  'h-9 w-full rounded-[12px] border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800'
 
 const DRIVER_ROLES: DriverRole[] = [
   'Driver',
@@ -36,6 +38,7 @@ type FilterDraft = {
   weekFilter: string
   statusFilter: TimesheetStatusFilter
   roleFilter: TimesheetRoleFilter
+  viewMode: TimesheetsViewMode
   sortBy: TimesheetsSortField
   sortDir: TimesheetsSortDirection
 }
@@ -47,6 +50,8 @@ type TimesheetsToolbarProps = {
   onStatusFilterChange: (value: TimesheetStatusFilter) => void
   roleFilter: TimesheetRoleFilter
   onRoleFilterChange: (value: TimesheetRoleFilter) => void
+  viewMode: TimesheetsViewMode
+  onViewModeChange: (value: TimesheetsViewMode) => void
   weekFilter: string
   onWeekFilterChange: (value: string) => void
   weekOptions: { value: string; label: string }[]
@@ -80,6 +85,7 @@ function buildDraftFromProps(props: TimesheetsToolbarProps): FilterDraft {
     weekFilter: props.weekFilter,
     statusFilter: props.statusFilter,
     roleFilter: props.roleFilter,
+    viewMode: props.viewMode,
     sortBy: props.sortBy,
     sortDir: props.sortDir,
   }
@@ -91,12 +97,14 @@ function TimesheetFilterPanelBody({
   weekOptions,
   onClear,
   onApply,
+  onCleanCurrentView,
 }: {
   draft: FilterDraft
   setDraft: Dispatch<SetStateAction<FilterDraft>>
   weekOptions: { value: string; label: string }[]
   onClear: () => void
   onApply: () => void
+  onCleanCurrentView: () => void
 }) {
   return (
     <>
@@ -195,24 +203,55 @@ function TimesheetFilterPanelBody({
             <option value="asc">Oldest first</option>
           </select>
         </label>
+
+        <label className="block space-y-1.5">
+          <span className={labelClassName}>View</span>
+          <select
+            value={draft.viewMode}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                viewMode: event.target.value as TimesheetsViewMode,
+              }))
+            }
+            className={selectClassName}
+            aria-label="View"
+          >
+            <option value="current">Current view</option>
+            <option value="history">History</option>
+            <option value="all">All</option>
+          </select>
+        </label>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC] pt-3 dark:border-white/10">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onClear}
-          className="h-9 rounded-[10px] px-3 text-xs font-semibold text-[#0D477F] hover:bg-[#E8F3FE] dark:text-slate-300 dark:hover:bg-slate-800/50"
-        >
-          Clear Filters
-        </Button>
-        <Button
-          type="button"
-          onClick={onApply}
-          className="h-9 rounded-[10px] bg-[#218EE7] px-4 text-xs font-semibold text-white hover:bg-[#0B68BE]"
-        >
-          Apply
-        </Button>
+      <div className="mt-4 flex flex-col gap-2 border-t border-[#D3E9FC] pt-3 dark:border-white/10">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClear}
+            className="h-9 rounded-[10px] px-3 text-xs font-semibold text-[#0D477F] hover:bg-[#E8F3FE] dark:text-slate-300 dark:hover:bg-slate-800/50"
+          >
+            Clear Filters
+          </Button>
+          <Button
+            type="button"
+            onClick={onApply}
+            className="h-9 rounded-[10px] bg-[#218EE7] px-4 text-xs font-semibold text-white hover:bg-[#0B68BE]"
+          >
+            Apply
+          </Button>
+        </div>
+        {draft.viewMode === 'current' ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCleanCurrentView}
+            className={cleanCurrentViewButtonClass}
+          >
+            Clean Current View
+          </Button>
+        ) : null}
       </div>
     </>
   )
@@ -223,15 +262,17 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     searchTerm,
     onSearchTermChange,
     statusFilter,
-    onStatusFilterChange,
     roleFilter,
-    onRoleFilterChange,
+    viewMode,
     weekFilter,
-    onWeekFilterChange,
     weekOptions,
     sortBy,
-    onSortByChange,
     sortDir,
+    onStatusFilterChange,
+    onRoleFilterChange,
+    onViewModeChange,
+    onWeekFilterChange,
+    onSortByChange,
     onSortDirChange,
     onCleanCurrentView,
     onClearFilters,
@@ -256,10 +297,11 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
       weekFilter,
       statusFilter,
       roleFilter,
+      viewMode,
       sortBy,
       sortDir,
     })
-  }, [isFilterOpen, weekFilter, statusFilter, roleFilter, sortBy, sortDir])
+  }, [isFilterOpen, weekFilter, statusFilter, roleFilter, viewMode, sortBy, sortDir])
 
   useEffect(() => {
     if (!isFilterOpen) return
@@ -269,9 +311,11 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
       if (!anchor) return
 
       const rect = anchor.getBoundingClientRect()
+      const width = Math.min(360, window.innerWidth - 32)
+      const right = Math.max(16, Math.min(window.innerWidth - rect.right, window.innerWidth - width - 16))
       setPanelPosition({
-        top: rect.bottom + 12,
-        right: Math.max(16, window.innerWidth - rect.right),
+        top: Math.min(rect.bottom + 12, window.innerHeight - 48),
+        right,
       })
     }
 
@@ -318,6 +362,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     onWeekFilterChange(draft.weekFilter)
     onStatusFilterChange(draft.statusFilter)
     onRoleFilterChange(draft.roleFilter)
+    onViewModeChange(draft.viewMode)
     onSortByChange(draft.sortBy)
     onSortDirChange(draft.sortDir)
     setIsFilterOpen(false)
@@ -329,8 +374,14 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
       ...current,
       statusFilter: 'all',
       roleFilter: 'all',
+      viewMode: 'current',
     }))
     setIsFilterOpen(false)
+  }
+
+  function handleCleanCurrentView() {
+    setIsFilterOpen(false)
+    onCleanCurrentView()
   }
 
   const desktopFilterPanel =
@@ -352,6 +403,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
               weekOptions={weekOptions}
               onClear={handleClearFilters}
               onApply={handleApplyFilters}
+              onCleanCurrentView={handleCleanCurrentView}
             />
           </div>,
           document.body,
@@ -381,6 +433,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
                 weekOptions={weekOptions}
                 onClear={handleClearFilters}
                 onApply={handleApplyFilters}
+                onCleanCurrentView={handleCleanCurrentView}
               />
             </div>
           </div>,
@@ -390,63 +443,17 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
 
   return (
     <>
-      <div className={`${adminGlassToolbar} min-w-0 overflow-visible px-3 py-2.5 sm:px-4`}>
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => onSearchTermChange(event.target.value)}
-              placeholder="Search worker…"
-              className={`${adminSearchInput} pl-9 text-sm shadow-sm`}
-            />
-          </div>
-
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCleanCurrentView}
-              className="h-10 w-full rounded-[12px] border-[#C5DFFB] bg-white/90 px-3 text-xs font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50 sm:w-auto"
-            >
-              Clean current view
-            </Button>
-
-            <div ref={filterRootRef} className="relative w-full sm:w-auto">
-              <Button
-                type="button"
-                aria-expanded={isFilterOpen}
-                aria-haspopup="dialog"
-                onClick={() => setIsFilterOpen((open) => !open)}
-                className={`h-10 w-full rounded-[12px] px-3 text-xs font-semibold transition-all duration-150 sm:w-auto ${
-                  activeFilterCount > 0
-                    ? 'bg-[#2563EB] text-white shadow-[0_4px_14px_rgba(37,99,235,0.28)] hover:bg-[#1d4ed8]'
-                    : 'border border-[rgba(75,120,220,0.18)] bg-white/90 text-slate-700 shadow-sm hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/50'
-                }`}
-              >
-                <Filter className="mr-1.5 size-3.5" strokeWidth={2.2} />
-                {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filter'}
-                <ChevronDown
-                  className={`ml-1 size-3.5 transition-transform duration-150 ${
-                    isFilterOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </Button>
-            </div>
-
-            <Button
-              type="button"
-              onClick={onNewTimesheet}
-              className="h-10 w-full rounded-[12px] bg-[#2563EB] px-3 text-xs font-semibold text-white shadow-[0_4px_14px_rgba(37,99,235,0.22)] hover:bg-[#1d4ed8] sm:w-auto"
-            >
-              <Plus className="mr-1.5 size-3.5" />
-              New Timesheet
-            </Button>
-          </div>
-        </div>
-      </div>
-
+      <ModuleListToolbar
+        primaryActionLabel="New Timesheet"
+        onPrimaryAction={onNewTimesheet}
+        searchValue={searchTerm}
+        onSearchChange={onSearchTermChange}
+        searchPlaceholder="Search worker…"
+        onFilterToggle={() => setIsFilterOpen((open) => !open)}
+        filterOpen={isFilterOpen}
+        activeFilterCount={activeFilterCount}
+        filterAnchorRef={filterRootRef}
+      />
       {desktopFilterPanel}
       {mobileFilterSheet}
     </>

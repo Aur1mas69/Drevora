@@ -1,9 +1,10 @@
+import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { VehicleCheckResultFilter, VehicleCheckStatusFilter } from '@/lib/vehicleCheckTypes'
 import type { Vehicle } from '@/services/vehiclesService'
 import type { Driver } from '@/services/driversService'
-import { Filter, Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 type VehicleChecksToolbarProps = {
@@ -25,13 +26,8 @@ type VehicleChecksToolbarProps = {
   workers: Driver[]
   hasActiveFilters: boolean
   onClearFilters: () => void
+  onNewCheck: () => void
 }
-
-const toolbarShellClass =
-  'rounded-[18px] border border-[#D3E9FC] bg-gradient-to-br from-white via-[#F8FBFF] to-[#EFF7FF] p-4 shadow-[0_10px_30px_rgba(33,142,231,0.10)]'
-
-const searchInputClass =
-  'h-10 rounded-[14px] border-[#C5DFFB] bg-white/95 pl-9 text-sm text-[#113C69] shadow-sm placeholder:text-[#7FAFCC] focus:border-[#218EE7] focus:ring-[#89CFF0]/40'
 
 const selectClass =
   'h-10 rounded-[12px] border border-[#C5DFFB] bg-white px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30'
@@ -60,6 +56,7 @@ export function VehicleChecksToolbar({
   workers,
   hasActiveFilters,
   onClearFilters,
+  onNewCheck,
 }: VehicleChecksToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -117,177 +114,156 @@ export function VehicleChecksToolbar({
   }
 
   return (
-    <div className={toolbarShellClass}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
-          <Input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search vehicle, worker, registration or defect..."
-            className={searchInputClass}
-          />
-        </div>
-
-        <div ref={filtersRef} className="relative shrink-0 self-start sm:self-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsFiltersOpen((open) => !open)}
-            aria-expanded={isFiltersOpen}
-            aria-controls="vehicle-checks-filters-panel"
-            className="h-10 rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7]"
+    <ModuleListToolbar
+      primaryActionLabel="New Vehicle Check"
+      onPrimaryAction={onNewCheck}
+      searchValue={searchTerm}
+      onSearchChange={onSearchTermChange}
+      searchPlaceholder="Search vehicle, worker, registration or defect..."
+      onFilterToggle={() => setIsFiltersOpen((open) => !open)}
+      filterOpen={isFiltersOpen}
+      activeFilterCount={activeFilterCount}
+      filterAnchorRef={filtersRef}
+      filterPanel={
+        isFiltersOpen ? (
+          <div
+            id="vehicle-checks-filters-panel"
+            className={filterPanelClass}
+            role="dialog"
+            aria-label="Vehicle check filters"
           >
-            <Filter className="mr-1.5 size-4" aria-hidden="true" />
-            Filters
-            {activeFilterCount > 0 ? (
-              <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[#218EE7] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </Button>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#113C69]">Filters</p>
+                <p className="mt-0.5 text-xs text-[#5499BF]">Refine vehicle checks</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
+                aria-label="Close filters"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
 
-          {isFiltersOpen ? (
-            <div
-              id="vehicle-checks-filters-panel"
-              className={filterPanelClass}
-              role="dialog"
-              aria-label="Vehicle check filters"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#113C69]">Filters</p>
-                  <p className="mt-0.5 text-xs text-[#5499BF]">Refine vehicle checks</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFiltersOpen(false)}
-                  className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                  aria-label="Close filters"
+            <div className="mt-4 grid gap-3">
+              <div className="grid min-w-0 grid-cols-2 gap-2">
+                <label className="block min-w-0 space-y-1.5">
+                  <span className={labelClass}>Start date</span>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => onDateFromChange(event.target.value)}
+                    className={`${selectClass} w-full min-w-0 px-2`}
+                  />
+                </label>
+                <label className="block min-w-0 space-y-1.5">
+                  <span className={labelClass}>End date</span>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(event) => onDateToChange(event.target.value)}
+                    className={`${selectClass} w-full min-w-0 px-2`}
+                  />
+                </label>
+              </div>
+
+              <label className="block space-y-1.5">
+                <span className={labelClass}>Vehicle</span>
+                <select
+                  value={vehicleFilter}
+                  onChange={(event) => onVehicleFilterChange(event.target.value)}
+                  className={`${selectClass} w-full`}
+                  aria-label="Filter by vehicle"
                 >
-                  <X className="size-4" />
-                </button>
-              </div>
+                  <option value="all">All vehicles</option>
+                  {sortedVehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.registration}
+                      {vehicle.fleetNumber ? ` · ${vehicle.fleetNumber}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <div className="mt-4 grid gap-3">
-                <div className="grid min-w-0 grid-cols-2 gap-2">
-                  <label className="block min-w-0 space-y-1.5">
-                    <span className={labelClass}>Start date</span>
-                    <Input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(event) => onDateFromChange(event.target.value)}
-                      className={`${selectClass} w-full min-w-0 px-2`}
-                    />
-                  </label>
-                  <label className="block min-w-0 space-y-1.5">
-                    <span className={labelClass}>End date</span>
-                    <Input
-                      type="date"
-                      value={dateTo}
-                      min={dateFrom || undefined}
-                      onChange={(event) => onDateToChange(event.target.value)}
-                      className={`${selectClass} w-full min-w-0 px-2`}
-                    />
-                  </label>
-                </div>
+              <label className="block space-y-1.5">
+                <span className={labelClass}>Worker</span>
+                <select
+                  value={workerFilter}
+                  onChange={(event) => onWorkerFilterChange(event.target.value)}
+                  className={`${selectClass} w-full`}
+                  aria-label="Filter by worker"
+                >
+                  <option value="all">All workers</option>
+                  {sortedWorkers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.firstName} {worker.lastName}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <label className="block space-y-1.5">
-                  <span className={labelClass}>Vehicle</span>
-                  <select
-                    value={vehicleFilter}
-                    onChange={(event) => onVehicleFilterChange(event.target.value)}
-                    className={`${selectClass} w-full`}
-                    aria-label="Filter by vehicle"
-                  >
-                    <option value="all">All vehicles</option>
-                    {sortedVehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.registration}
-                        {vehicle.fleetNumber ? ` · ${vehicle.fleetNumber}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label className="block space-y-1.5">
+                <span className={labelClass}>Result</span>
+                <select
+                  value={resultFilter}
+                  onChange={(event) =>
+                    onResultFilterChange(event.target.value as VehicleCheckResultFilter)
+                  }
+                  className={`${selectClass} w-full`}
+                  aria-label="Filter by result"
+                >
+                  <option value="all">All results</option>
+                  <option value="Pass">Passed</option>
+                  <option value="Fail">Failed</option>
+                  <option value="Defects">Defects</option>
+                </select>
+              </label>
 
-                <label className="block space-y-1.5">
-                  <span className={labelClass}>Worker</span>
-                  <select
-                    value={workerFilter}
-                    onChange={(event) => onWorkerFilterChange(event.target.value)}
-                    className={`${selectClass} w-full`}
-                    aria-label="Filter by worker"
-                  >
-                    <option value="all">All workers</option>
-                    {sortedWorkers.map((worker) => (
-                      <option key={worker.id} value={worker.id}>
-                        {worker.firstName} {worker.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label className="block space-y-1.5">
+                <span className={labelClass}>Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    onStatusFilterChange(event.target.value as VehicleCheckStatusFilter)
+                  }
+                  className={`${selectClass} w-full`}
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                </select>
+              </label>
+            </div>
 
-                <label className="block space-y-1.5">
-                  <span className={labelClass}>Result</span>
-                  <select
-                    value={resultFilter}
-                    onChange={(event) =>
-                      onResultFilterChange(event.target.value as VehicleCheckResultFilter)
-                    }
-                    className={`${selectClass} w-full`}
-                    aria-label="Filter by result"
-                  >
-                    <option value="all">All results</option>
-                    <option value="Pass">Passed</option>
-                    <option value="Fail">Failed</option>
-                    <option value="Defects">Defects</option>
-                  </select>
-                </label>
-
-                <label className="block space-y-1.5">
-                  <span className={labelClass}>Status</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(event) =>
-                      onStatusFilterChange(event.target.value as VehicleCheckStatusFilter)
-                    }
-                    className={`${selectClass} w-full`}
-                    aria-label="Filter by status"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3">
-                {hasActiveFilters ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleClearFilters}
-                    className="h-9 rounded-[12px] px-2.5 text-xs font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                  >
-                    Clear filters
-                  </Button>
-                ) : (
-                  <span className="text-xs text-[#5499BF]">No filters applied</span>
-                )}
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3">
+              {hasActiveFilters ? (
                 <Button
                   type="button"
-                  onClick={() => setIsFiltersOpen(false)}
-                  className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
+                  variant="ghost"
+                  onClick={handleClearFilters}
+                  className="h-9 rounded-[12px] px-2.5 text-xs font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
                 >
-                  Done
+                  Clear filters
                 </Button>
-              </div>
+              ) : (
+                <span className="text-xs text-[#5499BF]">No filters applied</span>
+              )}
+              <Button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
+              >
+                Done
+              </Button>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
+          </div>
+        ) : null
+      }
+    />
   )
 }

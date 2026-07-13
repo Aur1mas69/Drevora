@@ -1,17 +1,15 @@
+import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   vehicleFilterFieldLabelClass,
   vehicleFilterPanelClass,
-  vehicleSearchInputClass,
   vehicleSelectClass,
-  vehicleToolbarClass,
 } from '@/components/vehicles/vehicleUiStyles'
 import type { DocumentFilter } from '@/lib/vehiclePageUtils'
 import { vehicleStatuses } from '@/lib/vehicleForm'
 import type { Driver } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
-import { Download, Filter, Search, X } from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 export type StatusFilter = VehicleStatus | 'All' | 'Unavailable' | 'MaintenanceDue'
@@ -30,6 +28,7 @@ type VehiclesFilterBarProps = {
   drivers: Driver[]
   onClearFilters: () => void
   onExportCsv: () => void
+  onAddVehicle: () => void
   hasActiveFilters: boolean
 }
 
@@ -54,6 +53,7 @@ export function VehiclesFilterBar({
   drivers,
   onClearFilters,
   onExportCsv,
+  onAddVehicle,
   hasActiveFilters,
 }: VehiclesFilterBarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
@@ -105,172 +105,147 @@ export function VehiclesFilterBar({
   }
 
   return (
-    <div className={vehicleToolbarClass}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search registration, fleet #, make/model, or driver…"
-            className={vehicleSearchInputClass}
-          />
-        </div>
-
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-          <div ref={filtersRef} className="relative w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsFiltersOpen((open) => !open)}
-              aria-expanded={isFiltersOpen}
-              aria-controls="vehicles-filters-panel"
-              className="h-10 w-full rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
-            >
-              <Filter className="mr-1.5 size-4" aria-hidden="true" />
-              Filters
-              {activeFilterCount > 0 ? (
-                <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[#218EE7] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
-                  {activeFilterCount}
-                </span>
-              ) : null}
-            </Button>
-
-            {isFiltersOpen ? (
-              <div
-                id="vehicles-filters-panel"
-                className={vehicleFilterPanelClass}
-                role="dialog"
-                aria-label="Vehicle filters"
+    <ModuleListToolbar
+      primaryActionLabel="Add Vehicle"
+      onPrimaryAction={onAddVehicle}
+      searchValue={searchTerm}
+      onSearchChange={onSearchTermChange}
+      searchPlaceholder="Search registration, fleet #, make/model, or driver…"
+      onFilterToggle={() => setIsFiltersOpen((open) => !open)}
+      filterOpen={isFiltersOpen}
+      activeFilterCount={activeFilterCount}
+      filterAnchorRef={filtersRef}
+      filterPanel={
+        isFiltersOpen ? (
+          <div
+            id="vehicles-filters-panel"
+            className={vehicleFilterPanelClass}
+            role="dialog"
+            aria-label="Vehicle filters"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#113C69]">Filters</p>
+                <p className="mt-0.5 text-xs text-[#5499BF]">Refine your fleet list</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
+                aria-label="Close filters"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[#113C69]">Filters</p>
-                    <p className="mt-0.5 text-xs text-[#5499BF]">Refine your fleet list</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsFiltersOpen(false)}
-                    className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                    aria-label="Close filters"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
+                <X className="size-4" />
+              </button>
+            </div>
 
-                <div className="mt-4 space-y-3">
-                  <label className="block space-y-1.5">
-                    <span className={vehicleFilterFieldLabelClass}>Status</span>
-                    <select
-                      value={statusFilter}
-                      onChange={(event) =>
-                        onStatusFilterChange(event.target.value as StatusFilter)
-                      }
-                      className={vehicleSelectClass}
-                      aria-label="Filter by status"
-                    >
-                      <option value="All">All statuses</option>
-                      <option value="Unavailable">Off Road / OOS</option>
-                      <option value="MaintenanceDue">Maintenance / Workshop</option>
-                      {vehicleStatuses.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            <div className="mt-4 space-y-3">
+              <label className="block space-y-1.5">
+                <span className={vehicleFilterFieldLabelClass}>Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    onStatusFilterChange(event.target.value as StatusFilter)
+                  }
+                  className={vehicleSelectClass}
+                  aria-label="Filter by status"
+                >
+                  <option value="All">All statuses</option>
+                  <option value="Unavailable">Off Road / OOS</option>
+                  <option value="MaintenanceDue">Maintenance / Workshop</option>
+                  {vehicleStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                  <label className="block space-y-1.5">
-                    <span className={vehicleFilterFieldLabelClass}>Driver</span>
-                    <select
-                      value={driverFilter}
-                      onChange={(event) => onDriverFilterChange(event.target.value)}
-                      className={vehicleSelectClass}
-                      aria-label="Filter by driver"
-                    >
-                      <option value="All">All drivers</option>
-                      <option value="Unassigned">Unassigned</option>
-                      {sortedDrivers.map((driver) => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.firstName} {driver.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+              <label className="block space-y-1.5">
+                <span className={vehicleFilterFieldLabelClass}>Driver</span>
+                <select
+                  value={driverFilter}
+                  onChange={(event) => onDriverFilterChange(event.target.value)}
+                  className={vehicleSelectClass}
+                  aria-label="Filter by driver"
+                >
+                  <option value="All">All drivers</option>
+                  <option value="Unassigned">Unassigned</option>
+                  {sortedDrivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.firstName} {driver.lastName}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                  <label className="block space-y-1.5">
-                    <span className={vehicleFilterFieldLabelClass}>MOT</span>
-                    <select
-                      value={motFilter}
-                      onChange={(event) =>
-                        onMotFilterChange(event.target.value as DocumentFilter)
-                      }
-                      className={vehicleSelectClass}
-                      aria-label="Filter by MOT status"
-                    >
-                      {documentFilterOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option === 'All' ? 'All MOT statuses' : `MOT: ${option}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+              <label className="block space-y-1.5">
+                <span className={vehicleFilterFieldLabelClass}>MOT</span>
+                <select
+                  value={motFilter}
+                  onChange={(event) =>
+                    onMotFilterChange(event.target.value as DocumentFilter)
+                  }
+                  className={vehicleSelectClass}
+                  aria-label="Filter by MOT status"
+                >
+                  {documentFilterOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option === 'All' ? 'All MOT statuses' : `MOT: ${option}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                  <label className="block space-y-1.5">
-                    <span className={vehicleFilterFieldLabelClass}>Insurance</span>
-                    <select
-                      value={insuranceFilter}
-                      onChange={(event) =>
-                        onInsuranceFilterChange(event.target.value as DocumentFilter)
-                      }
-                      className={vehicleSelectClass}
-                      aria-label="Filter by insurance status"
-                    >
-                      {documentFilterOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option === 'All'
-                            ? 'All insurance statuses'
-                            : `Insurance: ${option}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+              <label className="block space-y-1.5">
+                <span className={vehicleFilterFieldLabelClass}>Insurance</span>
+                <select
+                  value={insuranceFilter}
+                  onChange={(event) =>
+                    onInsuranceFilterChange(event.target.value as DocumentFilter)
+                  }
+                  className={vehicleSelectClass}
+                  aria-label="Filter by insurance status"
+                >
+                  {documentFilterOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option === 'All'
+                        ? 'All insurance statuses'
+                        : `Insurance: ${option}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-                {hasActiveFilters ? (
-                  <div className="mt-4 border-t border-[#D3E9FC]/70 pt-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearFilters}
-                      className="h-9 w-full rounded-[12px] text-sm font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                    >
-                      <X className="mr-1.5 size-3.5" />
-                      Clear filters
-                    </Button>
-                  </div>
-                ) : null}
+            {hasActiveFilters ? (
+              <div className="mt-4 border-t border-[#D3E9FC]/70 pt-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="h-9 w-full rounded-[12px] text-sm font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
+                >
+                  <X className="mr-1.5 size-3.5" />
+                  Clear filters
+                </Button>
               </div>
             ) : null}
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onExportCsv}
-            className="h-10 w-full rounded-[14px] border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
-          >
-            <Download className="mr-1.5 size-4" />
-            Export CSV
-          </Button>
-        </div>
-      </div>
-    </div>
+        ) : null
+      }
+      secondaryActions={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onExportCsv}
+          className="h-11 w-full rounded-2xl border-[#BFE3F5] bg-[#E8F3FE] px-4 text-sm font-semibold text-[#0B68BE] shadow-sm hover:border-[#89CFF0] hover:bg-[#DCEEFF] sm:w-auto"
+        >
+          <Download className="mr-1.5 size-4" />
+          Export CSV
+        </Button>
+      }
+    />
   )
 }

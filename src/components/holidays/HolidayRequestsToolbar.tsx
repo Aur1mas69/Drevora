@@ -1,16 +1,12 @@
+import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
 import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
 import type { HolidayRequestStatusFilter } from '@/lib/holidayRequestTypes'
 import type { Driver } from '@/services/driversService'
-import { Filter, Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  holidaySearchInputClass,
-  holidaySelectClass,
-  holidayToolbarClass,
-} from './holidayUiStyles'
+import { holidaySelectClass } from './holidayUiStyles'
 
 type HolidayRequestsToolbarProps = {
   searchTerm: string
@@ -25,6 +21,7 @@ type HolidayRequestsToolbarProps = {
   onDateToChange: (value: string) => void
   workers: Driver[]
   onClearFilters: () => void
+  onNewRequest: () => void
 }
 
 const filterPanelClass =
@@ -45,6 +42,7 @@ export function HolidayRequestsToolbar({
   onDateToChange,
   workers,
   onClearFilters,
+  onNewRequest,
 }: HolidayRequestsToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -97,148 +95,124 @@ export function HolidayRequestsToolbar({
   }
 
   return (
-    <div className={holidayToolbarClass}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search by worker name..."
-            className={holidaySearchInputClass}
-          />
-        </div>
-
-        <div ref={filtersRef} className="relative w-full shrink-0 sm:w-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsFiltersOpen((open) => !open)}
-            aria-expanded={isFiltersOpen}
-            aria-controls="holiday-requests-filters-panel"
-            className="h-10 w-full rounded-[14px] border border-[#C5DFFB] bg-white/90 px-3.5 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] sm:w-auto"
+    <ModuleListToolbar
+      primaryActionLabel="New Holiday Request"
+      onPrimaryAction={onNewRequest}
+      searchValue={searchTerm}
+      onSearchChange={onSearchTermChange}
+      searchPlaceholder="Search by worker name..."
+      onFilterToggle={() => setIsFiltersOpen((open) => !open)}
+      filterOpen={isFiltersOpen}
+      activeFilterCount={activeFilterCount}
+      filterAnchorRef={filtersRef}
+      filterPanel={
+        isFiltersOpen ? (
+          <div
+            id="holiday-requests-filters-panel"
+            className={filterPanelClass}
+            role="dialog"
+            aria-label="Holiday request filters"
           >
-            <Filter className="mr-1.5 size-4" aria-hidden="true" />
-            Filters
-            {activeFilterCount > 0 ? (
-              <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[#218EE7] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </Button>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#113C69]">Filters</p>
+                <p className="mt-0.5 text-xs text-[#5499BF]">Refine holiday requests</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
+                aria-label="Close filters"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
 
-          {isFiltersOpen ? (
-            <div
-              id="holiday-requests-filters-panel"
-              className={filterPanelClass}
-              role="dialog"
-              aria-label="Holiday request filters"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#113C69]">Filters</p>
-                  <p className="mt-0.5 text-xs text-[#5499BF]">Refine holiday requests</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFiltersOpen(false)}
-                  className="rounded-[10px] p-1 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                  aria-label="Close filters"
+            <div className="mt-4 space-y-3">
+              <label className="block space-y-1.5">
+                <span className={filterFieldLabelClass}>Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    onStatusFilterChange(event.target.value as HolidayRequestStatusFilter)
+                  }
+                  className={`${holidaySelectClass} w-full`}
+                  aria-label="Filter by status"
                 >
-                  <X className="size-4" />
-                </button>
-              </div>
+                  <option value="all">All statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Declined</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </label>
 
-              <div className="mt-4 space-y-3">
-                <label className="block space-y-1.5">
-                  <span className={filterFieldLabelClass}>Status</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(event) =>
-                      onStatusFilterChange(event.target.value as HolidayRequestStatusFilter)
-                    }
-                    className={`${holidaySelectClass} w-full`}
-                    aria-label="Filter by status"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Declined</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </label>
+              <label className="block space-y-1.5">
+                <span className={filterFieldLabelClass}>Worker</span>
+                <select
+                  value={workerFilter}
+                  onChange={(event) => onWorkerFilterChange(event.target.value)}
+                  className={`${holidaySelectClass} w-full`}
+                  aria-label="Filter by worker"
+                >
+                  <option value="all">All workers</option>
+                  {sortedWorkers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.firstName} {worker.lastName}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <label className="block space-y-1.5">
-                  <span className={filterFieldLabelClass}>Worker</span>
-                  <select
-                    value={workerFilter}
-                    onChange={(event) => onWorkerFilterChange(event.target.value)}
-                    className={`${holidaySelectClass} w-full`}
-                    aria-label="Filter by worker"
-                  >
-                    <option value="all">All workers</option>
-                    {sortedWorkers.map((worker) => (
-                      <option key={worker.id} value={worker.id}>
-                        {worker.firstName} {worker.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <HolidayDatePickerGroup>
+                <div className="grid min-w-0 grid-cols-2 gap-2">
+                  <label className="block min-w-0 space-y-1.5">
+                    <span className={filterFieldLabelClass}>Start date</span>
+                    <HolidayDateInput
+                      value={dateFrom}
+                      onChange={onDateFromChange}
+                      className={`${holidaySelectClass} w-full min-w-0 px-2`}
+                      aria-label="Start date"
+                    />
+                  </label>
+                  <label className="block min-w-0 space-y-1.5">
+                    <span className={filterFieldLabelClass}>End date</span>
+                    <HolidayDateInput
+                      value={dateTo}
+                      onChange={onDateToChange}
+                      min={dateFrom || undefined}
+                      className={`${holidaySelectClass} w-full min-w-0 px-2`}
+                      aria-label="End date"
+                    />
+                  </label>
+                </div>
+              </HolidayDatePickerGroup>
+            </div>
 
-                <HolidayDatePickerGroup>
-                  <div className="grid min-w-0 grid-cols-2 gap-2">
-                    <label className="block min-w-0 space-y-1.5">
-                      <span className={filterFieldLabelClass}>Start date</span>
-                      <HolidayDateInput
-                        value={dateFrom}
-                        onChange={onDateFromChange}
-                        className={`${holidaySelectClass} w-full min-w-0 px-2`}
-                        aria-label="Start date"
-                      />
-                    </label>
-                    <label className="block min-w-0 space-y-1.5">
-                      <span className={filterFieldLabelClass}>End date</span>
-                      <HolidayDateInput
-                        value={dateTo}
-                        onChange={onDateToChange}
-                        min={dateFrom || undefined}
-                        className={`${holidaySelectClass} w-full min-w-0 px-2`}
-                        aria-label="End date"
-                      />
-                    </label>
-                  </div>
-                </HolidayDatePickerGroup>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3">
-                {hasDropdownFilters ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleClearFilters}
-                    className="h-9 rounded-[12px] px-2.5 text-xs font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
-                  >
-                    Clear filters
-                  </Button>
-                ) : (
-                  <span className="text-xs text-[#5499BF]">No filters applied</span>
-                )}
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3">
+              {hasDropdownFilters ? (
                 <Button
                   type="button"
-                  onClick={() => setIsFiltersOpen(false)}
-                  className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
+                  variant="ghost"
+                  onClick={handleClearFilters}
+                  className="h-9 rounded-[12px] px-2.5 text-xs font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
                 >
-                  Done
+                  Clear filters
                 </Button>
-              </div>
+              ) : (
+                <span className="text-xs text-[#5499BF]">No filters applied</span>
+              )}
+              <Button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
+              >
+                Done
+              </Button>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
+          </div>
+        ) : null
+      }
+    />
   )
 }

@@ -46,6 +46,7 @@ export type Timesheet = {
   submittedAt: string | null
   approvedAt: string | null
   rejectedAt: string | null
+  cleanedAt: string | null
   driverName: string
   driverRole: DriverRole | null
   fleetNo: string
@@ -81,12 +82,16 @@ export type TimesheetsSortField =
 
 export type TimesheetsSortDirection = 'asc' | 'desc'
 
+/** Current = not cleaned; History = cleaned only; All = both (no duplicates). */
+export type TimesheetsViewMode = 'current' | 'history' | 'all'
+
 export type TimesheetsQuery = {
   search?: string
   status?: TimesheetStatus | 'all'
   role?: DriverRole | 'all'
   weekStart: string
   vehicleId?: string | 'all' | 'unassigned'
+  viewMode?: TimesheetsViewMode
   page?: number
   pageSize?: number
   sortBy?: TimesheetsSortField

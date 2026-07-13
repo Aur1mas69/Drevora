@@ -62,6 +62,7 @@ type TimesheetRow = {
   submitted_at?: string | null
   approved_at?: string | null
   rejected_at?: string | null
+  cleaned_at?: string | null
   driver_id: string
   vehicle_id: string | null
   week_start: string
@@ -113,6 +114,7 @@ const timesheetDetailSelectWithoutDailyComment = `
   submitted_at,
   approved_at,
   rejected_at,
+  cleaned_at,
   driver_id,
   vehicle_id,
   week_start,
@@ -131,6 +133,7 @@ const timesheetDetailSelectMinimalEntries = `
   submitted_at,
   approved_at,
   rejected_at,
+  cleaned_at,
   driver_id,
   vehicle_id,
   week_start,
@@ -162,6 +165,7 @@ const timesheetDetailSelect = `
   submitted_at,
   approved_at,
   rejected_at,
+  cleaned_at,
   driver_id,
   vehicle_id,
   week_start,
@@ -180,6 +184,7 @@ const timesheetListSelect = `
   submitted_at,
   approved_at,
   rejected_at,
+  cleaned_at,
   driver_id,
   vehicle_id,
   week_start,
@@ -339,6 +344,7 @@ function mapListRow(
     submittedAt: row.submitted_at ?? null,
     approvedAt: row.approved_at ?? null,
     rejectedAt: row.rejected_at ?? null,
+    cleanedAt: row.cleaned_at ?? null,
     driverName,
     driverRole: normalizeDriverRole(driver?.role ?? null),
     fleetNo: vehicle?.fleet_number?.trim() || '—',
@@ -575,6 +581,8 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
     .eq('week_start', weekStart)
     .is('deleted_at', null)
 
+  request = applyTimesheetsCleanedAtViewFilter(request, query.viewMode)
+
   if (query.status && query.status !== 'all') {
     request = request.eq('status', query.status)
   }
@@ -626,6 +634,11 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   })
 
   if (error) {
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Timesheets cleanup views are not available yet. Ensure cleaned_at exists on timesheets.',
+      )
+    }
     throw new TimesheetsServiceError(error.message)
   }
 
@@ -639,7 +652,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
     items = items.slice(from, to + 1)
   }
 
-  const stats = await fetchTimesheetWeekStats(weekStart)
+  const stats = await fetchTimesheetWeekStats(weekStart, query.viewMode)
 
   return {
     items,
@@ -650,14 +663,43 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   }
 }
 
-export async function fetchTimesheetWeekStats(weekStart: string) {
+function isMissingCleanedAtColumnError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('cleaned_at') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('column'))
+  )
+}
+
+/** Apply Current / History / All cleaned_at visibility to a timesheets query. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyTimesheetsCleanedAtViewFilter(request: any, viewMode: TimesheetsQuery['viewMode']): any {
+  if (viewMode === 'history') {
+    return request.not('cleaned_at', 'is', null)
+  }
+  if (viewMode === 'all') {
+    return request
+  }
+  return request.is('cleaned_at', null)
+}
+
+export async function fetchTimesheetWeekStats(
+  weekStart: string,
+  viewMode: TimesheetsQuery['viewMode'] = 'current',
+) {
   const normalizedWeek = normalizeWeekStartForCompany(weekStart)
 
-  const { data, error } = await requireSupabase()
+  let request = requireSupabase()
     .from('timesheets')
     .select('id, status')
     .eq('week_start', normalizedWeek)
     .is('deleted_at', null)
+
+  request = applyTimesheetsCleanedAtViewFilter(request, viewMode)
+
+  const { data, error } = await request
 
   logSupabaseQuery({
     service: 'timesheetsService.fetchTimesheetWeekStats',
@@ -667,6 +709,11 @@ export async function fetchTimesheetWeekStats(weekStart: string) {
   })
 
   if (error) {
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Timesheets cleanup views are not available yet. Ensure cleaned_at exists on timesheets.',
+      )
+    }
     throw new TimesheetsServiceError(error.message)
   }
 
@@ -888,6 +935,63 @@ export async function updateTimesheet(
   }
 
   return fetchTimesheetRowById(id)
+}
+
+export type CleanTimesheetsCurrentViewInput = {
+  /** Exact displayed week_start (will be normalized with company Monday/Sunday setting). */
+  weekStart: string
+}
+
+/**
+ * Soft-clean Current week view: sets cleaned_at only on timesheets for that week.
+ * Does not change status and does not touch timesheet_entries.
+ * Scope: deleted_at IS NULL, cleaned_at IS NULL, week_start = normalized week.
+ * Note: public.timesheets has no company column; matches existing Timesheets page scope.
+ */
+export async function cleanTimesheetsCurrentView(
+  input: CleanTimesheetsCurrentViewInput,
+): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const weekStart = normalizeWeekStartForCompany(input.weekStart)
+  const cleanedAt = new Date().toISOString()
+
+  const { data, error } = await requireSupabase()
+    .from('timesheets')
+    .update({
+      cleaned_at: cleanedAt,
+      updated_at: cleanedAt,
+    })
+    .eq('week_start', weekStart)
+    .is('deleted_at', null)
+    .is('cleaned_at', null)
+    .select('id, cleaned_at')
+
+  logSupabaseQuery({
+    service: 'timesheetsService.cleanTimesheetsCurrentView',
+    table: 'timesheets',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Timesheets cleanup is not available yet. Ensure cleaned_at exists on timesheets.',
+      )
+    }
+    throw new TimesheetsServiceError(error.message)
+  }
+
+  const cleanedIds = (data ?? []).map((row) => String((row as { id: string }).id))
+
+  if (import.meta.env.DEV) {
+    console.info('[timesheets] clean current view', {
+      weekStart,
+      cleanedCount: cleanedIds.length,
+      cleanedIds,
+    })
+  }
+
+  return { cleanedCount: cleanedIds.length, cleanedIds }
 }
 
 export async function deleteTimesheet(id: string): Promise<void> {
@@ -1221,6 +1325,7 @@ export const timesheetsService = {
   bulkCreateTimesheets,
   updateTimesheet,
   deleteTimesheet,
+  cleanTimesheetsCurrentView,
   upsertTimesheetEntries,
   approveTimesheet,
   rejectTimesheet,

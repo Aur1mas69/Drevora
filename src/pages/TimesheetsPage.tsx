@@ -17,6 +17,7 @@ import type {
   TimesheetSummaryStats,
   TimesheetsSortField,
   TimesheetsSortDirection,
+  TimesheetsViewMode,
 } from '@/lib/timesheetTypes'
 import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
 import {
@@ -31,6 +32,7 @@ import {
   approveTimesheet,
   bulkApproveTimesheets,
   bulkCreateTimesheets,
+  cleanTimesheetsCurrentView,
   createTimesheet,
   deleteTimesheet,
   fetchTimesheetById,
@@ -68,6 +70,7 @@ export default function TimesheetsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<TimesheetStatusFilter>('all')
   const [roleFilter, setRoleFilter] = useState<TimesheetRoleFilter>('all')
+  const [viewMode, setViewMode] = useState<TimesheetsViewMode>('current')
   const [weekFilter, setWeekFilter] = useState(getDefaultWeekStartMonday())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_TIMESHEET_PAGE_SIZE)
@@ -86,6 +89,7 @@ export default function TimesheetsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
+  const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
 
   const weekSettings = useMemo(
     () =>
@@ -108,7 +112,8 @@ export default function TimesheetsPage() {
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     statusFilter !== 'all' ||
-    roleFilter !== 'all'
+    roleFilter !== 'all' ||
+    viewMode !== 'current'
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -122,7 +127,7 @@ export default function TimesheetsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, statusFilter, roleFilter, weekFilter, sortBy, sortDir, pageSize])
+  }, [debouncedSearch, statusFilter, roleFilter, viewMode, weekFilter, sortBy, sortDir, pageSize])
 
   const loadReferenceData = useCallback(async () => {
     const loadedDrivers = await fetchDrivers()
@@ -139,6 +144,7 @@ export default function TimesheetsPage() {
         status: statusFilter,
         role: roleFilter,
         weekStart: weekFilter,
+        viewMode,
         page,
         pageSize,
         sortBy,
@@ -168,6 +174,7 @@ export default function TimesheetsPage() {
     sortBy,
     sortDir,
     statusFilter,
+    viewMode,
     weekFilter,
   ])
 
@@ -273,19 +280,44 @@ export default function TimesheetsPage() {
     setDeleteTarget(timesheet)
   }
 
-  function resetToCurrentWeekView() {
-    setSearchTerm('')
-    setDebouncedSearch('')
-    setStatusFilter('all')
-    setRoleFilter('all')
-    setWeekFilter(getDefaultWeekStartMonday())
-    setSelectedIds(new Set())
-  }
+  async function handleConfirmCleanCurrentView() {
+    if (isCleaningCurrentView) return
 
-  function handleConfirmCleanCurrentView() {
-    resetToCurrentWeekView()
-    setIsCleanCurrentViewOpen(false)
-    showToast('Current week view cleaned')
+    setIsCleaningCurrentView(true)
+    try {
+      // Scope: all non-cleaned timesheets for the currently displayed week only.
+      const { cleanedCount } = await cleanTimesheetsCurrentView({
+        weekStart: weekFilter,
+      })
+
+      if (cleanedCount === 0) {
+        showToast('No timesheets were cleaned from the current view.')
+        return
+      }
+
+      setSearchTerm('')
+      setDebouncedSearch('')
+      setStatusFilter('all')
+      setRoleFilter('all')
+      setViewMode('current')
+      setSelectedIds(new Set())
+      setPage(1)
+      setIsCleanCurrentViewOpen(false)
+      await loadTimesheets()
+      showToast(
+        cleanedCount === 1
+          ? '1 timesheet removed from current view'
+          : `${cleanedCount} timesheets removed from current view`,
+      )
+    } catch (error) {
+      showToast(
+        error instanceof TimesheetsServiceError
+          ? error.message
+          : 'Unable to clean timesheets current view.',
+      )
+    } finally {
+      setIsCleaningCurrentView(false)
+    }
   }
 
   function handleCancelDelete() {
@@ -550,6 +582,8 @@ export default function TimesheetsPage() {
           onStatusFilterChange={setStatusFilter}
           roleFilter={roleFilter}
           onRoleFilterChange={setRoleFilter}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           weekFilter={weekFilter}
           onWeekFilterChange={setWeekFilter}
           weekOptions={weekOptions}
@@ -563,6 +597,7 @@ export default function TimesheetsPage() {
             setDebouncedSearch('')
             setStatusFilter('all')
             setRoleFilter('all')
+            setViewMode('current')
           }}
           onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onNewTimesheet={() => {
@@ -679,10 +714,13 @@ export default function TimesheetsPage() {
       <CleanCurrentViewModal
         open={isCleanCurrentViewOpen}
         title="Clean timesheets current view?"
-        description="This will reset Timesheets to the current week and clear search/status filters only. Records will remain saved and searchable by choosing another week."
+        description="Timesheets will be removed from the Current view and kept in History. No records or Timesheet entries will be permanently deleted."
         confirmLabel="Clean current view"
-        onCancel={() => setIsCleanCurrentViewOpen(false)}
-        onConfirm={handleConfirmCleanCurrentView}
+        confirming={isCleaningCurrentView}
+        onCancel={() => {
+          if (!isCleaningCurrentView) setIsCleanCurrentViewOpen(false)
+        }}
+        onConfirm={() => void handleConfirmCleanCurrentView()}
       />
 
       {toastMessage ? (

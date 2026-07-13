@@ -9,9 +9,8 @@ import {
 import { HolidayRequestsPagination } from '@/components/holidays/HolidayRequestsPagination'
 import { HolidayRequestsSummaryCards } from '@/components/holidays/HolidayRequestsSummaryCards'
 import { HolidayRequestsToolbar } from '@/components/holidays/HolidayRequestsToolbar'
-import { holidayPageCardClass, holidayPrimaryButtonClass } from '@/components/holidays/holidayUiStyles'
+import { holidayPageCardClass } from '@/components/holidays/holidayUiStyles'
 import { NewHolidayRequestModal } from '@/components/holidays/NewHolidayRequestModal'
-import { Button } from '@/components/ui/button'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   HolidayRequest,
@@ -32,7 +31,6 @@ import {
   updateHolidayRequest,
 } from '@/services/holidayRequestsService'
 import { useCallback, useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
 
 export default function HolidayRequestsPage() {
   const [items, setItems] = useState<HolidayRequest[]>([])
@@ -315,26 +313,16 @@ export default function HolidayRequestsPage() {
   return (
     <AdminLayout>
       <div className="min-w-0 space-y-5">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
-              Operations
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
-              Holiday Requests
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-[#5499BF]">
-              Manage worker holiday requests, approvals and declined requests.
-            </p>
-          </div>
-          <Button
-            type="button"
-            onClick={() => setIsNewModalOpen(true)}
-            className={`w-full shrink-0 sm:w-auto ${holidayPrimaryButtonClass}`}
-          >
-            <Plus className="mr-1.5 size-4" />
-            New Holiday Request
-          </Button>
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#218EE7]">
+            Operations
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
+            Holiday Requests
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-[#5499BF]">
+            Manage worker holiday requests, approvals and declined requests.
+          </p>
         </header>
 
         <HolidayRequestsSummaryCards
@@ -356,6 +344,7 @@ export default function HolidayRequestsPage() {
           onDateToChange={setDateTo}
           workers={workers}
           onClearFilters={clearFilters}
+          onNewRequest={() => setIsNewModalOpen(true)}
         />
 
         {loadError ? (

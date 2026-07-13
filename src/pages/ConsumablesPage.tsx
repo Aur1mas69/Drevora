@@ -20,6 +20,7 @@ import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import { getConsumableSummaryDateRange } from '@/lib/consumableUtils'
 import {
+  cleanConsumablesCurrentView,
   createConsumable,
   deleteConsumable,
   fetchConsumables,
@@ -73,8 +74,10 @@ export default function ConsumablesPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [summaryRefreshToken, setSummaryRefreshToken] = useState(0)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
+  const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
 
   const listDateRange = useMemo(() => {
+    // History shows cleaned rows across periods; Current/All keep the Period filter.
     if (filters.viewMode === 'history') return { dateFrom: undefined, dateTo: undefined }
     return getConsumableSummaryDateRange(
       filters.period,
@@ -82,6 +85,16 @@ export default function ConsumablesPage() {
       filters.customDateTo,
     )
   }, [filters])
+
+  const cleanScopeDateRange = useMemo(
+    () =>
+      getConsumableSummaryDateRange(
+        filters.period,
+        filters.customDateFrom,
+        filters.customDateTo,
+      ),
+    [filters.period, filters.customDateFrom, filters.customDateTo],
+  )
 
   const hasActiveFilters = debouncedSearch.trim().length > 0 || !filtersAreDefault(filters)
 
@@ -127,6 +140,7 @@ export default function ConsumablesPage() {
         vehicleId: filters.vehicleId,
         dateFrom: listDateRange.dateFrom,
         dateTo: listDateRange.dateTo,
+        viewMode: filters.viewMode,
         page,
         pageSize,
       })
@@ -148,6 +162,7 @@ export default function ConsumablesPage() {
   }, [
     debouncedSearch,
     filters.vehicleId,
+    filters.viewMode,
     listDateRange.dateFrom,
     listDateRange.dateTo,
     page,
@@ -281,10 +296,41 @@ export default function ConsumablesPage() {
     setFilters(DEFAULT_CONSUMABLES_FILTERS)
   }
 
-  function handleConfirmCleanCurrentView() {
-    resetFilters()
-    setIsCleanCurrentViewOpen(false)
-    showToast('Current view cleaned')
+  async function handleConfirmCleanCurrentView() {
+    if (isCleaningCurrentView) return
+
+    setIsCleaningCurrentView(true)
+    try {
+      // Scope matches Current view list filters: Period + Vehicle (not chart type / search).
+      const { cleanedCount } = await cleanConsumablesCurrentView({
+        dateFrom: cleanScopeDateRange.dateFrom,
+        dateTo: cleanScopeDateRange.dateTo,
+        vehicleId: filters.vehicleId,
+      })
+
+      if (cleanedCount === 0) {
+        showToast('No active consumable entries were cleaned.')
+        return
+      }
+
+      resetFilters()
+      setPage(1)
+      setIsCleanCurrentViewOpen(false)
+      await loadConsumables()
+      showToast(
+        cleanedCount === 1
+          ? '1 consumable entry moved to History'
+          : `${cleanedCount} consumable entries moved to History`,
+      )
+    } catch (error) {
+      showToast(
+        error instanceof ConsumablesServiceError
+          ? error.message
+          : 'Unable to clean consumables current view.',
+      )
+    } finally {
+      setIsCleaningCurrentView(false)
+    }
   }
 
   return (
@@ -396,10 +442,13 @@ export default function ConsumablesPage() {
       <CleanCurrentViewModal
         open={isCleanCurrentViewOpen}
         title="Clean consumables current view?"
-        description="This will reset Consumables to This month, All vehicles, AdBlue and Current view, and clear search. Records will remain saved and searchable in History view or another period."
+        description="Consumable entries will be removed from the Current view and kept in History. No records will be permanently deleted."
         confirmLabel="Clean current view"
-        onCancel={() => setIsCleanCurrentViewOpen(false)}
-        onConfirm={handleConfirmCleanCurrentView}
+        confirming={isCleaningCurrentView}
+        onCancel={() => {
+          if (!isCleaningCurrentView) setIsCleanCurrentViewOpen(false)
+        }}
+        onConfirm={() => void handleConfirmCleanCurrentView()}
       />
     </AdminLayout>
   )

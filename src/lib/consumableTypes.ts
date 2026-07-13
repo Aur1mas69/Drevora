@@ -57,9 +57,13 @@ export type Consumable = {
   notes: string | null
   entryDate: string
   entryTime: string | null
+  cleanedAt: string | null
 }
 
 export type ConsumableTypeFilter = ConsumableType | 'all'
+
+/** Current = not cleaned; History = cleaned only; All = both (no duplicates). */
+export type ConsumablesViewModeFilter = 'current' | 'history' | 'all'
 
 export type ConsumablesQuery = {
   search?: string
@@ -68,6 +72,7 @@ export type ConsumablesQuery = {
   workerId?: string | 'all'
   dateFrom?: string
   dateTo?: string
+  viewMode?: ConsumablesViewModeFilter
   page?: number
   pageSize?: number
 }
@@ -140,6 +145,7 @@ export type ConsumablesSummaryQuery = {
   month?: number
   vehicleId?: string | 'all'
   type?: ConsumableTypeFilter
+  viewMode?: ConsumablesViewModeFilter
 }
 
 /** @deprecated Use ConsumablesSummaryQuery */

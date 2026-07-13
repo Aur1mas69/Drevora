@@ -10,7 +10,6 @@ import {
   type VehicleChecksKpiFilter,
 } from '@/components/vehicle-checks/VehicleChecksSummaryCards'
 import { VehicleChecksToolbar } from '@/components/vehicle-checks/VehicleChecksToolbar'
-import { Button } from '@/components/ui/button'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   VehicleCheck,
@@ -37,7 +36,6 @@ import {
   type VehicleStatus,
 } from '@/services/vehiclesService'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
-import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 const vehicleUnavailableStatuses: VehicleStatus[] = [
@@ -348,23 +346,13 @@ export default function VehicleChecksPage() {
   return (
     <AdminLayout>
       <div className="space-y-4">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
-              Vehicle Checks
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Manage daily vehicle inspections and defect reports.
-            </p>
-          </div>
-          <Button
-            type="button"
-            onClick={() => setIsNewModalOpen(true)}
-            className="h-10 shrink-0 rounded-[14px] bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(33,142,231,0.24)] hover:bg-[#1d7fd0]"
-          >
-            <Plus className="mr-1.5 size-4" />
-            New Vehicle Check
-          </Button>
+        <header>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
+            Vehicle Checks
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Manage daily vehicle inspections and defect reports.
+          </p>
         </header>
 
         <VehicleChecksSummaryCards
@@ -414,6 +402,7 @@ export default function VehicleChecksPage() {
           workers={drivers}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilters}
+          onNewCheck={() => setIsNewModalOpen(true)}
         />
 
         {loadError ? (

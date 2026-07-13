@@ -8,11 +8,11 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Eye, Filter, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ModuleListToolbar, moduleListPrimaryButtonClass } from '@/components/common/ModuleListToolbar'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   RowActionsMenu,
   TableActionsCell,
@@ -33,7 +33,6 @@ import {
   adminFilterChip,
   adminHeadingLg,
   adminPanel,
-  adminSearchInputLg,
   adminSelect,
   adminSkeletonPulse,
   adminTableEntityName,
@@ -139,17 +138,8 @@ const roleClassMap: Record<DriverRole, string> = {
   Other: 'bg-[#F1F5F9] text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
 }
 
-const workersPrimaryButtonClass =
-  'h-11 rounded-2xl border border-[#89CFF0]/70 bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 font-semibold text-white shadow-[0_8px_24px_rgba(33,142,231,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFE3F5] hover:from-[#1A7FD4] hover:to-[#095FA8] hover:shadow-[0_12px_32px_rgba(33,142,231,0.28)] active:translate-y-0 active:scale-[0.98] active:shadow-[0_6px_18px_rgba(33,142,231,0.18)]'
-
 const workersTableCardClass =
   'overflow-hidden rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/92 shadow-[0_8px_24px_rgba(33,142,231,0.1),0_0_0_1px_rgba(197,223,251,0.35)] ring-1 ring-[#C5DFFB]/45 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10'
-
-const workersSearchInputClass =
-  `${adminSearchInputLg} pl-10 pr-4 transition-all duration-200 hover:ring-[#BFE3F5] focus-visible:border-[#89CFF0] focus-visible:ring-[#BFE3F5]/70`
-
-const workersFilterButtonClass =
-  'h-11 shrink-0 rounded-2xl border border-[#D3E9FC] bg-white/90 px-4 font-semibold text-[#113C69] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFE3F5] hover:bg-[#F5FAFF] hover:text-[#0B68BE] hover:shadow-[0_8px_20px_rgba(33,142,231,0.12)] focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 active:translate-y-0 active:scale-[0.98] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/90'
 
 function getDriverName(driver: Driver): string {
   return `${driver.firstName} ${driver.lastName}`.trim()
@@ -254,111 +244,92 @@ function DriversToolbar({
   onFilterToggle: () => void
   onAddDriver: () => void
 }) {
+  const activeFilterCount =
+    (statusFilter !== 'All' ? 1 : 0) +
+    (roleFilter !== 'All' ? 1 : 0) +
+    (companyFilter !== 'All' ? 1 : 0)
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <Button
-        type="button"
-        onClick={onAddDriver}
-        className={`w-full sm:w-auto ${workersPrimaryButtonClass}`}
-      >
-        <Plus className="size-4" />
-        Add Worker
-      </Button>
-
-      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-        <div className="relative min-w-0 w-full sm:w-[280px]">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]" />
-          <Input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search workers"
-            className={workersSearchInputClass}
-            aria-label="Search workers"
-          />
-        </div>
-
-        <div className="relative w-full shrink-0 sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onFilterToggle}
-            className={`w-full sm:w-auto ${workersFilterButtonClass}`}
-            aria-expanded={isFilterOpen}
+    <ModuleListToolbar
+      primaryActionLabel="Add Worker"
+      onPrimaryAction={onAddDriver}
+      searchValue={searchTerm}
+      onSearchChange={onSearchTermChange}
+      searchPlaceholder="Search workers"
+      onFilterToggle={onFilterToggle}
+      filterOpen={isFilterOpen}
+      activeFilterCount={activeFilterCount}
+      filterPanel={
+        isFilterOpen ? (
+          <div
+            className={`absolute left-0 right-0 z-20 mt-3 w-full p-4 sm:left-auto sm:right-0 sm:w-[260px] ${adminPanel} shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100 dark:ring-white/10`}
           >
-            <Filter className="size-4" />
-            Filter
-          </Button>
+            <div className="space-y-3">
+              <label className="block">
+                <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
+                  Status
+                </span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    onStatusFilterChange(event.target.value as StatusFilter)
+                  }
+                  className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                  aria-label="Filter by status"
+                >
+                  <option value="All">All statuses</option>
+                  {driverStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          {isFilterOpen ? (
-            <div className={`absolute left-0 right-0 z-20 mt-3 w-full p-4 sm:left-auto sm:right-0 sm:w-[260px] ${adminPanel} shadow-[0_18px_45px_rgba(59,130,246,0.16)] ring-1 ring-blue-100 dark:ring-white/10`}>
-              <div className="space-y-3">
-                <label className="block">
-                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
-                    Status
-                  </span>
-                  <select
-                    value={statusFilter}
-                    onChange={(event) =>
-                      onStatusFilterChange(event.target.value as StatusFilter)
-                    }
-                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
-                    aria-label="Filter by status"
-                  >
-                    <option value="All">All statuses</option>
-                    {driverStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label className="block">
+                <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
+                  Role
+                </span>
+                <select
+                  value={roleFilter}
+                  onChange={(event) =>
+                    onRoleFilterChange(event.target.value as RoleFilter)
+                  }
+                  className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                  aria-label="Filter by role"
+                >
+                  <option value="All">All roles</option>
+                  {workerRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <label className="block">
-                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
-                    Role
-                  </span>
-                  <select
-                    value={roleFilter}
-                    onChange={(event) =>
-                      onRoleFilterChange(event.target.value as RoleFilter)
-                    }
-                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
-                    aria-label="Filter by role"
-                  >
-                    <option value="All">All roles</option>
-                    {workerRoles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
-                    Company
-                  </span>
-                  <select
-                    value={companyFilter}
-                    onChange={(event) => onCompanyFilterChange(event.target.value)}
-                    className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
-                    aria-label="Filter by company"
-                  >
-                    <option value="All">All companies</option>
-                    {companyOptions.map((company) => (
-                      <option key={company} value={company}>
-                        {company}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <label className="block">
+                <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${adminTextMuted}`}>
+                  Company
+                </span>
+                <select
+                  value={companyFilter}
+                  onChange={(event) => onCompanyFilterChange(event.target.value)}
+                  className={`mt-2 h-11 w-full rounded-[16px] ${adminSelect}`}
+                  aria-label="Filter by company"
+                >
+                  <option value="All">All companies</option>
+                  {companyOptions.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
+          </div>
+        ) : null
+      }
+    />
   )
 }
 
@@ -557,7 +528,7 @@ function DriversErrorState({
         <Button
           type="button"
           onClick={onRetry}
-          className={`mt-6 ${workersPrimaryButtonClass}`}
+          className={`mt-6 ${moduleListPrimaryButtonClass}`}
         >
           Retry
         </Button>
@@ -579,7 +550,7 @@ function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
         <Button
           type="button"
           onClick={onAddDriver}
-          className={`mt-6 ${workersPrimaryButtonClass}`}
+          className={`mt-6 ${moduleListPrimaryButtonClass}`}
         >
           <Plus className="size-4" />
           Add First Worker

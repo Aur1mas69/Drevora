@@ -47,6 +47,7 @@ type ConsumableRow = {
   notes: string | null
   entry_date: string
   entry_time: string | null
+  cleaned_at: string | null
 }
 
 const consumableSelect = `
@@ -66,7 +67,8 @@ const consumableSelect = `
   receipt_url,
   notes,
   entry_date,
-  entry_time
+  entry_time,
+  cleaned_at
 `
 
 export class ConsumablesServiceError extends Error {
@@ -108,6 +110,7 @@ function mapRow(
     notes: row.notes,
     entryDate: row.entry_date,
     entryTime: row.entry_time,
+    cleanedAt: row.cleaned_at ?? null,
   }
 }
 
@@ -119,6 +122,29 @@ function isMissingConsumablesTableError(message: string): boolean {
       normalized.includes('could not find the table') ||
       normalized.includes('schema cache'))
   )
+}
+
+function isMissingCleanedAtColumnError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('cleaned_at') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('column'))
+  )
+}
+
+/** Apply Current / History / All cleaned_at visibility to a consumables query. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCleanedAtViewFilter(request: any, viewMode: ConsumablesQuery['viewMode']): any {
+  if (viewMode === 'history') {
+    return request.not('cleaned_at', 'is', null)
+  }
+  if (viewMode === 'all') {
+    return request
+  }
+  // Default / current: only rows not yet cleaned from Current view
+  return request.is('cleaned_at', null)
 }
 
 async function fetchWorkerNameMap(workerIds: string[]): Promise<Map<string, string>> {
@@ -202,6 +228,8 @@ export async function fetchConsumables(
     .select(consumableSelect, { count: 'exact' })
     .is('deleted_at', null)
 
+  request = applyCleanedAtViewFilter(request, query.viewMode)
+
   if (query.type && query.type !== 'all') {
     request = request.eq('consumable_type', query.type)
   }
@@ -247,6 +275,11 @@ export async function fetchConsumables(
   if (error) {
     if (isMissingConsumablesTableError(error.message)) {
       return { items: [], totalCount: 0, page, pageSize }
+    }
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new ConsumablesServiceError(
+        'Consumables cleanup views are not available yet. Ensure cleaned_at exists on consumables.',
+      )
     }
     throw new ConsumablesServiceError(error.message)
   }
@@ -426,6 +459,78 @@ export async function deleteConsumable(id: string, deleteReason?: string | null)
   }
 }
 
+export type CleanConsumablesCurrentViewInput = {
+  /** Current-view period lower bound (inclusive entry_date). */
+  dateFrom?: string
+  /** Current-view period upper bound (inclusive entry_date). */
+  dateTo?: string
+  /** Current-view vehicle filter. */
+  vehicleId?: string | 'all'
+}
+
+/**
+ * Soft-clean Current-view consumables: sets cleaned_at only.
+ * Does not change entry fields and does not delete rows.
+ * Scope: non-deleted rows with cleaned_at IS NULL matching the Current period + vehicle filters.
+ * Note: public.consumables has no company column; scope matches existing list fetch (single-tenant).
+ */
+export async function cleanConsumablesCurrentView(
+  input: CleanConsumablesCurrentViewInput = {},
+): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const cleanedAt = new Date().toISOString()
+
+  let request = requireSupabase()
+    .from('consumables')
+    .update({
+      cleaned_at: cleanedAt,
+      updated_at: cleanedAt,
+    })
+    .is('deleted_at', null)
+    .is('cleaned_at', null)
+
+  if (input.dateFrom) {
+    request = request.gte('entry_date', input.dateFrom)
+  }
+  if (input.dateTo) {
+    request = request.lte('entry_date', input.dateTo)
+  }
+  if (input.vehicleId && input.vehicleId !== 'all') {
+    request = request.eq('vehicle_id', input.vehicleId)
+  }
+
+  const { data, error } = await request.select('id, cleaned_at')
+
+  logSupabaseQuery({
+    service: 'consumablesService.cleanConsumablesCurrentView',
+    table: 'consumables',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new ConsumablesServiceError(
+        'Consumables cleanup is not available yet. Ensure cleaned_at exists on consumables.',
+      )
+    }
+    throw new ConsumablesServiceError(error.message)
+  }
+
+  const cleanedIds = (data ?? []).map((row) => String((row as { id: string }).id))
+
+  if (import.meta.env.DEV) {
+    console.info('[consumables] clean current view', {
+      dateFrom: input.dateFrom ?? null,
+      dateTo: input.dateTo ?? null,
+      vehicleId: input.vehicleId ?? 'all',
+      cleanedCount: cleanedIds.length,
+      cleanedIds,
+    })
+  }
+
+  return { cleanedCount: cleanedIds.length, cleanedIds }
+}
+
 export async function fetchConsumablesMonthlySummary(
   query: ConsumablesMonthlySummaryQuery,
 ): Promise<ConsumablesMonthlySummaryResult> {
@@ -442,6 +547,8 @@ export async function fetchConsumablesMonthlySummary(
     .from('consumables')
     .select('consumable_type, quantity, unit, cost, vehicle_id, entry_date')
     .is('deleted_at', null)
+
+  request = applyCleanedAtViewFilter(request, query.viewMode)
 
   if (range.dateFrom) {
     request = request.gte('entry_date', range.dateFrom)
@@ -471,6 +578,11 @@ export async function fetchConsumablesMonthlySummary(
   if (error) {
     if (isMissingConsumablesTableError(error.message)) {
       return { records: [], vehicleLabels: {} }
+    }
+    if (isMissingCleanedAtColumnError(error.message)) {
+      throw new ConsumablesServiceError(
+        'Consumables cleanup views are not available yet. Ensure cleaned_at exists on consumables.',
+      )
     }
     throw new ConsumablesServiceError(error.message)
   }
@@ -513,4 +625,5 @@ export const consumablesService = {
   createConsumable,
   updateConsumable,
   deleteConsumable,
+  cleanConsumablesCurrentView,
 }

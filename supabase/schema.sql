@@ -438,7 +438,8 @@ create table if not exists public.timesheets (
   delete_reason text,
   submitted_at timestamptz,
   approved_at timestamptz,
-  rejected_at timestamptz
+  rejected_at timestamptz,
+  cleaned_at timestamptz
 );
 
 create table if not exists public.timesheet_entries (
@@ -472,7 +473,8 @@ alter table public.timesheets
   add column if not exists delete_reason text,
   add column if not exists submitted_at timestamptz,
   add column if not exists approved_at timestamptz,
-  add column if not exists rejected_at timestamptz;
+  add column if not exists rejected_at timestamptz,
+  add column if not exists cleaned_at timestamptz;
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -499,6 +501,8 @@ create index if not exists idx_timesheets_submitted_at
   on public.timesheets (submitted_at);
 create index if not exists idx_timesheets_status_submitted_at
   on public.timesheets (status, submitted_at);
+create index if not exists idx_timesheets_cleaned_at
+  on public.timesheets (cleaned_at);
 create unique index if not exists timesheets_driver_week_unique_idx
   on public.timesheets (driver_id, week_start)
   where deleted_at is null;
@@ -943,6 +947,7 @@ create table if not exists public.consumables (
   deleted_at timestamptz,
   deleted_by uuid,
   delete_reason text,
+  cleaned_at timestamptz,
   constraint consumables_type_check check (
     consumable_type in (
       'Diesel',
@@ -980,6 +985,9 @@ create index if not exists consumables_worker_id_idx
 
 create index if not exists consumables_not_deleted_idx
   on public.consumables (entry_date, deleted_at);
+
+create index if not exists idx_consumables_cleaned_at
+  on public.consumables (cleaned_at);
 
 alter table public.consumables disable row level security;
 grant select, insert, update, delete on public.consumables to anon, authenticated;

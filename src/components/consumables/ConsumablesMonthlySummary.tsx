@@ -62,7 +62,7 @@ export function ConsumablesMonthlySummary({
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const { period, customDateFrom, customDateTo, vehicleId, chartType } = filters
+  const { period, customDateFrom, customDateTo, vehicleId, chartType, viewMode } = filters
 
   const loadSummary = useCallback(async () => {
     setIsLoading(true)
@@ -75,6 +75,7 @@ export function ConsumablesMonthlySummary({
         dateTo: period === 'custom' ? customDateTo || undefined : undefined,
         vehicleId,
         type: 'all',
+        viewMode,
       })
       setRecords(result.records)
       setVehicleLabels(result.vehicleLabels)
@@ -91,7 +92,7 @@ export function ConsumablesMonthlySummary({
     } finally {
       setIsLoading(false)
     }
-  }, [customDateFrom, customDateTo, period, vehicleId])
+  }, [customDateFrom, customDateTo, period, vehicleId, viewMode])
 
   useEffect(() => {
     void loadSummary()
@@ -100,7 +101,7 @@ export function ConsumablesMonthlySummary({
   useEffect(() => {
     setExpandedTableKey(null)
     setTablePage(1)
-  }, [period, customDateFrom, customDateTo, vehicleId, chartType, tablePageSize])
+  }, [period, customDateFrom, customDateTo, vehicleId, chartType, viewMode, tablePageSize])
 
   const vehicleLabelMap = useMemo(() => new Map(Object.entries(vehicleLabels)), [vehicleLabels])
 
