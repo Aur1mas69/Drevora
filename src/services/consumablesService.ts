@@ -13,6 +13,7 @@ import type {
 } from '@/lib/consumableTypes'
 import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
 import { getConsumableSummaryDateRange, getMonthDateRange } from '@/lib/consumableUtils'
+import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -80,6 +81,46 @@ export class ConsumablesServiceError extends Error {
 
 function mapVehicleLabel(vehicle: VehicleLookupRow): string {
   return vehicle.registration
+}
+
+/** Ensures a linked vehicle belongs to the verified company before a write. */
+async function assertVehicleInCompany(
+  vehicleId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .select('id')
+    .eq('id', vehicleId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) throw new ConsumablesServiceError(error.message)
+  if (!data) {
+    throw new ConsumablesServiceError(
+      'That vehicle is not available for your company.',
+    )
+  }
+}
+
+/** Ensures a linked worker belongs to the verified company before a write. */
+async function assertWorkerInCompany(
+  workerId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .select('id')
+    .eq('id', workerId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) throw new ConsumablesServiceError(error.message)
+  if (!data) {
+    throw new ConsumablesServiceError(
+      'That worker is not available for your company.',
+    )
+  }
 }
 
 function mapRow(
@@ -223,9 +264,12 @@ export async function fetchConsumables(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
+  const companyId = requireVerifiedCompanyId()
+
   let request = requireSupabase()
     .from('consumables')
     .select(consumableSelect, { count: 'exact' })
+    .eq('company_id', companyId)
     .is('deleted_at', null)
 
   request = applyCleanedAtViewFilter(request, query.viewMode)
@@ -296,9 +340,11 @@ export async function fetchConsumables(
 }
 
 export async function fetchConsumablesForVehicle(vehicleId: string): Promise<Consumable[]> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('consumables')
     .select(consumableSelect)
+    .eq('company_id', companyId)
     .eq('vehicle_id', vehicleId)
     .is('deleted_at', null)
     .order('entry_date', { ascending: false })
@@ -321,9 +367,11 @@ export async function fetchConsumablesForVehicle(vehicleId: string): Promise<Con
 }
 
 export async function fetchConsumableById(id: string): Promise<Consumable | null> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('consumables')
     .select(consumableSelect)
+    .eq('company_id', companyId)
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()
@@ -347,7 +395,18 @@ export async function fetchConsumableById(id: string): Promise<Consumable | null
 }
 
 export async function createConsumable(input: CreateConsumableInput): Promise<Consumable> {
+  const companyId = requireVerifiedCompanyId()
+
+  // Linked vehicle/worker must belong to the same verified company.
+  if (input.vehicleId) {
+    await assertVehicleInCompany(input.vehicleId, companyId)
+  }
+  if (input.workerId) {
+    await assertWorkerInCompany(input.workerId, companyId)
+  }
+
   const payload = {
+    company_id: companyId,
     vehicle_id: input.vehicleId,
     worker_id: input.workerId ?? null,
     consumable_type: input.consumableType,
@@ -390,6 +449,16 @@ export async function updateConsumable(
   id: string,
   input: UpdateConsumableInput,
 ): Promise<Consumable> {
+  const companyId = requireVerifiedCompanyId()
+
+  // Any newly linked vehicle/worker must belong to the same verified company.
+  if (input.vehicleId) {
+    await assertVehicleInCompany(input.vehicleId, companyId)
+  }
+  if (input.workerId) {
+    await assertWorkerInCompany(input.workerId, companyId)
+  }
+
   const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   }
@@ -413,9 +482,10 @@ export async function updateConsumable(
     .from('consumables')
     .update(payload)
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .select(consumableSelect)
-    .single()
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'consumablesService.updateConsumable',
@@ -428,11 +498,18 @@ export async function updateConsumable(
     throw new ConsumablesServiceError(error.message)
   }
 
+  if (!data) {
+    throw new ConsumablesServiceError(
+      'Consumable could not be updated for your company. Refresh and try again.',
+    )
+  }
+
   const [item] = await mapConsumableRows([data as unknown as ConsumableRow])
   return item
 }
 
 export async function deleteConsumable(id: string, deleteReason?: string | null): Promise<void> {
+  const companyId = requireVerifiedCompanyId()
   const deletedAt = new Date().toISOString()
   const payload = {
     deleted_at: deletedAt,
@@ -441,21 +518,29 @@ export async function deleteConsumable(id: string, deleteReason?: string | null)
     updated_at: deletedAt,
   }
 
-  const { error } = await requireSupabase()
+  const { data, error } = await requireSupabase()
     .from('consumables')
     .update(payload)
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
 
   logSupabaseQuery({
     service: 'consumablesService.deleteConsumable',
     table: 'consumables',
-    data: null,
+    data: data ?? null,
     error,
   })
 
   if (error) {
     throw new ConsumablesServiceError(error.message)
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new ConsumablesServiceError(
+      'Consumable could not be deleted for your company. Refresh and try again.',
+    )
   }
 }
 
@@ -471,12 +556,13 @@ export type CleanConsumablesCurrentViewInput = {
 /**
  * Soft-clean Current-view consumables: sets cleaned_at only.
  * Does not change entry fields and does not delete rows.
- * Scope: non-deleted rows with cleaned_at IS NULL matching the Current period + vehicle filters.
- * Note: public.consumables has no company column; scope matches existing list fetch (single-tenant).
+ * Scope: verified company_id, non-deleted rows with cleaned_at IS NULL matching
+ * the Current period + vehicle filters.
  */
 export async function cleanConsumablesCurrentView(
   input: CleanConsumablesCurrentViewInput = {},
 ): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const companyId = requireVerifiedCompanyId()
   const cleanedAt = new Date().toISOString()
 
   let request = requireSupabase()
@@ -485,6 +571,7 @@ export async function cleanConsumablesCurrentView(
       cleaned_at: cleanedAt,
       updated_at: cleanedAt,
     })
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .is('cleaned_at', null)
 
@@ -543,9 +630,12 @@ export async function fetchConsumablesMonthlySummary(
           query.dateTo,
         )
 
+  const companyId = requireVerifiedCompanyId()
+
   let request = requireSupabase()
     .from('consumables')
     .select('consumable_type, quantity, unit, cost, vehicle_id, entry_date')
+    .eq('company_id', companyId)
     .is('deleted_at', null)
 
   request = applyCleanedAtViewFilter(request, query.viewMode)

@@ -1,3 +1,7 @@
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
@@ -457,6 +461,8 @@ const CORE_WRITE_FIELDS = new Set([
   'last_name',
   'email',
   'status',
+  // Tenant key must never be stripped by the missing-column fallback loop.
+  'company_id',
 ])
 
 const OPTIONAL_FIELD_STRIP_ORDER = [
@@ -605,6 +611,7 @@ async function ensureWorkerCodesForDrivers(drivers: Driver[]): Promise<Driver[]>
 async function writeDriverPayloadWithFallback(
   operation: 'insert' | 'update',
   input: CreateDriverInput,
+  companyId: string,
   id?: string,
   insertExtras?: Record<string, unknown>,
 ): Promise<string | void> {
@@ -640,16 +647,28 @@ async function writeDriverPayloadWithFallback(
     const query =
       operation === 'insert'
         ? requireSupabase().from('drivers').insert(payload).select('id').single()
-        : requireSupabase().from('drivers').update(payload).eq('id', id ?? '')
+        : requireSupabase()
+            .from('drivers')
+            .update(payload)
+            .eq('id', id ?? '')
+            .eq('company_id', companyId)
+            .select('id')
 
     const { data, error } = await query
 
     if (!error) {
       if (operation === 'insert') {
-        if (!data?.id) {
+        if (!(data as { id?: string } | null)?.id) {
           throw new DriversServiceError('Worker was created but no id was returned.')
         }
-        return data.id as string
+        return (data as { id: string }).id
+      }
+      // Update: zero affected rows means the row is not in this company (or gone).
+      const updatedRows = (data ?? []) as Array<{ id: string }>
+      if (updatedRows.length === 0) {
+        throw new DriversServiceError(
+          'Worker could not be updated for your company. Refresh and try again.',
+        )
       }
       return
     }
@@ -713,6 +732,7 @@ async function writeDriverPayloadWithFallback(
 async function persistEmploymentType(
   id: string,
   input: CreateDriverInput,
+  companyId: string,
 ): Promise<void> {
   const employment_type = resolveEmploymentType(input.employmentType)
   const payload = { employment_type }
@@ -721,6 +741,7 @@ async function persistEmploymentType(
     .from('drivers')
     .update(payload)
     .eq('id', id)
+    .eq('company_id', companyId)
 
   if (!error) return
 
@@ -741,19 +762,29 @@ async function persistEmploymentType(
 
 async function createDriverRecord(
   input: CreateDriverInput,
+  companyId: string,
+  companyName: string | null,
 ): Promise<string> {
-  const company = normalizeWorkerCompanyScope(input.company)
+  // worker_code uniqueness scope is preserved (legacy company text) per spec.
+  const company = normalizeWorkerCompanyScope(companyName ?? input.company)
   let workerCodeColumnMissing = false
 
   for (let attempt = 0; attempt < 100; attempt += 1) {
+    // Authoritative tenant key + transitional legacy company text.
+    // Neither comes from user-editable form input.
+    const tenantExtras: Record<string, unknown> = {
+      company_id: companyId,
+      company: companyName,
+    }
     const insertExtras = workerCodeColumnMissing
-      ? undefined
-      : { worker_code: await generateUniqueWorkerCode(company) }
+      ? tenantExtras
+      : { ...tenantExtras, worker_code: await generateUniqueWorkerCode(company) }
 
     try {
       const insertedId = await writeDriverPayloadWithFallback(
         'insert',
         input,
+        companyId,
         undefined,
         insertExtras,
       )
@@ -762,7 +793,7 @@ async function createDriverRecord(
         throw new DriversServiceError('Unable to save worker.')
       }
 
-      await persistEmploymentType(insertedId, input)
+      await persistEmploymentType(insertedId, input, companyId)
       return insertedId
     } catch (error) {
       if (
@@ -797,9 +828,17 @@ async function createDriverRecord(
 async function updateDriverRecord(
   id: string,
   input: UpdateDriverInput,
+  companyId: string,
+  companyName: string | null,
 ): Promise<void> {
-  await writeDriverPayloadWithFallback('update', input, id)
-  await persistEmploymentType(id, input)
+  // Preserve verified tenant text; company_id itself is never changed on update
+  // (it is only used as the .eq scope inside writeDriverPayloadWithFallback).
+  const scopedInput: UpdateDriverInput = {
+    ...input,
+    company: companyName ?? input.company,
+  }
+  await writeDriverPayloadWithFallback('update', scopedInput, companyId, id)
+  await persistEmploymentType(id, input, companyId)
 }
 
 async function fetchDefaultVehicleRegistrationMap(
@@ -905,6 +944,7 @@ function mapDriverRow(row: DriverRow): Driver {
 }
 
 async function queryDrivers(select: string): Promise<Driver[]> {
+  const companyId = requireVerifiedCompanyId()
   const pageSize = 1000
   let from = 0
   const rows: unknown[] = []
@@ -914,6 +954,7 @@ async function queryDrivers(select: string): Promise<Driver[]> {
     const { data, error } = await requireSupabase()
       .from('drivers')
       .select(select)
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .range(from, from + pageSize - 1)
 
@@ -980,6 +1021,8 @@ async function mapDriverRows(rows: unknown[]): Promise<Driver[]> {
 
 export async function fetchDrivers(): Promise<Driver[]> {
   const table = 'drivers'
+  // Fail closed before any query if there is no verified company membership.
+  const companyId = requireVerifiedCompanyId()
 
   try {
     const drivers = await ensureWorkerCodesForDrivers(await queryDrivers(workerProfileSelect))
@@ -1016,6 +1059,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
         const fallback = await requireSupabase()
           .from(table)
           .select(basicDriverSelectWithAssignmentLegacy)
+          .eq('company_id', companyId)
           .order('created_at', { ascending: false })
 
         logSupabaseQuery({
@@ -1032,6 +1076,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
         const legacyFallback = await requireSupabase()
           .from(table)
           .select(basicDriverSelectLegacy)
+          .eq('company_id', companyId)
           .order('created_at', { ascending: false })
 
         if (!legacyFallback.error) {
@@ -1041,6 +1086,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
         const minimalFallback = await requireSupabase()
           .from(table)
           .select(basicDriverSelectMinimal)
+          .eq('company_id', companyId)
           .order('created_at', { ascending: false })
 
         if (minimalFallback.error) {
@@ -1054,6 +1100,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
 }
 
 export async function fetchDriversWithCompliance(): Promise<Driver[]> {
+  const companyId = requireVerifiedCompanyId()
   try {
     return await queryDrivers(workerProfileSelect)
   } catch {
@@ -1066,6 +1113,7 @@ export async function fetchDriversWithCompliance(): Promise<Driver[]> {
         const fallback = await requireSupabase()
           .from('drivers')
           .select(complianceDriverSelectLegacy)
+          .eq('company_id', companyId)
           .order('created_at', { ascending: false })
 
         if (fallback.error) {
@@ -1078,7 +1126,10 @@ export async function fetchDriversWithCompliance(): Promise<Driver[]> {
   }
 }
 
-async function fetchDriverRowById(id: string): Promise<Driver | null> {
+async function fetchDriverRowById(
+  id: string,
+  companyId?: string | null,
+): Promise<Driver | null> {
   const attempts = [
     workerProfileSelect,
     workerCoreSelect,
@@ -1088,11 +1139,16 @@ async function fetchDriverRowById(id: string): Promise<Driver | null> {
   ]
 
   for (const select of attempts) {
-    const { data, error } = await requireSupabase()
+    let request = requireSupabase()
       .from('drivers')
       .select(select)
       .eq('id', id)
-      .maybeSingle()
+
+    if (companyId) {
+      request = request.eq('company_id', companyId)
+    }
+
+    const { data, error } = await request.maybeSingle()
 
     if (!error && data) {
       const [driver] = await enrichDriversWithDefaultVehicles([
@@ -1106,8 +1162,9 @@ async function fetchDriverRowById(id: string): Promise<Driver | null> {
 }
 
 export async function fetchDriverById(id: string): Promise<Driver | null> {
+  const companyId = requireVerifiedCompanyId()
   try {
-    const driver = await fetchDriverRowById(id)
+    const driver = await fetchDriverRowById(id, companyId)
     if (!driver) return null
     return persistWorkerCodeIfNeeded(driver)
   } catch (error) {
@@ -1163,8 +1220,10 @@ export async function fetchDriverByEmail(email: string): Promise<Driver | null> 
 }
 
 export async function createDriver(input: CreateDriverInput): Promise<Driver> {
-  const insertedId = await createDriverRecord(input)
-  const driver = await fetchDriverRowById(insertedId)
+  const companyId = requireVerifiedCompanyId()
+  const companyName = getVerifiedCompanyName()
+  const insertedId = await createDriverRecord(input, companyId, companyName)
+  const driver = await fetchDriverRowById(insertedId, companyId)
 
   if (!driver) {
     throw new DriversServiceError('Worker was created but could not be loaded.')
@@ -1177,9 +1236,11 @@ export async function updateDriver(
   id: string,
   input: UpdateDriverInput,
 ): Promise<Driver> {
-  await updateDriverRecord(id, input)
+  const companyId = requireVerifiedCompanyId()
+  const companyName = getVerifiedCompanyName()
+  await updateDriverRecord(id, input, companyId, companyName)
 
-  const driver = await fetchDriverRowById(id)
+  const driver = await fetchDriverRowById(id, companyId)
   if (!driver) {
     throw new DriversServiceError('Worker was updated but could not be loaded.')
   }
@@ -1199,13 +1260,25 @@ export async function updateWorkerHolidayEntitlement(
     holiday_entitlement_notes: emptyToNull(input.holidayEntitlementNotes),
   }
 
-  const { error } = await requireSupabase().from('drivers').update(payload).eq('id', id)
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   if (error) {
     throw new DriversServiceError(formatWriteErrorMessage(error), error.code ?? null)
   }
 
-  const driver = await fetchDriverRowById(id)
+  if ((data ?? []).length === 0) {
+    throw new DriversServiceError(
+      'Worker could not be updated for your company. Refresh and try again.',
+    )
+  }
+
+  const driver = await fetchDriverRowById(id, companyId)
   if (!driver) {
     throw new DriversServiceError('Worker was updated but could not be loaded.')
   }
@@ -1217,16 +1290,25 @@ export async function updateWorkerAvatarUrl(
   id: string,
   avatarUrl: string | null,
 ): Promise<Driver> {
-  const { error } = await requireSupabase()
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
     .from('drivers')
     .update({ avatar_url: avatarUrl })
     .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   if (error) {
     throw new DriversServiceError(error.message, error.code ?? null)
   }
 
-  const driver = await fetchDriverRowById(id)
+  if ((data ?? []).length === 0) {
+    throw new DriversServiceError(
+      'Worker avatar could not be updated for your company. Refresh and try again.',
+    )
+  }
+
+  const driver = await fetchDriverRowById(id, companyId)
   if (!driver) {
     throw new DriversServiceError('Worker was updated but could not be loaded.')
   }
@@ -1235,11 +1317,23 @@ export async function updateWorkerAvatarUrl(
 }
 
 export async function deleteDriver(id: string): Promise<void> {
-  const { error } = await requireSupabase().from('drivers').delete().eq('id', id)
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   if (error) {
     console.error('[driversService.deleteDriver] Supabase delete error:', error)
     throw new DriversServiceError(error.message)
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new DriversServiceError(
+      'Worker could not be deleted for your company. Refresh and try again.',
+    )
   }
 }
 

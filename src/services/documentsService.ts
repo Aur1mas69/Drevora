@@ -7,7 +7,10 @@ import type {
   UpdateDocumentInput,
 } from '@/lib/documentTypes'
 import { MEDICAL_DOCUMENT_TYPE, normalizeMedicalDocumentType } from '@/lib/documentTypes'
-import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { deleteWorkerComplianceRecord } from '@/services/workerComplianceService'
@@ -108,9 +111,9 @@ export class DocumentsServiceError extends Error {
   }
 }
 
-function resolveCompanyScope(): string | null {
-  const name = getGlobalCompanySettings()?.name?.trim()
-  return name || null
+/** Verified company display name — TRANSITIONAL legacy text/display only, never a filter. */
+function resolveCompanyDisplayName(): string | null {
+  return getVerifiedCompanyName()
 }
 
 function normalizeAppliesTo(value: string): Document['appliesTo'] {
@@ -286,16 +289,13 @@ async function mapDocumentRows(rows: DocumentRow[]): Promise<Document[]> {
 }
 
 async function fetchCompanyDrivers(): Promise<CompanyDriverRow[]> {
-  const company = resolveCompanyScope()
-  let request = requireSupabase()
+  const companyId = requireVerifiedCompanyId()
+  const request = requireSupabase()
     .from('drivers')
     .select(
       'id, first_name, last_name, company, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry',
     )
-
-  if (company) {
-    request = request.eq('company', company)
-  }
+    .eq('company_id', companyId)
 
   const { data, error } = await request
 
@@ -307,8 +307,10 @@ async function fetchCompanyDrivers(): Promise<CompanyDriverRow[]> {
   })
 
   if (error) {
-    let fallback = requireSupabase().from('drivers').select('id, first_name, last_name, company')
-    if (company) fallback = fallback.eq('company', company)
+    const fallback = requireSupabase()
+      .from('drivers')
+      .select('id, first_name, last_name, company')
+      .eq('company_id', companyId)
     const { data: coreData, error: coreError } = await fallback
     if (coreError) throw new DocumentsServiceError(coreError.message)
     return ((coreData ?? []) as Array<Pick<CompanyDriverRow, 'id' | 'first_name' | 'last_name' | 'company'>>).map(
@@ -412,7 +414,8 @@ function sortDocuments(documents: Document[]): Document[] {
  * 3) legacy expiry columns on public.drivers when no matching compliance/document row exists
  */
 export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Document[]> {
-  const company = resolveCompanyScope()
+  const companyId = requireVerifiedCompanyId()
+  const company = resolveCompanyDisplayName()
   const companyDrivers = await fetchCompanyDrivers()
   const companyDriverIds = companyDrivers.map((driver) => driver.id)
   const driverNameById = new Map(
@@ -422,11 +425,10 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
     ]),
   )
 
-  let request = requireSupabase().from('documents').select(documentSelect)
-
-  if (company) {
-    request = request.eq('company', company)
-  }
+  let request = requireSupabase()
+    .from('documents')
+    .select(documentSelect)
+    .eq('company_id', companyId)
 
   if (query.appliesTo && query.appliesTo !== 'all') {
     request = request.eq('applies_to', query.appliesTo)
@@ -471,6 +473,7 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
     const { data: workerScopedData, error: workerScopedError } = await requireSupabase()
       .from('documents')
       .select(documentSelect)
+      .eq('company_id', companyId)
       .eq('applies_to', 'worker')
       .in('worker_id', companyDriverIds)
 
@@ -544,10 +547,13 @@ export async function fetchDocumentsByVehicleId(vehicleId: string): Promise<Docu
 }
 
 export async function createDocument(input: CreateDocumentInput): Promise<Document> {
+  const companyId = requireVerifiedCompanyId()
   const status = computeDocumentStatus(input.expiryDate ?? null)
   const payload = {
-    company: resolveCompanyScope(),
     ...toDbPayload(input),
+    // Authoritative tenant key + transitional legacy company text.
+    company_id: companyId,
+    company: resolveCompanyDisplayName(),
     status,
     worker_id: input.appliesTo === 'worker' ? input.workerId ?? null : null,
     vehicle_id: input.appliesTo === 'vehicle' ? input.vehicleId ?? null : null,
@@ -591,14 +597,14 @@ export async function updateDocument(id: string, input: UpdateDocumentInput): Pr
     }
   }
 
-  let request = requireSupabase().from('documents').update(payload).eq('id', id)
-
-  const company = resolveCompanyScope()
-  if (company) {
-    request = request.eq('company', company)
-  }
-
-  const { data, error } = await request.select(documentSelect).single()
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('documents')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select(documentSelect)
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'documentsService.updateDocument',
@@ -609,6 +615,12 @@ export async function updateDocument(id: string, input: UpdateDocumentInput): Pr
 
   if (error) {
     throw new DocumentsServiceError(error.message)
+  }
+
+  if (!data) {
+    throw new DocumentsServiceError(
+      'Document could not be updated for your company. Refresh and try again.',
+    )
   }
 
   const rows = await mapDocumentRows([data as unknown as DocumentRow])
@@ -625,6 +637,8 @@ export async function deleteDocument(
     )
   }
 
+  const companyId = requireVerifiedCompanyId()
+
   if (source === 'worker_compliance') {
     try {
       await deleteWorkerComplianceRecord(id)
@@ -634,28 +648,36 @@ export async function deleteDocument(
       )
     }
     // Also remove a mirrored documents row if the migration backfilled one
-    await requireSupabase().from('documents').delete().eq('id', id)
+    await requireSupabase()
+      .from('documents')
+      .delete()
+      .eq('id', id)
+      .eq('company_id', companyId)
     return
   }
 
-  let request = requireSupabase().from('documents').delete().eq('id', id)
-
-  const company = resolveCompanyScope()
-  if (company) {
-    request = request.eq('company', company)
-  }
-
-  const { error } = await request
+  const { data, error } = await requireSupabase()
+    .from('documents')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   logSupabaseQuery({
     service: 'documentsService.deleteDocument',
     table: 'documents',
-    data: [],
+    data: data ?? [],
     error,
   })
 
   if (error) {
     throw new DocumentsServiceError(error.message)
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new DocumentsServiceError(
+      'Document could not be deleted for your company. Refresh and try again.',
+    )
   }
 }
 

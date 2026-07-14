@@ -51,6 +51,41 @@ export function getVerifiedCompanyId(): string | null {
   return verifiedCompanyId
 }
 
+/**
+ * Error thrown when a tenant-scoped query/mutation is attempted without a
+ * membership-verified company id. Never fall back to company name or the
+ * oldest company — fail closed instead.
+ */
+export class MissingCompanyContextError extends Error {
+  constructor(
+    message = 'Your account is not linked to an active company.',
+  ) {
+    super(message)
+    this.name = 'MissingCompanyContextError'
+  }
+}
+
+/**
+ * Returns the membership-verified company id or throws MissingCompanyContextError.
+ * Use for every tenant read/insert/update/delete filter. Never silently falls back.
+ */
+export function requireVerifiedCompanyId(): string {
+  const id = verifiedCompanyId
+  if (!id) {
+    throw new MissingCompanyContextError()
+  }
+  return id
+}
+
+/**
+ * Verified company display name for TRANSITIONAL legacy company-text writes only.
+ * Returns null when the cached settings are not tied to the verified company id.
+ * This must never be used as a security or query filter.
+ */
+export function getVerifiedCompanyName(): string | null {
+  return getGlobalCompanySettings()?.name?.trim() || null
+}
+
 export function getGlobalCompanySettings(): CompanySettings | null {
   if (!globalSettings || !verifiedCompanyId) {
     return null

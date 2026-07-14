@@ -1,3 +1,4 @@
+import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { todayString } from '@/lib/vehicleAvailability'
@@ -194,6 +195,47 @@ export class VehiclesServiceError extends Error {
   }
 }
 
+/**
+ * Returns the set of vehicle ids owned by the verified company. Used to scope
+ * the child vehicle_availability table (which has no company_id column; Phase 1
+ * scopes children via their parent).
+ */
+async function fetchCompanyVehicleIds(companyId: string): Promise<string[]> {
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .select('id')
+    .eq('company_id', companyId)
+
+  if (error) {
+    throw new VehiclesServiceError(error.message)
+  }
+
+  return (data ?? []).map((row) => (row as { id: string }).id)
+}
+
+/** Verifies a vehicle belongs to the verified company before a child write. */
+async function assertVehicleInCompany(
+  vehicleId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .select('id')
+    .eq('id', vehicleId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) {
+    throw new VehiclesServiceError(error.message)
+  }
+
+  if (!data) {
+    throw new VehiclesServiceError(
+      'That vehicle is not available for your company.',
+    )
+  }
+}
+
 function logVehicleSaveError(payload: unknown, error: unknown) {
   const supabaseError = error as {
     code?: string
@@ -340,6 +382,7 @@ const vehicleAvailabilitySelect =
 
 function buildVehiclePayload(input: VehicleInput) {
   return {
+    // vehicles has no legacy company text column (Phase 1); company_id only.
     registration: input.registration.trim().toUpperCase(),
     fleet_number: input.fleetNumber.trim() || null,
     vehicle_type: input.vehicleType.trim(),
@@ -379,12 +422,17 @@ function buildVehiclePayload(input: VehicleInput) {
 export async function fetchPlanningAvailabilityRecords(
   year: number,
 ): Promise<VehicleAvailability[]> {
+  const companyId = requireVerifiedCompanyId()
   const yearStart = `${year}-01-01`
   const yearEnd = `${year}-12-31`
+
+  const vehicleIds = await fetchCompanyVehicleIds(companyId)
+  if (vehicleIds.length === 0) return []
 
   const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .select(vehicleAvailabilitySelect)
+    .in('vehicle_id', vehicleIds)
     .lte('start_date', yearEnd)
     .or(`end_date.is.null,end_date.gte.${yearStart}`)
     .order('start_date', { ascending: true })
@@ -400,24 +448,21 @@ export async function fetchPlanningAvailabilityRecords(
 }
 
 async function fetchRelevantAvailabilityRecords(
+  companyVehicleIds: string[],
   rangeStart?: string,
-  vehicleId?: string,
 ): Promise<VehicleAvailability[]> {
+  if (companyVehicleIds.length === 0) return []
+
   const today = todayString()
   const startDate = rangeStart ?? today
 
-  let query = requireSupabase()
+  const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .select(vehicleAvailabilitySelect)
+    .in('vehicle_id', companyVehicleIds)
     .or(`end_date.is.null,end_date.gte.${startDate},start_date.gte.${startDate}`)
     .order('start_date', { ascending: true })
     .order('created_at', { ascending: false })
-
-  if (vehicleId) {
-    query = query.eq('vehicle_id', vehicleId)
-  }
-
-  const { data, error } = await query
 
   if (error) {
     return []
@@ -430,9 +475,11 @@ async function fetchRelevantAvailabilityRecords(
 
 export async function fetchVehicles(): Promise<Vehicle[]> {
   const table = 'vehicles'
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from(table)
     .select(vehicleSelect)
+    .eq('company_id', companyId)
     .order('created_at', { ascending: false })
 
   logSupabaseQuery({
@@ -447,7 +494,9 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
   }
 
   const vehicles = (data ?? []).map((row) => mapVehicleRow(row as VehicleRow))
-  const availabilityRecords = await fetchRelevantAvailabilityRecords()
+  const availabilityRecords = await fetchRelevantAvailabilityRecords(
+    vehicles.map((vehicle) => vehicle.id),
+  )
 
   logSupabaseQuery({
     service: 'vehiclesService.fetchRelevantAvailabilityRecords',
@@ -464,14 +513,18 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
 export async function fetchVehicleTimelineRecords(
   vehicleId: string,
 ): Promise<VehicleAvailability[]> {
+  const companyId = requireVerifiedCompanyId()
+  await assertVehicleInCompany(vehicleId, companyId)
   return fetchAvailabilityRecords(vehicleId)
 }
 
 export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .select(vehicleSelect)
     .eq('id', id)
+    .eq('company_id', companyId)
     .maybeSingle()
 
   if (error) {
@@ -487,10 +540,12 @@ export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
 }
 
 export async function fetchVehicleTypeById(vehicleId: string): Promise<string | null> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .select('vehicle_type')
     .eq('id', vehicleId)
+    .eq('company_id', companyId)
     .maybeSingle()
 
   logSupabaseQuery({
@@ -536,6 +591,16 @@ export async function updateAvailabilityRecord(
   id: string,
   input: VehicleAvailabilityInput,
 ): Promise<VehicleAvailability> {
+  const companyId = requireVerifiedCompanyId()
+  // Both the target availability row and the destination vehicle must belong
+  // to the verified company (child table scoped via parent vehicle).
+  const companyVehicleIds = await fetchCompanyVehicleIds(companyId)
+  if (!companyVehicleIds.includes(input.vehicleId)) {
+    throw new VehiclesServiceError(
+      'That vehicle is not available for your company.',
+    )
+  }
+
   const payload = {
     vehicle_id: input.vehicleId,
     status: input.status,
@@ -549,32 +614,58 @@ export async function updateAvailabilityRecord(
     .from('vehicle_availability')
     .update(payload)
     .eq('id', id)
+    .in('vehicle_id', companyVehicleIds)
     .select(vehicleAvailabilitySelect)
-    .single()
+    .maybeSingle()
 
   if (error) {
     logVehicleSaveError({ id, ...payload }, error)
     throw error
   }
 
+  if (!data) {
+    throw new VehiclesServiceError(
+      'Availability record could not be updated for your company.',
+    )
+  }
+
   return mapAvailabilityRow(data as VehicleAvailabilityRow)
 }
 
 export async function deleteAvailabilityRecord(id: string): Promise<void> {
-  const { error } = await requireSupabase()
+  const companyId = requireVerifiedCompanyId()
+  const companyVehicleIds = await fetchCompanyVehicleIds(companyId)
+  if (companyVehicleIds.length === 0) {
+    throw new VehiclesServiceError(
+      'Availability record could not be deleted for your company.',
+    )
+  }
+
+  const { data, error } = await requireSupabase()
     .from('vehicle_availability')
     .delete()
     .eq('id', id)
+    .in('vehicle_id', companyVehicleIds)
+    .select('id')
 
   if (error) {
     logVehicleSaveError({ id }, error)
     throw error
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new VehiclesServiceError(
+      'Availability record could not be deleted for your company.',
+    )
   }
 }
 
 export async function createAvailabilityRecord(
   input: VehicleAvailabilityInput,
 ): Promise<VehicleAvailability> {
+  const companyId = requireVerifiedCompanyId()
+  await assertVehicleInCompany(input.vehicleId, companyId)
+
   const payload = {
     vehicle_id: input.vehicleId,
     status: input.status,
@@ -598,8 +689,37 @@ export async function createAvailabilityRecord(
   return mapAvailabilityRow(data as VehicleAvailabilityRow)
 }
 
+async function assertDriverInCompany(
+  driverId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .select('id')
+    .eq('id', driverId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) {
+    throw new VehiclesServiceError(error.message)
+  }
+
+  if (!data) {
+    throw new VehiclesServiceError(
+      'That worker is not available for your company.',
+    )
+  }
+}
+
 export async function createVehicle(input: VehicleInput): Promise<Vehicle> {
-  const payload = buildVehiclePayload(input)
+  const companyId = requireVerifiedCompanyId()
+  const payload = { ...buildVehiclePayload(input), company_id: companyId }
+
+  // Never allow assigning a driver from another company.
+  if (payload.current_driver_id) {
+    await assertDriverInCompany(payload.current_driver_id, companyId)
+  }
+
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .insert(payload)
@@ -618,28 +738,53 @@ export async function updateVehicle(
   id: string,
   input: VehicleInput,
 ): Promise<Vehicle> {
+  const companyId = requireVerifiedCompanyId()
   const payload = buildVehiclePayload(input)
+
+  if (payload.current_driver_id) {
+    await assertDriverInCompany(payload.current_driver_id, companyId)
+  }
+
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .update(payload)
     .eq('id', id)
+    .eq('company_id', companyId)
     .select(vehicleSelect)
-    .single()
+    .maybeSingle()
 
   if (error) {
     logVehicleSaveError(payload, error)
     throw error
   }
 
+  if (!data) {
+    throw new VehiclesServiceError(
+      'Vehicle could not be updated for your company. Refresh and try again.',
+    )
+  }
+
   return mapVehicleRow(data as VehicleRow)
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
-  const { error } = await requireSupabase().from('vehicles').delete().eq('id', id)
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   if (error) {
     logVehicleSaveError({ id }, error)
     throw error
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new VehiclesServiceError(
+      'Vehicle could not be deleted for your company. Refresh and try again.',
+    )
   }
 }
 

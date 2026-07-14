@@ -8,7 +8,10 @@ import type {
 } from '@/lib/contactTypes'
 import { DEFAULT_CONTACT_PAGE_SIZE } from '@/lib/contactTypes'
 import { isContactCategory, isContactStatus } from '@/lib/contactUtils'
-import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { fetchDrivers, type Driver } from '@/services/driversService'
@@ -92,11 +95,6 @@ export class ContactsServiceError extends Error {
     super(message)
     this.name = 'ContactsServiceError'
   }
-}
-
-function resolveCompanyScope(): string | null {
-  const name = getGlobalCompanySettings()?.name?.trim()
-  return name || null
 }
 
 function isInternalPlaceholderEmail(email: string | null | undefined): boolean {
@@ -252,12 +250,14 @@ function toDbPayload(input: CreateContactInput | UpdateContactInput): Record<str
 }
 
 async function fetchContactRows(): Promise<ContactRow[]> {
-  const company = resolveCompanyScope()
+  const companyId = requireVerifiedCompanyId()
 
   async function runSelect(select: string) {
-    let request = requireSupabase().from('contacts').select(select)
-    if (company) request = request.eq('company', company)
-    return request.order('name', { ascending: true, nullsFirst: false })
+    return requireSupabase()
+      .from('contacts')
+      .select(select)
+      .eq('company_id', companyId)
+      .order('name', { ascending: true, nullsFirst: false })
   }
 
   let { data, error } = await runSelect(contactSelect)
@@ -291,12 +291,8 @@ async function fetchContactRows(): Promise<ContactRow[]> {
 }
 
 async function fetchCompanyDrivers(): Promise<Driver[]> {
-  const company = resolveCompanyScope()
-  const drivers = await fetchDrivers()
-  return drivers.filter((driver) => {
-    if (!company) return true
-    return driver.company?.trim() === company
-  })
+  // fetchDrivers is already scoped to the verified company_id server-side.
+  return fetchDrivers()
 }
 
 async function fetchCompanyWorkersWithPhone(): Promise<Driver[]> {
@@ -439,9 +435,12 @@ export async function countWorkerPhoneContacts(): Promise<number> {
 }
 
 export async function createContact(input: CreateContactInput): Promise<Contact> {
+  const companyId = requireVerifiedCompanyId()
   const payload = {
-    company: resolveCompanyScope(),
     ...toDbPayload(input),
+    // Authoritative tenant key + transitional legacy company text.
+    company_id: companyId,
+    company: getVerifiedCompanyName(),
     category: input.category,
     status: input.status ?? 'active',
   }
@@ -481,19 +480,19 @@ export async function updateContact(id: string, input: UpdateContactInput): Prom
     )
   }
 
+  const companyId = requireVerifiedCompanyId()
   const payload = {
     ...toDbPayload(input),
     updated_at: new Date().toISOString(),
   }
 
-  let request = requireSupabase().from('contacts').update(payload).eq('id', id)
-
-  const company = resolveCompanyScope()
-  if (company) {
-    request = request.eq('company', company)
-  }
-
-  const { data, error } = await request.select(contactSelect).single()
+  const { data, error } = await requireSupabase()
+    .from('contacts')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select(contactSelect)
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'contactsService.updateContact',
@@ -512,6 +511,12 @@ export async function updateContact(id: string, input: UpdateContactInput): Prom
       throw new ContactsServiceError('That worker is already linked to another contact.')
     }
     throw new ContactsServiceError(error.message)
+  }
+
+  if (!data) {
+    throw new ContactsServiceError(
+      'Contact could not be updated for your company. Refresh and try again.',
+    )
   }
 
   return mapRow(data as unknown as ContactRow)
@@ -539,24 +544,29 @@ export async function deleteContact(id: string): Promise<void> {
     )
   }
 
-  let request = requireSupabase().from('contacts').delete().eq('id', id)
-
-  const company = resolveCompanyScope()
-  if (company) {
-    request = request.eq('company', company)
-  }
-
-  const { error } = await request
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('contacts')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   logSupabaseQuery({
     service: 'contactsService.deleteContact',
     table: 'contacts',
-    data: [],
+    data: data ?? [],
     error,
   })
 
   if (error) {
     throw new ContactsServiceError(error.message)
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new ContactsServiceError(
+      'Contact could not be deleted for your company. Refresh and try again.',
+    )
   }
 }
 

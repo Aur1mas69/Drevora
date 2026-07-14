@@ -28,7 +28,6 @@ import {
   DEFAULT_WORKER_PAGE_SIZE,
   WorkersPagination,
 } from '@/components/workers/WorkersPagination'
-import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import {
   adminFilterChip,
   adminHeadingLg,
@@ -652,14 +651,11 @@ function DriversPage() {
     setLoadError(null)
 
     try {
+      // fetchDrivers is scoped to the verified company_id server-side.
       const result = await driversService.fetchDrivers()
-      const companyName = getGlobalCompanySettings()?.name?.trim()
-      const scoped = companyName
-        ? result.filter((driver) => driver.company?.trim() === companyName)
-        : result
 
       // Deduplicate by id in case of overlapping query fallbacks
-      const uniqueById = new Map(scoped.map((driver) => [driver.id, driver]))
+      const uniqueById = new Map(result.map((driver) => [driver.id, driver]))
       setDrivers([...uniqueById.values()])
     } catch (error) {
       setLoadError('Please check the workers data and try again.')

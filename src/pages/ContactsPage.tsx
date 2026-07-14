@@ -15,7 +15,6 @@ import type {
 } from '@/lib/contactTypes'
 import { DEFAULT_CONTACT_PAGE_SIZE, getWorkerProfileId } from '@/lib/contactTypes'
 import { contactPageCardClass } from '@/components/contacts/contactUiStyles'
-import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import {
   ContactsServiceError,
   createContact,
@@ -26,7 +25,7 @@ import {
   updateContact,
 } from '@/services/contactsService'
 import { fetchDrivers, type Driver } from '@/services/driversService'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function ContactsPage() {
@@ -57,11 +56,8 @@ export default function ContactsPage() {
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 || categoryFilter !== 'all' || statusFilter !== 'active'
 
-  const companyWorkers = useMemo(() => {
-    const companyName = getGlobalCompanySettings()?.name?.trim()
-    if (!companyName) return workers
-    return workers.filter((worker) => worker.company?.trim() === companyName)
-  }, [workers])
+  // Workers are already scoped to the verified company_id by fetchDrivers.
+  const companyWorkers = workers
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)

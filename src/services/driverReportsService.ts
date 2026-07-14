@@ -5,7 +5,10 @@ import type {
   DriverReportStatus,
   UpdateDriverReportInput,
 } from '@/lib/driverReportTypes'
-import { getGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -59,9 +62,6 @@ export class DriverReportsServiceError extends Error {
   }
 }
 
-function resolveCompanyScope(): string | null {
-  return getGlobalCompanySettings()?.name?.trim() || null
-}
 
 function normalizeStatus(value: string): DriverReportStatus {
   if (value === 'New' || value === 'In Progress' || value === 'Closed') return value
@@ -191,12 +191,11 @@ function toDbPayload(
 }
 
 export async function fetchDriverReports(): Promise<DriverReport[]> {
-  let request = requireSupabase().from('driver_reports').select(reportSelect)
-
-  const company = resolveCompanyScope()
-  if (company) request = request.eq('company', company)
-
-  const { data, error } = await request
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('driver_reports')
+    .select(reportSelect)
+    .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .order('title', { ascending: true })
 
@@ -220,15 +219,12 @@ export async function fetchDriverReports(): Promise<DriverReport[]> {
 }
 
 export async function fetchDriverReportsForVehicle(vehicleId: string): Promise<DriverReport[]> {
-  let request = requireSupabase()
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
     .from('driver_reports')
     .select(reportSelect)
+    .eq('company_id', companyId)
     .eq('vehicle_id', vehicleId)
-
-  const company = resolveCompanyScope()
-  if (company) request = request.eq('company', company)
-
-  const { data, error } = await request
     .order('created_at', { ascending: false })
     .order('title', { ascending: true })
 
@@ -252,9 +248,12 @@ export async function fetchDriverReportsForVehicle(vehicleId: string): Promise<D
 }
 
 export async function createDriverReport(input: CreateDriverReportInput): Promise<DriverReport> {
+  const companyId = requireVerifiedCompanyId()
   const payload = {
-    company: resolveCompanyScope(),
     ...toDbPayload(input),
+    // Authoritative tenant key + transitional legacy company text.
+    company_id: companyId,
+    company: getVerifiedCompanyName(),
     status: input.status ?? 'New',
     priority: input.priority ?? 'Medium',
   }
@@ -280,82 +279,82 @@ export async function updateDriverReport(
     updated_at: new Date().toISOString(),
   }
 
-  let request = requireSupabase().from('driver_reports').update(payload).eq('id', id)
-
-  const company = resolveCompanyScope()
-  if (company) request = request.eq('company', company)
-
-  const { data, error } = await request.select(reportSelect).single()
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('driver_reports')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select(reportSelect)
+    .maybeSingle()
 
   if (error) throw new DriverReportsServiceError(error.message)
+
+  if (!data) {
+    throw new DriverReportsServiceError(
+      'Driver report could not be updated for your company. Refresh and try again.',
+    )
+  }
 
   const rows = await mapReportRows([data as unknown as DriverReportRow])
   return rows[0]
 }
 
 export async function deleteDriverReport(id: string): Promise<void> {
-  let request = requireSupabase().from('driver_reports').delete().eq('id', id)
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('driver_reports')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
-  const company = resolveCompanyScope()
-  if (company) request = request.eq('company', company)
-
-  const { error } = await request
   if (error) throw new DriverReportsServiceError(error.message)
+
+  if ((data ?? []).length === 0) {
+    throw new DriverReportsServiceError(
+      'Driver report could not be deleted for your company. Refresh and try again.',
+    )
+  }
 }
 
 export type CleanDriverReportsCurrentViewInput = {
   /** Exact Current-view report IDs currently loaded for this company. */
   reportIds: string[]
-  /** Exact company text values stored on those rows (tenant scope). */
-  companyValues: string[]
+  /**
+   * @deprecated Legacy company text values. Ignored — cleanup is scoped by the
+   * verified company_id, not company text.
+   */
+  companyValues?: string[]
 }
 
 /**
  * Soft-clean Current-view reports: sets cleaned_at only.
  * Does not change status and does not delete rows.
- * Returns the number of rows actually updated (from .select()).
+ * Scoped by the verified company_id. Returns rows actually updated.
  */
 export async function cleanDriverReportsCurrentView(
   input: CleanDriverReportsCurrentViewInput,
 ): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const companyId = requireVerifiedCompanyId()
   const reportIds = [...new Set(input.reportIds.filter(Boolean))]
-  const companyValues = [
-    ...new Set(
-      input.companyValues
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0),
-    ),
-  ]
 
   if (reportIds.length === 0) {
     return { cleanedCount: 0, cleanedIds: [] }
   }
 
-  const scopeCompany = resolveCompanyScope()
-  if (!scopeCompany && companyValues.length === 0) {
-    throw new DriverReportsServiceError(
-      'Company scope is required to clean driver reports.',
-    )
-  }
-
   const cleanedAt = new Date().toISOString()
 
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('driver_reports')
     .update({
       cleaned_at: cleanedAt,
       updated_at: cleanedAt,
     })
+    .eq('company_id', companyId)
     .in('id', reportIds)
     .in('status', ['New', 'In Progress'])
     .is('cleaned_at', null)
-
-  // Prefer exact stored company values from the visible Current rows.
-  if (companyValues.length > 0) {
-    request = request.in('company', companyValues)
-  } else if (scopeCompany) {
-    request = request.eq('company', scopeCompany)
-  }
 
   const { data, error } = await request.select('id, cleaned_at')
 
@@ -385,8 +384,7 @@ export async function cleanDriverReportsCurrentView(
 
   if (import.meta.env.DEV) {
     console.info('[driverReports] clean current view', {
-      companyScope: scopeCompany,
-      companyValues,
+      companyId,
       statusFilter: ['New', 'In Progress'],
       requestedIds: reportIds.length,
       affectedRowCount: cleanedIds.length,
