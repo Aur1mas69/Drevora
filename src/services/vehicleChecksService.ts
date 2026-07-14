@@ -21,6 +21,10 @@ import type {
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { calculateInspectionDurationSeconds } from '@/lib/vehicleCheckDurationUtils'
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { fetchTemplateItemsByVehicleType } from '@/services/vehicleCheckTemplatesService'
@@ -234,16 +238,80 @@ function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
   return { ...list, items }
 }
 
-async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
-  const [checksResult, defectItemsResult] = await Promise.all([
+async function assertWorkerAndVehicleInCompany(
+  workerId: string,
+  vehicleId: string,
+  companyId: string,
+): Promise<void> {
+  const [workerResult, vehicleResult] = await Promise.all([
     requireSupabase()
-      .from('vehicle_checks')
-      .select('inspection_date, overall_result, vehicle_id'),
-    requireSupabase()
-      .from(VEHICLE_CHECK_ITEMS_TABLE)
+      .from('drivers')
       .select('id')
-      .in('result', ['Fail', 'Advisory']),
+      .eq('id', workerId)
+      .eq('company_id', companyId)
+      .maybeSingle(),
+    requireSupabase()
+      .from('vehicles')
+      .select('id')
+      .eq('id', vehicleId)
+      .eq('company_id', companyId)
+      .maybeSingle(),
   ])
+
+  if (workerResult.error) throw new VehicleChecksServiceError(workerResult.error.message)
+  if (vehicleResult.error) throw new VehicleChecksServiceError(vehicleResult.error.message)
+  if (!workerResult.data) {
+    throw new VehicleChecksServiceError('That worker is not available for your company.')
+  }
+  if (!vehicleResult.data) {
+    throw new VehicleChecksServiceError('That vehicle is not available for your company.')
+  }
+}
+
+/** Verifies a parent check before any child item read, write, or delete. */
+async function assertVehicleCheckInCompany(
+  vehicleCheckId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('vehicle_checks')
+    .select('id')
+    .eq('id', vehicleCheckId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) throw new VehicleChecksServiceError(error.message)
+  if (!data) {
+    throw new VehicleChecksServiceError('Inspection is not available for your company.')
+  }
+}
+
+async function deleteVehicleCheckForCompany(
+  vehicleCheckId: string,
+  companyId: string,
+): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('vehicle_checks')
+    .delete()
+    .eq('id', vehicleCheckId)
+    .eq('company_id', companyId)
+    .select('id')
+
+  if (error) throw new VehicleChecksServiceError(error.message)
+  if ((data ?? []).length === 0) {
+    throw new VehicleChecksServiceError(
+      'Inspection could not be deleted for your company. Refresh and try again.',
+    )
+  }
+}
+
+async function fetchVehicleCheckStats(
+  companyId: string,
+): Promise<VehicleCheckSummaryStats> {
+  const checksResult = await requireSupabase()
+    .from('vehicle_checks')
+    .select('id, inspection_date, overall_result, vehicle_id')
+    .eq('company_id', companyId)
 
   logSupabaseQuery({
     service: 'vehicleChecksService.fetchVehicleCheckStats.checks',
@@ -252,16 +320,27 @@ async function fetchVehicleCheckStats(): Promise<VehicleCheckSummaryStats> {
     error: checksResult.error,
   })
 
+  if (checksResult.error) {
+    throw new VehicleChecksServiceError(checksResult.error.message)
+  }
+
+  const companyCheckIds = (checksResult.data ?? []).map((row) => row.id)
+  if (companyCheckIds.length === 0) {
+    return computeVehicleCheckSummaryStats([], 0)
+  }
+
+  const defectItemsResult = await requireSupabase()
+    .from(VEHICLE_CHECK_ITEMS_TABLE)
+    .select('id')
+    .in('vehicle_check_id', companyCheckIds)
+    .in('result', ['Fail', 'Advisory'])
+
   logSupabaseQuery({
     service: 'vehicleChecksService.fetchVehicleCheckStats.defectItems',
     table: 'vehicle_check_items',
     data: defectItemsResult.data,
     error: defectItemsResult.error,
   })
-
-  if (checksResult.error) {
-    throw new VehicleChecksServiceError(checksResult.error.message)
-  }
 
   if (defectItemsResult.error) {
     throw new VehicleChecksServiceError(defectItemsResult.error.message)
@@ -311,7 +390,9 @@ function matchesResultFilter(
 }
 
 function stripClientOnlyChecklistFields(item: VehicleCheckItemInput): VehicleCheckItemInput {
-  const { photoFile: _photoFile, photoPreviewUrl: _photoPreviewUrl, ...rest } = item
+  const rest = { ...item }
+  delete rest.photoFile
+  delete rest.photoPreviewUrl
   return rest
 }
 
@@ -401,12 +482,14 @@ function buildItemRows(checkId: string, items: VehicleCheckItemInput[]) {
 export async function fetchVehicleChecks(
   query: VehicleChecksQuery = {},
 ): Promise<VehicleChecksPageResult> {
+  const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, query.page ?? 1)
   const pageSize = query.pageSize ?? DEFAULT_VEHICLE_CHECK_PAGE_SIZE
 
   let request = requireSupabase()
     .from('vehicle_checks')
     .select(vehicleCheckListSelect, { count: 'exact' })
+    .eq('company_id', companyId)
 
   if (query.status && query.status !== 'all') {
     request = request.eq('status', query.status)
@@ -463,7 +546,7 @@ export async function fetchVehicleChecks(
   })
   const from = (page - 1) * pageSize
   const to = from + pageSize
-  const stats = await fetchVehicleCheckStats()
+  const stats = await fetchVehicleCheckStats(companyId)
 
   return {
     items: filteredRows.slice(from, to).map(mapListRow),
@@ -478,10 +561,12 @@ export async function fetchVehicleChecks(
 }
 
 export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | null> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('vehicle_checks')
     .select(vehicleCheckDetailSelect)
     .eq('id', id)
+    .eq('company_id', companyId)
     .maybeSingle()
 
   logSupabaseQuery({
@@ -503,7 +588,10 @@ export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | 
   const vehicleType = vehicle?.vehicle_type?.trim()
 
   if (vehicleType && check.items.length > 0) {
-    const templates = await fetchTemplateItemsByVehicleType(vehicleType)
+    const templates = await fetchTemplateItemsByVehicleType(
+      vehicleType,
+      getVerifiedCompanyName(),
+    )
     check.items = enrichVehicleCheckItemsWithTemplates(check.items, templates)
   }
 
@@ -511,6 +599,7 @@ export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | 
 }
 
 export async function createVehicleCheck(input: CreateVehicleCheckInput): Promise<VehicleCheck> {
+  const verifiedCompanyId = requireVerifiedCompanyId()
   if (input.items.length === 0) {
     throw new VehicleChecksServiceError('Inspection checklist cannot be empty.')
   }
@@ -542,10 +631,16 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   const overallResult = computeOverallResult(input.items)
   const status = input.status ?? 'Completed'
   const odometerUnit = input.odometerUnit ?? DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT
+  await assertWorkerAndVehicleInCompany(
+    input.workerId,
+    input.vehicleId,
+    verifiedCompanyId,
+  )
 
   const { data: checkRow, error: checkError } = await requireSupabase()
     .from('vehicle_checks')
     .insert({
+      company_id: verifiedCompanyId,
       vehicle_id: input.vehicleId,
       worker_id: input.workerId,
       inspection_date: input.inspectionDate,
@@ -579,19 +674,26 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
       input.signatureFile,
     )
 
-    const { error: signatureError } = await requireSupabase()
+    const { data: signatureRows, error: signatureError } = await requireSupabase()
       .from('vehicle_checks')
       .update({
         signature_url: signaturePath,
         signed_at: new Date().toISOString(),
       })
       .eq('id', checkRow.id)
+      .eq('company_id', verifiedCompanyId)
+      .select('id')
 
     if (signatureError) {
       throw new VehicleChecksServiceError(signatureError.message)
     }
+    if ((signatureRows ?? []).length === 0) {
+      throw new VehicleChecksServiceError(
+        'Inspection signature could not be saved for your company.',
+      )
+    }
   } catch (signatureError) {
-    await requireSupabase().from('vehicle_checks').delete().eq('id', checkRow.id)
+    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
     throw new VehicleChecksServiceError(
       signatureError instanceof Error
         ? signatureError.message
@@ -607,12 +709,13 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
       input.items,
     )
   } catch (photoError) {
-    await requireSupabase().from('vehicle_checks').delete().eq('id', checkRow.id)
+    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
     throw new VehicleChecksServiceError(
       photoError instanceof Error ? photoError.message : 'Failed to upload defect photo.',
     )
   }
 
+  await assertVehicleCheckInCompany(checkRow.id, verifiedCompanyId)
   const itemRows = buildItemRows(checkRow.id, itemsWithPhotos)
   const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
 
@@ -624,7 +727,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
   })
 
   if (itemsError) {
-    await requireSupabase().from('vehicle_checks').delete().eq('id', checkRow.id)
+    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
     throw new VehicleChecksServiceError(itemsError.message)
   }
 
@@ -640,6 +743,7 @@ export async function updateVehicleCheck(
   id: string,
   input: UpdateVehicleCheckInput,
 ): Promise<VehicleCheck> {
+  const verifiedCompanyId = requireVerifiedCompanyId()
   const existing = await fetchVehicleCheckById(id)
   if (!existing) {
     throw new VehicleChecksServiceError('Inspection not found.')
@@ -658,6 +762,16 @@ export async function updateVehicleCheck(
     failOnDefect: item.failOnDefect,
   }))
 
+  if (input.items && input.items.length === 0) {
+    throw new VehicleChecksServiceError('Inspection checklist cannot be empty.')
+  }
+
+  await assertWorkerAndVehicleInCompany(
+    input.workerId ?? existing.workerId,
+    input.vehicleId ?? existing.vehicleId,
+    verifiedCompanyId,
+  )
+
   const overallResult = computeOverallResult(items)
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -671,10 +785,12 @@ export async function updateVehicleCheck(
   if (input.status !== undefined) patch.status = input.status
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null
 
-  const { error: updateError } = await requireSupabase()
+  const { data: updatedRows, error: updateError } = await requireSupabase()
     .from('vehicle_checks')
     .update(patch)
     .eq('id', id)
+    .eq('company_id', verifiedCompanyId)
+    .select('id')
 
   logSupabaseQuery({
     service: 'vehicleChecksService.updateVehicleCheck',
@@ -686,8 +802,14 @@ export async function updateVehicleCheck(
   if (updateError) {
     throw new VehicleChecksServiceError(updateError.message)
   }
+  if ((updatedRows ?? []).length === 0) {
+    throw new VehicleChecksServiceError(
+      'Inspection could not be updated for your company. Refresh and try again.',
+    )
+  }
 
   if (input.items) {
+    await assertVehicleCheckInCompany(id, verifiedCompanyId)
     const { error: deleteError } = await requireSupabase()
       .from(VEHICLE_CHECK_ITEMS_TABLE)
       .delete()
@@ -711,6 +833,7 @@ export async function updateVehicleCheck(
       )
     }
 
+    await assertVehicleCheckInCompany(id, verifiedCompanyId)
     const itemRows = buildItemRows(id, itemsWithPhotos)
     const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
 
@@ -735,7 +858,17 @@ export async function updateVehicleCheck(
 }
 
 export async function deleteVehicleCheck(id: string): Promise<void> {
-  const { error } = await requireSupabase().from('vehicle_checks').delete().eq('id', id)
+  const verifiedCompanyId = requireVerifiedCompanyId()
+  let error: Error | null = null
+
+  try {
+    await deleteVehicleCheckForCompany(id, verifiedCompanyId)
+  } catch (deleteError) {
+    error =
+      deleteError instanceof Error
+        ? deleteError
+        : new Error('Failed to delete inspection.')
+  }
 
   logSupabaseQuery({
     service: 'vehicleChecksService.deleteVehicleCheck',

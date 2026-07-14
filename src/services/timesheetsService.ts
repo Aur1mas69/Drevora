@@ -1,4 +1,9 @@
-import { getGlobalPaidBreaks, getSetting, getTimesheetWeekSettings } from '@/lib/companySettingsGlobals'
+import {
+  getGlobalPaidBreaks,
+  getSetting,
+  getTimesheetWeekSettings,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import {
   buildWeekDates,
   calculateEntryTotalMinutes,
@@ -401,6 +406,40 @@ function buildSoftDeletePayload(deletedBy: string | null, deletedAt = new Date()
   }
 }
 
+async function assertTimesheetInCompany(timesheetId: string, companyId: string): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('timesheets')
+    .select('id')
+    .eq('id', timesheetId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (error) {
+    throw new TimesheetsServiceError(error.message)
+  }
+  if (!data) {
+    throw new TimesheetsServiceError('Timesheet not found')
+  }
+}
+
+async function assertDriverInCompany(driverId: string, companyId: string): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .select('id')
+    .eq('id', driverId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) {
+    throw new TimesheetsServiceError(error.message)
+  }
+  if (!data) {
+    throw new TimesheetsServiceError('Driver not found')
+  }
+}
+
+/** Call only with timesheet IDs already scoped to the verified company. */
 async function restoreSoftDeletedTimesheetEntries(
   timesheetId: string,
   deletedAt: string,
@@ -523,11 +562,12 @@ function buildListSelect(query: TimesheetsQuery): string {
   return timesheetListSelect
 }
 
-async function fetchTimesheetRowById(id: string): Promise<Timesheet> {
+async function fetchTimesheetRowById(id: string, companyId: string): Promise<Timesheet> {
   let { data, error } = await requireSupabase()
     .from('timesheets')
     .select(timesheetDetailSelect)
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .is('timesheet_entries.deleted_at', null)
     .single()
@@ -537,6 +577,7 @@ async function fetchTimesheetRowById(id: string): Promise<Timesheet> {
       .from('timesheets')
       .select(timesheetDetailSelectWithoutDailyComment)
       .eq('id', id)
+      .eq('company_id', companyId)
       .is('deleted_at', null)
       .is('timesheet_entries.deleted_at', null)
       .single())
@@ -547,6 +588,7 @@ async function fetchTimesheetRowById(id: string): Promise<Timesheet> {
       .from('timesheets')
       .select(timesheetDetailSelectMinimalEntries)
       .eq('id', id)
+      .eq('company_id', companyId)
       .is('deleted_at', null)
       .is('timesheet_entries.deleted_at', null)
       .single())
@@ -567,6 +609,7 @@ async function fetchTimesheetRowById(id: string): Promise<Timesheet> {
 }
 
 export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<TimesheetsPageResult> {
+  const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, query.page ?? 1)
   const pageSize = query.pageSize ?? DEFAULT_TIMESHEET_PAGE_SIZE
   const weekStart = normalizeWeekStartForCompany(query.weekStart)
@@ -579,6 +622,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
     .from('timesheets')
     .select(buildListSelect(query), { count: 'exact' })
     .eq('week_start', weekStart)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
 
   request = applyTimesheetsCleanedAtViewFilter(request, query.viewMode)
@@ -652,7 +696,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
     items = items.slice(from, to + 1)
   }
 
-  const stats = await fetchTimesheetWeekStats(weekStart, query.viewMode)
+  const stats = await fetchTimesheetWeekStatsForCompany(weekStart, query.viewMode, companyId)
 
   return {
     items,
@@ -685,9 +729,10 @@ function applyTimesheetsCleanedAtViewFilter(request: any, viewMode: TimesheetsQu
   return request.is('cleaned_at', null)
 }
 
-export async function fetchTimesheetWeekStats(
+async function fetchTimesheetWeekStatsForCompany(
   weekStart: string,
-  viewMode: TimesheetsQuery['viewMode'] = 'current',
+  viewMode: TimesheetsQuery['viewMode'],
+  companyId: string,
 ) {
   const normalizedWeek = normalizeWeekStartForCompany(weekStart)
 
@@ -695,6 +740,7 @@ export async function fetchTimesheetWeekStats(
     .from('timesheets')
     .select('id, status')
     .eq('week_start', normalizedWeek)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
 
   request = applyTimesheetsCleanedAtViewFilter(request, viewMode)
@@ -726,10 +772,20 @@ export async function fetchTimesheetWeekStats(
   )
 }
 
+export async function fetchTimesheetWeekStats(
+  weekStart: string,
+  viewMode: TimesheetsQuery['viewMode'] = 'current',
+) {
+  const companyId = requireVerifiedCompanyId()
+  return fetchTimesheetWeekStatsForCompany(weekStart, viewMode, companyId)
+}
+
 export async function fetchTimesheets(): Promise<Timesheet[]> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('timesheets')
     .select(timesheetDetailSelect)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .is('timesheet_entries.deleted_at', null)
     .order('week_start', { ascending: false })
@@ -750,17 +806,20 @@ export async function fetchTimesheets(): Promise<Timesheet[]> {
 }
 
 export async function fetchTimesheetById(id: string): Promise<Timesheet> {
-  return fetchTimesheetRowById(id)
+  const companyId = requireVerifiedCompanyId()
+  return fetchTimesheetRowById(id, companyId)
 }
 
 async function insertTimesheetWithEntries(
   driverId: string,
   weekStart: string,
+  companyId: string,
   vehicleId: string | null = null,
 ): Promise<string> {
   const { data: created, error } = await requireSupabase()
     .from('timesheets')
     .insert({
+      company_id: companyId,
       driver_id: driverId,
       vehicle_id: vehicleId,
       week_start: weekStart,
@@ -784,6 +843,7 @@ async function insertTimesheetWithEntries(
     buildEmptyTimesheetEntryDbRow(created.id, dayDate, defaultBreakMinutes),
   )
 
+  await assertTimesheetInCompany(created.id, companyId)
   const { error: entriesError } = await requireSupabase().from('timesheet_entries').insert(entryRows)
 
   logSupabaseQuery({
@@ -802,6 +862,7 @@ async function insertTimesheetWithEntries(
         updated_at: deletedAt,
       })
       .eq('id', created.id)
+      .eq('company_id', companyId)
     throw new TimesheetsServiceError(entriesError.message)
   }
 
@@ -811,12 +872,14 @@ async function insertTimesheetWithEntries(
 async function fetchActiveTimesheetIdForDriverWeek(
   driverId: string,
   weekStart: string,
+  companyId: string,
 ): Promise<string | null> {
   const { data, error } = await requireSupabase()
     .from('timesheets')
     .select('id')
     .eq('driver_id', driverId)
     .eq('week_start', weekStart)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -832,19 +895,22 @@ async function fetchActiveTimesheetIdForDriverWeek(
 async function resolveExistingTimesheetAfterDuplicate(
   driverId: string,
   weekStart: string,
+  companyId: string,
 ): Promise<Timesheet | null> {
-  const existingId = await fetchActiveTimesheetIdForDriverWeek(driverId, weekStart)
+  const existingId = await fetchActiveTimesheetIdForDriverWeek(driverId, weekStart, companyId)
   if (!existingId) return null
-  return fetchTimesheetRowById(existingId)
+  return fetchTimesheetRowById(existingId, companyId)
 }
 
 export async function createTimesheet(input: CreateTimesheetInput): Promise<CreateTimesheetResult> {
+  const companyId = requireVerifiedCompanyId()
+  await assertDriverInCompany(input.driverId, companyId)
   const weekStart = normalizeWeekStartForCompany(input.weekStart)
-  const existingId = await fetchActiveTimesheetIdForDriverWeek(input.driverId, weekStart)
+  const existingId = await fetchActiveTimesheetIdForDriverWeek(input.driverId, weekStart, companyId)
 
   if (existingId) {
     return {
-      timesheet: await fetchTimesheetRowById(existingId),
+      timesheet: await fetchTimesheetRowById(existingId, companyId),
       created: false,
     }
   }
@@ -853,15 +919,16 @@ export async function createTimesheet(input: CreateTimesheetInput): Promise<Crea
     const id = await insertTimesheetWithEntries(
       input.driverId,
       weekStart,
+      companyId,
       input.vehicleId ?? null,
     )
     return {
-      timesheet: await fetchTimesheetRowById(id),
+      timesheet: await fetchTimesheetRowById(id, companyId),
       created: true,
     }
   } catch (error) {
     if (error instanceof TimesheetsServiceError && error.message === 'DUPLICATE') {
-      const existing = await resolveExistingTimesheetAfterDuplicate(input.driverId, weekStart)
+      const existing = await resolveExistingTimesheetAfterDuplicate(input.driverId, weekStart, companyId)
       if (existing) {
         return { timesheet: existing, created: false }
       }
@@ -874,6 +941,7 @@ export async function createTimesheet(input: CreateTimesheetInput): Promise<Crea
 export async function bulkCreateTimesheets(
   input: BulkCreateTimesheetsInput,
 ): Promise<{ created: number; skipped: number }> {
+  const companyId = requireVerifiedCompanyId()
   const weekStart = normalizeWeekStartForCompany(input.weekStart)
   const uniqueDriverIds = [...new Set(input.driverIds)]
 
@@ -881,6 +949,7 @@ export async function bulkCreateTimesheets(
     return { created: 0, skipped: 0 }
   }
 
+  await Promise.all(uniqueDriverIds.map((driverId) => assertDriverInCompany(driverId, companyId)))
   const existingDriverIds = await fetchExistingTimesheetDriverIdsForWeek(
     weekStart,
     uniqueDriverIds,
@@ -891,7 +960,7 @@ export async function bulkCreateTimesheets(
   let skippedDuringInsert = 0
   for (const driverId of pendingDriverIds) {
     try {
-      await insertTimesheetWithEntries(driverId, weekStart, null)
+      await insertTimesheetWithEntries(driverId, weekStart, companyId, null)
       created += 1
     } catch (error) {
       if (error instanceof TimesheetsServiceError && error.message === 'DUPLICATE') {
@@ -912,6 +981,7 @@ export async function updateTimesheet(
   id: string,
   input: UpdateTimesheetInput,
 ): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
   const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   }
@@ -920,21 +990,27 @@ export async function updateTimesheet(
   if (input.status !== undefined) payload.status = input.status
   if (input.notes !== undefined) payload.notes = input.notes
 
-  const { error } = await requireSupabase().from('timesheets').update(payload).eq('id', id)
+  const { data, error } = await requireSupabase()
+    .from('timesheets')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'timesheetsService.updateTimesheet',
     table: 'timesheets',
-    data: error ? [] : [{ id }],
+    data: data ? [data] : [],
     error,
   })
 
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
+  if (error || !data) {
+    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  return fetchTimesheetRowById(id)
+  return fetchTimesheetRowById(id, companyId)
 }
 
 export type CleanTimesheetsCurrentViewInput = {
@@ -945,12 +1021,12 @@ export type CleanTimesheetsCurrentViewInput = {
 /**
  * Soft-clean Current week view: sets cleaned_at only on timesheets for that week.
  * Does not change status and does not touch timesheet_entries.
- * Scope: deleted_at IS NULL, cleaned_at IS NULL, week_start = normalized week.
- * Note: public.timesheets has no company column; matches existing Timesheets page scope.
+ * Scope: company_id, deleted_at IS NULL, cleaned_at IS NULL, week_start = normalized week.
  */
 export async function cleanTimesheetsCurrentView(
   input: CleanTimesheetsCurrentViewInput,
 ): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
+  const companyId = requireVerifiedCompanyId()
   const weekStart = normalizeWeekStartForCompany(input.weekStart)
   const cleanedAt = new Date().toISOString()
 
@@ -961,6 +1037,7 @@ export async function cleanTimesheetsCurrentView(
       updated_at: cleanedAt,
     })
     .eq('week_start', weekStart)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .is('cleaned_at', null)
     .select('id, cleaned_at')
@@ -995,7 +1072,9 @@ export async function cleanTimesheetsCurrentView(
 }
 
 export async function deleteTimesheet(id: string): Promise<void> {
+  const companyId = requireVerifiedCompanyId()
   const supabase = requireSupabase()
+  await assertTimesheetInCompany(id, companyId)
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError) {
     throw new TimesheetsServiceError(userError.message)
@@ -1028,6 +1107,7 @@ export async function deleteTimesheet(id: string): Promise<void> {
       updated_at: deletedAt,
     })
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .select('id')
 
@@ -1059,21 +1139,26 @@ export async function upsertTimesheetEntries(
   timesheetId: string,
   entries: TimesheetEntryInput[],
 ): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
   if (entries.length === 0) {
     throw new TimesheetsServiceError('No timesheet entries to save')
   }
 
   const supabase = requireSupabase()
+  await assertTimesheetInCompany(timesheetId, companyId)
 
   for (const entry of entries) {
     const row = buildTimesheetEntryDbRow(timesheetId, entry)
 
     if (entry.id) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('timesheet_entries')
         .update(row)
         .eq('id', entry.id)
+        .eq('timesheet_id', timesheetId)
         .is('deleted_at', null)
+        .select('id')
+        .maybeSingle()
 
       logSupabaseQuery({
         service: 'timesheetsService.upsertTimesheetEntries.update',
@@ -1082,8 +1167,8 @@ export async function upsertTimesheetEntries(
         error,
       })
 
-      if (error) {
-        throw new TimesheetsServiceError(error.message)
+      if (error || !data) {
+        throw new TimesheetsServiceError(error?.message ?? 'Timesheet entry not found')
       }
       continue
     }
@@ -1102,64 +1187,76 @@ export async function upsertTimesheetEntries(
     }
   }
 
-  const { error: touchError } = await supabase
+  const { data: touchedTimesheet, error: touchError } = await supabase
     .from('timesheets')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', timesheetId)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
+    .maybeSingle()
 
-  if (touchError) {
-    throw new TimesheetsServiceError(touchError.message)
+  if (touchError || !touchedTimesheet) {
+    throw new TimesheetsServiceError(touchError?.message ?? 'Timesheet not found')
   }
 
-  return fetchTimesheetRowById(timesheetId)
+  return fetchTimesheetRowById(timesheetId, companyId)
 }
 
 export async function approveTimesheet(id: string): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
   const now = new Date().toISOString()
-  const { error } = await requireSupabase()
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .update({ status: 'Approved', approved_at: now, updated_at: now })
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'timesheetsService.approveTimesheet',
     table: 'timesheets',
-    data: error ? [] : [{ id }],
+    data: data ? [data] : [],
     error,
   })
 
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
+  if (error || !data) {
+    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  return fetchTimesheetRowById(id)
+  return fetchTimesheetRowById(id, companyId)
 }
 
 export async function rejectTimesheet(id: string): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
   const now = new Date().toISOString()
-  const { error } = await requireSupabase()
+  const { data, error } = await requireSupabase()
     .from('timesheets')
     .update({ status: 'Rejected', rejected_at: now, updated_at: now })
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'timesheetsService.rejectTimesheet',
     table: 'timesheets',
-    data: error ? [] : [{ id }],
+    data: data ? [data] : [],
     error,
   })
 
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
+  if (error || !data) {
+    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  return fetchTimesheetRowById(id)
+  return fetchTimesheetRowById(id, companyId)
 }
 
 export async function submitTimesheet(id: string): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
   const supabase = requireSupabase()
   const now = new Date().toISOString()
 
@@ -1167,6 +1264,7 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
     .from('timesheets')
     .select('submitted_at')
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .single()
 
@@ -1182,27 +1280,31 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
     payload.submitted_at = now
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('timesheets')
     .update(payload)
     .eq('id', id)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
+    .select('id')
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'timesheetsService.submitTimesheet',
     table: 'timesheets',
-    data: error ? [] : [{ id, ...payload }],
+    data: data ? [{ ...data, ...payload }] : [],
     error,
   })
 
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
+  if (error || !data) {
+    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  return fetchTimesheetRowById(id)
+  return fetchTimesheetRowById(id, companyId)
 }
 
 export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
+  const companyId = requireVerifiedCompanyId()
   if (ids.length === 0) return 0
 
   const now = new Date().toISOString()
@@ -1210,6 +1312,7 @@ export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
     .from('timesheets')
     .update({ status: 'Approved', approved_at: now, updated_at: now })
     .in('id', ids)
+    .eq('company_id', companyId)
     .eq('status', 'Submitted')
     .is('deleted_at', null)
     .select('id')
@@ -1229,6 +1332,7 @@ export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
 }
 
 export async function bulkRejectTimesheets(ids: string[]): Promise<number> {
+  const companyId = requireVerifiedCompanyId()
   if (ids.length === 0) return 0
 
   const now = new Date().toISOString()
@@ -1236,6 +1340,7 @@ export async function bulkRejectTimesheets(ids: string[]): Promise<number> {
     .from('timesheets')
     .update({ status: 'Rejected', rejected_at: now, updated_at: now })
     .in('id', ids)
+    .eq('company_id', companyId)
     .in('status', ['Submitted', 'Draft'])
     .is('deleted_at', null)
     .select('id')
@@ -1258,6 +1363,7 @@ export async function fetchExistingTimesheetDriverIdsForWeek(
   weekStart: string,
   driverIds: string[],
 ): Promise<Set<string>> {
+  const companyId = requireVerifiedCompanyId()
   if (driverIds.length === 0) return new Set()
 
   const normalizedWeek = normalizeWeekStartForCompany(weekStart)
@@ -1265,6 +1371,7 @@ export async function fetchExistingTimesheetDriverIdsForWeek(
     .from('timesheets')
     .select('driver_id')
     .eq('week_start', normalizedWeek)
+    .eq('company_id', companyId)
     .in('driver_id', driverIds)
     .is('deleted_at', null)
 
@@ -1279,6 +1386,7 @@ export async function fetchTimesheetsByDriverId(
   driverId: string,
   options: { page?: number; pageSize?: number } = {},
 ): Promise<{ items: TimesheetListItem[]; totalCount: number }> {
+  const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, options.page ?? 1)
   const pageSize = options.pageSize ?? 25
   const from = (page - 1) * pageSize
@@ -1288,6 +1396,7 @@ export async function fetchTimesheetsByDriverId(
     .from('timesheets')
     .select(timesheetListSelect, { count: 'exact' })
     .eq('driver_id', driverId)
+    .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('week_start', { ascending: false })
     .order('updated_at', { ascending: false })

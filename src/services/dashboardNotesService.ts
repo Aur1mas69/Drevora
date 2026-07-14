@@ -4,6 +4,7 @@ import type {
   DashboardNoteStatus,
   UpdateDashboardNoteInput,
 } from '@/lib/dashboardNoteTypes'
+import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -81,13 +82,24 @@ function sortDashboardNotes(notes: DashboardNote[]): DashboardNote[] {
   })
 }
 
+function requireMatchingCompanyId(companyId: string, verifiedId: string): void {
+  if (companyId !== verifiedId) {
+    throw new DashboardNotesServiceError(
+      'The requested company does not match your verified company membership.',
+    )
+  }
+}
+
 export async function fetchDashboardNotes(companyId: string): Promise<DashboardNote[]> {
+  const verifiedId = requireVerifiedCompanyId()
+  requireMatchingCompanyId(companyId, verifiedId)
+
   const { data, error } = await requireSupabase()
     .from('dashboard_notes')
     .select(
       'id, company_id, created_by, note, status, priority, due_date, created_at, updated_at',
     )
-    .eq('company_id', companyId)
+    .eq('company_id', verifiedId)
     .order('updated_at', { ascending: false })
 
   logSupabaseQuery({
@@ -107,6 +119,9 @@ export async function fetchDashboardNotes(companyId: string): Promise<DashboardN
 export async function createDashboardNote(
   input: CreateDashboardNoteInput,
 ): Promise<DashboardNote> {
+  const verifiedId = requireVerifiedCompanyId()
+  requireMatchingCompanyId(input.companyId, verifiedId)
+
   const note = input.note.trim()
   if (!note) {
     throw new DashboardNotesServiceError('Note text is required.')
@@ -115,7 +130,7 @@ export async function createDashboardNote(
   const { data, error } = await requireSupabase()
     .from('dashboard_notes')
     .insert({
-      company_id: input.companyId,
+      company_id: verifiedId,
       created_by: input.createdBy ?? null,
       note,
       due_date: input.dueDate ?? null,
@@ -145,6 +160,9 @@ export async function updateDashboardNote(
   companyId: string,
   input: UpdateDashboardNoteInput,
 ): Promise<DashboardNote> {
+  const verifiedId = requireVerifiedCompanyId()
+  requireMatchingCompanyId(companyId, verifiedId)
+
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   }
@@ -173,11 +191,11 @@ export async function updateDashboardNote(
     .from('dashboard_notes')
     .update(patch)
     .eq('id', id)
-    .eq('company_id', companyId)
+    .eq('company_id', verifiedId)
     .select(
       'id, company_id, created_by, note, status, priority, due_date, created_at, updated_at',
     )
-    .single()
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'dashboardNotesService.updateDashboardNote',
@@ -190,25 +208,38 @@ export async function updateDashboardNote(
     rethrowDashboardNotesError(error)
   }
 
+  if (!data) {
+    throw new DashboardNotesServiceError('Dashboard note was not found for your company.')
+  }
+
   return mapRow(data as DashboardNoteRow)
 }
 
 export async function deleteDashboardNote(id: string, companyId: string): Promise<void> {
-  const { error } = await requireSupabase()
+  const verifiedId = requireVerifiedCompanyId()
+  requireMatchingCompanyId(companyId, verifiedId)
+
+  const { data, error } = await requireSupabase()
     .from('dashboard_notes')
     .delete()
     .eq('id', id)
-    .eq('company_id', companyId)
+    .eq('company_id', verifiedId)
+    .select('id')
+    .maybeSingle()
 
   logSupabaseQuery({
     service: 'dashboardNotesService.deleteDashboardNote',
     table: 'dashboard_notes',
-    data: null,
+    data: data ? [data] : null,
     error,
   })
 
   if (error) {
     rethrowDashboardNotesError(error)
+  }
+
+  if (!data) {
+    throw new DashboardNotesServiceError('Dashboard note was not found for your company.')
   }
 }
 

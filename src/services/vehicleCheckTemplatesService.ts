@@ -10,6 +10,10 @@ import type {
   VehicleCheckTemplateWithItems,
 } from '@/lib/vehicleCheckTemplateTypes'
 import { getDefaultDvsaVehicleCheckItems } from '@/lib/defaultDvsaVehicleCheckItems'
+import {
+  getVerifiedCompanyName,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 
 export const VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE = 'vehicle_check_template_items'
@@ -147,7 +151,9 @@ function buildVehicleCheckTemplateInsertPayload(
 function stripLegacyVehicleCheckTemplateHeaderFields(
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { section: _section, item_name: _itemName, ...normalized } = payload
+  const normalized = { ...payload }
+  delete normalized.section
+  delete normalized.item_name
   return normalized
 }
 
@@ -167,12 +173,9 @@ function mapTemplateRow(row: VehicleCheckTemplateRow): VehicleCheckTemplate {
 function requireCompanyScope(
   scope?: VehicleCheckTemplateCompanyScope | null,
 ): VehicleCheckTemplateCompanyScope {
-  const company = scope?.company?.trim()
-  if (!company) {
-    throw new VehicleCheckTemplatesServiceError('Company is required to manage template checks.')
-  }
-
-  return { company }
+  // Ignore caller-supplied company text; always use membership-verified name.
+  void scope
+  return { company: requireVerifiedCompanyTextForTemplates() }
 }
 
 function mapTemplateItemRow(row: VehicleCheckTemplateItemRow): VehicleCheckTemplateItem {
@@ -193,6 +196,25 @@ function mapTemplateItemRow(row: VehicleCheckTemplateItemRow): VehicleCheckTempl
   }
 }
 
+/**
+ * SCHEMA GAP: vehicle_check_templates has company TEXT in schema.sql / Phase 1,
+ * not company_id UUID. Company-owned template ops therefore still filter by the
+ * membership-verified company NAME (never a form/URL-supplied company string).
+ * Global templates (company IS NULL) remain readable. A future migration is
+ * required before UUID tenant filtering is possible here.
+ */
+function requireVerifiedCompanyTextForTemplates(): string {
+  // Fail closed if membership is missing — never run unscoped company-owned ops.
+  requireVerifiedCompanyId()
+  const companyName = getVerifiedCompanyName()
+  if (!companyName) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Your account is not linked to an active company.',
+    )
+  }
+  return companyName
+}
+
 function assertTemplateAccess(
   template: VehicleCheckTemplate | null,
   company?: string | null,
@@ -201,6 +223,26 @@ function assertTemplateAccess(
   const normalizedCompany = normalizeOptionalText(company)
   if (!normalizedCompany) return template.company === null ? template : null
   return template.company === null || template.company === normalizedCompany ? template : null
+}
+
+async function assertCompanyOwnedTemplateAccess(
+  templateId: string,
+): Promise<VehicleCheckTemplate> {
+  const companyName = requireVerifiedCompanyTextForTemplates()
+  const template = await getVehicleCheckTemplate(templateId, companyName)
+  if (!template) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template is not available for your company.',
+    )
+  }
+  // Item writes only against this company's owned templates — never global DVSA
+  // templates and never another company's templates.
+  if (template.company !== companyName) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template is not available for your company.',
+    )
+  }
+  return template
 }
 
 async function fetchCompanyTemplates(company?: string | null): Promise<VehicleCheckTemplate[]> {
@@ -254,13 +296,23 @@ async function fetchCompanyTemplates(company?: string | null): Promise<VehicleCh
 export async function listVehicleCheckTemplates(
   company?: string | null,
 ): Promise<VehicleCheckTemplate[]> {
-  return fetchCompanyTemplates(company)
+  // Ignore caller-supplied company text; company-owned lists use verified membership name.
+  if (company === undefined || company === null || company === '') {
+    return fetchCompanyTemplates(null)
+  }
+  return fetchCompanyTemplates(requireVerifiedCompanyTextForTemplates())
 }
 
 export async function getVehicleCheckTemplate(
   templateId: string,
   company?: string | null,
 ): Promise<VehicleCheckTemplateWithItems | null> {
+  // Prefer membership-verified company text over any caller-supplied value.
+  const scopeCompany =
+    company === undefined || company === null || company === ''
+      ? null
+      : requireVerifiedCompanyTextForTemplates()
+
   const { data, error } = await requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATES_TABLE)
     .select(templateSelect)
@@ -271,7 +323,7 @@ export async function getVehicleCheckTemplate(
 
   const template = assertTemplateAccess(
     data ? mapTemplateRow(data as unknown as VehicleCheckTemplateRow) : null,
-    company,
+    scopeCompany,
   )
   if (!template) return null
 
@@ -292,7 +344,17 @@ export async function createVehicleCheckTemplate(
     throw new VehicleCheckTemplatesServiceError('Vehicle type is required.')
   }
 
-  let insertPayload = buildVehicleCheckTemplateInsertPayload(payload, name)
+  // Company-owned templates must use the verified company name (schema gap: text only).
+  // Global templates (company null) remain allowed for DVSA defaults.
+  const scopedPayload: CreateVehicleCheckTemplateInput = {
+    ...payload,
+    company:
+      payload.company === undefined || payload.company === null || payload.company === ''
+        ? null
+        : requireVerifiedCompanyTextForTemplates(),
+  }
+
+  let insertPayload = buildVehicleCheckTemplateInsertPayload(scopedPayload, name)
 
   const supabase = requireSupabase()
   const {
@@ -392,7 +454,13 @@ export async function createDefaultVehicleCheckTemplate(
     throw new VehicleCheckTemplatesServiceError('Template name is required.')
   }
 
-  const existing = await findTemplateByCompanyAndVehicleType(vehicleType, company)
+  // Company-owned defaults always use verified membership name (ignore caller text).
+  const scopedCompany =
+    company === undefined || company === null || company === ''
+      ? null
+      : requireVerifiedCompanyTextForTemplates()
+
+  const existing = await findTemplateByCompanyAndVehicleType(vehicleType, scopedCompany)
   if (existing) {
     throw new VehicleCheckTemplatesServiceError(
       'A vehicle check template already exists for this company and vehicle type.',
@@ -400,7 +468,7 @@ export async function createDefaultVehicleCheckTemplate(
   }
 
   const template = await createVehicleCheckTemplate({
-    company,
+    company: scopedCompany,
     name: trimmedName,
     vehicleType,
     description: 'Default DREVORA DVSA-style daily vehicle check template.',
@@ -427,10 +495,16 @@ export async function createDefaultVehicleCheckTemplate(
     .select(templateItemSelect)
 
   if (error) {
-    await requireSupabase()
+    let rollback = requireSupabase()
       .from(VEHICLE_CHECK_TEMPLATES_TABLE)
       .delete()
       .eq('id', template.id)
+    if (scopedCompany) {
+      rollback = rollback.eq('company', scopedCompany)
+    } else {
+      rollback = rollback.is('company', null)
+    }
+    await rollback
     throw new VehicleCheckTemplatesServiceError(error.message)
   }
 
@@ -446,13 +520,23 @@ export async function updateVehicleCheckTemplate(
   payload: UpdateVehicleCheckTemplateInput,
   company?: string | null,
 ): Promise<VehicleCheckTemplate> {
-  const existing = await getVehicleCheckTemplate(templateId, company)
+  const companyName = requireVerifiedCompanyTextForTemplates()
+  const existing = await getVehicleCheckTemplate(templateId, company ?? companyName)
   if (!existing) {
     throw new VehicleCheckTemplatesServiceError('Template not found.')
   }
 
   const patch: Record<string, unknown> = {}
-  if (payload.company !== undefined) patch.company = normalizeOptionalText(payload.company)
+  // Never allow reassigning a template to another company via form payload.
+  if (payload.company !== undefined) {
+    const nextCompany = normalizeOptionalText(payload.company)
+    if (nextCompany !== null && nextCompany !== companyName) {
+      throw new VehicleCheckTemplatesServiceError(
+        'Template company cannot be changed to another company.',
+      )
+    }
+    patch.company = nextCompany
+  }
   if (payload.name !== undefined) {
     const name = payload.name.trim()
     if (!name) throw new VehicleCheckTemplatesServiceError('Template name is required.')
@@ -466,14 +550,26 @@ export async function updateVehicleCheckTemplate(
   }
   if (payload.isActive !== undefined) patch.is_active = payload.isActive
 
-  const { data, error } = await requireSupabase()
+  let request = requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATES_TABLE)
     .update(patch)
     .eq('id', templateId)
-    .select(templateSelect)
-    .single()
+
+  // Scope company-owned rows by verified company text (schema gap — not company_id).
+  if (existing.company !== null) {
+    request = request.eq('company', companyName)
+  } else {
+    request = request.is('company', null)
+  }
+
+  const { data, error } = await request.select(templateSelect).maybeSingle()
 
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if (!data) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template could not be updated for your company. Refresh and try again.',
+    )
+  }
   return mapTemplateRow(data as unknown as VehicleCheckTemplateRow)
 }
 
@@ -481,17 +577,31 @@ export async function deleteVehicleCheckTemplate(
   templateId: string,
   company?: string | null,
 ): Promise<void> {
-  const existing = await getVehicleCheckTemplate(templateId, company)
+  const companyName = requireVerifiedCompanyTextForTemplates()
+  const existing = await getVehicleCheckTemplate(templateId, company ?? companyName)
   if (!existing) {
     throw new VehicleCheckTemplatesServiceError('Template not found.')
   }
 
-  const { error } = await requireSupabase()
+  let request = requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATES_TABLE)
     .delete()
     .eq('id', templateId)
 
+  if (existing.company !== null) {
+    request = request.eq('company', companyName)
+  } else {
+    request = request.is('company', null)
+  }
+
+  const { data, error } = await request.select('id')
+
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if ((data ?? []).length === 0) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template could not be deleted for your company. Refresh and try again.',
+    )
+  }
 }
 
 export async function listTemplateItems(templateId: string): Promise<VehicleCheckTemplateItem[]> {
@@ -516,6 +626,9 @@ export async function createTemplateItem(
   if (!payload.templateId || !section || !label) {
     throw new VehicleCheckTemplatesServiceError('Template, section and item label are required.')
   }
+
+  // Child insert only after parent template is verified for this membership.
+  await assertCompanyOwnedTemplateAccess(payload.templateId)
 
   const { data, error } = await requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
@@ -543,6 +656,28 @@ export async function updateTemplateItem(
   itemId: string,
   payload: UpdateVehicleCheckTemplateItemInput,
 ): Promise<VehicleCheckTemplateItem> {
+  // Load item, then prove parent template belongs to verified company.
+  const { data: existingItem, error: existingError } = await requireSupabase()
+    .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
+    .select('id, template_id')
+    .eq('id', itemId)
+    .maybeSingle()
+
+  if (existingError) throw new VehicleCheckTemplatesServiceError(existingError.message)
+  if (!existingItem) {
+    throw new VehicleCheckTemplatesServiceError('Template item not found.')
+  }
+
+  const parentTemplateId =
+    payload.templateId !== undefined
+      ? payload.templateId
+      : (existingItem as { template_id: string }).template_id
+
+  await assertCompanyOwnedTemplateAccess(parentTemplateId)
+  if (payload.templateId !== undefined && payload.templateId !== parentTemplateId) {
+    await assertCompanyOwnedTemplateAccess(payload.templateId)
+  }
+
   const patch: Record<string, unknown> = {}
   if (payload.templateId !== undefined) patch.template_id = payload.templateId
   if (payload.section !== undefined) patch.section = payload.section.trim()
@@ -566,20 +701,48 @@ export async function updateTemplateItem(
     .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
     .update(patch)
     .eq('id', itemId)
+    .eq('template_id', (existingItem as { template_id: string }).template_id)
     .select(templateItemSelect)
-    .single()
+    .maybeSingle()
 
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if (!data) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template item could not be updated for your company.',
+    )
+  }
   return mapTemplateItemRow(data as unknown as VehicleCheckTemplateItemRow)
 }
 
 export async function deleteTemplateItem(itemId: string): Promise<void> {
-  const { error } = await requireSupabase()
+  const { data: existingItem, error: existingError } = await requireSupabase()
+    .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
+    .select('id, template_id')
+    .eq('id', itemId)
+    .maybeSingle()
+
+  if (existingError) throw new VehicleCheckTemplatesServiceError(existingError.message)
+  if (!existingItem) {
+    throw new VehicleCheckTemplatesServiceError('Template item not found.')
+  }
+
+  await assertCompanyOwnedTemplateAccess(
+    (existingItem as { template_id: string }).template_id,
+  )
+
+  const { data, error } = await requireSupabase()
     .from(VEHICLE_CHECK_TEMPLATE_ITEMS_TABLE)
     .delete()
     .eq('id', itemId)
+    .eq('template_id', (existingItem as { template_id: string }).template_id)
+    .select('id')
 
   if (error) throw new VehicleCheckTemplatesServiceError(error.message)
+  if ((data ?? []).length === 0) {
+    throw new VehicleCheckTemplatesServiceError(
+      'Template item could not be deleted for your company.',
+    )
+  }
 }
 
 function isVehicleCheckTemplateSchemaMismatch(error: unknown): boolean {
@@ -734,7 +897,10 @@ async function fetchNormalizedTemplateItemsByVehicleType(
       company: template.company,
       items: [],
     }
-    const { vehicle_check_templates: _template, ...itemRow } = row
+    const itemRow = { ...row } as VehicleCheckTemplateItemRow & {
+      vehicle_check_templates?: unknown
+    }
+    delete itemRow.vehicle_check_templates
     bucket.items.push(itemRow)
     byTemplateId.set(template.id, bucket)
   }
@@ -764,10 +930,16 @@ export async function fetchTemplateItemsByVehicleType(
   const normalizedType = normalizeOptionalText(vehicleType)
   if (!normalizedType) return []
 
+  // Prefer verified company text when a company scope is requested.
+  const scopeCompany =
+    company === undefined || company === null || company === ''
+      ? null
+      : requireVerifiedCompanyTextForTemplates()
+
   try {
     const normalizedItems = await fetchNormalizedTemplateItemsByVehicleType(
       normalizedType,
-      company,
+      scopeCompany,
     )
     if (normalizedItems.length > 0) {
       return normalizedItems

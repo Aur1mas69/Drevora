@@ -1,4 +1,7 @@
-import { getTimesheetWeekSettings } from '@/lib/companySettingsGlobals'
+import {
+  getTimesheetWeekSettings,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import { getCompanyTodayIsoDate } from '@/lib/companyDate'
 import { computeMonthlyConsumablesSummary, enrichConsumableSummaryRecords } from '@/lib/consumableUtils'
 import type { ConsumableType, ConsumableUnit } from '@/lib/consumableTypes'
@@ -406,16 +409,18 @@ function buildDashboardVehicle(
 
 async function countTableRows(
   table: 'drivers' | 'vehicles',
+  companyId: string,
   filter?: { column: string; value: string },
 ): Promise<number> {
   try {
-    let query = requireSupabase().from(table).select('id', { count: 'exact', head: true })
+    const query = requireSupabase()
+      .from(table)
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
 
-    if (filter) {
-      query = query.eq(filter.column, filter.value)
-    }
-
-    const { count, error, data } = await query
+    const { count, error, data } = await (filter
+      ? query.eq(filter.column, filter.value)
+      : query)
 
     logSupabaseQuery({
       service: 'dashboardService.countTableRows',
@@ -434,11 +439,12 @@ async function countTableRows(
   }
 }
 
-async function fetchDriverComplianceRows(): Promise<DriverComplianceRow[]> {
+async function fetchDriverComplianceRows(companyId: string): Promise<DriverComplianceRow[]> {
   try {
     const { data, error } = await requireSupabase()
       .from('drivers')
       .select('role, driving_licence_expiry, cpc_expiry, driver_card_expiry')
+      .eq('company_id', companyId)
 
     if (error) return []
     return (data ?? []) as DriverComplianceRow[]
@@ -447,11 +453,12 @@ async function fetchDriverComplianceRows(): Promise<DriverComplianceRow[]> {
   }
 }
 
-async function fetchVehicleDocumentRows(): Promise<VehicleDocumentRow[]> {
+async function fetchVehicleDocumentRows(companyId: string): Promise<VehicleDocumentRow[]> {
   try {
     const { data, error } = await requireSupabase()
       .from('vehicles')
       .select('id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry')
+      .eq('company_id', companyId)
 
     if (error) return []
     return (data ?? []) as VehicleDocumentRow[]
@@ -460,20 +467,15 @@ async function fetchVehicleDocumentRows(): Promise<VehicleDocumentRow[]> {
   }
 }
 
-async function fetchDashboardVehicles(): Promise<Vehicle[]> {
+async function fetchDashboardVehicles(companyId: string): Promise<Vehicle[]> {
   try {
-    const [vehicleResult, availabilityResult] = await Promise.all([
-      requireSupabase()
-        .from('vehicles')
-        .select(
-          'id, created_at, registration, make, model, status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry',
-        )
-        .order('created_at', { ascending: false }),
-      requireSupabase()
-        .from('vehicle_availability')
-        .select('id, created_at, vehicle_id, status, start_date, end_date, reason')
-        .order('start_date', { ascending: false }),
-    ])
+    const vehicleResult = await requireSupabase()
+      .from('vehicles')
+      .select(
+        'id, created_at, registration, make, model, status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry',
+      )
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
 
     logSupabaseQuery({
       service: 'dashboardService.fetchDashboardVehicles',
@@ -482,20 +484,19 @@ async function fetchDashboardVehicles(): Promise<Vehicle[]> {
       error: vehicleResult.error,
     })
 
-    logSupabaseQuery({
-      service: 'dashboardService.fetchDashboardVehicles',
-      table: 'vehicle_availability',
-      data: availabilityResult.data,
-      error: availabilityResult.error,
-    })
-
     if (vehicleResult.error) return []
 
+    const vehicleIds = (vehicleResult.data ?? []).map((row) => row.id)
+    if (vehicleIds.length === 0) return []
+
+    const availabilityResult = await requireSupabase()
+      .from('vehicle_availability')
+      .select('id, created_at, vehicle_id, status, start_date, end_date, reason')
+      .in('vehicle_id', vehicleIds)
+      .order('start_date', { ascending: false })
     const availabilityRecords = availabilityResult.error
       ? []
-      : (availabilityResult.data ?? []).map((row) =>
-          mapAvailabilityRow(row as AvailabilityRow),
-        )
+      : (availabilityResult.data ?? []).map((row) => mapAvailabilityRow(row as AvailabilityRow))
 
     return (vehicleResult.data ?? []).map((row) =>
       buildDashboardVehicle(row as VehicleRow, availabilityRecords),
@@ -515,9 +516,7 @@ type VehicleRegistrationJoinRow = {
 }
 
 type CompanyActivityScope = {
-  companyId: string | null
-  companyName: string | null
-  workerIds: Set<string> | null
+  companyId: string
   timezone: string
 }
 
@@ -532,75 +531,24 @@ function formatWorkerName(driver: DriverNameJoinRow | null): string {
   return name || 'Worker'
 }
 
-function isWorkerInCompanyScope(
-  workerId: string | null | undefined,
-  scope: CompanyActivityScope,
-): boolean {
-  if (!scope.workerIds) return true
-  if (!workerId) return false
-  return scope.workerIds.has(workerId)
-}
-
 function hasMeaningfulStatusUpdate(createdAt: string, updatedAt: string): boolean {
   return new Date(updatedAt).getTime() > new Date(createdAt).getTime() + 1000
 }
 
 async function fetchCompanyActivityScope(): Promise<CompanyActivityScope> {
-  const defaultScope: CompanyActivityScope = {
-    companyId: null,
-    companyName: null,
-    workerIds: null,
-    timezone: 'Europe/London',
-  }
-
-  try {
-    const settings = await fetchCompanySettings()
-    const timezone = settings?.timezone?.trim() || 'Europe/London'
-
-    if (!settings?.id) {
-      return { ...defaultScope, timezone }
-    }
-
-    const companyName = settings.name?.trim() || null
-    if (!companyName) {
-      return { companyId: settings.id, companyName: null, workerIds: null, timezone }
-    }
-
-    const { data, error } = await requireSupabase().from('drivers').select('id, company')
-
-    if (error) {
-      return { companyId: settings.id, companyName, workerIds: null, timezone }
-    }
-
-    const workerIds = (data ?? [])
-      .filter((row) => {
-        const workerCompany = row.company?.trim() ?? ''
-        return !workerCompany || workerCompany === companyName
-      })
-      .map((row) => row.id)
-
-    return {
-      companyId: settings.id,
-      companyName,
-      workerIds: workerIds.length > 0 ? new Set(workerIds) : null,
-      timezone,
-    }
-  } catch {
-    return defaultScope
-  }
+  const companyId = requireVerifiedCompanyId()
+  const settings = await fetchCompanySettings()
+  return { companyId, timezone: settings?.timezone?.trim() || 'Europe/London' }
 }
 
 async function fetchRecentWorkers(scope: CompanyActivityScope): Promise<DashboardRecentActivity[]> {
   try {
-    let query = requireSupabase()
+    const query = requireSupabase()
       .from('drivers')
       .select('id, first_name, last_name, created_at, company')
+      .eq('company_id', scope.companyId)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
-
-    if (scope.workerIds) {
-      query = query.in('id', [...scope.workerIds])
-    }
 
     const { data, error } = await query
 
@@ -617,11 +565,12 @@ async function fetchRecentWorkers(scope: CompanyActivityScope): Promise<Dashboar
   }
 }
 
-async function fetchRecentVehicles(): Promise<DashboardRecentActivity[]> {
+async function fetchRecentVehicles(companyId: string): Promise<DashboardRecentActivity[]> {
   try {
     const { data, error } = await requireSupabase()
       .from('vehicles')
       .select('id, registration, created_at')
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
 
@@ -651,15 +600,13 @@ async function fetchRecentHolidayActivity(
   scope: CompanyActivityScope,
 ): Promise<DashboardRecentActivity[]> {
   try {
-    let query = requireSupabase()
+    const query = requireSupabase()
       .from('holiday_requests')
       .select(HOLIDAY_REQUEST_ACTIVITY_SELECT)
+      .eq('company_id', scope.companyId)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
 
-    if (scope.workerIds) {
-      query = query.in('worker_id', [...scope.workerIds])
-    }
 
     const { data, error } = await query
 
@@ -687,8 +634,6 @@ async function fetchRecentHolidayActivity(
     const items: DashboardRecentActivity[] = []
 
     for (const row of rows) {
-      if (!isWorkerInCompanyScope(row.worker_id, scope)) continue
-
       const workerName = formatWorkerName(normalizeJoinRow(row.drivers))
 
       items.push({
@@ -742,6 +687,7 @@ async function fetchRecentTimesheetActivity(
       .select(
         'id, submitted_at, approved_at, driver_id, drivers ( first_name, last_name )',
       )
+      .eq('company_id', scope.companyId)
       .is('deleted_at', null)
       .order('updated_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
@@ -758,8 +704,6 @@ async function fetchRecentTimesheetActivity(
     const items: DashboardRecentActivity[] = []
 
     for (const row of data ?? []) {
-      if (!isWorkerInCompanyScope(row.driver_id, scope)) continue
-
       const workerName = formatWorkerName(
         normalizeJoinRow(
           row.drivers as DriverNameJoinRow | DriverNameJoinRow[] | null,
@@ -802,6 +746,7 @@ async function fetchRecentVehicleCheckActivity(
       .select(
         'id, created_at, status, overall_result, worker_id, drivers ( first_name, last_name ), vehicle_check_items ( result )',
       )
+      .eq('company_id', scope.companyId)
       .eq('status', 'Completed')
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
@@ -815,9 +760,7 @@ async function fetchRecentVehicleCheckActivity(
 
     if (error) return []
 
-    return (data ?? [])
-      .filter((row) => isWorkerInCompanyScope(row.worker_id, scope))
-      .map((row) => {
+    return (data ?? []).map((row) => {
         const itemRows = Array.isArray(row.vehicle_check_items)
           ? row.vehicle_check_items
           : row.vehicle_check_items
@@ -845,15 +788,12 @@ async function fetchRecentDriverReportActivity(
   scope: CompanyActivityScope,
 ): Promise<DashboardRecentActivity[]> {
   try {
-    let request = requireSupabase()
+    const request = requireSupabase()
       .from('driver_reports')
-      .select('id, created_at, updated_at, status, title, worker_id, company')
+      .select('id, created_at, updated_at, status, title, worker_id')
+      .eq('company_id', scope.companyId)
       .order('updated_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
-
-    if (scope.companyName) {
-      request = request.eq('company', scope.companyName)
-    }
 
     const { data, error } = await request
 
@@ -866,9 +806,7 @@ async function fetchRecentDriverReportActivity(
 
     if (error) return []
 
-    const scopedRows = (data ?? []).filter((row) =>
-      isWorkerInCompanyScope(row.worker_id, scope),
-    )
+    const scopedRows = data ?? []
 
     const workerIds = scopedRows
       .map((row) => row.worker_id)
@@ -879,6 +817,7 @@ async function fetchRecentDriverReportActivity(
       const { data: workerRows } = await requireSupabase()
         .from('drivers')
         .select('id, first_name, last_name')
+        .eq('company_id', scope.companyId)
         .in('id', [...new Set(workerIds)])
 
       for (const worker of workerRows ?? []) {
@@ -972,13 +911,17 @@ function isMissingTableError(
 async function fetchOptionalComplianceRows(
   table: ComplianceRecordTable,
   columns: string,
+  parentColumn: 'worker_id' | 'vehicle_id',
+  parentIds: string[],
 ): Promise<ComplianceDocumentRow[] | null> {
   if (missingComplianceTables.has(table)) return null
+  if (parentIds.length === 0) return []
 
   try {
     const { data, error } = await requireSupabase()
       .from(table)
       .select(columns)
+      .in(parentColumn, parentIds)
       .not('file_url', 'is', null)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
@@ -1010,22 +953,30 @@ async function fetchRecentDocumentActivity(
   scope: CompanyActivityScope,
 ): Promise<DashboardRecentActivity[]> {
   try {
+    const [workerIdsResult, vehicleIdsResult] = await Promise.all([
+      requireSupabase().from('drivers').select('id').eq('company_id', scope.companyId),
+      requireSupabase().from('vehicles').select('id').eq('company_id', scope.companyId),
+    ])
+    const workerIds = (workerIdsResult.data ?? []).map((row) => row.id)
+    const vehicleIds = (vehicleIdsResult.data ?? []).map((row) => row.id)
     const [workerDocs, vehicleDocs] = await Promise.all([
       fetchOptionalComplianceRows(
         'worker_compliance_records',
         'id, created_at, worker_id, document_name, document_type, file_url',
+        'worker_id',
+        workerIds,
       ),
       fetchOptionalComplianceRows(
         'vehicle_compliance_records',
         'id, created_at, vehicle_id, document_name, document_type, file_url',
+        'vehicle_id',
+        vehicleIds,
       ),
     ])
 
     const items: DashboardRecentActivity[] = []
 
     for (const row of workerDocs ?? []) {
-      if (!isWorkerInCompanyScope(row.worker_id, scope)) continue
-
       const documentName =
         row.document_name?.trim() || row.document_type?.trim() || 'Document'
 
@@ -1068,6 +1019,7 @@ async function fetchRecentConsumableActivity(
       .select(
         'id, created_at, consumable_type, worker_id, vehicle_id, drivers ( first_name, last_name ), vehicles ( registration )',
       )
+      .eq('company_id', scope.companyId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
@@ -1081,9 +1033,7 @@ async function fetchRecentConsumableActivity(
 
     if (error) return []
 
-    return (data ?? [])
-      .filter((row) => isWorkerInCompanyScope(row.worker_id, scope))
-      .map((row) => {
+    return (data ?? []).map((row) => {
         const vehicle = normalizeJoinRow(
           row.vehicles as VehicleRegistrationJoinRow | VehicleRegistrationJoinRow[] | null,
         )
@@ -1111,9 +1061,13 @@ async function fetchRecentAvailabilityEvents(
   vehicleRegistrations: Map<string, string>,
 ): Promise<DashboardRecentActivity[]> {
   try {
+    const vehicleIds = [...vehicleRegistrations.keys()]
+    if (vehicleIds.length === 0) return []
+
     const { data, error } = await requireSupabase()
       .from('vehicle_availability')
       .select('id, created_at, vehicle_id, status, start_date, reason')
+      .in('vehicle_id', vehicleIds)
       .order('created_at', { ascending: false })
       .limit(RECENT_ACTIVITY_FETCH_LIMIT)
 
@@ -1270,11 +1224,10 @@ async function fetchDriverReportsStatusCounts(
   scope: CompanyActivityScope,
 ): Promise<DashboardDriverReportsSummary> {
   try {
-    let request = requireSupabase().from('driver_reports').select('status, company, worker_id')
-
-    if (scope.companyName) {
-      request = request.eq('company', scope.companyName)
-    }
+    const request = requireSupabase()
+      .from('driver_reports')
+      .select('status')
+      .eq('company_id', scope.companyId)
 
     const { data, error } = await request
 
@@ -1287,9 +1240,7 @@ async function fetchDriverReportsStatusCounts(
 
     if (error) return emptyDashboardStats.driverReports
 
-    const rows = (data ?? []).filter((row) =>
-      isWorkerInCompanyScope(row.worker_id, scope),
-    )
+    const rows = data ?? []
 
     const newCount = rows.filter((row) => isNewDriverReportStatus(row.status)).length
     const inProgressCount = rows.filter((row) =>
@@ -1306,9 +1257,12 @@ async function fetchDriverReportsStatusCounts(
   }
 }
 
-async function fetchHolidayStatusCounts(): Promise<DashboardHolidaySummary> {
+async function fetchHolidayStatusCounts(companyId: string): Promise<DashboardHolidaySummary> {
   try {
-    const { data, error } = await requireSupabase().from('holiday_requests').select('status')
+    const { data, error } = await requireSupabase()
+      .from('holiday_requests')
+      .select('status')
+      .eq('company_id', companyId)
 
     logSupabaseQuery({
       service: 'dashboardService.fetchHolidayStatusCounts',
@@ -1333,15 +1287,12 @@ async function fetchHolidayStatusCounts(): Promise<DashboardHolidaySummary> {
 
 function computeVehicleChecksTodayFromRows(
   checks: TodayVehicleCheckRow[],
-  scope: CompanyActivityScope,
 ): DashboardVehicleChecksToday {
   let completedToday = 0
   let issuesToday = 0
   let latestIssueAt: string | null = null
 
   for (const row of checks) {
-    if (!isWorkerInCompanyScope(row.worker_id, scope)) continue
-
     if (row.status === 'Completed') {
       completedToday += 1
     }
@@ -1397,12 +1348,14 @@ function normalizeVehicleCheckItemRows(
 
 async function fetchTodayVehicleCheckRows(
   inspectionDate: string,
+  companyId: string,
 ): Promise<TodayVehicleCheckRow[]> {
   const { data, error } = await requireSupabase()
     .from('vehicle_checks')
     .select(
       'vehicle_id, worker_id, status, overall_result, created_at, updated_at, vehicle_check_items ( result )',
     )
+    .eq('company_id', companyId)
     .eq('inspection_date', inspectionDate)
 
   logSupabaseQuery({
@@ -1432,7 +1385,6 @@ function getActiveVehicleIdsForDailyChecks(vehicles: Vehicle[], today: string): 
 function computeDailyVehicleChecksStats(
   vehicles: Vehicle[],
   checks: TodayVehicleCheckRow[],
-  scope: CompanyActivityScope,
   companyToday: string,
 ): DashboardDailyVehicleChecksStats {
   const activeVehicleIds = getActiveVehicleIdsForDailyChecks(vehicles, companyToday)
@@ -1450,7 +1402,6 @@ function computeDailyVehicleChecksStats(
   const vehicleOutcomes = new Map<string, 'ok' | 'issue'>()
 
   for (const row of checks) {
-    if (!isWorkerInCompanyScope(row.worker_id, scope)) continue
     if (!activeVehicleIds.has(row.vehicle_id)) continue
     if (row.status !== 'Completed') continue
 
@@ -1645,7 +1596,7 @@ async function fetchAllRecentActivity(
     availabilityEvents,
   ] = await Promise.all([
     fetchRecentWorkers(companyScope),
-    fetchRecentVehicles(),
+    fetchRecentVehicles(companyScope.companyId),
     fetchRecentHolidayActivity(companyScope),
     fetchRecentTimesheetActivity(companyScope),
     fetchRecentVehicleCheckActivity(companyScope),
@@ -1699,17 +1650,17 @@ export async function loadDashboardStatsProgressively(
     const companyScope = await fetchCompanyActivityScope()
     if (isAborted(signal)) return
 
-    const vehiclesPromise = fetchDashboardVehicles()
+    const vehiclesPromise = fetchDashboardVehicles(companyScope.companyId)
 
     const workerCountsPromise = Promise.all([
-      countTableRows('drivers'),
-      countTableRows('drivers', { column: 'status', value: 'Working' }),
+      countTableRows('drivers', companyScope.companyId),
+      countTableRows('drivers', companyScope.companyId, { column: 'status', value: 'Working' }),
     ]).then(([workers, workingToday]) => {
       if (isAborted(signal)) return
       onUpdate({ workers, workingToday })
     })
 
-    void fetchHolidayStatusCounts().then((holidayRequests) => {
+    void fetchHolidayStatusCounts(companyScope.companyId).then((holidayRequests) => {
       if (isAborted(signal)) return
       onUpdate({ holidayRequests })
       onSectionLoaded('holidays')
@@ -1740,8 +1691,8 @@ export async function loadDashboardStatsProgressively(
     if (isAborted(signal)) return
 
     const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
-    const vehicleDocumentRowsPromise = fetchVehicleDocumentRows()
-    const driverComplianceRowsPromise = fetchDriverComplianceRows()
+    const vehicleDocumentRowsPromise = fetchVehicleDocumentRows(companyScope.companyId)
+    const driverComplianceRowsPromise = fetchDriverComplianceRows(companyScope.companyId)
 
     onUpdate({
       vehicles: dashboardVehicles.length,
@@ -1781,14 +1732,16 @@ export async function loadDashboardStatsProgressively(
     )
 
     const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
-    const vehicleChecksPromise = fetchTodayVehicleCheckRows(companyToday).then((todayChecks) => {
+    const vehicleChecksPromise = fetchTodayVehicleCheckRows(
+      companyToday,
+      companyScope.companyId,
+    ).then((todayChecks) => {
       if (isAborted(signal)) return todayChecks
       onUpdate({
-        vehicleChecksToday: computeVehicleChecksTodayFromRows(todayChecks, companyScope),
+        vehicleChecksToday: computeVehicleChecksTodayFromRows(todayChecks),
         dailyVehicleChecksStats: computeDailyVehicleChecksStats(
           dashboardVehicles,
           todayChecks,
-          companyScope,
           companyToday,
         ),
       })
@@ -1814,6 +1767,20 @@ export async function loadDashboardStatsProgressively(
     })
   } catch (error) {
     console.error('[dashboardService.loadDashboardStatsProgressively] unexpected error:', error)
+    // Clear loading sections so a missing membership never leaves the dashboard stuck.
+    const sections: DashboardSectionKey[] = [
+      'kpis',
+      'timesheet',
+      'holidays',
+      'driverReports',
+      'fleetStatus',
+      'vehicleChecks',
+      'consumables',
+      'recentActivity',
+    ]
+    for (const section of sections) {
+      onSectionLoaded(section)
+    }
   }
 }
 
@@ -1834,12 +1801,12 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       driverReports,
       consumablesOverview,
     ] = await Promise.all([
-      countTableRows('drivers'),
-      countTableRows('drivers', { column: 'status', value: 'Working' }),
-      fetchDriverComplianceRows(),
-      fetchVehicleDocumentRows(),
-      fetchDashboardVehicles(),
-      fetchHolidayStatusCounts(),
+      countTableRows('drivers', companyScope.companyId),
+      countTableRows('drivers', companyScope.companyId, { column: 'status', value: 'Working' }),
+      fetchDriverComplianceRows(companyScope.companyId),
+      fetchVehicleDocumentRows(companyScope.companyId),
+      fetchDashboardVehicles(companyScope.companyId),
+      fetchHolidayStatusCounts(companyScope.companyId),
       fetchTimesheetOverview(),
       fetchDriverReportsStatusCounts(companyScope),
       fetchConsumablesOverview(),
@@ -1847,13 +1814,12 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
     const [vehicleChecksToday, dailyVehicleChecksStats] = await (async () => {
       const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
-      const todayChecks = await fetchTodayVehicleCheckRows(companyToday)
+      const todayChecks = await fetchTodayVehicleCheckRows(companyToday, companyScope.companyId)
       return [
-        computeVehicleChecksTodayFromRows(todayChecks, companyScope),
+        computeVehicleChecksTodayFromRows(todayChecks),
         computeDailyVehicleChecksStats(
           dashboardVehicles,
           todayChecks,
-          companyScope,
           companyToday,
         ),
       ] as const

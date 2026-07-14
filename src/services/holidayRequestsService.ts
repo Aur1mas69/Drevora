@@ -27,6 +27,7 @@ import {
   type HolidayEntitlementRules,
 } from '@/lib/companySettingsTypes'
 import { DEFAULT_HOLIDAY_PAGE_SIZE } from '@/lib/holidayRequestTypes'
+import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { companySettingsService } from '@/services/companySettingsService'
@@ -296,11 +297,13 @@ async function fetchApprovedHolidayDaysUsed({
   excludeRequestId?: string
   status?: 'Approved' | 'Pending'
 }): Promise<number> {
+  const companyId = requireVerifiedCompanyId()
   const bounds = getLeaveYearBounds(dateInLeaveYear, holidayYearStart)
   const buildRequest = (select: string, includePaidFilter: boolean) => {
     let request = requireSupabase()
       .from('holiday_requests')
       .select(select)
+      .eq('company_id', companyId)
       .eq('worker_id', workerId)
       .eq('status', status)
       .gte('end_date', bounds.start)
@@ -360,6 +363,7 @@ export async function calculateHolidayRequestBalance(
     excludeRequestId?: string
   },
 ): Promise<HolidayBalanceSummary> {
+  const companyId = requireVerifiedCompanyId()
   const { settings, annualAllowance, allowanceKnown, entitlementRules, holidayYearStart } =
     await getHolidayCountingContext()
   const leaveType = input.leaveType ?? 'paid_holiday'
@@ -370,6 +374,7 @@ export async function calculateHolidayRequestBalance(
       'employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes',
     )
     .eq('id', input.workerId)
+    .eq('company_id', companyId)
     .maybeSingle()
   let workerData: unknown = workerResult.data
   let workerError = workerResult.error
@@ -379,6 +384,7 @@ export async function calculateHolidayRequestBalance(
       .from('drivers')
       .select('employment_type')
       .eq('id', input.workerId)
+      .eq('company_id', companyId)
       .maybeSingle()
     workerData = fallback.data
     workerError = fallback.error
@@ -467,9 +473,11 @@ async function assertHolidayBalanceAllowsRequest(input: {
 }
 
 async function fetchHolidayRequestStats(): Promise<HolidayRequestSummaryStats> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .select('status, start_date, end_date, worker_id, updated_at')
+    .eq('company_id', companyId)
 
   logSupabaseQuery({
     service: 'holidayRequestsService.fetchHolidayRequestStats',
@@ -496,6 +504,7 @@ async function fetchHolidayRequestStats(): Promise<HolidayRequestSummaryStats> {
 export async function fetchHolidayRequests(
   query: HolidayRequestsQuery = {},
 ): Promise<HolidayRequestsPageResult> {
+  const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, query.page ?? 1)
   const pageSize = query.pageSize ?? DEFAULT_HOLIDAY_PAGE_SIZE
   const from = (page - 1) * pageSize
@@ -504,6 +513,7 @@ export async function fetchHolidayRequests(
   let request = requireSupabase()
     .from('holiday_requests')
     .select(holidayRequestSelect, { count: 'exact' })
+    .eq('company_id', companyId)
 
   if (query.status && query.status !== 'all') {
     request = request.eq('status', query.status)
@@ -564,11 +574,13 @@ export async function fetchHolidayRequests(
 export async function fetchHolidayCalendarRequests(
   query: HolidayCalendarQuery,
 ): Promise<HolidayRequest[]> {
+  const companyId = requireVerifiedCompanyId()
   const statuses = query.statuses?.length ? query.statuses : ['Approved', 'Pending']
 
   let request = requireSupabase()
     .from('holiday_requests')
     .select(holidayRequestSelect)
+    .eq('company_id', companyId)
     .in('status', statuses)
     .gte('end_date', query.dateFrom)
     .lte('start_date', query.dateTo)
@@ -609,6 +621,7 @@ export async function checkHolidayRequestCapacity(input: {
   endDate: string
   excludeRequestId?: string
 }): Promise<HolidayCapacityWarning> {
+  requireVerifiedCompanyId()
   const existingRequests = (await fetchHolidayCalendarRequests({
     dateFrom: input.startDate,
     dateTo: input.endDate,
@@ -643,10 +656,12 @@ export async function checkHolidayRequestCapacity(input: {
 }
 
 export async function fetchHolidayRequestById(id: string): Promise<HolidayRequest | null> {
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('holiday_requests')
     .select(holidayRequestSelect)
     .eq('id', id)
+    .eq('company_id', companyId)
     .maybeSingle()
 
   logSupabaseQuery({
@@ -668,11 +683,28 @@ export async function fetchHolidayRequestById(id: string): Promise<HolidayReques
 export async function createHolidayRequest(
   input: CreateHolidayRequestInput,
 ): Promise<HolidayRequest> {
+  const companyId = requireVerifiedCompanyId()
+  const { data: worker, error: workerError } = await requireSupabase()
+    .from('drivers')
+    .select('id')
+    .eq('id', input.workerId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (workerError) {
+    throw new HolidayRequestsServiceError(workerError.message)
+  }
+
+  if (!worker) {
+    throw new HolidayRequestsServiceError('Worker not found for this company.')
+  }
+
   const balance = await assertHolidayBalanceAllowsRequest(input)
   const leaveType = input.leaveType ?? 'paid_holiday'
   const isPaidLeave = leaveType === 'paid_holiday' || leaveType === 'bank_holiday'
 
   const payload = {
+    company_id: companyId,
     worker_id: input.workerId,
     start_date: input.startDate,
     end_date: input.endDate,
@@ -712,6 +744,7 @@ export async function updateHolidayRequest(
   id: string,
   input: UpdateHolidayRequestInput,
 ): Promise<HolidayRequest> {
+  const companyId = requireVerifiedCompanyId()
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   }
@@ -737,6 +770,7 @@ export async function updateHolidayRequest(
       .from('holiday_requests')
       .select('worker_id, start_date, end_date, leave_type')
       .eq('id', id)
+      .eq('company_id', companyId)
       .maybeSingle()
 
     if (existingError) {
@@ -768,13 +802,13 @@ export async function updateHolidayRequest(
     .from('holiday_requests')
     .update(patch)
     .eq('id', id)
+    .eq('company_id', companyId)
     .select(holidayRequestSelect)
-    .single()
 
   logSupabaseQuery({
     service: 'holidayRequestsService.updateHolidayRequest',
     table: 'holiday_requests',
-    data: data ? [data] : [],
+    data: data ?? [],
     error,
   })
 
@@ -782,22 +816,37 @@ export async function updateHolidayRequest(
     throw new HolidayRequestsServiceError(error.message)
   }
 
+  const updated = (data ?? [])[0]
+  if (!updated) {
+    throw new HolidayRequestsServiceError('Holiday request not found.')
+  }
+
   const { settings } = await getHolidayCountingContext()
-  return mapRow(data as unknown as HolidayRequestRow, settings)
+  return mapRow(updated as unknown as HolidayRequestRow, settings)
 }
 
 export async function deleteHolidayRequest(id: string): Promise<void> {
-  const { error } = await requireSupabase().from('holiday_requests').delete().eq('id', id)
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('holiday_requests')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select('id')
 
   logSupabaseQuery({
     service: 'holidayRequestsService.deleteHolidayRequest',
     table: 'holiday_requests',
-    data: error ? [] : [{ id }],
+    data: data ?? [],
     error,
   })
 
   if (error) {
     throw new HolidayRequestsServiceError(error.message)
+  }
+
+  if (!data?.length) {
+    throw new HolidayRequestsServiceError('Holiday request not found.')
   }
 }
 

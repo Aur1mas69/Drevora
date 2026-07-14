@@ -1,4 +1,7 @@
-import { getTimesheetWeekSettings } from '@/lib/companySettingsGlobals'
+import {
+  getTimesheetWeekSettings,
+  requireVerifiedCompanyId,
+} from '@/lib/companySettingsGlobals'
 import {
   emptyQuickSearchResults,
   QUICK_SEARCH_RESULTS_PER_MODULE,
@@ -8,11 +11,10 @@ import {
 import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
-import { fetchCompanySettings } from '@/services/companySettingsService'
 import { driversService, type Driver } from '@/services/driversService'
 
 type CompanySearchScope = {
-  workerIds: Set<string> | null
+  companyId: string
 }
 
 type DriverNameJoinRow = {
@@ -66,15 +68,6 @@ function formatWorkerName(driver: DriverNameJoinRow | null): string {
   return name || 'Worker'
 }
 
-function isWorkerInScope(
-  workerId: string | null | undefined,
-  scope: CompanySearchScope,
-): boolean {
-  if (!scope.workerIds) return true
-  if (!workerId) return false
-  return scope.workerIds.has(workerId)
-}
-
 function matchesVehicleCheckQuickSearch(row: VehicleCheckSearchRow, term: string): boolean {
   const driver = normalizeJoinRow(row.drivers)
   const vehicle = normalizeJoinRow(row.vehicles)
@@ -96,57 +89,32 @@ function matchesVehicleCheckQuickSearch(row: VehicleCheckSearchRow, term: string
 }
 
 async function fetchCompanySearchScope(): Promise<CompanySearchScope> {
-  try {
-    const settings = await fetchCompanySettings()
-    const companyName = settings?.name?.trim() || null
-
-    if (!companyName) {
-      return { workerIds: null }
-    }
-
-    const { data, error } = await requireSupabase().from('drivers').select('id, company')
-
-    if (error) {
-      return { workerIds: null }
-    }
-
-    const workerIds = (data ?? [])
-      .filter((row) => {
-        const workerCompany = row.company?.trim() ?? ''
-        return !workerCompany || workerCompany === companyName
-      })
-      .map((row) => row.id)
-
-    return {
-      workerIds: workerIds.length > 0 ? new Set(workerIds) : null,
-    }
-  } catch {
-    return { workerIds: null }
-  }
+  return { companyId: requireVerifiedCompanyId() }
 }
 
 async function fetchMatchingWorkerIds(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<string[]> {
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('drivers')
     .select('id')
+    .eq('company_id', scope.companyId)
     .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},worker_code.ilike.${pattern}`)
-
-  if (scope.workerIds) {
-    request = request.in('id', [...scope.workerIds])
-  }
 
   const { data, error } = await request.limit(20)
   if (error) return []
   return (data ?? []).map((row) => row.id)
 }
 
-async function fetchMatchingVehicleIds(pattern: string): Promise<string[]> {
+async function fetchMatchingVehicleIds(
+  pattern: string,
+  scope: CompanySearchScope,
+): Promise<string[]> {
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .select('id')
+    .eq('company_id', scope.companyId)
     .or(`registration.ilike.${pattern},fleet_number.ilike.${pattern},make.ilike.${pattern},model.ilike.${pattern}`)
     .limit(20)
 
@@ -206,10 +174,14 @@ async function searchWorkers(rawQuery: string): Promise<QuickSearchResultItem[]>
     }))
 }
 
-async function searchVehicles(pattern: string): Promise<QuickSearchResultItem[]> {
+async function searchVehicles(
+  pattern: string,
+  scope: CompanySearchScope,
+): Promise<QuickSearchResultItem[]> {
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .select('id, registration, fleet_number, make, model')
+    .eq('company_id', scope.companyId)
     .or(
       `registration.ilike.${pattern},fleet_number.ilike.${pattern},make.ilike.${pattern},model.ilike.${pattern}`,
     )
@@ -240,9 +212,10 @@ async function searchTimesheets(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('timesheets')
     .select('id, week_start, status, driver_id, drivers!inner ( first_name, last_name )')
+    .eq('company_id', scope.companyId)
     .is('deleted_at', null)
     .or(
       `status.ilike.${pattern},week_start.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`,
@@ -250,10 +223,6 @@ async function searchTimesheets(
     )
     .order('week_start', { ascending: false })
     .limit(QUICK_SEARCH_RESULTS_PER_MODULE)
-
-  if (scope.workerIds) {
-    request = request.in('driver_id', [...scope.workerIds])
-  }
 
   const { data, error } = await request
 
@@ -287,21 +256,18 @@ async function searchHolidayRequests(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('holiday_requests')
     .select(
       'id, start_date, end_date, status, worker_id, drivers!inner ( first_name, last_name )',
     )
+    .eq('company_id', scope.companyId)
     .or(
       `status.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`,
       { referencedTable: 'drivers' },
     )
     .order('start_date', { ascending: false })
     .limit(QUICK_SEARCH_RESULTS_PER_MODULE)
-
-  if (scope.workerIds) {
-    request = request.in('worker_id', [...scope.workerIds])
-  }
 
   const { data, error } = await request
 
@@ -334,15 +300,12 @@ async function searchVehicleChecks(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('vehicle_checks')
     .select(vehicleCheckSearchSelect)
+    .eq('company_id', scope.companyId)
     .order('inspection_date', { ascending: false })
     .limit(40)
-
-  if (scope.workerIds) {
-    request = request.in('worker_id', [...scope.workerIds])
-  }
 
   const { data, error } = await request
 
@@ -385,11 +348,9 @@ async function searchDriverReports(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
-  const settings = await fetchCompanySettings()
-  const companyName = settings?.name?.trim() || null
   const [workerIds, vehicleIds] = await Promise.all([
     fetchMatchingWorkerIds(pattern, scope),
-    fetchMatchingVehicleIds(pattern),
+    fetchMatchingVehicleIds(pattern, scope),
   ])
 
   const orFilters = [
@@ -406,16 +367,13 @@ async function searchDriverReports(
     orFilters.push(`vehicle_id.eq.${vehicleId}`)
   }
 
-  let request = requireSupabase()
+  const request = requireSupabase()
     .from('driver_reports')
-    .select('id, title, status, report_type, worker_id, vehicle_id, company')
+    .select('id, title, status, report_type, worker_id, vehicle_id')
+    .eq('company_id', scope.companyId)
     .or(orFilters.join(','))
     .order('updated_at', { ascending: false })
     .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2)
-
-  if (companyName) {
-    request = request.eq('company', companyName)
-  }
 
   const { data, error } = await request
 
@@ -428,7 +386,7 @@ async function searchDriverReports(
 
   if (error) return []
 
-  const scopedRows = (data ?? []).filter((row) => isWorkerInScope(row.worker_id, scope))
+  const scopedRows = data ?? []
 
   const reportWorkerIds = scopedRows
     .map((row) => row.worker_id)
@@ -444,6 +402,7 @@ async function searchDriverReports(
       const { data: workerRows } = await requireSupabase()
         .from('drivers')
         .select('id, first_name, last_name')
+        .eq('company_id', scope.companyId)
         .in('id', [...new Set(reportWorkerIds)])
       for (const worker of workerRows ?? []) {
         map.set(worker.id, formatWorkerName(worker as DriverNameJoinRow))
@@ -456,6 +415,7 @@ async function searchDriverReports(
       const { data: vehicleRows } = await requireSupabase()
         .from('vehicles')
         .select('id, registration, fleet_number')
+        .eq('company_id', scope.companyId)
         .in('id', [...new Set(reportVehicleIds)])
       for (const vehicle of vehicleRows ?? []) {
         map.set(
@@ -501,23 +461,36 @@ async function searchDocuments(
   pattern: string,
   scope: CompanySearchScope,
 ): Promise<QuickSearchResultItem[]> {
+  const [companyWorkersResult, companyVehiclesResult] = await Promise.all([
+    requireSupabase().from('drivers').select('id').eq('company_id', scope.companyId),
+    requireSupabase().from('vehicles').select('id').eq('company_id', scope.companyId),
+  ])
+  const companyWorkerIds = (companyWorkersResult.data ?? []).map((row) => row.id)
+  const companyVehicleIds = (companyVehiclesResult.data ?? []).map((row) => row.id)
+
   const [workerDocsResult, vehicleDocsResult] = await Promise.all([
-    requireSupabase()
+    companyWorkerIds.length
+      ? requireSupabase()
       .from('worker_compliance_records')
       .select('id, worker_id, document_name, document_type, file_url')
       .or(
         `document_name.ilike.${pattern},document_type.ilike.${pattern},file_url.ilike.${pattern}`,
       )
+      .in('worker_id', companyWorkerIds)
       .order('updated_at', { ascending: false })
-      .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2),
-    requireSupabase()
+      .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2)
+      : Promise.resolve({ data: [], error: null }),
+    companyVehicleIds.length
+      ? requireSupabase()
       .from('vehicle_compliance_records')
       .select('id, vehicle_id, document_name, document_type, file_url')
       .or(
         `document_name.ilike.${pattern},document_type.ilike.${pattern},file_url.ilike.${pattern}`,
       )
+      .in('vehicle_id', companyVehicleIds)
       .order('updated_at', { ascending: false })
-      .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2),
+      .limit(QUICK_SEARCH_RESULTS_PER_MODULE * 2)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   logSupabaseQuery({
@@ -548,6 +521,7 @@ async function searchDocuments(
       const { data } = await requireSupabase()
         .from('drivers')
         .select('id, first_name, last_name')
+        .eq('company_id', scope.companyId)
         .in('id', [...new Set(workerIds)])
       for (const worker of data ?? []) {
         map.set(worker.id, formatWorkerName(worker as DriverNameJoinRow))
@@ -560,6 +534,7 @@ async function searchDocuments(
       const { data } = await requireSupabase()
         .from('vehicles')
         .select('id, registration, fleet_number')
+        .eq('company_id', scope.companyId)
         .in('id', [...new Set(vehicleIds)])
       for (const vehicle of data ?? []) {
         map.set(
@@ -575,8 +550,6 @@ async function searchDocuments(
 
   if (!workerDocsResult.error) {
     for (const row of workerDocsResult.data ?? []) {
-      if (!isWorkerInScope(row.worker_id, scope)) continue
-
       const documentName =
         row.document_name?.trim() || row.document_type?.trim() || 'Document'
       const workerName = row.worker_id ? workerNameById.get(row.worker_id) : null
@@ -626,22 +599,19 @@ async function searchDocuments(
   return items
 }
 
-async function searchContacts(pattern: string): Promise<QuickSearchResultItem[]> {
-  const settings = await fetchCompanySettings()
-  const companyName = settings?.name?.trim() || null
-
-  let request = requireSupabase()
+async function searchContacts(
+  pattern: string,
+  scope: CompanySearchScope,
+): Promise<QuickSearchResultItem[]> {
+  const request = requireSupabase()
     .from('contacts')
     .select('id, name, organisation, email, phone, account_reference')
+    .eq('company_id', scope.companyId)
     .or(
       `name.ilike.${pattern},organisation.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},account_reference.ilike.${pattern}`,
     )
     .order('name', { ascending: true })
     .limit(QUICK_SEARCH_RESULTS_PER_MODULE)
-
-  if (companyName) {
-    request = request.eq('company', companyName)
-  }
 
   const { data, error } = await request
 
@@ -678,7 +648,7 @@ async function searchConsumables(
     'id, consumable_type, item_name, supplier, site, notes, worker_id, vehicle_id, vehicles ( registration )'
 
   const workerIds = await fetchMatchingWorkerIds(pattern, scope)
-  const vehicleIds = await fetchMatchingVehicleIds(pattern)
+  const vehicleIds = await fetchMatchingVehicleIds(pattern, scope)
 
   const orFilters = [
     `consumable_type.ilike.${pattern}`,
@@ -699,6 +669,7 @@ async function searchConsumables(
   const { data, error } = await requireSupabase()
     .from('consumables')
     .select(baseSelect)
+    .eq('company_id', scope.companyId)
     .is('deleted_at', null)
     .or(orFilters.join(','))
     .order('entry_date', { ascending: false })
@@ -726,6 +697,7 @@ async function searchConsumables(
     const { data: workerRows } = await requireSupabase()
       .from('drivers')
       .select('id, first_name, last_name')
+      .eq('company_id', scope.companyId)
       .in('id', uniqueWorkerIds)
 
     for (const worker of workerRows ?? []) {
@@ -736,8 +708,6 @@ async function searchConsumables(
   const items: QuickSearchResultItem[] = []
 
   for (const row of data ?? []) {
-    if (row.worker_id && !isWorkerInScope(row.worker_id, scope)) continue
-
     const vehicle = normalizeJoinRow(
       row.vehicles as VehicleRegistrationJoinRow | VehicleRegistrationJoinRow[] | null,
     )
@@ -787,13 +757,13 @@ export async function searchDashboardQuick(
     consumables,
   ] = await Promise.all([
     searchWorkers(query),
-    searchVehicles(pattern),
+    searchVehicles(pattern, scope),
     searchTimesheets(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
     searchHolidayRequests(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
     searchVehicleChecks(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
     searchDriverReports(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
     searchDocuments(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
-    searchContacts(pattern).catch(() => [] as QuickSearchResultItem[]),
+    searchContacts(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
     searchConsumables(pattern, scope).catch(() => [] as QuickSearchResultItem[]),
   ])
 
