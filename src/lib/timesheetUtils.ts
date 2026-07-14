@@ -107,6 +107,11 @@ export function roundHoursOneDecimal(value: number): number {
   return Math.round(value * 10) / 10
 }
 
+/** Preserve payable Total Hours at two decimal places (e.g. 14.25, not 14.3). */
+export function roundHoursTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 export function calculateEntryPaidEquivalentHours(
   input: {
     totalMinutes: number
@@ -186,7 +191,8 @@ export function summarizeTimesheetEntries(
     breakHours: roundHoursOneDecimal(breakMinutes / 60),
     overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
     additionalHours: roundHoursOneDecimal(additionalHoursTotal),
-    totalHours: roundHoursOneDecimal(totalPayableHours),
+    // Total Hours is decimal payable hours — two dp, never 1-dp round (14.25 ≠ 14.3).
+    totalHours: roundHoursTwoDecimals(totalPayableHours),
   }
 }
 
@@ -248,7 +254,8 @@ export function summarizeTimesheetEntriesFromTotals(totals: {
     breakHours: Math.round((totals.breakMinutes / 60) * 100) / 100,
     overtimeHours,
     additionalHours,
-    totalHours: roundHoursOneDecimal(
+    // Total Hours is decimal payable hours — two dp, never 1-dp round (14.25 ≠ 14.3).
+    totalHours: roundHoursTwoDecimals(
       calculateEntryPaidEquivalentHours(
         {
           totalMinutes: totals.workedMinutes,
@@ -404,6 +411,12 @@ export function formatSubmittedAtDisplay(
 export function formatHours(value: number): string {
   if (value <= 0) return '—'
   return formatHoursFromMinutes(Math.round(value * 60))
+}
+
+/** Decimal payable Total Hours display (exactly two places). Never Xh Ym. */
+export function formatTotalHours(value: number): string {
+  if (value <= 0) return '—'
+  return roundHoursTwoDecimals(value).toFixed(2)
 }
 
 export function formatHoursFromMinutes(minutes: number): string {

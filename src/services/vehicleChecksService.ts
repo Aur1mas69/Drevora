@@ -22,7 +22,6 @@ import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { calculateInspectionDurationSeconds } from '@/lib/vehicleCheckDurationUtils'
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
 import {
-  getVerifiedCompanyName,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
@@ -588,10 +587,7 @@ export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | 
   const vehicleType = vehicle?.vehicle_type?.trim()
 
   if (vehicleType && check.items.length > 0) {
-    const templates = await fetchTemplateItemsByVehicleType(
-      vehicleType,
-      getVerifiedCompanyName(),
-    )
+    const templates = await fetchTemplateItemsByVehicleType(vehicleType)
     check.items = enrichVehicleCheckItemsWithTemplates(check.items, templates)
   }
 

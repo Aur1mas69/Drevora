@@ -8,6 +8,7 @@ import {
   formatHoursFromMinutes,
   formatSubmittedAtDisplay,
   formatTimeDisplay,
+  formatTotalHours,
   getStatusLabel,
   parseLocalDate,
   prepareEntryInputs,
@@ -443,7 +444,7 @@ function renderSummaryCards(doc: jsPDF, summary: SummaryTotals, startY: number):
     CONTENT_WIDTH,
     20,
     'Total Hours',
-    formatHours(summary.totalHours),
+    formatTotalHours(summary.totalHours),
     true,
   )
 

@@ -39,7 +39,7 @@ import {
   formatSubmittedAtDisplay,
   getStatusBadgeClass as getTimesheetStatusBadgeClass,
   getStatusLabel as getTimesheetStatusLabel,
-  formatHours,
+  formatTotalHours,
 } from '@/lib/timesheetUtils'
 import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
 import { getResultBadgeClass } from '@/lib/vehicleCheckUtils'
@@ -374,7 +374,7 @@ function WorkerProfileTimesheetsTab({ worker }: { worker: Driver }) {
                 </span>
               </td>
               <td className="px-5 py-3.5 text-sm font-semibold tabular-nums text-[#113C69]">
-                {formatHours(item.totalHours)}
+                {formatTotalHours(item.totalHours)}
               </td>
               <td className="px-5 py-3.5 text-sm font-medium text-[#3D7A9C]">
                 {formatSubmittedAtDisplay(item.submittedAt, item.status)}

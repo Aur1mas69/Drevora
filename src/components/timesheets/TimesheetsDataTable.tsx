@@ -10,6 +10,7 @@ import {
   formatHours,
   formatSubmittedAtDisplay,
   formatTimesheetSubmittedAt,
+  formatTotalHours,
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/timesheetUtils'
@@ -193,7 +194,7 @@ export function TimesheetsDataTable({
                   {formatHours(sheet.additionalHours)}
                 </td>
                 <td className={`px-2.5 py-2 text-right font-semibold tabular-nums text-[#2563EB] dark:text-blue-300`}>
-                  {formatHours(sheet.totalHours)}
+                  {formatTotalHours(sheet.totalHours)}
                 </td>
                 <TableActionsCell className={rowPadding}>
                   <TimesheetRowActions

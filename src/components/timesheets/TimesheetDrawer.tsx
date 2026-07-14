@@ -11,6 +11,7 @@ import {
   formatDayLabel,
   formatHours,
   formatHoursFromMinutes,
+  formatTotalHours,
   formatTimesheetSubmittedAt,
   getStatusBadgeClass,
   getStatusLabel,
@@ -521,7 +522,11 @@ export function TimesheetDrawer({
             <SummaryItem label="Break" display={formatBreak(summary.breakMinutes)} />
             <SummaryItem label="Overtime" value={summary.overtimeHours} />
             <SummaryItem label="Additional Hours" value={summary.additionalHours} />
-            <SummaryItem label="Total Hours" value={summary.totalHours} emphasized />
+            <SummaryItem
+              label="Total Hours"
+              display={formatTotalHours(summary.totalHours)}
+              emphasized
+            />
           </div>
         </div>
 

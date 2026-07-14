@@ -660,6 +660,7 @@ grant select, insert, update, delete on public.vehicle_check_items to anon, auth
 create table if not exists public.vehicle_check_templates (
   id uuid primary key default gen_random_uuid(),
   company text,
+  company_id uuid references public.companies (id) on delete restrict,
   name text not null,
   vehicle_type text,
   description text,
@@ -670,6 +671,7 @@ create table if not exists public.vehicle_check_templates (
 
 alter table public.vehicle_check_templates
   add column if not exists company text,
+  add column if not exists company_id uuid references public.companies (id) on delete restrict,
   add column if not exists name text,
   add column if not exists vehicle_type text,
   add column if not exists description text,
@@ -702,6 +704,8 @@ create table if not exists public.vehicle_check_template_items (
 
 create index if not exists vehicle_check_templates_company_idx
   on public.vehicle_check_templates (company);
+create index if not exists vehicle_check_templates_company_id_idx
+  on public.vehicle_check_templates (company_id);
 create index if not exists vehicle_check_templates_vehicle_type_idx
   on public.vehicle_check_templates (vehicle_type);
 create index if not exists vehicle_check_templates_is_active_idx

@@ -1,6 +1,7 @@
 export type VehicleCheckTemplate = {
   id: string
   company: string | null
+  companyId: string | null
   name: string
   vehicleType: string | null
   description: string | null
