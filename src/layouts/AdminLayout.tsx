@@ -676,15 +676,15 @@ function NotificationBellButton() {
 }
 
 function MembershipStatusBanner() {
-  const { error, isLoading } = useCompanySettings()
-  if (isLoading || !error) return null
+  const { membershipError, companyLoading } = useCompanySettings()
+  if (companyLoading || !membershipError) return null
 
   return (
     <div
       role="alert"
       className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
     >
-      {error}
+      {membershipError}
     </div>
   )
 }

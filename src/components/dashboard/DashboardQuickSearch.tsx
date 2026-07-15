@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Loader2, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import {
   emptyQuickSearchResults,
   QUICK_SEARCH_MIN_LENGTH,
@@ -114,6 +115,7 @@ export function DashboardQuickSearch() {
   const listboxId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { companyReady, companyId } = useCompanyTenantGate()
 
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -128,6 +130,13 @@ export function DashboardQuickSearch() {
   }, [query])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      setResults(emptyQuickSearchResults)
+      setIsLoading(false)
+      setSearchError(null)
+      return
+    }
+
     if (debouncedQuery.length < QUICK_SEARCH_MIN_LENGTH) {
       setResults(emptyQuickSearchResults)
       setIsLoading(false)
@@ -160,7 +169,7 @@ export function DashboardQuickSearch() {
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery])
+  }, [companyReady, companyId, debouncedQuery])
 
   const closeResults = useCallback(() => {
     setIsOpen(false)

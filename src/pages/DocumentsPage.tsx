@@ -11,6 +11,7 @@ import { DocumentsSummaryCards } from '@/components/documents/DocumentsSummaryCa
 import { DocumentsToolbar } from '@/components/documents/DocumentsToolbar'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   Document,
@@ -70,6 +71,7 @@ function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
 export default function DocumentsPage() {
   const navigate = useNavigate()
   const { formatDate, settings: companySettings } = useCompanySettings()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState<Document[]>([])
@@ -164,9 +166,22 @@ export default function DocumentsPage() {
   }, [])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setWorkers([])
+        setVehicles([])
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadLookups()
     void loadDocuments()
-  }, [loadDocuments, loadLookups])
+  }, [companyReady, companyId, companyLoading, membershipError, loadDocuments, loadLookups])
 
   const filteredItems = useMemo(
     () =>

@@ -7,6 +7,7 @@ import { ContactsSummaryCards } from '@/components/contacts/ContactsSummaryCards
 import { ContactsToolbar } from '@/components/contacts/ContactsToolbar'
 import { DeleteContactModal } from '@/components/contacts/DeleteContactModal'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import type {
   Contact,
   ContactCategoryFilter,
@@ -30,6 +31,7 @@ import { useNavigate } from 'react-router-dom'
 
 export default function ContactsPage() {
   const navigate = useNavigate()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<Contact[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [workers, setWorkers] = useState<Driver[]>([])
@@ -128,16 +130,43 @@ export default function ContactsPage() {
   }, [categoryFilter, debouncedSearch, page, pageSize, statusFilter])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setTotalCount(0)
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadContacts()
-  }, [loadContacts])
+  }, [companyReady, companyId, companyLoading, membershipError, loadContacts])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsSummaryLoading(false)
+        setSummaryCounts(null)
+      }
+      return
+    }
+
     void loadSummaryCounts()
-  }, [loadSummaryCounts])
+  }, [companyReady, companyId, companyLoading, loadSummaryCounts])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setWorkers([])
+      }
+      return
+    }
+
     void loadWorkers()
-  }, [loadWorkers])
+  }, [companyReady, companyId, companyLoading, loadWorkers])
 
   function openCreateModal() {
     setFormMode('create')

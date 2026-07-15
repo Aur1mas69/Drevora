@@ -590,7 +590,7 @@ function NotesPlansModal({
 }
 
 export function NotesPlansCard() {
-  const { settings, formatDateTime } = useCompanySettings()
+  const { settings, formatDateTime, companyReady, companyLoading } = useCompanySettings()
   const { session } = useAuth()
   const companyId = settings?.id
 
@@ -618,9 +618,11 @@ export function NotesPlansCard() {
   const previewNotes = openNotes.slice(0, PREVIEW_OPEN_LIMIT)
 
   const loadNotes = useCallback(async () => {
-    if (!companyId) {
-      setNotes([])
-      setIsLoading(false)
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setNotes([])
+        setIsLoading(false)
+      }
       return
     }
 
@@ -636,7 +638,7 @@ export function NotesPlansCard() {
     } finally {
       setIsLoading(false)
     }
-  }, [companyId])
+  }, [companyReady, companyId, companyLoading])
 
   useEffect(() => {
     void loadNotes()

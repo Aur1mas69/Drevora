@@ -10,6 +10,7 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Truck } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { Button } from '@/components/ui/button'
 import {
   adminEmptyState,
@@ -98,6 +99,7 @@ function getActiveVehicleQuickFilter(
 
 function VehiclesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const calendarSectionRef = useRef<HTMLDivElement>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
@@ -171,17 +173,30 @@ function VehiclesPage() {
   }, [showFullCalendar])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setVehicles([])
+        setDrivers([])
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadVehicles()
-  }, [loadVehicles])
+  }, [companyReady, companyId, companyLoading, membershipError, loadVehicles])
 
   useEffect(() => {
     function handleVehiclesUpdated() {
+      if (!companyReady || !companyId) return
       void loadVehicles()
     }
 
     window.addEventListener(VEHICLES_UPDATED_EVENT, handleVehiclesUpdated)
     return () => window.removeEventListener(VEHICLES_UPDATED_EVENT, handleVehiclesUpdated)
-  }, [loadVehicles])
+  }, [companyReady, companyId, loadVehicles])
 
   useEffect(() => {
     if (!toastMessage) return

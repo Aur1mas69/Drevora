@@ -33,6 +33,7 @@ import {
   deleteConsumableReceipt,
 } from '@/services/consumableReceiptStorageService'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -52,6 +53,7 @@ function filtersAreDefault(filters: ConsumablesFilterValues): boolean {
 export default function ConsumablesPage() {
   const [searchParams] = useSearchParams()
   const { settings: companySettings } = useCompanySettings()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<Consumable[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -171,14 +173,34 @@ export default function ConsumablesPage() {
   ])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setVehicles([])
+        setWorkers([])
+      }
+      return
+    }
+
     void loadLookups().catch(() => {
       /* lookup failure handled on save */
     })
-  }, [loadLookups])
+  }, [companyReady, companyId, companyLoading, loadLookups])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setTotalCount(0)
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadConsumables()
-  }, [loadConsumables])
+  }, [companyReady, companyId, companyLoading, membershipError, loadConsumables])
 
   function openCreateForm() {
     setFormMode('create')

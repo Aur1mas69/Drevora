@@ -48,10 +48,21 @@ type CompanySettingsContextValue = {
   companyId: string | null
   companyName: string | null
   membershipRole: string | null
+  /** True while Supabase auth session restoration is in progress. */
+  authLoading: boolean
+  /** True while company membership / settings are resolving. */
+  companyLoading: boolean
+  /**
+   * True only when auth is restored, membership finished, and a verified
+   * companyId is available. Tenant queries must wait for this.
+   */
+  companyReady: boolean
   isLoading: boolean
   loading: boolean
   isSaving: boolean
   error: string | null
+  /** Alias for membership/setup errors (same as error). */
+  membershipError: string | null
   timeFormat: CompanyTimeFormat
   dateFormat: CompanyDateFormat
   weekStarts: CompanyWeekStarts
@@ -252,6 +263,16 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
   const overtimeMultiplier = settings?.overtimeMultiplier ?? DEFAULT_OVERTIME_MULTIPLIER
   const defaultBreakMinutes = settings?.defaultBreakMinutes ?? 30
 
+  // Keep companyLoading true while auth is still restoring so consumers never
+  // treat the pre-membership window as a finished empty tenant.
+  const companyLoading = isAuthLoading || isLoading
+  const companyReady =
+    !isAuthLoading &&
+    !isLoading &&
+    Boolean(sessionUserId) &&
+    Boolean(companyId) &&
+    !error
+
   const value = useMemo<CompanySettingsContextValue>(() => {
     const formatter = createCompanyDateTimeFormatter(timeFormat, timezone, dateFormat)
 
@@ -262,10 +283,14 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
       companyId,
       companyName,
       membershipRole,
-      isLoading,
-      loading: isLoading,
+      authLoading: isAuthLoading,
+      companyLoading,
+      companyReady,
+      isLoading: companyLoading,
+      loading: companyLoading,
       isSaving,
       error,
+      membershipError: error,
       timeFormat,
       dateFormat,
       weekStarts,
@@ -289,12 +314,14 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [
     companyId,
+    companyLoading,
     companyName,
+    companyReady,
     compactTables,
     dateFormat,
     defaultBreakMinutes,
     error,
-    isLoading,
+    isAuthLoading,
     isSaving,
     membershipRole,
     overtimeAfterHours,

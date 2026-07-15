@@ -1,4 +1,5 @@
 import {
+  MissingCompanyContextError,
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
@@ -535,8 +536,10 @@ function hasMeaningfulStatusUpdate(createdAt: string, updatedAt: string): boolea
   return new Date(updatedAt).getTime() > new Date(createdAt).getTime() + 1000
 }
 
-async function fetchCompanyActivityScope(): Promise<CompanyActivityScope> {
-  const companyId = requireVerifiedCompanyId()
+async function fetchCompanyActivityScope(
+  verifiedCompanyId?: string,
+): Promise<CompanyActivityScope> {
+  const companyId = verifiedCompanyId?.trim() || requireVerifiedCompanyId()
   const settings = await fetchCompanySettings()
   return { companyId, timezone: settings?.timezone?.trim() || 'Europe/London' }
 }
@@ -1632,6 +1635,8 @@ export type DashboardSectionKey =
   | 'recentActivity'
 
 type LoadDashboardStatsProgressivelyOptions = {
+  /** Membership-verified company id from CompanySettingsContext. Prefer passing this. */
+  companyId?: string
   onUpdate: (patch: Partial<DashboardStats>) => void
   onSectionLoaded: (section: DashboardSectionKey) => void
   signal?: AbortSignal
@@ -1644,10 +1649,10 @@ function isAborted(signal?: AbortSignal): boolean {
 export async function loadDashboardStatsProgressively(
   options: LoadDashboardStatsProgressivelyOptions,
 ): Promise<void> {
-  const { onUpdate, onSectionLoaded, signal } = options
+  const { onUpdate, onSectionLoaded, signal, companyId: explicitCompanyId } = options
 
   try {
-    const companyScope = await fetchCompanyActivityScope()
+    const companyScope = await fetchCompanyActivityScope(explicitCompanyId)
     if (isAborted(signal)) return
 
     const vehiclesPromise = fetchDashboardVehicles(companyScope.companyId)
@@ -1766,21 +1771,17 @@ export async function loadDashboardStatsProgressively(
       onSectionLoaded('recentActivity')
     })
   } catch (error) {
-    console.error('[dashboardService.loadDashboardStatsProgressively] unexpected error:', error)
-    // Clear loading sections so a missing membership never leaves the dashboard stuck.
-    const sections: DashboardSectionKey[] = [
-      'kpis',
-      'timesheet',
-      'holidays',
-      'driverReports',
-      'fleetStatus',
-      'vehicleChecks',
-      'consumables',
-      'recentActivity',
-    ]
-    for (const section of sections) {
-      onSectionLoaded(section)
+    if (isAborted(signal)) return
+
+    // Missing membership is not empty dashboard data — let the caller retry/gate.
+    if (error instanceof MissingCompanyContextError) {
+      throw error
     }
+
+    console.error('[dashboardService.loadDashboardStatsProgressively] unexpected error:', error)
+    throw error instanceof Error
+      ? error
+      : new Error('Failed to load dashboard stats.')
   }
 }
 
@@ -1874,7 +1875,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     return stats
   } catch (error) {
     console.error('[dashboardService.fetchDashboardStats] unexpected error:', error)
-    return emptyDashboardStats
+    if (error instanceof MissingCompanyContextError) {
+      throw error
+    }
+    throw error instanceof Error ? error : new Error('Failed to load dashboard stats.')
   }
 }
 

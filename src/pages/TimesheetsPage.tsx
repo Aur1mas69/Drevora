@@ -9,6 +9,7 @@ import { TimesheetsPagination } from '@/components/timesheets/TimesheetsPaginati
 import { TimesheetsSummaryStrip } from '@/components/timesheets/TimesheetsSummaryStrip'
 import { TimesheetsToolbar } from '@/components/timesheets/TimesheetsToolbar'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
@@ -53,6 +54,7 @@ type DrawerState = {
 
 export default function TimesheetsPage() {
   const { settings } = useCompanySettings()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<TimesheetSummaryStats>({
@@ -179,12 +181,34 @@ export default function TimesheetsPage() {
   ])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setDrivers([])
+        if (membershipError) {
+          /* reference data waits for membership; list error handled below */
+        }
+      }
+      return
+    }
+
     void loadReferenceData()
-  }, [loadReferenceData])
+  }, [companyReady, companyId, companyLoading, membershipError, loadReferenceData])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setTotalCount(0)
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadTimesheets()
-  }, [loadTimesheets])
+  }, [companyReady, companyId, companyLoading, membershipError, loadTimesheets])
 
   function replaceListItem(updated: TimesheetListItem) {
     setItems((current) =>

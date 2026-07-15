@@ -11,6 +11,7 @@ import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-do
 import { Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ModuleListToolbar, moduleListPrimaryButtonClass } from '@/components/common/ModuleListToolbar'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -619,6 +620,7 @@ function DriversPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -669,14 +671,28 @@ function DriversPage() {
   }, [searchParams])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setDrivers([])
+        setVehicles([])
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadDrivers()
-  }, [loadDrivers])
+  }, [companyReady, companyId, companyLoading, membershipError, loadDrivers])
 
   useEffect(() => {
+    if (!companyReady || !companyId) return
+
     void vehiclesService.fetchVehicles().then(setVehicles).catch(() => {
       setVehicles([])
     })
-  }, [])
+  }, [companyReady, companyId])
 
   useEffect(() => {
     if (!toastMessage) return

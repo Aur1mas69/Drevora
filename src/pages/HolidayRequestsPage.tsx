@@ -12,6 +12,7 @@ import { HolidayRequestsToolbar } from '@/components/holidays/HolidayRequestsToo
 import { holidayPageCardClass } from '@/components/holidays/holidayUiStyles'
 import { NewHolidayRequestModal } from '@/components/holidays/NewHolidayRequestModal'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import type {
   HolidayRequest,
   HolidayLeaveType,
@@ -33,6 +34,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 
 export default function HolidayRequestsPage() {
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<HolidayRequest[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<HolidayRequestSummaryStats>({
@@ -164,19 +166,39 @@ export default function HolidayRequestsPage() {
   }, [])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setWorkers([])
+      }
+      return
+    }
+
     void loadWorkers().catch(() => {
       /* workers load failure handled on submit */
     })
-  }, [loadWorkers])
+  }, [companyReady, companyId, companyLoading, loadWorkers])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setTotalCount(0)
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadRequests()
-  }, [loadRequests])
+  }, [companyReady, companyId, companyLoading, membershipError, loadRequests])
 
   useEffect(() => {
+    if (!companyReady || !companyId) return
     if (!calendarRange) return
     void loadCalendarRequests()
-  }, [calendarRange, calendarRefreshKey, loadCalendarRequests])
+  }, [companyReady, companyId, calendarRange, calendarRefreshKey, loadCalendarRequests])
 
   function clearFilters() {
     setSearchTerm('')

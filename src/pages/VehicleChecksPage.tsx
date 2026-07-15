@@ -11,6 +11,7 @@ import {
 } from '@/components/vehicle-checks/VehicleChecksSummaryCards'
 import { VehicleChecksToolbar } from '@/components/vehicle-checks/VehicleChecksToolbar'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import type {
   VehicleCheck,
   VehicleCheckListItem,
@@ -48,6 +49,7 @@ const vehicleUnavailableStatuses: VehicleStatus[] = [
 ]
 
 export default function VehicleChecksPage() {
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<VehicleCheckSummaryStats>({
@@ -151,14 +153,34 @@ export default function VehicleChecksPage() {
   }, [dateFrom, dateTo, debouncedSearch, page, pageSize, resultFilter, statusFilter, vehicleFilter, workerFilter])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setVehicles([])
+        setDrivers([])
+      }
+      return
+    }
+
     void loadReferenceData().catch(() => {
       /* reference data errors surface on create */
     })
-  }, [loadReferenceData])
+  }, [companyReady, companyId, companyLoading, loadReferenceData])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setTotalCount(0)
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadChecks()
-  }, [loadChecks])
+  }, [companyReady, companyId, companyLoading, membershipError, loadChecks])
 
   async function openCheckDetail(id: string, mode: 'view' | 'edit') {
     setIsLoadingDetail(true)

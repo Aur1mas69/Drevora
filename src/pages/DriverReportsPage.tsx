@@ -14,6 +14,7 @@ import { DriverReportsToolbar } from '@/components/driver-reports/DriverReportsT
 import { driverReportPageCardClass } from '@/components/driver-reports/driverReportUiStyles'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
@@ -52,6 +53,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function DriverReportsPage() {
   const { formatDate, formatDateTime, settings: companySettings } = useCompanySettings()
+  const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const { portal } = useAuth()
   const { worker: currentWorker } = useCurrentWorker()
 
@@ -135,8 +137,21 @@ export default function DriverReportsPage() {
   }, [])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      if (!companyLoading) {
+        setIsLoading(false)
+        setItems([])
+        setWorkers([])
+        setVehicles([])
+        if (membershipError) {
+          setLoadError(membershipError)
+        }
+      }
+      return
+    }
+
     void loadReports()
-  }, [loadReports])
+  }, [companyReady, companyId, companyLoading, membershipError, loadReports])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchTerm), 250)
