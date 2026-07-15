@@ -326,9 +326,11 @@ create table if not exists public.companies (
   saturday_overtime_enabled boolean not null default false,
   saturday_overtime_after_hours numeric not null default 6.0,
   saturday_overtime_multiplier numeric not null default 1.5,
+  saturday_guaranteed_paid_hours numeric not null default 10.0,
   sunday_overtime_enabled boolean not null default false,
   sunday_overtime_after_hours numeric not null default 0.0,
   sunday_overtime_multiplier numeric not null default 2.0,
+  sunday_guaranteed_paid_hours numeric not null default 10.0,
   timesheet_week_start_day text not null default 'monday',
   timesheet_week_reset_month integer not null default 4,
   timesheet_week_reset_day integer not null default 5,
@@ -389,6 +391,16 @@ create table if not exists public.companies (
     sunday_overtime_multiplier >= 1.0
     and sunday_overtime_multiplier <= 2.5
     and (sunday_overtime_multiplier * 10) = floor(sunday_overtime_multiplier * 10)
+  ),
+  constraint companies_saturday_guaranteed_paid_hours_check check (
+    saturday_guaranteed_paid_hours >= 5.0
+    and saturday_guaranteed_paid_hours <= 15.0
+    and (saturday_guaranteed_paid_hours * 2) = floor(saturday_guaranteed_paid_hours * 2)
+  ),
+  constraint companies_sunday_guaranteed_paid_hours_check check (
+    sunday_guaranteed_paid_hours >= 5.0
+    and sunday_guaranteed_paid_hours <= 15.0
+    and (sunday_guaranteed_paid_hours * 2) = floor(sunday_guaranteed_paid_hours * 2)
   ),
   constraint companies_timesheet_week_start_day_check check (
     timesheet_week_start_day in ('monday', 'sunday')

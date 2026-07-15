@@ -29,12 +29,15 @@ import {
   DEFAULT_OVERTIME_AFTER_HOURS,
   DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
   DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
   OVERTIME_AFTER_HOURS_MAX,
   OVERTIME_AFTER_HOURS_MIN,
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
+  WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS,
   WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   CURRENCY_OPTIONS,
@@ -94,9 +97,11 @@ type CompanyRow = {
   saturday_overtime_enabled: boolean | null
   saturday_overtime_after_hours: number | null
   saturday_overtime_multiplier: number | null
+  saturday_guaranteed_paid_hours: number | null
   sunday_overtime_enabled: boolean | null
   sunday_overtime_after_hours: number | null
   sunday_overtime_multiplier: number | null
+  sunday_guaranteed_paid_hours: number | null
   timesheet_week_start_day: string | null
   timesheet_week_reset_month: number | null
   timesheet_week_reset_day: number | null
@@ -307,6 +312,20 @@ function normalizeWeekendOvertimeMultiplier(
   return snapToNearestOption(clamped, WEEKEND_OVERTIME_MULTIPLIER_OPTIONS, fallback)
 }
 
+function normalizeWeekendGuaranteedPaidHours(
+  value: number | string | null | undefined,
+  fallback: number,
+): number {
+  if (value == null || value === '') return fallback
+
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return fallback
+
+  const snapped = Math.round(parsed * 2) / 2
+  const clamped = Math.min(15, Math.max(5, snapped))
+  return snapToNearestOption(clamped, WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS, fallback)
+}
+
 function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
   return value === 'Automatic' ? 'Automatic' : 'Manual'
 }
@@ -422,6 +441,10 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       row.saturday_overtime_multiplier,
       DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
     ),
+    saturdayGuaranteedPaidHours: normalizeWeekendGuaranteedPaidHours(
+      row.saturday_guaranteed_paid_hours,
+      DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
+    ),
     sundayOvertimeEnabled: row.sunday_overtime_enabled ?? false,
     sundayOvertimeAfterHours: normalizeWeekendOvertimeAfterHours(
       row.sunday_overtime_after_hours,
@@ -430,6 +453,10 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     sundayOvertimeMultiplier: normalizeWeekendOvertimeMultiplier(
       row.sunday_overtime_multiplier,
       DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+    ),
+    sundayGuaranteedPaidHours: normalizeWeekendGuaranteedPaidHours(
+      row.sunday_guaranteed_paid_hours,
+      DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
     ),
     timesheetWeekStartDay: normalizeTimesheetWeekStartDay(row.timesheet_week_start_day),
     timesheetWeekResetMonth: normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
@@ -486,9 +513,11 @@ export function companySettingsToFormValues(
     saturdayOvertimeEnabled: settings.saturdayOvertimeEnabled,
     saturdayOvertimeAfterHours: settings.saturdayOvertimeAfterHours,
     saturdayOvertimeMultiplier: settings.saturdayOvertimeMultiplier,
+    saturdayGuaranteedPaidHours: settings.saturdayGuaranteedPaidHours,
     sundayOvertimeEnabled: settings.sundayOvertimeEnabled,
     sundayOvertimeAfterHours: settings.sundayOvertimeAfterHours,
     sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
+    sundayGuaranteedPaidHours: settings.sundayGuaranteedPaidHours,
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
@@ -593,6 +622,12 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
       DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
     )
   }
+  if (input.saturdayGuaranteedPaidHours !== undefined) {
+    payload.saturday_guaranteed_paid_hours = normalizeWeekendGuaranteedPaidHours(
+      coerceNumericHours(input.saturdayGuaranteedPaidHours),
+      DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
+    )
+  }
   if (input.sundayOvertimeEnabled !== undefined) {
     payload.sunday_overtime_enabled = input.sundayOvertimeEnabled
   }
@@ -606,6 +641,12 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
     payload.sunday_overtime_multiplier = normalizeWeekendOvertimeMultiplier(
       coerceNumericHours(input.sundayOvertimeMultiplier),
       DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+    )
+  }
+  if (input.sundayGuaranteedPaidHours !== undefined) {
+    payload.sunday_guaranteed_paid_hours = normalizeWeekendGuaranteedPaidHours(
+      coerceNumericHours(input.sundayGuaranteedPaidHours),
+      DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
     )
   }
   if (input.timesheetWeekStartDay !== undefined) {

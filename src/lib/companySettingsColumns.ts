@@ -94,9 +94,11 @@ export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
   'saturday_overtime_enabled',
   'saturday_overtime_after_hours',
   'saturday_overtime_multiplier',
+  'saturday_guaranteed_paid_hours',
   'sunday_overtime_enabled',
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
+  'sunday_guaranteed_paid_hours',
 ] as const
 
 /** Timesheet week numbering columns — optional until migration is applied. */
@@ -158,9 +160,11 @@ export const companySettingsWeekendSelect = `
   saturday_overtime_enabled,
   saturday_overtime_after_hours,
   saturday_overtime_multiplier,
+  saturday_guaranteed_paid_hours,
   sunday_overtime_enabled,
   sunday_overtime_after_hours,
-  sunday_overtime_multiplier
+  sunday_overtime_multiplier,
+  sunday_guaranteed_paid_hours
 ` as const
 
 export const companySettingsWeekNumberingSelect = `
@@ -221,9 +225,11 @@ export const companySettingsSelect = `
   saturday_overtime_enabled,
   saturday_overtime_after_hours,
   saturday_overtime_multiplier,
+  saturday_guaranteed_paid_hours,
   sunday_overtime_enabled,
   sunday_overtime_after_hours,
   sunday_overtime_multiplier,
+  sunday_guaranteed_paid_hours,
   timesheet_week_start_day,
   timesheet_week_reset_month,
   timesheet_week_reset_day,

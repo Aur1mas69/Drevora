@@ -11,6 +11,7 @@
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "verify:paid-breaks": "npx tsx scripts/verify-paid-breaks.ts",
     "verify:timesheet-total-hours": "npx tsx scripts/verify-timesheet-total-hours.ts",
+    "verify:weekend-guaranteed-hours": "npx tsx scripts/verify-weekend-guaranteed-hours.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },

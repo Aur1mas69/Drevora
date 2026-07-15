@@ -11,10 +11,12 @@ import {
   CURRENCY_OPTIONS,
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
+  WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS,
   WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   formatOvertimeAfterHoursLabel,
   formatOvertimeMultiplierLabel,
+  formatWeekendGuaranteedPaidHoursLabel,
   formatWeekendOvertimeAfterHoursLabel,
   formatWeekendOvertimeMultiplierLabel,
   type CompanyCurrency,
@@ -224,6 +226,22 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
 
         {form.saturdayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label="Guaranteed paid hours">
+              <select
+                value={form.saturdayGuaranteedPaidHours}
+                onChange={(event) =>
+                  onChange({ saturdayGuaranteedPaidHours: Number(event.target.value) })
+                }
+                className={settingsSelectClassName}
+              >
+                {WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS.map((hours) => (
+                  <option key={`sat-guarantee-${hours.toFixed(1)}`} value={hours}>
+                    {formatWeekendGuaranteedPaidHoursLabel(hours)}
+                  </option>
+                ))}
+              </select>
+            </SettingsField>
+
             <SettingsField label="Starts after">
               <select
                 value={form.saturdayOvertimeAfterHours}
@@ -266,6 +284,22 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
 
         {form.sundayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label="Guaranteed paid hours">
+              <select
+                value={form.sundayGuaranteedPaidHours}
+                onChange={(event) =>
+                  onChange({ sundayGuaranteedPaidHours: Number(event.target.value) })
+                }
+                className={settingsSelectClassName}
+              >
+                {WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS.map((hours) => (
+                  <option key={`sun-guarantee-${hours.toFixed(1)}`} value={hours}>
+                    {formatWeekendGuaranteedPaidHoursLabel(hours)}
+                  </option>
+                ))}
+              </select>
+            </SettingsField>
+
             <SettingsField label="Starts after">
               <select
                 value={form.sundayOvertimeAfterHours}

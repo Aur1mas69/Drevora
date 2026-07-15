@@ -143,9 +143,11 @@ export function TimesheetDrawer({
         saturdayOvertimeEnabled: settings?.saturdayOvertimeEnabled ?? false,
         saturdayOvertimeAfterHours: settings?.saturdayOvertimeAfterHours ?? 6,
         saturdayOvertimeMultiplier: settings?.saturdayOvertimeMultiplier ?? 1.5,
+        saturdayGuaranteedPaidHours: settings?.saturdayGuaranteedPaidHours ?? 10,
         sundayOvertimeEnabled: settings?.sundayOvertimeEnabled ?? false,
         sundayOvertimeAfterHours: settings?.sundayOvertimeAfterHours ?? 0,
         sundayOvertimeMultiplier: settings?.sundayOvertimeMultiplier ?? 2,
+        sundayGuaranteedPaidHours: settings?.sundayGuaranteedPaidHours ?? 10,
       }),
     [overtimeAfterHours, overtimeMultiplier, settings],
   )

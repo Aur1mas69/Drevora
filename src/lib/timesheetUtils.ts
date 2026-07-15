@@ -59,13 +59,18 @@ export function buildTimesheetOvertimeRules(
 export function resolveDayOvertimeRules(
   dayDate: string,
   rules: TimesheetOvertimeRules,
-): { afterHours: number; multiplier: number } {
+): {
+  afterHours: number
+  multiplier: number
+  guaranteedPaidHours: number | null
+} {
   const day = parseLocalDate(dayDate).getDay()
 
   if (day === 6 && rules.saturdayOvertimeEnabled) {
     return {
       afterHours: rules.saturdayOvertimeAfterHours,
       multiplier: rules.saturdayOvertimeMultiplier,
+      guaranteedPaidHours: rules.saturdayGuaranteedPaidHours,
     }
   }
 
@@ -73,12 +78,14 @@ export function resolveDayOvertimeRules(
     return {
       afterHours: rules.sundayOvertimeAfterHours,
       multiplier: rules.sundayOvertimeMultiplier,
+      guaranteedPaidHours: rules.sundayGuaranteedPaidHours,
     }
   }
 
   return {
     afterHours: rules.overtimeAfterHours,
     multiplier: rules.overtimeMultiplier,
+    guaranteedPaidHours: null,
   }
 }
 
@@ -110,6 +117,22 @@ export function roundHoursOneDecimal(value: number): number {
 /** Preserve payable Total Hours at two decimal places (e.g. 14.25, not 14.3). */
 export function roundHoursTwoDecimals(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/**
+ * Weekend guaranteed paid hours:
+ * totalPaid = guaranteedPaidHours + max(actualWorked - overtimeStartsAfter, 0) * multiplier
+ * Actual worked hours are NOT added on top of the guarantee.
+ */
+export function calculateWeekendGuaranteedPaidHours(
+  actualWorkedHours: number,
+  guaranteedPaidHours: number,
+  overtimeStartsAfter: number,
+  multiplier: number,
+  additionalHours = 0,
+): number {
+  const overtimeHours = Math.max(actualWorkedHours - overtimeStartsAfter, 0)
+  return guaranteedPaidHours + overtimeHours * multiplier + additionalHours
 }
 
 export function calculateEntryPaidEquivalentHours(
@@ -173,14 +196,24 @@ export function summarizeTimesheetEntries(
 
     if (hasPayableHours) {
       const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
-      totalPayableHours += calculateEntryPaidEquivalentHours(
-        {
-          totalMinutes: entry.totalMinutes,
-          overtimeMinutes: entry.overtimeMinutes,
-          additionalHours: entry.additionalHours,
-        },
-        dayRules.multiplier,
-      )
+      if (dayRules.guaranteedPaidHours != null) {
+        totalPayableHours += calculateWeekendGuaranteedPaidHours(
+          entry.totalMinutes / 60,
+          dayRules.guaranteedPaidHours,
+          dayRules.afterHours,
+          dayRules.multiplier,
+          entry.additionalHours ?? 0,
+        )
+      } else {
+        totalPayableHours += calculateEntryPaidEquivalentHours(
+          {
+            totalMinutes: entry.totalMinutes,
+            overtimeMinutes: entry.overtimeMinutes,
+            additionalHours: entry.additionalHours,
+          },
+          dayRules.multiplier,
+        )
+      }
     }
   }
 

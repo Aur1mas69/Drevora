@@ -176,10 +176,30 @@ export const WEEKEND_OVERTIME_MULTIPLIER_OPTIONS: number[] = Array.from(
   (_, index) => Math.round((1 + index * 0.1) * 10) / 10,
 )
 
+export const WEEKEND_GUARANTEED_PAID_HOURS_MIN = 5
+export const WEEKEND_GUARANTEED_PAID_HOURS_MAX = 15
+export const WEEKEND_GUARANTEED_PAID_HOURS_STEP = 0.5
+
+export const WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS: number[] = Array.from(
+  {
+    length:
+      Math.round(
+        (WEEKEND_GUARANTEED_PAID_HOURS_MAX - WEEKEND_GUARANTEED_PAID_HOURS_MIN) /
+          WEEKEND_GUARANTEED_PAID_HOURS_STEP,
+      ) + 1,
+  },
+  (_, index) =>
+    Math.round(
+      (WEEKEND_GUARANTEED_PAID_HOURS_MIN + index * WEEKEND_GUARANTEED_PAID_HOURS_STEP) * 10,
+    ) / 10,
+)
+
 export const DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS = 6
 export const DEFAULT_SATURDAY_OVERTIME_MULTIPLIER = 1.5
+export const DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS = 10
 export const DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS = 0
 export const DEFAULT_SUNDAY_OVERTIME_MULTIPLIER = 2
+export const DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS = 10
 
 export function formatWeekendOvertimeAfterHoursLabel(hours: number): string {
   if (hours === 0) return '0.0 hours — from first hour'
@@ -190,15 +210,21 @@ export function formatWeekendOvertimeMultiplierLabel(value: number): string {
   return `${value.toFixed(1)}x`
 }
 
+export function formatWeekendGuaranteedPaidHoursLabel(hours: number): string {
+  return `${hours.toFixed(1)} hours`
+}
+
 export type TimesheetOvertimeRules = {
   overtimeAfterHours: number
   overtimeMultiplier: number
   saturdayOvertimeEnabled: boolean
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
+  saturdayGuaranteedPaidHours: number
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
+  sundayGuaranteedPaidHours: number
 }
 
 export const DEFAULT_TIMESHEET_OVERTIME_RULES: TimesheetOvertimeRules = {
@@ -207,9 +233,11 @@ export const DEFAULT_TIMESHEET_OVERTIME_RULES: TimesheetOvertimeRules = {
   saturdayOvertimeEnabled: false,
   saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  saturdayGuaranteedPaidHours: DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
   sundayOvertimeEnabled: false,
   sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  sundayGuaranteedPaidHours: DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
 }
 
 export const THEME_OPTIONS: { value: CompanyTheme; label: string }[] = [
@@ -275,9 +303,11 @@ export type CompanySettings = {
   saturdayOvertimeEnabled: boolean
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
+  saturdayGuaranteedPaidHours: number
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
+  sundayGuaranteedPaidHours: number
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -322,9 +352,11 @@ export type CompanySettingsInput = {
   saturdayOvertimeEnabled: boolean
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
+  saturdayGuaranteedPaidHours: number
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
+  sundayGuaranteedPaidHours: number
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -368,9 +400,11 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   saturdayOvertimeEnabled: false,
   saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
+  saturdayGuaranteedPaidHours: DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
   sundayOvertimeEnabled: false,
   sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  sundayGuaranteedPaidHours: DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
   ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
 }
 
