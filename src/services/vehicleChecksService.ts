@@ -618,14 +618,9 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
   }
 
-  const completedAtDate = new Date()
-  const durationSeconds = calculateInspectionDurationSeconds(startedAtDate, completedAtDate)
-  if (durationSeconds == null) {
-    throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
-  }
-
+  // Create always opens as In Progress, then completes in one final parent update.
+  // input.status is ignored so callers cannot insert as Completed under strict RLS.
   const overallResult = computeOverallResult(input.items)
-  const status = input.status ?? 'Completed'
   const odometerUnit = input.odometerUnit ?? DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT
   await assertWorkerAndVehicleInCompany(
     input.workerId,
@@ -642,12 +637,10 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
       inspection_date: input.inspectionDate,
       odometer: input.odometer,
       odometer_unit: odometerUnit,
-      status,
+      status: 'In Progress',
       overall_result: overallResult,
       notes: input.notes?.trim() || null,
       inspection_started_at: startedAtDate.toISOString(),
-      inspection_completed_at: completedAtDate.toISOString(),
-      duration_seconds: durationSeconds,
     })
     .select('id')
     .single()
@@ -663,73 +656,106 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     throw new VehicleChecksServiceError(checkError?.message ?? 'Failed to create inspection.')
   }
 
+  // On any later failure: leave the check In Progress and do not report completion success.
   try {
-    const signaturePath = await uploadVehicleCheckSignature(
-      input.vehicleId,
-      checkRow.id,
-      input.signatureFile,
-    )
+    let itemsWithPhotos: VehicleCheckItemInput[]
+    try {
+      itemsWithPhotos = await prepareItemsWithUploadedPhotos(
+        input.vehicleId,
+        checkRow.id,
+        input.items,
+      )
+    } catch (photoError) {
+      throw new VehicleChecksServiceError(
+        photoError instanceof Error ? photoError.message : 'Failed to upload defect photo.',
+      )
+    }
 
-    const { data: signatureRows, error: signatureError } = await requireSupabase()
+    await assertVehicleCheckInCompany(checkRow.id, verifiedCompanyId)
+    const itemRows = buildItemRows(checkRow.id, itemsWithPhotos)
+    const { error: itemsError } = await requireSupabase()
+      .from(VEHICLE_CHECK_ITEMS_TABLE)
+      .insert(itemRows)
+
+    logSupabaseQuery({
+      service: 'vehicleChecksService.createVehicleCheck.items',
+      table: 'vehicle_check_items',
+      data: itemRows,
+      error: itemsError,
+    })
+
+    if (itemsError) {
+      throw new VehicleChecksServiceError(itemsError.message)
+    }
+
+    let signaturePath: string
+    try {
+      signaturePath = await uploadVehicleCheckSignature(
+        input.vehicleId,
+        checkRow.id,
+        input.signatureFile,
+      )
+    } catch (signatureError) {
+      throw new VehicleChecksServiceError(
+        signatureError instanceof Error
+          ? signatureError.message
+          : 'Failed to upload worker signature.',
+      )
+    }
+
+    const completedAtDate = new Date()
+    const durationSeconds = calculateInspectionDurationSeconds(startedAtDate, completedAtDate)
+    if (durationSeconds == null) {
+      throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
+    }
+
+    const signedAt = completedAtDate.toISOString()
+    const { data: completedRows, error: completeError } = await requireSupabase()
       .from('vehicle_checks')
       .update({
+        status: 'Completed',
+        overall_result: overallResult,
         signature_url: signaturePath,
-        signed_at: new Date().toISOString(),
+        signed_at: signedAt,
+        inspection_completed_at: signedAt,
+        duration_seconds: durationSeconds,
+        updated_at: signedAt,
       })
       .eq('id', checkRow.id)
       .eq('company_id', verifiedCompanyId)
       .select('id')
 
-    if (signatureError) {
-      throw new VehicleChecksServiceError(signatureError.message)
+    logSupabaseQuery({
+      service: 'vehicleChecksService.createVehicleCheck.complete',
+      table: 'vehicle_checks',
+      data: completedRows ?? [],
+      error: completeError,
+    })
+
+    if (completeError) {
+      throw new VehicleChecksServiceError(completeError.message)
     }
-    if ((signatureRows ?? []).length === 0) {
+    if ((completedRows ?? []).length === 0) {
       throw new VehicleChecksServiceError(
-        'Inspection signature could not be saved for your company.',
+        'Inspection could not be completed for your company.',
       )
     }
-  } catch (signatureError) {
-    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
-    throw new VehicleChecksServiceError(
-      signatureError instanceof Error
-        ? signatureError.message
-        : 'Failed to upload worker signature.',
-    )
-  }
-
-  let itemsWithPhotos: VehicleCheckItemInput[]
-  try {
-    itemsWithPhotos = await prepareItemsWithUploadedPhotos(
-      input.vehicleId,
-      checkRow.id,
-      input.items,
-    )
-  } catch (photoError) {
-    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
-    throw new VehicleChecksServiceError(
-      photoError instanceof Error ? photoError.message : 'Failed to upload defect photo.',
-    )
-  }
-
-  await assertVehicleCheckInCompany(checkRow.id, verifiedCompanyId)
-  const itemRows = buildItemRows(checkRow.id, itemsWithPhotos)
-  const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
-
-  logSupabaseQuery({
-    service: 'vehicleChecksService.createVehicleCheck.items',
-    table: 'vehicle_check_items',
-    data: itemRows,
-    error: itemsError,
-  })
-
-  if (itemsError) {
-    await deleteVehicleCheckForCompany(checkRow.id, verifiedCompanyId)
-    throw new VehicleChecksServiceError(itemsError.message)
+  } catch (error) {
+    throw error instanceof VehicleChecksServiceError
+      ? error
+      : new VehicleChecksServiceError(
+          error instanceof Error ? error.message : 'Failed to save inspection.',
+        )
   }
 
   const created = await fetchVehicleCheckById(checkRow.id)
   if (!created) {
-    throw new VehicleChecksServiceError('Inspection was created but could not be loaded.')
+    throw new VehicleChecksServiceError('Inspection was saved but could not be loaded.')
+  }
+  if (created.status !== 'Completed') {
+    throw new VehicleChecksServiceError(
+      'Inspection was left in progress and was not marked completed.',
+    )
   }
 
   return created
@@ -769,6 +795,15 @@ export async function updateVehicleCheck(
   )
 
   const overallResult = computeOverallResult(items)
+  const existingEditable =
+    (existing.status === 'Pending' || existing.status === 'In Progress') &&
+    !existing.signedAt
+  const targetStatus = input.status ?? existing.status
+  const willComplete = existingEditable && targetStatus === 'Completed'
+  const willRewriteItems = Boolean(input.items)
+
+  // While still editable, keep parent non-Completed until items are rewritten.
+  // Final Completed transition happens only after item writes (if any).
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     overall_result: overallResult,
@@ -778,8 +813,13 @@ export async function updateVehicleCheck(
   if (input.workerId !== undefined) patch.worker_id = input.workerId
   if (input.inspectionDate !== undefined) patch.inspection_date = input.inspectionDate
   if (input.odometer !== undefined) patch.odometer = input.odometer
-  if (input.status !== undefined) patch.status = input.status
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null
+
+  if (willComplete && willRewriteItems) {
+    patch.status = existing.status === 'Pending' ? 'Pending' : 'In Progress'
+  } else if (input.status !== undefined) {
+    patch.status = input.status
+  }
 
   const { data: updatedRows, error: updateError } = await requireSupabase()
     .from('vehicle_checks')
@@ -831,7 +871,9 @@ export async function updateVehicleCheck(
 
     await assertVehicleCheckInCompany(id, verifiedCompanyId)
     const itemRows = buildItemRows(id, itemsWithPhotos)
-    const { error: itemsError } = await requireSupabase().from(VEHICLE_CHECK_ITEMS_TABLE).insert(itemRows)
+    const { error: itemsError } = await requireSupabase()
+      .from(VEHICLE_CHECK_ITEMS_TABLE)
+      .insert(itemRows)
 
     logSupabaseQuery({
       service: 'vehicleChecksService.updateVehicleCheck.items',
@@ -842,6 +884,36 @@ export async function updateVehicleCheck(
 
     if (itemsError) {
       throw new VehicleChecksServiceError(itemsError.message)
+    }
+  }
+
+  if (willComplete && willRewriteItems) {
+    const completedAt = new Date().toISOString()
+    const { data: completedRows, error: completeError } = await requireSupabase()
+      .from('vehicle_checks')
+      .update({
+        status: 'Completed',
+        overall_result: overallResult,
+        updated_at: completedAt,
+      })
+      .eq('id', id)
+      .eq('company_id', verifiedCompanyId)
+      .select('id')
+
+    logSupabaseQuery({
+      service: 'vehicleChecksService.updateVehicleCheck.complete',
+      table: 'vehicle_checks',
+      data: completedRows ?? [],
+      error: completeError,
+    })
+
+    if (completeError) {
+      throw new VehicleChecksServiceError(completeError.message)
+    }
+    if ((completedRows ?? []).length === 0) {
+      throw new VehicleChecksServiceError(
+        'Inspection could not be completed for your company.',
+      )
     }
   }
 

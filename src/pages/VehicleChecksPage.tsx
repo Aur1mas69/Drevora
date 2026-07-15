@@ -274,7 +274,6 @@ export default function VehicleChecksPage() {
         signatureFile: input.signatureFile,
         inspectionStartedAt: input.inspectionStartedAt,
         items: input.items,
-        status: 'Completed',
       })
       showToast('Inspection saved')
       await loadChecks()
