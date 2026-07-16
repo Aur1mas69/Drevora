@@ -5,6 +5,7 @@ import {
   TableActionsHeader,
   type RowAction,
 } from '@/components/ui/RowActionsMenu'
+import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import type { WorkerComplianceSummary } from '@/lib/complianceTypes'
 import { getScoreRingTone, getScoreTone } from '@/lib/complianceUtils'
 import {
@@ -59,18 +60,13 @@ export function WorkersComplianceTable({ workers }: WorkersComplianceTableProps)
             {workers.map((worker) => (
               <tr key={worker.workerId} className={adminTableRowAlt}>
                 <td className="px-5 py-4">
-                  <div className="flex size-10 items-center justify-center overflow-hidden rounded-full bg-[#EAF4FF] text-xs font-semibold text-[#2563EB] ring-1 ring-blue-100 dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10">
-                    {worker.avatarUrl ? (
-                      <img src={worker.avatarUrl} alt="" className="size-full object-cover" />
-                    ) : (
-                      worker.workerName
-                        .split(' ')
-                        .map((part) => part.charAt(0))
-                        .join('')
-                        .slice(0, 2)
-                        .toUpperCase()
-                    )}
-                  </div>
+                  <WorkerAvatar
+                    firstName={worker.workerName.split(' ')[0] ?? ''}
+                    lastName={worker.workerName.split(' ').slice(1).join(' ')}
+                    avatarUrl={worker.avatarUrl}
+                    size="sm"
+                    className="size-10 text-xs ring-1 ring-blue-100 dark:ring-white/10"
+                  />
                 </td>
                 <td className="px-5 py-4">
                   <p className={`font-semibold ${adminHeadingLg}`}>{worker.workerName}</p>

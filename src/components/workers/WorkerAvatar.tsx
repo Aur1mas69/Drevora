@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { isExternalAvatarUrl } from '@/lib/workerAvatarStorage'
 import { getWorkerInitials } from '@/lib/workerAvatarUtils'
-import { getWorkerAvatarPublicUrl } from '@/services/workerAvatarStorageService'
+import { getWorkerAvatarSignedUrl } from '@/services/workerAvatarStorageService'
 import { cn } from '@/lib/utils'
 
 const sizeClassMap = {
@@ -12,6 +13,7 @@ const sizeClassMap = {
 type WorkerAvatarProps = {
   firstName: string
   lastName: string
+  /** Stored object path, external URL, or blob:/data: preview — never a persisted signed URL. */
   avatarUrl?: string | null
   size?: keyof typeof sizeClassMap
   className?: string
@@ -24,13 +26,38 @@ export function WorkerAvatar({
   size = 'md',
   className,
 }: WorkerAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false)
+  const sourceKey = avatarUrl?.trim() ?? ''
   const initials = getWorkerInitials(firstName, lastName)
 
-  const imageUrl = useMemo(() => {
-    if (!avatarUrl?.trim() || imageFailed) return null
-    return getWorkerAvatarPublicUrl(avatarUrl)
-  }, [avatarUrl, imageFailed])
+  const [imageFailedFor, setImageFailedFor] = useState<string | null>(null)
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [signedFor, setSignedFor] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!sourceKey || isExternalAvatarUrl(sourceKey)) {
+      return
+    }
+
+    let cancelled = false
+
+    void getWorkerAvatarSignedUrl(sourceKey).then((url) => {
+      if (!cancelled) {
+        setSignedUrl(url)
+        setSignedFor(sourceKey)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [sourceKey])
+
+  const syncExternalUrl =
+    sourceKey && isExternalAvatarUrl(sourceKey) ? sourceKey : null
+  const asyncSignedUrl = signedFor === sourceKey ? signedUrl : null
+  const resolvedUrl = syncExternalUrl ?? asyncSignedUrl
+  const imageFailed = imageFailedFor === sourceKey && sourceKey !== ''
+  const imageUrl = imageFailed ? null : resolvedUrl
 
   return (
     <div
@@ -45,7 +72,7 @@ export function WorkerAvatar({
           src={imageUrl}
           alt=""
           className="size-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => setImageFailedFor(sourceKey)}
         />
       ) : (
         initials

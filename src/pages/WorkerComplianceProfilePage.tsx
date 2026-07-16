@@ -2,6 +2,7 @@ import { AddComplianceRecordModal } from '@/components/compliance/AddComplianceR
 import { ComplianceDocumentsTable } from '@/components/compliance/ComplianceDocumentsTable'
 import { ComplianceProfileTabBar } from '@/components/compliance/ComplianceProfileTabBar'
 import { EditComplianceRecordModal } from '@/components/compliance/EditComplianceRecordModal'
+import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import { Button } from '@/components/ui/button'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
@@ -16,7 +17,6 @@ import {
   getScoreRingTone,
   getScoreTone,
   getSuggestedDocumentTypes,
-  getWorkerInitials,
   getWorkerName,
 } from '@/lib/complianceUtils'
 import { fetchDriverById, fetchDrivers, type Driver } from '@/services/driversService'
@@ -233,13 +233,13 @@ export default function WorkerComplianceProfilePage() {
 
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex size-16 items-center justify-center overflow-hidden rounded-full bg-[#EAF4FF] text-lg font-semibold text-[#2563EB] ring-2 ring-blue-100">
-              {worker.avatarUrl ? (
-                <img src={worker.avatarUrl} alt="" className="size-full object-cover" />
-              ) : (
-                getWorkerInitials(worker)
-              )}
-            </div>
+            <WorkerAvatar
+              firstName={worker.firstName}
+              lastName={worker.lastName}
+              avatarUrl={worker.avatarUrl}
+              size="md"
+              className="size-16 rounded-full ring-2 ring-blue-100"
+            />
             <div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-950">{workerName}</h1>
               <p className="mt-1 text-sm font-medium text-slate-500">{worker.role}</p>

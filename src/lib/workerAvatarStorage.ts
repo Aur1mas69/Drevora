@@ -1,5 +1,7 @@
 export const WORKER_AVATARS_BUCKET = 'worker-avatars'
 
+export const WORKER_AVATAR_SIGNED_URL_EXPIRY_SECONDS = 3600
+
 export const WORKER_AVATAR_MAX_BYTES = 5 * 1024 * 1024
 
 export const WORKER_AVATAR_ALLOWED_MIME_TYPES = [
@@ -15,6 +17,14 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isUuid(value: string | null | undefined): boolean {
+  return Boolean(value?.trim() && UUID_RE.test(value.trim()))
+}
+
+/** Absolute http(s), blob:, or data: URLs — not Storage object paths. */
 export function isExternalAvatarUrl(value: string): boolean {
   const trimmed = value.trim()
   return (
@@ -24,21 +34,36 @@ export function isExternalAvatarUrl(value: string): boolean {
   )
 }
 
+/** Non-empty value that is a Storage object path (not an absolute/external URL). */
 export function isWorkerAvatarStoragePath(value: string): boolean {
   const trimmed = value.trim()
   return trimmed.length > 0 && !isExternalAvatarUrl(trimmed)
 }
 
-export function sanitizeCompanyPathSegment(
-  company: string | null | undefined,
-): string {
-  const slug = (company?.trim() || 'default')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
+/**
+ * Canonical upload path:
+ * `{companyId}/worker-avatars/{workerId}/{timestamp}.{ext}`
+ */
+export function isCanonicalWorkerAvatarPath(path: string): boolean {
+  const parts = path.trim().split('/').filter(Boolean)
+  return (
+    parts.length >= 4 &&
+    isUuid(parts[0]) &&
+    parts[1] === 'worker-avatars' &&
+    isUuid(parts[2])
+  )
+}
 
-  return slug || 'default'
+/**
+ * Legacy slug path (display-compatible only; not a trusted tenant key):
+ * `{companySlug}/{workerId}/{timestamp}.{ext}`
+ */
+export function isLegacySlugWorkerAvatarPath(path: string): boolean {
+  if (!isWorkerAvatarStoragePath(path) || isCanonicalWorkerAvatarPath(path)) {
+    return false
+  }
+  const parts = path.trim().split('/').filter(Boolean)
+  return parts.length >= 3 && isUuid(parts[1])
 }
 
 function resolveExtension(fileName: string, mimeType: string): string {
@@ -51,15 +76,42 @@ function resolveExtension(fileName: string, mimeType: string): string {
   return 'jpg'
 }
 
+/**
+ * Build a new Worker Avatar object path.
+ * Requires a verified company UUID — never a company name or slug.
+ */
 export function buildWorkerAvatarPath(
-  company: string | null | undefined,
+  companyId: string,
   workerId: string,
   fileName: string,
   mimeType: string,
 ): string {
-  const companySlug = sanitizeCompanyPathSegment(company)
+  const trimmedCompanyId = companyId.trim()
+  const trimmedWorkerId = workerId.trim()
+
+  if (!isUuid(trimmedCompanyId)) {
+    throw new Error('A verified company id is required to upload a worker avatar.')
+  }
+  if (!isUuid(trimmedWorkerId)) {
+    throw new Error('A valid worker id is required to upload a worker avatar.')
+  }
+
   const extension = resolveExtension(fileName, mimeType)
-  return `${companySlug}/${workerId}/${Date.now()}.${extension}`
+  return `${trimmedCompanyId}/worker-avatars/${trimmedWorkerId}/${Date.now()}.${extension}`
+}
+
+/**
+ * True when the stored path may be deleted for this tenant/worker.
+ * Legacy slug paths are never deleted here — cleanup needs a controlled backfill.
+ */
+export function canSafelyDeleteWorkerAvatarPath(
+  path: string,
+  verifiedCompanyId: string,
+  workerId: string,
+): boolean {
+  if (!isCanonicalWorkerAvatarPath(path)) return false
+  const parts = path.trim().split('/').filter(Boolean)
+  return parts[0] === verifiedCompanyId.trim() && parts[2] === workerId.trim()
 }
 
 function resolveMimeType(file: File): string | null {
