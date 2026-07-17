@@ -163,6 +163,7 @@ export function VehicleEditModal({
   const reasonOptions = getScheduleReasonOptions(form.status)
   const vehicleTypeSelectOptions = getVehicleTypeSelectOptions(form.vehicleType)
   const selectedVehicleType = form.vehicleType.trim()
+  const isTrailer = selectedVehicleType === 'Trailer'
   const companyName = resolveCompanyTextScope(settings)
   const canManageTemplateChecks = Boolean(selectedVehicleType && companyName && !isCompanyLoading)
   const isDirty = isVehicleFormDirty(form, initialFormRef.current)
@@ -230,44 +231,6 @@ export function VehicleEditModal({
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 sm:px-6">
               <VehicleFormSection title="Basic Details">
-                <label className="block">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                    <span className={vehicleFormLabelClass}>Registration Number</span>
-                    <DvlaSoonBadge />
-                  </div>
-                  <Input
-                    name="registration"
-                    value={form.registration}
-                    onChange={onChange}
-                    className={vehicleFormInputClass}
-                  />
-                  <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
-                    DVLA lookup will be available in a future update.
-                  </p>
-                  <FieldError message={errors.registration} />
-                </label>
-
-                {[
-                  ['fleetNumber', 'Fleet Number'],
-                  ['make', 'Make'],
-                  ['model', 'Model'],
-                  ['year', 'Year'],
-                  ['vin', 'VIN'],
-                ].map(([name, label]) => (
-                  <label key={name} className="block">
-                    <span className={vehicleFormLabelClass}>{label}</span>
-                    <Input
-                      name={name}
-                      value={form[name as keyof VehicleInput]}
-                      onChange={onChange}
-                      className={vehicleFormInputClass}
-                    />
-                    <FieldError message={errors[name as keyof VehicleInput]} />
-                  </label>
-                ))}
-              </VehicleFormSection>
-
-              <VehicleFormSection title="Assignment & Status">
                 <label className="block sm:col-span-2">
                   <span className={vehicleFormLabelClass}>Vehicle type / category</span>
                   <select
@@ -310,6 +273,66 @@ export function VehicleEditModal({
                     ) : null}
                   </div>
                 </label>
+
+                <label className="block">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                    <span className={vehicleFormLabelClass}>
+                      {isTrailer ? 'Registration Number (optional)' : 'Registration Number'}
+                    </span>
+                    <DvlaSoonBadge />
+                  </div>
+                  <Input
+                    name="registration"
+                    value={form.registration}
+                    onChange={onChange}
+                    className={vehicleFormInputClass}
+                  />
+                  <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
+                    {isTrailer
+                      ? 'Optional for trailers. Leave blank if the trailer has no registration plate.'
+                      : 'DVLA lookup will be available in a future update.'}
+                  </p>
+                  <FieldError message={errors.registration} />
+                </label>
+
+                {isTrailer ? (
+                  <label className="block">
+                    <span className={vehicleFormLabelClass}>Trailer number</span>
+                    <Input
+                      name="trailerNumber"
+                      value={form.trailerNumber}
+                      onChange={onChange}
+                      placeholder="PVG4546"
+                      className={vehicleFormInputClass}
+                    />
+                    <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
+                      Internal fleet or trailer identification number.
+                    </p>
+                    <FieldError message={errors.trailerNumber} />
+                  </label>
+                ) : null}
+
+                {[
+                  ['fleetNumber', 'Fleet Number'],
+                  ['make', 'Make'],
+                  ['model', 'Model'],
+                  ['year', 'Year'],
+                  ['vin', 'VIN'],
+                ].map(([name, label]) => (
+                  <label key={name} className="block">
+                    <span className={vehicleFormLabelClass}>{label}</span>
+                    <Input
+                      name={name}
+                      value={form[name as keyof VehicleInput]}
+                      onChange={onChange}
+                      className={vehicleFormInputClass}
+                    />
+                    <FieldError message={errors[name as keyof VehicleInput]} />
+                  </label>
+                ))}
+              </VehicleFormSection>
+
+              <VehicleFormSection title="Assignment & Status">
 
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Current Driver</span>

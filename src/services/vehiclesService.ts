@@ -104,6 +104,7 @@ export type Vehicle = {
   createdAt: string
   registration: string
   fleetNumber: string | null
+  trailerNumber: string | null
   make: string
   model: string
   year: number | null
@@ -131,6 +132,7 @@ export type Vehicle = {
 export type VehicleInput = {
   registration: string
   fleetNumber: string
+  trailerNumber: string
   vehicleType: string
   make: string
   model: string
@@ -153,8 +155,9 @@ export type VehicleInput = {
 type VehicleRow = {
   id: string
   created_at: string
-  registration: string
+  registration: string | null
   fleet_number: string | null
+  trailer_number: string | null
   vehicle_type: string | null
   make: string
   model: string
@@ -344,8 +347,9 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
   return {
     id: row.id,
     createdAt: row.created_at,
-    registration: row.registration,
+    registration: row.registration?.trim() || '',
     fleetNumber: row.fleet_number,
+    trailerNumber: row.trailer_number?.trim() || null,
     vehicleType: row.vehicle_type?.trim() || null,
     make: row.make,
     model: row.model,
@@ -375,16 +379,58 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
 }
 
 const vehicleSelect =
-  'id, created_at, registration, fleet_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
 
 const vehicleAvailabilitySelect =
   'id, created_at, vehicle_id, status, start_date, end_date, reason, notes'
 
+function isTrailerVehicleType(vehicleType: string): boolean {
+  return vehicleType.trim() === 'Trailer'
+}
+
+function mapVehicleWriteError(error: unknown): never {
+  const supabaseError = error as {
+    code?: string
+    message?: string
+    details?: string
+  } | null
+
+  const message = `${supabaseError?.message ?? ''} ${supabaseError?.details ?? ''}`
+  const isDuplicateTrailerNumber =
+    supabaseError?.code === '23505' &&
+    (message.includes('trailer_number') ||
+      message.includes('vehicles_company_trailer_number'))
+
+  if (isDuplicateTrailerNumber) {
+    throw new VehiclesServiceError('This trailer number is already in use.')
+  }
+
+  if (error instanceof VehiclesServiceError) {
+    throw error
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    throw new VehiclesServiceError(error.message)
+  }
+
+  throw new VehiclesServiceError(
+    'Unable to save vehicle. Please check the details and try again.',
+  )
+}
+
 function buildVehiclePayload(input: VehicleInput) {
+  const isTrailer = isTrailerVehicleType(input.vehicleType)
+  const trimmedRegistration = input.registration.trim()
+
   return {
     // vehicles has no legacy company text column (Phase 1); company_id only.
-    registration: input.registration.trim().toUpperCase(),
+    registration: isTrailer
+      ? trimmedRegistration
+        ? trimmedRegistration.toUpperCase()
+        : null
+      : trimmedRegistration.toUpperCase(),
     fleet_number: input.fleetNumber.trim() || null,
+    trailer_number: isTrailer ? input.trailerNumber.trim() || null : null,
     vehicle_type: input.vehicleType.trim(),
     make: input.make.trim(),
     model: input.model.trim(),
@@ -728,7 +774,7 @@ export async function createVehicle(input: VehicleInput): Promise<Vehicle> {
 
   if (error) {
     logVehicleSaveError(payload, error)
-    throw error
+    mapVehicleWriteError(error)
   }
 
   return mapVehicleRow(data as VehicleRow)
@@ -755,7 +801,7 @@ export async function updateVehicle(
 
   if (error) {
     logVehicleSaveError(payload, error)
-    throw error
+    mapVehicleWriteError(error)
   }
 
   if (!data) {

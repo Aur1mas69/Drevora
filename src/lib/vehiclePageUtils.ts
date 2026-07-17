@@ -87,6 +87,7 @@ export function vehicleMatchesSearch(
   return [
     vehicle.registration,
     vehicle.fleetNumber ?? '',
+    vehicle.trailerNumber ?? '',
     vehicle.make,
     vehicle.model,
     vehicle.vin ?? '',

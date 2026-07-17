@@ -381,6 +381,7 @@ function buildDashboardVehicle(
     createdAt: row.created_at,
     registration: row.registration,
     fleetNumber: null,
+    trailerNumber: null,
     make: row.make,
     model: row.model,
     year: null,

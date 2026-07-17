@@ -445,6 +445,7 @@ function VehicleDetailsPage() {
       ...currentForm,
       [name]: value,
       ...(name === 'status' ? { offRoadReason: '' } : {}),
+      ...(name === 'vehicleType' && value !== 'Trailer' ? { trailerNumber: '' } : {}),
     }))
     setVehicleFormErrors((currentErrors) => ({ ...currentErrors, [name]: undefined }))
   }

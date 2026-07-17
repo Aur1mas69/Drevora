@@ -36,6 +36,7 @@ const maintenanceReasons = ['Service', 'Repair', 'MOT', 'Inspection', 'Tyres', '
 export const initialVehicleForm: VehicleInput = {
   registration: '',
   fleetNumber: '',
+  trailerNumber: '',
   vehicleType: '',
   make: '',
   model: '',
@@ -63,6 +64,7 @@ export function getVehicleFormValues(vehicle: Vehicle): VehicleInput {
   return {
     registration: vehicle.registration,
     fleetNumber: vehicle.fleetNumber ?? '',
+    trailerNumber: vehicle.trailerNumber ?? '',
     vehicleType: vehicle.vehicleType ?? '',
     make: vehicle.make,
     model: vehicle.model,
@@ -91,8 +93,16 @@ export function getScheduleReasonOptions(status: VehicleStatus): string[] {
 
 export function validateVehicleForm(form: VehicleInput): VehicleFormErrors {
   const errors: VehicleFormErrors = {}
+  const isTrailer = form.vehicleType.trim() === 'Trailer'
 
-  if (!form.registration.trim()) errors.registration = 'Registration is required.'
+  if (isTrailer) {
+    if (!form.trailerNumber.trim()) {
+      errors.trailerNumber = 'Trailer number is required for Trailer vehicles.'
+    }
+  } else if (!form.registration.trim()) {
+    errors.registration = 'Registration is required.'
+  }
+
   if (!form.vehicleType.trim()) errors.vehicleType = 'Vehicle type is required.'
   if (!form.make.trim()) errors.make = 'Make is required.'
   if (!form.model.trim()) errors.model = 'Model is required.'

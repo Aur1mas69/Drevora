@@ -542,8 +542,49 @@ export async function fetchDocumentsByWorkerId(workerId: string): Promise<Docume
   return fetchDocuments({ workerId, appliesTo: 'worker' })
 }
 
+/**
+ * Vehicle Profile Documents tab — vehicle-linked rows only.
+ * Must not reuse fetchDocuments(), which also merges company-wide worker
+ * documents, worker_compliance_records, and legacy driver expiry fields (CPC, D4/Medical, etc.).
+ */
 export async function fetchDocumentsByVehicleId(vehicleId: string): Promise<Document[]> {
-  return fetchDocuments({ vehicleId, appliesTo: 'vehicle' })
+  const trimmedVehicleId = vehicleId.trim()
+  if (!trimmedVehicleId) {
+    return []
+  }
+
+  const companyId = requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase()
+    .from('documents')
+    .select(documentSelect)
+    .eq('company_id', companyId)
+    .eq('applies_to', 'vehicle')
+    .eq('vehicle_id', trimmedVehicleId)
+    .order('expiry_date', { ascending: true, nullsFirst: false })
+    .order('document_name', { ascending: true })
+
+  logSupabaseQuery({
+    service: 'documentsService.fetchDocumentsByVehicleId',
+    table: 'documents',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingDocumentsTableError(error.message)) {
+      throw new DocumentsServiceError(
+        'Documents table is not available yet. Run the documents migration on your Supabase project.',
+      )
+    }
+    throw new DocumentsServiceError(error.message)
+  }
+
+  const rows = ((data ?? []) as unknown as DocumentRow[]).filter(
+    (row) => row.applies_to === 'vehicle' && row.vehicle_id === trimmedVehicleId,
+  )
+
+  return sortDocuments(await mapDocumentRows(rows))
 }
 
 export async function createDocument(input: CreateDocumentInput): Promise<Document> {

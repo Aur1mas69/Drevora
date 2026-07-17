@@ -1,9 +1,14 @@
 import { DeleteVehicleCheckModal } from '@/components/vehicle-checks/DeleteVehicleCheckModal'
 import { EditVehicleCheckModal } from '@/components/vehicle-checks/EditVehicleCheckModal'
 import { NewVehicleCheckModal } from '@/components/vehicle-checks/NewVehicleCheckModal'
+import { TyreCheckPanel } from '@/components/vehicle-checks/TyreCheckPanel'
 import { VehicleCheckDrawer } from '@/components/vehicle-checks/VehicleCheckDrawer'
 import { VehicleChecksDataTable } from '@/components/vehicle-checks/VehicleChecksDataTable'
 import { VehicleChecksEmptyState } from '@/components/vehicle-checks/VehicleChecksEmptyState'
+import {
+  VehicleChecksModuleTabs,
+  type VehicleChecksModuleTab,
+} from '@/components/vehicle-checks/VehicleChecksModuleTabs'
 import { VehicleChecksPagination } from '@/components/vehicle-checks/VehicleChecksPagination'
 import {
   VehicleChecksSummaryCards,
@@ -50,6 +55,7 @@ const vehicleUnavailableStatuses: VehicleStatus[] = [
 
 export default function VehicleChecksPage() {
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
+  const [moduleTab, setModuleTab] = useState<VehicleChecksModuleTab>('vehicle-checks')
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<VehicleCheckSummaryStats>({
@@ -367,6 +373,15 @@ export default function VehicleChecksPage() {
   return (
     <AdminLayout>
       <div className="space-y-4">
+        <VehicleChecksModuleTabs
+          activeTab={moduleTab}
+          onTabChange={setModuleTab}
+        />
+
+        {moduleTab === 'tyre-check' ? (
+          <TyreCheckPanel vehicles={vehicles} drivers={drivers} />
+        ) : (
+          <>
         <header>
           <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#2A376F]">
             Vehicle Checks
@@ -473,6 +488,8 @@ export default function VehicleChecksPage() {
               onPageSizeChange={setPageSize}
             />
           </div>
+        )}
+          </>
         )}
       </div>
 
