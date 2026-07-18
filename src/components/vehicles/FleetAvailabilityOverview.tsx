@@ -82,7 +82,7 @@ export function FleetAvailabilityOverview({
               className={`rounded-[12px] px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
                 range === item
                   ? 'bg-[#218EE7] text-white shadow-[0_4px_12px_rgba(33,142,231,0.22)]'
-                  : 'bg-white/80 text-[#5499BF] ring-1 ring-[#D3E9FC] hover:bg-[#F5FAFF] hover:text-[#0B68BE]'
+                  : 'bg-white/80 text-[#5499BF] ring-1 ring-[#D3E9FC] hover:bg-[#F5FAFF] hover:text-[#0B68BE] dark:bg-slate-800/70 dark:text-slate-400 dark:ring-white/10 dark:hover:bg-slate-800 dark:hover:text-blue-300'
               }`}
             >
               {item}
@@ -92,7 +92,7 @@ export function FleetAvailabilityOverview({
             type="button"
             variant="outline"
             onClick={onOpenFullCalendar}
-            className="h-9 rounded-[12px] border-[#C5DFFB] bg-white/90 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7]"
+            className="h-9 rounded-[12px] border-[#C5DFFB] bg-white/90 text-sm font-semibold text-[#0B68BE] shadow-sm hover:bg-[#F5FAFF] hover:text-[#218EE7] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300 dark:hover:bg-slate-800 dark:hover:text-blue-200"
           >
             Open Full Fleet Calendar
             <ArrowUpRight className="size-3.5" />
@@ -101,14 +101,14 @@ export function FleetAvailabilityOverview({
       </div>
 
       {upcomingEvents.length === 0 ? (
-        <div className="mt-5 rounded-[16px] border border-dashed border-[#C5DFFB] bg-[#F8FBFF]/80 px-4 py-10 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#EEF6FF] ring-1 ring-[#D3E9FC]">
-            <CalendarDays className="size-5 text-[#5499BF]" />
+        <div className="mt-5 rounded-[16px] border border-dashed border-[#C5DFFB] bg-[#F8FBFF]/80 px-4 py-10 text-center dark:border-white/10 dark:bg-slate-900/50">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#EEF6FF] ring-1 ring-[#D3E9FC] dark:bg-slate-800/70 dark:ring-white/10">
+            <CalendarDays className="size-5 text-[#5499BF] dark:text-slate-400" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-[#113C69]">
+          <p className="mt-3 text-sm font-semibold text-[#113C69] dark:text-slate-100">
             No upcoming events in this period.
           </p>
-          <p className="mt-1 text-xs text-[#5499BF]">
+          <p className="mt-1 text-xs text-[#5499BF] dark:text-slate-400">
             Scheduled maintenance, off-road periods and renewals will appear here.
           </p>
         </div>
@@ -123,17 +123,17 @@ export function FleetAvailabilityOverview({
                 key={`${event.id}-${event.startDate}`}
                 type="button"
                 onClick={() => onOpenEvent(vehicle, event)}
-                className="flex w-full items-center gap-3 rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-2.5 text-left transition-all duration-200 hover:-translate-y-px hover:border-[#C5DFFB] hover:bg-[#F8FBFF] hover:shadow-[0_6px_16px_rgba(33,142,231,0.08)]"
+                className="flex w-full items-center gap-3 rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-2.5 text-left transition-all duration-200 hover:-translate-y-px hover:border-[#C5DFFB] hover:bg-[#F8FBFF] hover:shadow-[0_6px_16px_rgba(33,142,231,0.08)] dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-slate-600 dark:hover:bg-slate-800/50 dark:hover:shadow-black/20"
               >
                 <span
-                  className={`size-2.5 shrink-0 rounded-full ring-2 ring-white ${getPlanningEventColor(event)}`}
+                  className={`size-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-900 ${getPlanningEventColor(event)}`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#113C69]">
+                  <p className="truncate text-sm font-semibold text-[#113C69] dark:text-slate-100">
                     {event.vehicleRegistration}
-                    <span className="font-medium text-[#5499BF]"> · {event.label}</span>
+                    <span className="font-medium text-[#5499BF] dark:text-slate-400"> · {event.label}</span>
                   </p>
-                  <p className="mt-0.5 text-xs tabular-nums text-[#5499BF]">
+                  <p className="mt-0.5 text-xs tabular-nums text-[#5499BF] dark:text-slate-400">
                     {formatEventShortDate(event.startDate)}
                     {event.endDate ? ` → ${formatEventShortDate(event.endDate)}` : ''}
                   </p>

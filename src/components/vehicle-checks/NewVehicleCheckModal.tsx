@@ -359,23 +359,23 @@ export function NewVehicleCheckModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
       <div
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-vehicle-check-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10 sm:px-6">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
               Step {step} of 2
             </p>
             <h2
               id="new-vehicle-check-title"
-              className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F]"
+              className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100"
             >
               {step === 1 ? 'Inspection details' : 'Inspection checklist'}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {step === 1
                 ? 'Search by number plate, then confirm the vehicle details.'
                 : selectedVehicle
@@ -402,13 +402,13 @@ export function NewVehicleCheckModal({
           {step === 1 ? (
             <form id="vehicle-check-step-1" onSubmit={(event) => void handleContinue(event)} className="space-y-4">
               {rememberedVehicle ? (
-                <div className="rounded-[12px] border border-[#D3E9FC] bg-[#FAFCFF] p-3">
+                <div className="rounded-[12px] border border-[#D3E9FC] bg-[#FAFCFF] p-3 dark:border-white/10 dark:bg-slate-800/60">
                   <p className="text-xs font-semibold text-[#5499BF]">Quick select</p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => selectVehicle(rememberedVehicle)}
-                    className="mt-2 h-10 w-full justify-start rounded-[12px] border-[#C5DFFB] bg-white px-3 text-left text-sm font-semibold text-[#113C69] hover:bg-[#F5FAFF]"
+                    className="mt-2 h-10 w-full justify-start rounded-[12px] border-[#C5DFFB] bg-white px-3 text-left text-sm font-semibold text-[#113C69] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/50"
                   >
                     {rememberedVehicle.registration}
                     <span className="ml-2 font-normal text-[#5499BF]">
@@ -446,7 +446,7 @@ export function NewVehicleCheckModal({
                 </div>
 
                 {showVehicleResults && vehicleSearch.trim() ? (
-                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-[12px] border border-[#C5DFFB] bg-white py-1 shadow-lg">
+                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-[12px] border border-[#C5DFFB] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-slate-900 dark:shadow-black/40">
                     {filteredVehicles.length === 0 ? (
                       <p className="px-3 py-2 text-sm text-slate-500">No vehicles match that number plate.</p>
                     ) : (
@@ -455,11 +455,11 @@ export function NewVehicleCheckModal({
                           key={vehicle.id}
                           type="button"
                           onClick={() => selectVehicle(vehicle)}
-                          className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm transition-colors hover:bg-[#F5FAFF] ${
+                          className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm transition-colors hover:bg-[#F5FAFF] dark:hover:bg-slate-800/50 ${
                             vehicle.id === vehicleId ? 'bg-[#EEF6FF]' : ''
                           }`}
                         >
-                          <span className="font-semibold text-[#113C69]">{vehicle.registration}</span>
+                          <span className="font-semibold text-[#113C69] dark:text-slate-100">{vehicle.registration}</span>
                           <span className="text-xs text-[#5499BF]">
                             {getVehicleMakeModelLabel(vehicle)}
                             {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}

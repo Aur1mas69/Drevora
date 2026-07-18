@@ -80,10 +80,10 @@ function StatusBadge({ status }: { status: HolidayRequest['status'] }) {
 function LeaveTypeBadge({ leaveType }: { leaveType: HolidayRequest['leaveType'] }) {
   const className =
     leaveType === 'unpaid_leave'
-      ? 'bg-slate-100 text-slate-700 ring-slate-200'
+      ? 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
       : leaveType === 'bank_holiday'
-        ? 'bg-blue-50 text-blue-700 ring-blue-100'
-        : 'bg-teal-50 text-teal-700 ring-teal-100'
+        ? 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
+        : 'bg-teal-50 text-teal-700 ring-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60'
   const label =
     leaveType === 'unpaid_leave'
       ? 'Unpaid leave'

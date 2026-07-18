@@ -37,8 +37,8 @@ export function VehicleProfileAvailabilityTab({
       <div className={`${vehicleProfilePanelClass} p-4 sm:p-5`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-[#113C69]">Availability records</h3>
-            <p className="mt-1 text-sm text-[#5499BF]">
+            <h3 className="text-lg font-semibold text-[#113C69] dark:text-slate-100">Availability records</h3>
+            <p className="mt-1 text-sm text-[#5499BF] dark:text-slate-400">
               Schedule date-based availability without changing the main vehicle record.
             </p>
           </div>
@@ -54,11 +54,11 @@ export function VehicleProfileAvailabilityTab({
 
         <div className="mt-5 space-y-2">
           {!hasRecords ? (
-            <div className="rounded-[14px] border border-dashed border-[#C5DFFB] bg-[#F8FBFF]/80 px-4 py-8 text-center">
-              <p className="text-sm font-semibold text-[#113C69]">
+            <div className="rounded-[14px] border border-dashed border-[#C5DFFB] bg-[#F8FBFF]/80 px-4 py-8 text-center dark:border-white/10 dark:bg-slate-900/70">
+              <p className="text-sm font-semibold text-[#113C69] dark:text-slate-100">
                 No availability history recorded yet.
               </p>
-              <p className="mt-1 text-xs text-[#5499BF]">
+              <p className="mt-1 text-xs text-[#5499BF] dark:text-slate-400">
                 If no record exists, the vehicle uses its fallback status.
               </p>
             </div>
@@ -68,19 +68,19 @@ export function VehicleProfileAvailabilityTab({
                 key={record.id}
                 type="button"
                 onClick={() => onSelectRecord(record)}
-                className="flex w-full flex-col gap-3 rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-px hover:border-[#C5DFFB] hover:bg-[#F8FBFF] hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex w-full flex-col gap-3 rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-px hover:border-[#C5DFFB] hover:bg-[#F8FBFF] hover:shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-slate-600 dark:hover:bg-slate-800/50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <VehicleStatusBadge status={record.status} />
-                  <p className="mt-2 text-sm font-semibold tabular-nums text-[#113C69]">
+                  <p className="mt-2 text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                     {formatDate(record.startDate)} –{' '}
                     {record.endDate ? formatDate(record.endDate) : 'Ongoing'}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-[#5499BF]">
+                  <p className="mt-1 text-xs font-medium text-[#5499BF] dark:text-slate-400">
                     Reason: {record.reason ?? 'Not set'}
                   </p>
                 </div>
-                <p className="max-w-md text-sm font-medium text-[#5499BF]">
+                <p className="max-w-md text-sm font-medium text-[#5499BF] dark:text-slate-400">
                   {record.notes ?? 'No notes'}
                 </p>
               </button>

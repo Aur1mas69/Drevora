@@ -84,10 +84,14 @@ function ProfileSectionCard({
 
 function StatusBadge({ status }: { status: DriverStatus }) {
   const classMap: Record<DriverStatus, string> = {
-    Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    'Off Duty': 'bg-slate-100 text-slate-600 ring-slate-200',
-    Holiday: 'bg-orange-50 text-orange-700 ring-orange-200',
-    Suspended: 'bg-rose-50 text-rose-700 ring-rose-200',
+    Working:
+      'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+    'Off Duty':
+      'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+    Holiday:
+      'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
+    Suspended:
+      'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
   }
 
   return (
@@ -128,12 +132,12 @@ function ComplianceDateField({
           <span
             className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
               status === 'valid'
-                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
                 : status === 'expiring'
-                  ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                  ? 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
                   : status === 'expired'
-                    ? 'bg-rose-50 text-rose-700 ring-rose-200'
-                    : 'bg-slate-100 text-slate-600 ring-slate-200'
+                    ? 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
+                    : 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
             }`}
           >
             {statusLabel}

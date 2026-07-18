@@ -39,15 +39,15 @@ const vehicleStatuses: VehicleStatus[] = [
 ]
 
 const vehicleFormInputClass =
-  'mt-2 h-11 rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] focus-visible:ring-3 focus-visible:ring-[#BFE3F5]'
+  'mt-2 h-11 rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] focus-visible:ring-3 focus-visible:ring-[#BFE3F5] dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10'
 
 const vehicleFormSelectClass =
-  'mt-2 h-11 w-full rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5]'
+  'mt-2 h-11 w-full rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5] dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10'
 
 const vehicleFormTextareaClass =
-  'mt-2 w-full rounded-[16px] border-0 bg-white px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5]'
+  'mt-2 w-full rounded-[16px] border-0 bg-white px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-[#D3E9FC] outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-[#BFE3F5] dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10'
 
-const vehicleFormLabelClass = 'text-sm font-semibold text-[#113C69]'
+const vehicleFormLabelClass = 'text-sm font-semibold text-[#113C69] dark:text-slate-100'
 
 function VehicleFormSection({
   title,
@@ -57,7 +57,7 @@ function VehicleFormSection({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-[16px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#F5FAFF]/95 p-4 ring-1 ring-[#C5DFFB]/35 sm:p-5">
+    <section className="rounded-[16px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#F5FAFF]/95 p-4 ring-1 ring-[#C5DFFB]/35 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10 sm:p-5">
       <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-[#0B68BE]">{title}</h3>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
@@ -93,14 +93,14 @@ function UnsavedChangesDialog({
 }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 sm:p-6">
+      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
           Unsaved Changes
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
           You have unsaved changes.
         </h2>
-        <p className="mt-3 text-sm font-medium leading-6 text-slate-500">
+        <p className="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
           Do you want to discard them?
         </p>
 
@@ -109,7 +109,7 @@ function UnsavedChangesDialog({
             type="button"
             variant="outline"
             onClick={onDiscard}
-            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
           >
             Discard Changes
           </Button>
@@ -210,7 +210,7 @@ export function VehicleEditModal({
         onClick={handleBackdropClick}
       >
         <div
-          className="flex max-h-[min(100%,calc(100vh-4rem))] w-full max-w-3xl flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+          className="flex max-h-[min(100%,calc(100vh-4rem))] w-full max-w-3xl flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10"
           onClick={(event) => event.stopPropagation()}
         >
           <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -218,7 +218,7 @@ export function VehicleEditModal({
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
                 {eyebrow}
               </p>
-              <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+              <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
                 {title}
               </h2>
 
@@ -254,20 +254,20 @@ export function VehicleEditModal({
                       variant="outline"
                       disabled={!canManageTemplateChecks}
                       onClick={() => setIsTemplateChecksOpen(true)}
-                      className="h-9 rounded-[12px] border-[#C5DFFB] bg-white px-3 text-xs font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] disabled:opacity-60"
+                      className="h-9 rounded-[12px] border-[#C5DFFB] bg-white px-3 text-xs font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] disabled:opacity-60 dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
                     >
                       + Template Checks
                     </Button>
                     {!selectedVehicleType ? (
-                      <span className="text-xs font-medium text-[#5499BF]">
+                      <span className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
                         Select vehicle type first.
                       </span>
                     ) : isCompanyLoading ? (
-                      <span className="text-xs font-medium text-[#5499BF]">
+                      <span className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
                         Company settings are still loading.
                       </span>
                     ) : !companyName ? (
-                      <span className="text-xs font-medium text-[#5499BF]">
+                      <span className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
                         Company settings are still loading.
                       </span>
                     ) : null}
@@ -287,7 +287,7 @@ export function VehicleEditModal({
                     onChange={onChange}
                     className={vehicleFormInputClass}
                   />
-                  <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
+                  <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85 dark:text-slate-400">
                     {isTrailer
                       ? 'Optional for trailers. Leave blank if the trailer has no registration plate.'
                       : 'DVLA lookup will be available in a future update.'}
@@ -305,7 +305,7 @@ export function VehicleEditModal({
                       placeholder="PVG4546"
                       className={vehicleFormInputClass}
                     />
-                    <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85">
+                    <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85 dark:text-slate-400">
                       Internal fleet or trailer identification number.
                     </p>
                     <FieldError message={errors.trailerNumber} />
@@ -490,14 +490,14 @@ export function VehicleEditModal({
               </VehicleFormSection>
             </div>
 
-            <div className="shrink-0 border-t border-[#D3E9FC]/80 bg-white px-5 py-4 sm:px-6 sm:py-5">
+            <div className="shrink-0 border-t border-[#D3E9FC]/80 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:px-6 sm:py-5">
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={requestClose}
                   disabled={isSubmitting}
-                  className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+                  className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
                 >
                   Cancel
                 </Button>

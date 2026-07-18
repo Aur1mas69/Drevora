@@ -63,11 +63,11 @@ type DetailRowProps = {
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
-    <div className="rounded-2xl bg-[#F8FBFF] px-4 py-3.5 ring-1 ring-blue-50">
+    <div className="rounded-2xl bg-[#F8FBFF] px-4 py-3.5 ring-1 ring-blue-50 dark:bg-slate-900/70 dark:ring-white/10">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-slate-800">{value}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{value}</p>
     </div>
   )
 }
@@ -100,15 +100,15 @@ export function AvailabilityDetailsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100">
+      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10">
         <div className="p-5 sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
             Availability Details
           </p>
-          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
             {vehicle.registration}
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
             {getVehicleName(vehicle)}
           </p>
 
@@ -170,7 +170,7 @@ export function AvailabilityDetailsModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
             >
               Close
             </Button>
@@ -180,7 +180,7 @@ export function AvailabilityDetailsModal({
                   type="button"
                   variant="outline"
                   onClick={() => onDelete(record)}
-                  className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-rose-600 shadow-sm ring-1 ring-rose-100 transition-all duration-[250ms] ease-out hover:bg-rose-50"
+                  className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-rose-600 shadow-sm ring-1 ring-rose-100 transition-all duration-[250ms] ease-out hover:bg-rose-50 dark:bg-slate-900/70 dark:text-rose-400 dark:ring-rose-900/40 dark:hover:bg-rose-950/50"
                 >
                   Delete Event
                 </Button>
@@ -276,15 +276,15 @@ export function EditAvailabilityModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100">
+      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10">
         <form onSubmit={handleSubmit} className="p-5 sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
             Edit Availability
           </p>
-          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
             Edit Event
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
             {vehicle.registration} • {formatCalendarShortDate(record.startDate)}
           </p>
 
@@ -296,12 +296,12 @@ export function EditAvailabilityModal({
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Status</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Status</span>
               <select
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               >
                 {vehicleStatuses.map((status) => (
                   <option key={status} value={status}>
@@ -312,13 +312,13 @@ export function EditAvailabilityModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Reason</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Reason</span>
               {reasonOptions.length > 0 ? (
                 <select
                   name="reason"
                   value={form.reason}
                   onChange={handleChange}
-                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
                 >
                   <option value="">Select reason</option>
                   {reasonOptions.map((reason) => (
@@ -332,43 +332,43 @@ export function EditAvailabilityModal({
                   name="reason"
                   value={form.reason}
                   onChange={handleChange}
-                  className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                  className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
                 />
               )}
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Start Date</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Start Date</span>
               <Input
                 name="startDate"
                 type="date"
                 value={form.startDate}
                 onChange={handleChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
               <FieldError message={errors.startDate} />
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">End Date</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">End Date</span>
               <Input
                 name="endDate"
                 type="date"
                 value={form.endDate}
                 onChange={handleChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
               <FieldError message={errors.endDate} />
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="text-sm font-semibold text-slate-700">Notes</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Notes</span>
               <textarea
                 name="notes"
                 value={form.notes}
                 onChange={handleChange}
                 rows={4}
-                className="mt-2 w-full resize-none rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                className="mt-2 w-full resize-none rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
             </label>
           </div>
@@ -379,7 +379,7 @@ export function EditAvailabilityModal({
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
             >
               Cancel
             </Button>
@@ -416,18 +416,18 @@ export function DeleteAvailabilityModal({
 }: DeleteAvailabilityModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 sm:p-6">
+      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-500">
           Delete Availability Event
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
           Are you sure you want to delete this scheduled event?
         </h2>
-        <p className="mt-3 text-sm font-medium leading-6 text-slate-500">
+        <p className="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
           {vehicleRegistration} • {record.status} •{' '}
           {formatShortDate(record.startDate)}
         </p>
-        <p className="mt-2 text-sm font-medium text-slate-500">
+        <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
           This action cannot be undone.
         </p>
 
@@ -443,7 +443,7 @@ export function DeleteAvailabilityModal({
             variant="outline"
             onClick={onCancel}
             disabled={isDeleting}
-            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
           >
             Cancel
           </Button>

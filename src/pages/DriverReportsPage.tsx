@@ -13,10 +13,10 @@ import { DriverReportsSummaryCards } from '@/components/driver-reports/DriverRep
 import { DriverReportsToolbar } from '@/components/driver-reports/DriverReportsToolbar'
 import { driverReportPageCardClass } from '@/components/driver-reports/driverReportUiStyles'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import AdminLayout from '@/layouts/AdminLayout'
+import { isOfficeMembershipRole } from '@/lib/membershipRoles'
 import type {
   DriverReport,
   DriverReportFormSubmitPayload,
@@ -52,12 +52,16 @@ import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function DriverReportsPage() {
-  const { formatDate, formatDateTime, settings: companySettings } = useCompanySettings()
+  const {
+    formatDate,
+    formatDateTime,
+    settings: companySettings,
+    membershipRole,
+  } = useCompanySettings()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
-  const { portal } = useAuth()
   const { worker: currentWorker } = useCurrentWorker()
 
-  const isAdminForm = portal !== 'worker'
+  const isAdminForm = isOfficeMembershipRole(membershipRole)
   const formContext = isAdminForm ? 'admin' : 'worker'
   const currentWorkerName = currentWorker
     ? `${currentWorker.firstName} ${currentWorker.lastName}`.trim()

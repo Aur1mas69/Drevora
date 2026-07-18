@@ -33,7 +33,7 @@ export function DeleteContactModal({
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div
-        className="w-full max-w-md rounded-[20px] border border-[#D3E9FC] bg-white p-5 shadow-[0_30px_80px_rgba(11,38,70,0.18)] sm:p-6"
+        className="w-full max-w-md rounded-[20px] border border-[#D3E9FC] bg-white p-5 shadow-[0_30px_80px_rgba(11,38,70,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50 sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-contact-title"

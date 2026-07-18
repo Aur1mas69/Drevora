@@ -1,17 +1,10 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import LoginPageContent from '@/components/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
+import { useRoleBasedAuthRedirect } from '@/hooks/useRoleBasedAuthRedirect'
 
 function AdminLoginPage() {
-  const navigate = useNavigate()
-  const { isAuthenticated, setAuthenticatedSession } = useAuth()
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/admin', { replace: true })
-    }
-  }, [isAuthenticated, navigate])
+  const { setAuthenticatedSession } = useAuth()
+  useRoleBasedAuthRedirect()
 
   return (
     <LoginPageContent
@@ -19,8 +12,8 @@ function AdminLoginPage() {
       description="Admin login"
       backHref="https://drevora.app"
       onSignInSuccess={(session) => {
+        // Portal is presentation preference only; shell is chosen by membership role.
         setAuthenticatedSession(session, 'admin')
-        navigate('/admin', { replace: true })
       }}
     />
   )

@@ -61,11 +61,11 @@ function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
           <Icon className={`size-4 ${row.iconClass}`} strokeWidth={2.1} aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#163A63]">{row.label}</p>
-          <p className="text-xs text-[#5D7C9D]">{row.helper}</p>
+          <p className="text-sm font-semibold text-[#163A63] dark:text-slate-100">{row.label}</p>
+          <p className="text-xs text-[#5D7C9D] dark:text-slate-400">{row.helper}</p>
         </div>
       </div>
-      <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63]">
+      <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63] dark:text-slate-100">
         {row.value}
       </span>
     </li>

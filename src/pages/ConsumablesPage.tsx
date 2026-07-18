@@ -395,7 +395,7 @@ export default function ConsumablesPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="rounded-2xl border border-[#D3E9FC] bg-white/80 px-4 py-10 text-center text-sm font-medium text-[#3D7A9C] shadow-sm">
+          <div className="rounded-2xl border border-[#D3E9FC] bg-white/80 px-4 py-10 text-center text-sm font-medium text-[#3D7A9C] shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-400 dark:shadow-black/20">
             Loading consumables…
           </div>
         ) : items.length === 0 ? (
@@ -404,7 +404,7 @@ export default function ConsumablesPage() {
             onCreateFirst={openCreateForm}
           />
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[#D3E9FC] bg-white/80 shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-[#D3E9FC] bg-white/80 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
             <ConsumablesDataTable
               items={items}
               onView={setViewRecord}

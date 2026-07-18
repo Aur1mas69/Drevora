@@ -279,7 +279,7 @@ export function CompanyTimeInput({
       />
 
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-[60] rounded-[10px] border border-[#D3E9FC] bg-white p-2 shadow-[0_12px_32px_rgba(11,38,70,0.14)]">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-[60] rounded-[10px] border border-[#D3E9FC] bg-white p-2 shadow-[0_12px_32px_rgba(11,38,70,0.14)] dark:border-white/10 dark:bg-slate-900 dark:shadow-black/40">
           <PickerPanel
             timeFormat={timeFormat}
             value={draft || value}

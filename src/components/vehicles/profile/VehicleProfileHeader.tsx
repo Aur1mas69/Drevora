@@ -40,12 +40,12 @@ export function VehicleProfileHeader({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-[-0.04em] text-[#113C69] sm:text-3xl">
+              <h1 className="text-2xl font-bold tracking-[-0.04em] text-[#113C69] dark:text-slate-100 sm:text-3xl">
                 {vehicle.registration}
               </h1>
               <VehicleStatusBadge status={getVehicleStatusForDate(vehicle)} />
             </div>
-            <p className="mt-1 text-base font-medium text-[#5499BF]">
+            <p className="mt-1 text-base font-medium text-[#5499BF] dark:text-slate-400">
               {getVehicleName(vehicle) || 'Make / model not set'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -55,11 +55,11 @@ export function VehicleProfileHeader({
                 </span>
               ) : null}
               {vehicle.vehicleType ? (
-                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC]">
+                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC] dark:bg-slate-900/70 dark:text-slate-400 dark:ring-white/10">
                   {vehicle.vehicleType}
                 </span>
               ) : null}
-              <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC]">
+              <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC] dark:bg-slate-900/70 dark:text-slate-400 dark:ring-white/10">
                 {assignedWorkerLabel}
               </span>
             </div>

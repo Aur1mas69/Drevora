@@ -183,13 +183,13 @@ export function getStatusLabel(status: HolidayRequestStatus): string {
 export function getStatusBadgeClass(status: HolidayRequestStatus): string {
   switch (status) {
     case 'Pending':
-      return 'bg-amber-50 text-amber-700 ring-amber-100'
+      return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
     case 'Approved':
-      return 'bg-teal-50 text-teal-700 ring-teal-100'
+      return 'bg-teal-50 text-teal-700 ring-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60'
     case 'Rejected':
-      return 'bg-rose-50 text-rose-700 ring-rose-100'
+      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
     case 'Cancelled':
-      return 'bg-slate-100 text-slate-600 ring-slate-200'
+      return 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
   }
 }
 

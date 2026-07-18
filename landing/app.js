@@ -13,7 +13,17 @@ function restoreMobileScroll() {
 window.addEventListener('pageshow', restoreMobileScroll)
 window.addEventListener('load', restoreMobileScroll)
 
-document.addEventListener('DOMContentLoaded', () => {    restoreMobileScroll()
+document.addEventListener('DOMContentLoaded', () => {
+    restoreMobileScroll()
+
+    const footerYear = document.getElementById('footer-year')
+    if (footerYear) {
+        footerYear.textContent = String(new Date().getFullYear())
+    }
+
+    if (document.body.classList.contains('legal-page') && !window.location.hash) {
+        window.scrollTo(0, 0)
+    }
 
     const header = document.getElementById('main-header')
     const menuToggle = document.getElementById('menu-toggle')
@@ -174,10 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {    restoreMobileScroll()
         contactSection.addEventListener('focusin', restoreMobileScroll)
     }
 
-    const footerYear = document.getElementById('footer-year')
-    if (footerYear) {
-        footerYear.textContent = new Date().getFullYear()
-    }
 })
 
 // Dashboard slider

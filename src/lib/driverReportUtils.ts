@@ -15,16 +15,20 @@ export function getDriverReportStatusLabel(status: DriverReportStatus): string {
 }
 
 export const driverReportStatusClassMap: Record<DriverReportStatus, string> = {
-  New: 'bg-[#EEF6FF] text-[#0B68BE] ring-[#C5DFFB]',
-  'In Progress': 'bg-amber-50 text-amber-700 ring-amber-200',
-  Closed: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  New: 'bg-[#EEF6FF] text-[#0B68BE] ring-[#C5DFFB] dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60',
+  'In Progress':
+    'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60',
+  Closed:
+    'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
 }
 
 export const driverReportPriorityClassMap: Record<DriverReportPriority, string> = {
-  Low: 'bg-slate-100 text-slate-600 ring-slate-200',
-  Medium: 'bg-[#EEF6FF] text-[#218EE7] ring-[#C5DFFB]',
-  High: 'bg-orange-50 text-orange-700 ring-orange-200',
-  Critical: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Low: 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+  Medium:
+    'bg-[#EEF6FF] text-[#218EE7] ring-[#C5DFFB] dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60',
+  High: 'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
+  Critical:
+    'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
 }
 
 export function buildEmptyDriverReportFormValues(): DriverReportFormValues {

@@ -9,7 +9,6 @@ import {
 import { createPortal } from 'react-dom'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bell,
   HelpCircle,
   LogOut,
   Menu,
@@ -17,6 +16,7 @@ import {
   PanelLeftOpen,
   X,
 } from 'lucide-react'
+import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell'
 import { AuthServiceError } from '@/services/authService'
 import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import drevoraMark from '@/assets/drevora-mark.png'
@@ -356,7 +356,7 @@ function SidebarNavigation({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div className="admin-sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <AdminSidebarMainNav collapsed={collapsed} onNavigate={onNavigate} />
       </div>
       <div
@@ -467,14 +467,14 @@ function AccountMenu() {
         <div
           role="menu"
           aria-label="Account menu"
-          className="absolute top-full right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-white/98 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/98"
+          className="absolute top-full right-0 z-50 mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-[14px] border border-[#D7E8FF]/80 bg-white/98 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95"
         >
           {email ? (
-            <div className="border-b border-[#EEF4FF] px-2.5 py-2">
-              <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
+            <div className="border-b border-[#EEF4FF] px-2.5 py-2 dark:border-white/10">
+              <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
                 Signed in as
               </p>
-              <p className="truncate text-[13px] font-semibold text-slate-800">{email}</p>
+              <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{email}</p>
             </div>
           ) : null}
 
@@ -483,7 +483,7 @@ function AccountMenu() {
             role="menuitem"
             disabled={isLoggingOut}
             onClick={() => void handleLogOut()}
-            className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 text-left text-[13px] font-medium text-slate-600 transition-colors hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 disabled:opacity-60"
+            className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 text-left text-[13px] font-medium text-slate-600 transition-colors hover:bg-[rgba(79,141,255,0.12)] hover:text-slate-950 disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-slate-100"
           >
             <LogOut className="size-[18px] shrink-0" strokeWidth={1.9} />
             {isLoggingOut ? 'Logging out…' : 'Log out'}
@@ -563,7 +563,8 @@ function MobileNavHeader({
   return (
     <header className="admin-mobile-header fixed inset-x-0 top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#D7E8FF]/70 bg-[#FCFDFF]/95 px-3 shadow-sm shadow-blue-100/30 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-none sm:gap-3 sm:px-4 lg:hidden">
       <SidebarBrand compact />
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <AdminNotificationBell />
         <Button
           type="button"
           variant="ghost"
@@ -661,20 +662,6 @@ function MobileNavDrawer({
   )
 }
 
-function NotificationBellButton() {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      aria-label="Notifications"
-      className="size-10 shrink-0 rounded-[1rem] bg-white/90 text-slate-500 shadow-sm ring-1 ring-[#D7E8FF] transition-all duration-200 ease-out hover:bg-white hover:text-[#3B82F6] hover:shadow-md dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-700 dark:hover:text-blue-300"
-    >
-      <Bell className="size-[18px]" />
-    </Button>
-  )
-}
-
 function MembershipStatusBanner() {
   const { membershipError, companyLoading } = useCompanySettings()
   if (companyLoading || !membershipError) return null
@@ -718,7 +705,7 @@ function TopBar() {
       </div>
 
       <div className="hidden items-center gap-2.5 lg:flex">
-        <NotificationBellButton />
+        <AdminNotificationBell />
         <AccountMenu />
       </div>
     </header>
@@ -863,7 +850,9 @@ function AdminLayout({
                           {headerSearch}
                         </div>
                       ) : null}
-                      <NotificationBellButton />
+                      <div className="hidden lg:block">
+                        <AdminNotificationBell />
+                      </div>
                       <AccountMenu />
                     </div>
                   </div>

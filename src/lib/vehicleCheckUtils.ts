@@ -252,24 +252,24 @@ export function todayIsoDate(): string {
 export function getStatusBadgeClass(status: VehicleCheckListItem['status']): string {
   switch (status) {
     case 'Completed':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
     case 'In Progress':
-      return 'bg-blue-50 text-blue-700 ring-blue-100'
+      return 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
     case 'Pending':
-      return 'bg-amber-50 text-amber-700 ring-amber-100'
+      return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
   }
 
-  return 'bg-slate-50 text-slate-700 ring-slate-100'
+  return 'bg-slate-50 text-slate-700 ring-slate-100 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
 }
 
 export function getResultBadgeClass(result: VehicleCheckResult): string {
   switch (result) {
     case 'Pass':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
     case 'Advisory':
-      return 'bg-amber-50 text-amber-700 ring-amber-100'
+      return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
     case 'Fail':
-      return 'bg-rose-50 text-rose-700 ring-rose-100'
+      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
   }
 }
 

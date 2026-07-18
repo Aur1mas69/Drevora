@@ -1,5 +1,13 @@
-import type { CompanySettings, TimesheetWeekSettings } from '@/lib/companySettingsTypes'
-import { DEFAULT_OVERTIME_MULTIPLIER, DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
+import type {
+  CompanySettings,
+  TimesheetOvertimeRules,
+  TimesheetWeekSettings,
+} from '@/lib/companySettingsTypes'
+import {
+  DEFAULT_OVERTIME_MULTIPLIER,
+  DEFAULT_TIMESHEET_OVERTIME_RULES,
+  DEFAULT_TIMESHEET_WEEK_SETTINGS,
+} from '@/lib/companySettingsTypes'
 import { applyGlobalDateTimeSettings } from '@/lib/dateTimeFormat'
 
 let globalSettings: CompanySettings | null = null
@@ -112,6 +120,25 @@ export function getTimesheetWeekSettings(): TimesheetWeekSettings {
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
+  }
+}
+
+/** Company weekend + weekday overtime rules for payable Total Hours. */
+export function getGlobalTimesheetOvertimeRules(): TimesheetOvertimeRules {
+  const settings = getGlobalCompanySettings()
+  if (!settings) return { ...DEFAULT_TIMESHEET_OVERTIME_RULES }
+
+  return {
+    overtimeAfterHours: settings.overtimeAfterHours,
+    overtimeMultiplier: settings.overtimeMultiplier,
+    saturdayOvertimeEnabled: settings.saturdayOvertimeEnabled,
+    saturdayOvertimeAfterHours: settings.saturdayOvertimeAfterHours,
+    saturdayOvertimeMultiplier: settings.saturdayOvertimeMultiplier,
+    saturdayGuaranteedPaidHours: settings.saturdayGuaranteedPaidHours,
+    sundayOvertimeEnabled: settings.sundayOvertimeEnabled,
+    sundayOvertimeAfterHours: settings.sundayOvertimeAfterHours,
+    sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
+    sundayGuaranteedPaidHours: settings.sundayGuaranteedPaidHours,
   }
 }
 

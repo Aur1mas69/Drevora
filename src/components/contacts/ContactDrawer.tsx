@@ -30,7 +30,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <dt className="min-w-[120px] text-xs font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
         {label}
       </dt>
-      <dd className="whitespace-pre-line text-sm font-medium text-[#113C69]">{value}</dd>
+      <dd className="whitespace-pre-line text-sm font-medium text-[#113C69] dark:text-slate-100">{value}</dd>
     </div>
   )
 }
@@ -70,13 +70,13 @@ export function ContactDrawer({
         aria-label="Close contact details"
         onClick={onClose}
       />
-      <aside className="relative flex h-full w-full max-w-md flex-col overflow-hidden border-l border-[#D3E9FC] bg-white shadow-[-20px_0_60px_rgba(11,38,70,0.12)]">
+      <aside className="relative flex h-full w-full max-w-md flex-col overflow-hidden border-l border-[#D3E9FC] bg-white shadow-[-20px_0_60px_rgba(11,38,70,0.12)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40">
         <div className="flex items-start justify-between border-b border-[#D3E9FC]/70 px-5 py-4">
           <div className="min-w-0 pr-3">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#218EE7]">
               {isWorkerRow ? 'Worker contact' : 'Contact details'}
             </p>
-            <h2 className="mt-1 text-xl font-semibold text-[#113C69]">
+            <h2 className="mt-1 text-xl font-semibold text-[#113C69] dark:text-slate-100">
               {getContactPrimaryName(contact)}
             </h2>
             <div className="mt-2 flex flex-wrap gap-2">

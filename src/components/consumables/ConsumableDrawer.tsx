@@ -93,7 +93,7 @@ export function ConsumableDrawer({
         onClick={onClose}
       />
 
-      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-[0_0_40px_rgba(15,42,70,0.18)]">
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-[0_0_40px_rgba(15,42,70,0.18)] dark:bg-slate-900/95 dark:shadow-black/40">
         <div className="border-b border-[#D3E9FC] px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -163,7 +163,7 @@ export function ConsumableDrawer({
                   <img
                     src={receiptPreviewUrl}
                     alt="Receipt preview"
-                    className="max-h-48 w-full rounded-lg border border-[#D3E9FC] object-contain bg-white"
+                    className="max-h-48 w-full rounded-lg border border-[#D3E9FC] object-contain bg-white dark:border-white/10 dark:bg-slate-800/60"
                   />
                 ) : null}
                 <ConsumableReceiptViewButton receiptUrl={record.receiptUrl} />

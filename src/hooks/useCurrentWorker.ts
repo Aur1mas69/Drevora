@@ -24,7 +24,7 @@ export function useCurrentWorker(): UseCurrentWorkerResult {
       const email = session?.user.email?.trim()
       if (!email) {
         setWorker(null)
-        setError('Sign in to view your holidays.')
+        setError('Sign in to view your worker profile.')
         setIsLoading(false)
         return
       }

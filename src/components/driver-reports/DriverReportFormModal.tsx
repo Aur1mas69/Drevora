@@ -150,15 +150,15 @@ export function DriverReportFormModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)]"
+        className="flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="driver-report-form-title"
       >
-        <div className="shrink-0 border-b border-[#D3E9FC] px-5 py-4">
+        <div className="shrink-0 border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 id="driver-report-form-title" className="text-lg font-semibold text-[#113C69]">
+              <h2 id="driver-report-form-title" className="text-lg font-semibold text-[#113C69] dark:text-slate-100">
                 {mode === 'create' ? 'New Report' : 'Edit Report'}
               </h2>
               <p className="mt-0.5 text-sm text-[#5499BF]">
@@ -171,7 +171,7 @@ export function DriverReportFormModal({
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="shrink-0 rounded-lg p-2 text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#113C69]"
+              className="shrink-0 rounded-lg p-2 text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#113C69] dark:hover:bg-slate-800/50 dark:hover:text-slate-100"
               aria-label="Close"
             >
               <X className="size-5" />
@@ -364,7 +364,7 @@ export function DriverReportFormModal({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#D3E9FC] bg-white px-5 py-4 sm:flex-row sm:justify-end">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#D3E9FC] bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>

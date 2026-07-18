@@ -224,7 +224,7 @@ export default function CompliancePage() {
 
   return (
     <AdminLayout>
-      <section className="rounded-[28px] bg-white/75 p-5 shadow-[0_24px_70px_rgba(59,130,246,0.10)] ring-1 ring-white/70 backdrop-blur-xl sm:p-6">
+      <section className="rounded-[28px] bg-white/75 p-5 shadow-[0_24px_70px_rgba(59,130,246,0.10)] ring-1 ring-white/70 backdrop-blur-xl dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-[2.15rem]">
@@ -243,14 +243,14 @@ export default function CompliancePage() {
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
-              className="h-[132px] animate-pulse rounded-[20px] bg-white ring-1 ring-blue-100/70"
+              className="h-[132px] animate-pulse rounded-[20px] bg-white ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10"
             />
           ))}
         </section>
       ) : null}
 
       {!isLoading && errorMessage ? (
-        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
           <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
             Unable to load compliance data
           </p>

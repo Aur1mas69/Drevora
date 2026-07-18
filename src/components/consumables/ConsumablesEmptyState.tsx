@@ -11,14 +11,14 @@ export function ConsumablesEmptyState({
   onCreateFirst,
 }: ConsumablesEmptyStateProps) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#D3E9FC] bg-white/80 px-6 py-12 text-center shadow-sm">
-      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#E8F3FE] text-[#218EE7] ring-1 ring-[#D3E9FC]">
+    <div className="rounded-2xl border border-dashed border-[#D3E9FC] bg-white/80 px-6 py-12 text-center shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#E8F3FE] text-[#218EE7] ring-1 ring-[#D3E9FC] dark:bg-slate-800/70 dark:text-blue-300 dark:ring-white/10">
         <Package className="size-7" strokeWidth={1.8} />
       </div>
-      <p className="mt-4 text-base font-semibold text-[#113C69]">
+      <p className="mt-4 text-base font-semibold text-[#113C69] dark:text-slate-100">
         {hasActiveFilters ? 'No consumables match your filters' : 'No consumables records yet'}
       </p>
-      <p className="mt-2 text-sm text-[#3D7A9C]">
+      <p className="mt-2 text-sm text-[#3D7A9C] dark:text-slate-400">
         {hasActiveFilters
           ? 'Try adjusting search or filters to find records.'
           : 'Record fuel, AdBlue, oils, fluids and other vehicle consumables.'}

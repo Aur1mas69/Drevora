@@ -5,9 +5,14 @@ import {
   Routes,
 } from 'react-router-dom'
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import {
+  MembershipAccessBlocked,
+  MembershipLoadingScreen,
+  useMembershipAccessState,
+} from '@/components/auth/MembershipAccessGate'
 import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
 import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
+import { OFFICE_HOME_PATH, WORKER_HOME_PATH } from '@/lib/membershipRoles'
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout'))
 const AdminDashboardPage = lazy(loadAdminDashboardPage)
@@ -30,10 +35,29 @@ const LoginTwilightPreviewPage = lazy(
   () => import('@/pages/LoginTwilightPreviewPage'),
 )
 const DriversPage = lazy(() => import('@/pages/DriversPage'))
-const HistoryPage = lazy(() => import('@/pages/HistoryPage'))
 const MyHolidaysPage = lazy(() => import('@/pages/MyHolidaysPage'))
+const WorkerTimesheetsPage = lazy(
+  () => import('@/pages/worker/WorkerTimesheetsPage'),
+)
+const WorkerVehiclesPage = lazy(
+  () => import('@/pages/worker/WorkerVehiclesPage'),
+)
+const WorkerVehicleChecksPage = lazy(
+  () => import('@/pages/worker/WorkerVehicleChecksPage'),
+)
+const WorkerConsumablesPage = lazy(
+  () => import('@/pages/worker/WorkerConsumablesPage'),
+)
+const WorkerDriverReportsPage = lazy(
+  () => import('@/pages/worker/WorkerDriverReportsPage'),
+)
+const WorkerContactsPage = lazy(
+  () => import('@/pages/worker/WorkerContactsPage'),
+)
+const WorkerSettingsPage = lazy(
+  () => import('@/pages/worker/WorkerSettingsPage'),
+)
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
 const FaqHelpPage = lazy(() => import('@/pages/FaqHelpPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
@@ -45,55 +69,65 @@ const VehicleDetailsPage = lazy(() => import('@/pages/VehicleDetailsPage'))
 const VehiclesPage = lazy(() => import('@/pages/VehiclesPage'))
 
 function RouteLoadingFallback() {
-  return (
-    <div
-      className="min-h-dvh bg-[#F6F9FF]"
-      aria-label="Loading page"
-      role="status"
-    />
-  )
+  return <MembershipLoadingScreen />
 }
 
-function RequireWorkerAuth() {
-  const { isAuthenticated, isAuthLoading, portal } = useAuth()
-
-  if (isAuthLoading) {
-    return null
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/driver-login" replace />
-  }
-
-  if (portal === 'admin') {
-    return <Navigate to="/admin" replace />
-  }
-
-  return <MainLayout />
-}
-
-function RequireAuthPage({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isAuthLoading, portal } = useAuth()
+/**
+ * Office shell: verified company_members office role only.
+ * Never uses sessionStorage portal. Does not render Office pages while loading.
+ */
+function RequireOfficeAccess({ children }: { children: ReactNode }) {
+  const access = useMembershipAccessState()
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated && portal === 'admin') {
+    if (access.status === 'office') {
       preloadAdminDashboardPage()
     }
-  }, [isAuthLoading, isAuthenticated, portal])
+  }, [access.status])
 
-  if (isAuthLoading) {
-    return null
+  if (access.status === 'loading') {
+    return <MembershipLoadingScreen />
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/admin-login" replace />
+  if (access.status === 'unauthenticated') {
+    return <Navigate to="/login" replace />
   }
 
-  if (portal === 'worker') {
-    return <Navigate to="/dashboard" replace />
+  if (access.status === 'worker') {
+    return <Navigate to={WORKER_HOME_PATH} replace />
+  }
+
+  if (access.status === 'blocked') {
+    return <MembershipAccessBlocked message={access.message} />
   }
 
   return children
+}
+
+/**
+ * Worker shell: verified company_members role Driver only.
+ * Renders MainLayout (Worker nav) only after role is confirmed.
+ */
+function RequireWorkerAccess() {
+  const access = useMembershipAccessState()
+
+  if (access.status === 'loading') {
+    return <MembershipLoadingScreen />
+  }
+
+  if (access.status === 'unauthenticated') {
+    return <Navigate to="/driver-login" replace />
+  }
+
+  if (access.status === 'office') {
+    return <Navigate to={OFFICE_HOME_PATH} replace />
+  }
+
+  if (access.status === 'blocked') {
+    return <MembershipAccessBlocked message={access.message} />
+  }
+
+  return <MainLayout />
 }
 
 function AdminDashboardRoute() {
@@ -122,130 +156,130 @@ function AppRouter() {
         <Route
           path="/admin/dashboard"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminDashboardRoute />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminDashboardRoute />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/drivers"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <DriversPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/drivers/:id"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <DriverDetailsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/documents"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <DocumentsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route path="/compliance" element={<Navigate to="/documents" replace />} />
         <Route
           path="/compliance/workers/:workerId"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <WorkerComplianceProfilePage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/compliance/vehicles/:vehicleId"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <VehicleComplianceProfilePage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/contacts"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <ContactsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/consumables"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <ConsumablesPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/vehicles"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <VehiclesPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/vehicles/:id"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <VehicleDetailsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/timesheets"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <TimesheetsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/settings"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <SettingsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/faq"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <FaqHelpPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/terms"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <TermsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/privacy"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <PrivacyPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route path="/admin/help" element={<Navigate to="/admin/faq" replace />} />
@@ -254,17 +288,17 @@ function AppRouter() {
         <Route
           path="/admin/holidays"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <HolidayRequestsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/vehicle-checks"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <VehicleChecksPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route path="/admin/compliance/licences" element={<Navigate to="/documents" replace />} />
@@ -274,113 +308,129 @@ function AppRouter() {
         <Route
           path="/admin/driver-reports"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <DriverReportsPage />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/reports"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Reports" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/reports/analytics"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Analytics" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/reports/exports"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Exports" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/users"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="User Management" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/roles"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Roles & Permissions" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/notifications"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Notifications" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/integrations"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Integrations" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/billing"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Billing" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/api-keys"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="API Keys" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/audit-log"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Audit Log" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/system-logs"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="System Logs" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
         <Route
           path="/admin/backups"
           element={
-            <RequireAuthPage>
+            <RequireOfficeAccess>
               <AdminComingSoonPage title="Backups" />
-            </RequireAuthPage>
+            </RequireOfficeAccess>
           }
         />
-        <Route element={<RequireWorkerAuth />}>
+        <Route element={<RequireWorkerAccess />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/worker/timesheets" element={<WorkerTimesheetsPage />} />
           <Route path="/worker/holidays" element={<MyHolidaysPage />} />
           <Route path="/my-holidays" element={<Navigate to="/worker/holidays" replace />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/worker/vehicles" element={<WorkerVehiclesPage />} />
+          <Route
+            path="/worker/vehicle-checks"
+            element={<WorkerVehicleChecksPage />}
+          />
+          <Route path="/worker/consumables" element={<WorkerConsumablesPage />} />
+          <Route
+            path="/worker/driver-reports"
+            element={<WorkerDriverReportsPage />}
+          />
+          <Route path="/worker/contacts" element={<WorkerContactsPage />} />
+          <Route path="/worker/settings" element={<WorkerSettingsPage />} />
+          <Route path="/history" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/profile"
+            element={<Navigate to="/worker/settings" replace />}
+          />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
         </Routes>

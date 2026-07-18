@@ -22,7 +22,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-[#5499BF]">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-[#113C69]">{value}</dd>
+      <dd className="mt-1 text-sm font-medium text-[#113C69] dark:text-slate-100">{value}</dd>
     </div>
   )
 }
@@ -42,19 +42,19 @@ export function DocumentDrawer({
   return createPortal(
     <div className="fixed inset-0 z-[110] flex justify-end bg-slate-950/35 backdrop-blur-[2px]">
       <button type="button" className="flex-1" aria-label="Close drawer" onClick={onClose} />
-      <aside className="flex h-full w-full max-w-md flex-col border-l border-[#D3E9FC] bg-gradient-to-b from-white to-[#F5FAFF] shadow-[-12px_0_40px_rgba(33,142,231,0.12)]">
-        <div className="flex items-start justify-between border-b border-[#D3E9FC] px-5 py-4">
+      <aside className="flex h-full w-full max-w-md flex-col border-l border-[#D3E9FC] bg-gradient-to-b from-white to-[#F5FAFF] shadow-[-12px_0_40px_rgba(33,142,231,0.12)] dark:border-white/10 dark:from-slate-900/95 dark:to-slate-900/90 dark:shadow-black/40">
+        <div className="flex items-start justify-between border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           <div className="min-w-0 pr-3">
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#218EE7]">
               {record.appliesTo}
             </p>
-            <h2 className="mt-1 text-xl font-semibold text-[#113C69]">{record.documentName}</h2>
+            <h2 className="mt-1 text-xl font-semibold text-[#113C69] dark:text-slate-100">{record.documentName}</h2>
             <p className="mt-0.5 text-sm text-[#5499BF]">{record.documentType}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-[#5499BF] hover:bg-[#EEF6FF]"
+            className="rounded-lg p-2 text-[#5499BF] hover:bg-[#EEF6FF] dark:hover:bg-slate-800/50"
             aria-label="Close"
           >
             <X className="size-5" />
@@ -89,7 +89,7 @@ export function DocumentDrawer({
           </dl>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-[#D3E9FC] px-5 py-4">
+        <div className="flex flex-col gap-2 border-t border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           {hasDocumentFile(record) ? (
             <Button
               type="button"

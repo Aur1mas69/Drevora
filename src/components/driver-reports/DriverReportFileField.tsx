@@ -63,7 +63,7 @@ export function DriverReportFileField({
           <button
             type="button"
             onClick={onClearSelection}
-            className="rounded-lg p-1 text-[#5499BF] hover:bg-white hover:text-[#113C69]"
+            className="rounded-lg p-1 text-[#5499BF] hover:bg-white hover:text-[#113C69] dark:hover:bg-slate-800/50 dark:hover:text-slate-100"
             aria-label="Remove selected file"
           >
             <X className="size-4" />
@@ -87,7 +87,7 @@ export function DriverReportFileField({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-[#C5DFFB] bg-white px-4 py-6 text-sm font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF]"
+          className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-[#C5DFFB] bg-white px-4 py-6 text-sm font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:border-slate-600 dark:hover:bg-slate-800/50"
         >
           <Upload className="size-4" />
           Upload photo or PDF (max 10 MB)

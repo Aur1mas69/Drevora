@@ -138,15 +138,15 @@ export function TimesheetsSummaryStrip({
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#3D7A9C]">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#3D7A9C] dark:text-slate-400">
           Week summary
         </p>
         <div className="text-left sm:text-right">
           <TimesheetWeekLabel
             weekTitle={weekTitle}
             weekRangeLabel={weekRangeLabel}
-            titleClassName="text-sm font-semibold text-[#113C69]"
-            rangeClassName="text-xs text-[#3D7A9C]"
+            titleClassName="text-sm font-semibold text-[#113C69] dark:text-slate-100"
+            rangeClassName="text-xs text-[#3D7A9C] dark:text-slate-400"
           />
         </div>
       </div>

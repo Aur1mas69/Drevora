@@ -79,7 +79,7 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, month) => ({
   label: new Intl.DateTimeFormat('en-GB', { month: 'long' }).format(new Date(2026, month, 1)),
 }))
 const calendarInputClass =
-  'h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#BFE3F5] focus:border-[#89CFF0] focus:ring-3 focus:ring-[#BFE3F5]/70'
+  'h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#BFE3F5] focus:border-[#89CFF0] focus:ring-3 focus:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-blue-400 dark:focus:ring-blue-500/30'
 
 function parseIsoDate(value: string): Date {
   return new Date(`${normalizeIsoDate(value)}T00:00:00`)
@@ -178,7 +178,7 @@ function getDayCellBackgroundClass(
     if (isNonWorkingDay) {
       return 'border-[#9CBEE0] bg-gradient-to-br from-[#D4E4F0]/98 to-[#B8CFE0]/92 hover:from-[#CCDBEC] hover:to-[#AEC6DC]'
     }
-    return 'border-[#D3E9FC] bg-white/95 hover:bg-[#FAFCFF]'
+    return 'border-[#D3E9FC] bg-white/95 hover:bg-[#FAFCFF] dark:border-white/10 dark:bg-slate-900/70 dark:hover:bg-slate-800/50'
   }
 
   const hasApproved = requests.some((request) => request.status === 'Approved')
@@ -202,7 +202,7 @@ function getDayCellBackgroundClass(
 function getDayNumberClass(isToday: boolean, isNonWorkingDay: boolean): string {
   if (isToday) return 'bg-[#218EE7] text-white'
   if (isNonWorkingDay) return 'text-[#0B477F]'
-  return 'text-[#113C69]'
+  return 'text-[#113C69] dark:text-slate-100'
 }
 
 function addMonths(date: Date, months: number): Date {
@@ -283,7 +283,7 @@ function HolidayCalendarDayDetailsPanel({
           <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF]">
             Selected day details
           </p>
-          <h3 className="mt-1 text-base font-semibold text-[#113C69]">
+          <h3 className="mt-1 text-base font-semibold text-[#113C69] dark:text-slate-100">
             {new Intl.DateTimeFormat('en-GB', {
               weekday: 'long',
               day: 'numeric',
@@ -452,10 +452,10 @@ export function HolidayRequestsCalendar({
               <CalendarDays className="size-4" />
             </span>
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#113C69]">
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#113C69] dark:text-slate-100">
                 Holiday Calendar
               </h2>
-              <p className="mt-1 text-sm text-[#5499BF]">
+              <p className="mt-1 text-sm text-[#5499BF] dark:text-slate-400">
                 See who is away and avoid too many workers off at the same time.
               </p>
             </div>
@@ -463,7 +463,7 @@ export function HolidayRequestsCalendar({
         </div>
 
         <div className="flex flex-col gap-3 lg:items-end">
-          <div className="inline-flex rounded-[14px] border border-[#C5DFFB] bg-white/80 p-1 shadow-sm">
+          <div className="inline-flex rounded-[14px] border border-[#C5DFFB] bg-white/80 p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
             {(['month', 'week'] as const).map((option) => (
               <button
                 key={option}
@@ -475,7 +475,7 @@ export function HolidayRequestsCalendar({
                 className={`rounded-[11px] px-3 py-1.5 text-sm font-semibold transition-colors ${
                   view === option
                     ? 'bg-[#218EE7] text-white shadow-sm'
-                    : 'text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#0B68BE]'
+                    : 'text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#0B68BE] dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100'
                 }`}
               >
                 {option === 'month' ? 'Month' : 'Week'}
@@ -519,7 +519,7 @@ export function HolidayRequestsCalendar({
               <div className="flex flex-wrap items-center gap-2">
                 <label
                   htmlFor="holiday-calendar-week-date"
-                  className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF]"
+                  className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF] dark:text-slate-400"
                 >
                   Week of
                 </label>
@@ -541,7 +541,7 @@ export function HolidayRequestsCalendar({
               variant="ghost"
               size="sm"
               onClick={() => movePeriod(-1)}
-              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF]"
+              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
               aria-label={`Previous ${view}`}
             >
               <ChevronLeft className="size-4" />
@@ -551,7 +551,7 @@ export function HolidayRequestsCalendar({
               variant="ghost"
               size="sm"
               onClick={goToToday}
-              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
             >
               Today
             </Button>
@@ -560,7 +560,7 @@ export function HolidayRequestsCalendar({
               variant="ghost"
               size="sm"
               onClick={() => movePeriod(1)}
-              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF]"
+              className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
               aria-label={`Next ${view}`}
             >
               <ChevronRight className="size-4" />
@@ -570,7 +570,7 @@ export function HolidayRequestsCalendar({
       </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
+        <p className="text-lg font-semibold tracking-[-0.03em] text-[#113C69] dark:text-slate-100">
           {view === 'week' ? formatWeekRange(range.start, range.end) : periodLabel}
         </p>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
@@ -708,13 +708,13 @@ export function HolidayRequestsCalendar({
       ) : null}
 
       {!isLoading && !error && !hasScheduledHolidays ? (
-        <div className="mt-4 rounded-[16px] border border-dashed border-[#BFE3F5] bg-white/70 px-4 py-6 text-center text-sm font-medium text-[#5499BF]">
+        <div className="mt-4 rounded-[16px] border border-dashed border-[#BFE3F5] bg-white/70 px-4 py-6 text-center text-sm font-medium text-[#5499BF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-400">
           No holidays scheduled for this period.
         </div>
       ) : null}
 
       {isLoading ? (
-        <div className="mt-4 rounded-[16px] bg-white/70 px-4 py-3 text-sm font-medium text-[#5499BF]">
+        <div className="mt-4 rounded-[16px] bg-white/70 px-4 py-3 text-sm font-medium text-[#5499BF] dark:bg-slate-900/70 dark:text-slate-400">
           Loading calendar holidays…
         </div>
       ) : null}

@@ -52,10 +52,14 @@ const tabs: DriverDetailsTab[] = [
 ]
 
 const statusClassMap: Record<DriverStatus, string> = {
-  Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  'Off Duty': 'bg-slate-100 text-slate-600 ring-slate-200',
-  Holiday: 'bg-orange-50 text-orange-700 ring-orange-200',
-  Suspended: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Working:
+    'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+  'Off Duty':
+    'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+  Holiday:
+    'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
+  Suspended:
+    'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
 }
 
 const driverStatuses: DriverStatus[] = [
@@ -134,14 +138,14 @@ function DeleteDriverModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 sm:p-6">
+      <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-500">
           Delete Worker
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
           Are you sure you want to delete this worker?
         </h2>
-        <p className="mt-3 text-sm font-medium leading-6 text-slate-500">
+        <p className="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
           {getDriverName(driver)} will be removed from DREVORA.
         </p>
 
@@ -157,7 +161,7 @@ function DeleteDriverModal({
             variant="outline"
             onClick={onCancel}
             disabled={isDeleting}
-            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+            className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
           >
             Cancel
           </Button>
@@ -178,7 +182,7 @@ function DeleteDriverModal({
 function DriverDetailsSkeleton() {
   return (
     <section className="mx-auto max-w-6xl space-y-4">
-      <Card className="rounded-2xl border border-[#D3E9FC] bg-[#FAFCFF] py-0">
+      <Card className="rounded-2xl border border-[#D3E9FC] bg-[#FAFCFF] py-0 dark:border-white/10 dark:bg-slate-900/70">
         <CardContent className="animate-pulse p-5">
           <div className="mb-4 h-9 w-36 rounded-xl bg-blue-100" />
           <div className="flex items-center gap-4">
@@ -195,7 +199,7 @@ function DriverDetailsSkeleton() {
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="h-44 animate-pulse rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF]"
+            className="h-44 animate-pulse rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70"
           />
         ))}
       </div>
@@ -206,12 +210,12 @@ function DriverDetailsSkeleton() {
 function DriverNotFound() {
   return (
     <AdminLayout>
-      <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+      <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10">
         <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
+          <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-slate-100">
             Worker not found
           </p>
-          <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
+          <p className="mt-2 max-w-md text-sm font-medium text-slate-500 dark:text-slate-400">
             This worker may have been deleted or the link may be incorrect.
           </p>
           <Button
@@ -444,12 +448,12 @@ function DriverDetailsPage() {
   if (loadError) {
     return (
       <AdminLayout>
-        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10">
           <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-            <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+            <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950 dark:text-slate-100">
               Worker not found
             </p>
-            <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
+            <p className="mt-2 max-w-md text-sm font-medium text-slate-500 dark:text-slate-400">
               {loadError}
             </p>
             <Button
@@ -472,13 +476,13 @@ function DriverDetailsPage() {
   return (
     <AdminLayout>
       <section className="mx-auto max-w-6xl space-y-4">
-        <Card className="rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 py-0 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35">
+        <Card className="rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/88 py-0 shadow-[0_4px_16px_rgba(33,142,231,0.06)] ring-1 ring-[#C5DFFB]/35 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10">
           <CardContent className="p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <Button
                 asChild
                 variant="outline"
-                className="h-9 rounded-xl border border-[#D3E9FC] bg-white/90 px-3 text-sm font-semibold text-[#113C69] shadow-sm transition-all duration-200 hover:bg-[#F5FAFF] hover:text-[#0B68BE]"
+                className="h-9 rounded-xl border border-[#D3E9FC] bg-white/90 px-3 text-sm font-semibold text-[#113C69] shadow-sm transition-all duration-200 hover:bg-[#F5FAFF] hover:text-[#0B68BE] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
               >
                 <Link to="/drivers">
                   <ArrowLeft className="size-4" />
@@ -498,7 +502,7 @@ function DriverDetailsPage() {
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-semibold tracking-[-0.03em] text-[#113C69] sm:text-3xl">
+                    <h1 className="truncate text-2xl font-semibold tracking-[-0.03em] text-[#113C69] dark:text-slate-100 sm:text-3xl">
                       {getDriverName(driver)}
                     </h1>
                     <WorkerCodeBadge
@@ -548,7 +552,7 @@ function DriverDetailsPage() {
                   }}
                   disabled={isDeleting}
                   variant="outline"
-                  className="h-10 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70"
+                  className="h-10 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70 dark:border-rose-900/40 dark:bg-slate-900/70 dark:text-rose-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
                 >
                   <Trash2 className="size-4" />
                   {isDeleting ? 'Deleting...' : 'Delete Worker'}
@@ -564,7 +568,7 @@ function DriverDetailsPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border border-[#D3E9FC] bg-white/90 py-0 shadow-sm ring-1 ring-[#C5DFFB]/30">
+        <Card className="rounded-2xl border border-[#D3E9FC] bg-white/90 py-0 shadow-sm ring-1 ring-[#C5DFFB]/30 dark:border-white/10 dark:bg-slate-900/70 dark:ring-white/10">
           <CardContent className="p-2">
             <div className="flex gap-1.5 overflow-x-auto">
               {tabs.map((tab) => (
@@ -574,8 +578,8 @@ function DriverDetailsPage() {
                   onClick={() => setActiveTab(tab)}
                   className={`shrink-0 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 ${
                     activeTab === tab
-                      ? 'bg-[#E8F3FE] text-[#0B68BE] shadow-sm ring-1 ring-[#C5DFFB]/60'
-                      : 'text-slate-500 hover:bg-[#F5FAFF] hover:text-[#113C69]'
+                      ? 'bg-[#E8F3FE] text-[#0B68BE] shadow-sm ring-1 ring-[#C5DFFB]/60 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/40'
+                      : 'text-slate-500 hover:bg-[#F5FAFF] hover:text-[#113C69] dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100'
                   }`}
                 >
                   {tab}

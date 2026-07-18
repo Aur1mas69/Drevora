@@ -39,7 +39,7 @@ import {
 } from 'recharts'
 
 const chartCardClass =
-  'rounded-2xl border border-[#D3E9FC] bg-white p-4 shadow-[0_4px_16px_rgba(40,80,140,0.05)] sm:p-5'
+  'rounded-2xl border border-[#D3E9FC] bg-white p-4 shadow-[0_4px_16px_rgba(40,80,140,0.05)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20 sm:p-5'
 
 type ConsumablesMonthlySummaryProps = {
   filters: ConsumablesFilterValues
@@ -144,7 +144,7 @@ export function ConsumablesMonthlySummary({
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold tracking-[-0.03em] text-[#113C69] sm:text-2xl">
+        <h2 className="text-xl font-bold tracking-[-0.03em] text-[#113C69] dark:text-slate-100 sm:text-2xl">
           Consumables Summary
         </h2>
         <p className="mt-1 text-sm leading-6 text-[#3D7A9C]">
@@ -161,14 +161,14 @@ export function ConsumablesMonthlySummary({
       {isLoading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="h-[280px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white" />
-            <div className="h-[280px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white" />
+            <div className="h-[280px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white dark:border-white/10 dark:bg-slate-900/70" />
+            <div className="h-[280px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white dark:border-white/10 dark:bg-slate-900/70" />
           </div>
-          <div className="h-[320px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white" />
+          <div className="h-[320px] animate-pulse rounded-2xl border border-[#D3E9FC] bg-white dark:border-white/10 dark:bg-slate-900/70" />
         </div>
       ) : !hasData ? (
-        <div className="rounded-2xl border border-dashed border-[#BFE3F5] bg-white px-4 py-12 text-center">
-          <p className="text-sm font-semibold text-[#113C69]">
+        <div className="rounded-2xl border border-dashed border-[#BFE3F5] bg-white px-4 py-12 text-center dark:border-white/10 dark:bg-slate-900/70">
+          <p className="text-sm font-semibold text-[#113C69] dark:text-slate-100">
             No consumables recorded for this period.
           </p>
           <p className="mt-1 text-sm text-[#5499BF]">Try another period or adjust your filters.</p>
@@ -184,7 +184,7 @@ export function ConsumablesMonthlySummary({
 
           <div className={`${chartCardClass} !p-0 overflow-hidden`}>
             <div className="border-b border-[#E8F3FE] px-4 py-4 sm:px-5">
-              <h3 className="text-sm font-semibold text-[#113C69]">Detailed breakdown</h3>
+              <h3 className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Detailed breakdown</h3>
               <p className="mt-1 text-xs text-[#5499BF]">
                 Quantities are grouped by type and unit — incompatible units are never mixed.
               </p>
@@ -289,7 +289,7 @@ function UsageByTypeChart({
 }) {
   return (
     <div className={chartCardClass}>
-      <h3 className="text-sm font-semibold text-[#113C69]">Usage by Type</h3>
+      <h3 className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Usage by Type</h3>
       <p className="mt-1 text-xs text-[#5499BF]">
         {data
           ? `Quantities in ${data.unit} only — sorted highest to lowest.`
@@ -329,8 +329,8 @@ function UsageByTypeChart({
                   if (!active || !payload?.[0]) return null
                   const row = payload[0].payload as (typeof data.rows)[number]
                   return (
-                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg">
-                      <p className="font-semibold text-[#113C69]">{row.consumableType}</p>
+                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:shadow-black/40">
+                      <p className="font-semibold text-[#113C69] dark:text-slate-100">{row.consumableType}</p>
                       <p className="mt-0.5 tabular-nums text-[#3D7A9C]">
                         {formatSummaryQuantity(row.quantity)} {row.unit}
                       </p>
@@ -358,7 +358,7 @@ function CostByTypeChart({
 }) {
   return (
     <div className={chartCardClass}>
-      <h3 className="text-sm font-semibold text-[#113C69]">Cost by Type</h3>
+      <h3 className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Cost by Type</h3>
       <p className="mt-1 text-xs text-[#5499BF]">Recorded cost only — missing costs are excluded.</p>
 
       {!data ? (
@@ -390,8 +390,8 @@ function CostByTypeChart({
                   if (!active || !payload?.[0]) return null
                   const row = payload[0].payload as (typeof data.rows)[number]
                   return (
-                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg">
-                      <p className="font-semibold text-[#113C69]">{row.consumableType}</p>
+                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:shadow-black/40">
+                      <p className="font-semibold text-[#113C69] dark:text-slate-100">{row.consumableType}</p>
                       <p className="mt-0.5 tabular-nums text-[#3D7A9C]">
                         {formatConsumableCost(row.cost)}
                       </p>
@@ -408,7 +408,7 @@ function CostByTypeChart({
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               Total
             </p>
-            <p className="mt-0.5 text-base font-bold tabular-nums text-[#113C69]">
+            <p className="mt-0.5 text-base font-bold tabular-nums text-[#113C69] dark:text-slate-100">
               {formatConsumableCost(data.totalCost)}
             </p>
           </div>
@@ -430,7 +430,7 @@ function UsageOverTimeChart({
   return (
     <div className={chartCardClass}>
       <div className="min-w-0">
-        <h3 className="text-sm font-semibold text-[#113C69]">Usage Over Time</h3>
+        <h3 className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Usage Over Time</h3>
         <p className="mt-1 text-xs text-[#5499BF]">
           {unitLabel
             ? `${selectedType} — trend in ${unitLabel} for the selected period`
@@ -474,8 +474,8 @@ function UsageOverTimeChart({
                   if (!active || !payload?.[0]) return null
                   const point = payload[0].payload as (typeof data.points)[number]
                   return (
-                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg">
-                      <p className="font-semibold text-[#113C69]">{point.label}</p>
+                    <div className="rounded-xl border border-[#D3E9FC] bg-white px-3 py-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:shadow-black/40">
+                      <p className="font-semibold text-[#113C69] dark:text-slate-100">{point.label}</p>
                       <p className="mt-0.5 text-[#5499BF]">{point.consumableType}</p>
                       <p className="mt-0.5 tabular-nums text-[#3D7A9C]">
                         {formatSummaryQuantity(point.quantity)} {point.unit}
@@ -519,7 +519,7 @@ function SummaryTableRowGroup({
   return (
     <>
       <tr
-        className="group/row cursor-pointer border-b border-[#D3E9FC]/70 bg-white transition-colors hover:bg-[#F8FBFF]"
+        className="group/row cursor-pointer border-b border-[#D3E9FC]/70 bg-white transition-colors hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:hover:bg-slate-800/50"
         onClick={onToggle}
       >
         <td className="px-4 py-3">
@@ -529,18 +529,18 @@ function SummaryTableRowGroup({
             {row.consumableType}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69]">
+        <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
           {formatSummaryQuantity(row.totalQuantity)}
         </td>
-        <td className="px-4 py-3 text-sm font-medium text-[#113C69]">{row.unit}</td>
+        <td className="px-4 py-3 text-sm font-medium text-[#113C69] dark:text-slate-100">{row.unit}</td>
         <td className="px-4 py-3 text-sm font-semibold tabular-nums text-emerald-600">
           {formatConsumableCost(row.totalCost)}
         </td>
-        <td className="px-4 py-3 text-sm font-medium text-[#113C69]">
+        <td className="px-4 py-3 text-sm font-medium text-[#113C69] dark:text-slate-100">
           {formatEntryCount(row.entryCount)}
         </td>
-        <td className="px-4 py-3 text-sm font-semibold text-[#113C69]">{row.vehiclesUsed}</td>
-        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-[#113C69]">
+        <td className="px-4 py-3 text-sm font-semibold text-[#113C69] dark:text-slate-100">{row.vehiclesUsed}</td>
+        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-[#113C69] dark:text-slate-100">
           {row.lastEntryDate ? formatDate(row.lastEntryDate) : '—'}
         </td>
         <td className="px-4 py-3">
@@ -568,7 +568,7 @@ function SummaryTableRowGroup({
 
 function SummaryMobileCard({ row, isExpanded, breakdown, formatDate, onToggle }: SummaryRowProps) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-[#D3E9FC] bg-white shadow-sm">
+    <article className="overflow-hidden rounded-2xl border border-[#D3E9FC] bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70">
       <button type="button" onClick={onToggle} className="w-full p-4 text-left">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -577,7 +577,7 @@ function SummaryMobileCard({ row, isExpanded, breakdown, formatDate, onToggle }:
             >
               {row.consumableType}
             </span>
-            <p className="mt-2 text-lg font-bold text-[#113C69]">
+            <p className="mt-2 text-lg font-bold text-[#113C69] dark:text-slate-100">
               {formatSummaryQuantity(row.totalQuantity)} {row.unit}
             </p>
           </div>
@@ -594,15 +594,15 @@ function SummaryMobileCard({ row, isExpanded, breakdown, formatDate, onToggle }:
           </div>
           <div>
             <dt>Entries</dt>
-            <dd className="font-semibold text-[#113C69]">{formatEntryCount(row.entryCount)}</dd>
+            <dd className="font-semibold text-[#113C69] dark:text-slate-100">{formatEntryCount(row.entryCount)}</dd>
           </div>
           <div>
             <dt>Vehicles</dt>
-            <dd className="font-semibold text-[#113C69]">{row.vehiclesUsed}</dd>
+            <dd className="font-semibold text-[#113C69] dark:text-slate-100">{row.vehiclesUsed}</dd>
           </div>
           <div>
             <dt>Last entry</dt>
-            <dd className="font-medium text-[#113C69]">
+            <dd className="font-medium text-[#113C69] dark:text-slate-100">
               {row.lastEntryDate ? formatDate(row.lastEntryDate) : '—'}
             </dd>
           </div>
@@ -652,21 +652,21 @@ function UnitVehicleBreakdownPanel({
             {breakdown.map((item) => (
               <tr
                 key={item.vehicleId ?? '__none__'}
-                className="border-b border-[#D3E9FC]/70 bg-white/50 transition-colors hover:bg-[#F1F7FE]"
+                className="border-b border-[#D3E9FC]/70 bg-white/50 transition-colors hover:bg-[#F1F7FE] dark:border-white/10 dark:bg-slate-900/50 dark:hover:bg-slate-800/50"
               >
-                <td className="px-3 py-2.5 text-sm font-semibold text-[#113C69]">
+                <td className="px-3 py-2.5 text-sm font-semibold text-[#113C69] dark:text-slate-100">
                   {item.vehicleLabel ?? item.vehicleId ?? '—'}
                 </td>
-                <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-[#113C69]">
+                <td className="px-3 py-2.5 text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                   {formatSummaryQuantity(item.totalQuantity)} {unit}
                 </td>
                 <td className="px-3 py-2.5 text-sm font-semibold text-emerald-600">
                   {formatConsumableCost(item.totalCost)}
                 </td>
-                <td className="px-3 py-2.5 text-sm font-medium text-[#113C69]">
+                <td className="px-3 py-2.5 text-sm font-medium text-[#113C69] dark:text-slate-100">
                   {formatEntryCount(item.entryCount)}
                 </td>
-                <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-[#113C69]">
+                <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-[#113C69] dark:text-slate-100">
                   {item.lastEntryDate ? formatDate(item.lastEntryDate) : '—'}
                 </td>
               </tr>
@@ -679,9 +679,9 @@ function UnitVehicleBreakdownPanel({
         {breakdown.map((item) => (
           <article
             key={item.vehicleId ?? '__none__'}
-            className="rounded-xl border border-[#D3E9FC] bg-white/80 p-3"
+            className="rounded-xl border border-[#D3E9FC] bg-white/80 p-3 dark:border-white/10 dark:bg-slate-900/70"
           >
-            <p className="font-semibold text-[#113C69]">
+            <p className="font-semibold text-[#113C69] dark:text-slate-100">
               {item.vehicleLabel ?? item.vehicleId ?? '—'}
             </p>
             <p className="mt-1 text-sm font-bold text-[#0B68BE]">

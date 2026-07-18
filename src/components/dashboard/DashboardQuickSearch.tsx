@@ -15,7 +15,7 @@ import { searchDashboardQuick } from '@/services/dashboardQuickSearchService'
 const QUICK_SEARCH_DEBOUNCE_MS = 300
 
 const quickSearchInputClass =
-  'h-12 w-full rounded-[10px] border border-[#C5D4E3]/90 bg-[#FCFDFF] pl-10 pr-10 text-sm font-medium text-[#113C69] shadow-[0_2px_10px_rgba(33,142,231,0.08)] placeholder:text-[#5499BF]/75 transition-all duration-200 hover:border-[#B8C9DC] focus-visible:border-[#89CFF0] focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none'
+  'h-12 w-full rounded-[10px] border border-[#C5D4E3]/90 bg-[#FCFDFF] pl-10 pr-10 text-sm font-medium text-[#113C69] shadow-[0_2px_10px_rgba(33,142,231,0.08)] placeholder:text-[#5499BF]/75 transition-all duration-200 hover:border-[#B8C9DC] focus-visible:border-[#89CFF0] focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-none dark:hover:border-slate-600 dark:focus-visible:border-blue-500/50 dark:focus-visible:ring-blue-500/25'
 
 const moduleBadgeClassMap: Record<QuickSearchModule, string> = {
   Workers: 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/70',
@@ -93,7 +93,7 @@ function QuickSearchResultRow({
       type="button"
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => onSelect(item)}
-      className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#F5FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/80"
+      className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#F5FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/80 dark:hover:bg-slate-800/80 dark:focus-visible:ring-blue-500/30"
     >
       <span
         className={`mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${moduleBadgeClassMap[item.module]}`}
@@ -101,8 +101,8 @@ function QuickSearchResultRow({
         {item.module}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-[#113C69]">{item.title}</span>
-        <span className="mt-0.5 block truncate text-xs font-medium text-[#5499BF]/90">
+        <span className="block truncate text-sm font-semibold text-[#113C69] dark:text-slate-100">{item.title}</span>
+        <span className="mt-0.5 block truncate text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
           {item.subtitle}
         </span>
       </span>
@@ -227,7 +227,7 @@ export function DashboardQuickSearch() {
   return (
     <div ref={rootRef} className="relative w-full" aria-label="Search">
         <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
+          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#5499BF] dark:text-slate-500"
           aria-hidden="true"
         />
         <Input
@@ -258,7 +258,7 @@ export function DashboardQuickSearch() {
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-[#5499BF] transition-colors hover:bg-[#E8F3FE] hover:text-[#0B68BE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/80"
+            className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-[#5499BF] transition-colors hover:bg-[#E8F3FE] hover:text-[#0B68BE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/80 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-300 dark:focus-visible:ring-blue-500/30"
             aria-label="Clear search"
           >
             <X className="size-4" />
@@ -269,11 +269,11 @@ export function DashboardQuickSearch() {
           <div
             id={listboxId}
             role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(24rem,calc(100vh-12rem))] overflow-hidden overflow-y-auto rounded-2xl border border-[#C5DFFB]/90 bg-[#FAFCFF]/98 shadow-[0_16px_40px_rgba(33,142,231,0.14)] ring-1 ring-[#D3E9FC]/80"
+            className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(24rem,calc(100vh-12rem))] overflow-hidden overflow-y-auto rounded-2xl border border-[#C5DFFB]/90 bg-[#FAFCFF]/98 shadow-[0_16px_40px_rgba(33,142,231,0.14)] ring-1 ring-[#D3E9FC]/80 dark:border-white/10 dark:bg-slate-900/95 dark:shadow-[0_16px_40px_rgba(0,0,0,0.45)] dark:ring-white/10"
           >
             {isLoading ? (
-              <div className="flex items-center gap-2 px-4 py-4 text-sm font-medium text-[#3D7A9C]">
-                <Loader2 className="size-4 animate-spin text-[#218EE7]" aria-hidden="true" />
+              <div className="flex items-center gap-2 px-4 py-4 text-sm font-medium text-[#3D7A9C] dark:text-slate-400">
+                <Loader2 className="size-4 animate-spin text-[#218EE7] dark:text-blue-400" aria-hidden="true" />
                 Searching…
               </div>
             ) : null}
@@ -283,7 +283,7 @@ export function DashboardQuickSearch() {
             ) : null}
 
             {showEmpty ? (
-              <p className="px-4 py-4 text-sm font-medium text-[#5499BF]/90">
+              <p className="px-4 py-4 text-sm font-medium text-[#5499BF]/90 dark:text-slate-400">
                 No results found.
               </p>
             ) : null}
@@ -296,7 +296,7 @@ export function DashboardQuickSearch() {
 
                   return (
                     <div key={module} className="px-1 py-1">
-                      <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5499BF]/85">
+                      <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5499BF]/85 dark:text-slate-500">
                         {module}
                       </p>
                       <div className="space-y-0.5">

@@ -55,10 +55,14 @@ export function getDocumentStatusLabel(status: DocumentStatus): string {
 }
 
 export const documentStatusClassMap: Record<DocumentStatus, string> = {
-  valid: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  expiring_soon: 'bg-amber-50 text-amber-700 ring-amber-200',
-  expired: 'bg-rose-50 text-rose-700 ring-rose-200',
-  no_expiry: 'bg-slate-100 text-slate-600 ring-slate-200',
+  valid:
+    'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+  expiring_soon:
+    'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60',
+  expired:
+    'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
+  no_expiry:
+    'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
 }
 
 export function getDocumentTypesForAppliesTo(

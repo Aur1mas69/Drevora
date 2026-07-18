@@ -146,25 +146,25 @@ export function computeConsumableFluidTotals(
 export function getConsumableTypeBadgeClass(type: ConsumableType): string {
   switch (type) {
     case 'AdBlue':
-      return 'bg-[#E8F3FE] text-[#0B68BE] border-[#BFE3F5]'
+      return 'bg-[#E8F3FE] text-[#0B68BE] border-[#BFE3F5] dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60'
     case 'Diesel':
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:border-white/10'
     case 'Petrol':
-      return 'bg-orange-50 text-orange-700 border-orange-200'
+      return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/60'
     case 'Engine Oil':
     case 'Hydraulic Oil':
-      return 'bg-amber-50 text-amber-700 border-amber-200'
+      return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60'
     case 'Coolant':
-      return 'bg-red-50 text-red-700 border-red-200'
+      return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800/60'
     case 'Screenwash':
-      return 'bg-cyan-50 text-cyan-700 border-cyan-200'
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/45 dark:text-cyan-300 dark:border-cyan-800/60'
     case 'Grease':
-      return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+      return 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/45 dark:text-yellow-300 dark:border-yellow-800/55'
     case 'Admixture':
     case 'Concrete Additive':
-      return 'bg-purple-50 text-purple-700 border-purple-200'
+      return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/60'
     default:
-      return 'bg-gray-50 text-gray-700 border-gray-200'
+      return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-slate-800/70 dark:text-slate-300 dark:border-white/10'
   }
 }
 

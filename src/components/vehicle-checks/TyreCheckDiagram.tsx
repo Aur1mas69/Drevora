@@ -55,8 +55,8 @@ function TyreShape({
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_10px_rgba(33,62,110,0.16)]',
           STATUS_GLOW[tyre.status],
           selected
-            ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF]'
-            : cn('ring-2 ring-offset-1 ring-offset-[#F8FBFF]', STATUS_RING[tyre.status]),
+            ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF] dark:ring-offset-slate-900'
+            : cn('ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900', STATUS_RING[tyre.status]),
         )}
       >
         {/* Tread grooves */}
@@ -74,16 +74,16 @@ function TyreShape({
         <div className="pointer-events-none absolute inset-y-2 right-[3px] w-[3px] rounded-full bg-black/25" />
 
         {/* Centre info chip */}
-        <div className="relative z-[1] flex w-[2.15rem] flex-col items-center rounded-[10px] bg-[#F8FBFF]/95 px-1 py-1.5 text-center shadow-sm ring-1 ring-white/40 sm:w-[2.35rem]">
+        <div className="relative z-[1] flex w-[2.15rem] flex-col items-center rounded-[10px] bg-[#F8FBFF]/95 px-1 py-1.5 text-center shadow-sm ring-1 ring-white/40 dark:bg-slate-800/95 dark:ring-white/10 sm:w-[2.35rem]">
           <span className={cn('mb-1 size-2 rounded-full', colours.dot)} />
-          <span className="text-[10px] font-bold leading-tight tabular-nums text-[#2A376F] sm:text-[11px]">
+          <span className="text-[10px] font-bold leading-tight tabular-nums text-[#2A376F] dark:text-slate-100 sm:text-[11px]">
             {depthLabel}
           </span>
         </div>
       </div>
 
       <div className="min-h-[2.6rem] w-full text-center">
-        <p className="text-[10px] font-semibold leading-tight text-[#113C69] sm:text-[11px]">
+        <p className="text-[10px] font-semibold leading-tight text-[#113C69] dark:text-slate-100 sm:text-[11px]">
           {tyre.position}
         </p>
         <p
@@ -116,11 +116,11 @@ function AxleRow({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#D3E9FC]" />
+        <div className="h-px flex-1 bg-[#D3E9FC] dark:bg-white/10" />
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5499BF]">
           {label}
         </p>
-        <div className="h-px flex-1 bg-[#D3E9FC]" />
+        <div className="h-px flex-1 bg-[#D3E9FC] dark:bg-white/10" />
       </div>
 
       <div className="relative flex items-center justify-center gap-1 sm:gap-2">
@@ -138,7 +138,7 @@ function AxleRow({
           ))}
         </div>
 
-        <div className="relative z-[1] mx-1 hidden h-16 w-8 shrink-0 rounded-[10px] border border-[#D3E9FC] bg-white/70 sm:block" />
+        <div className="relative z-[1] mx-1 hidden h-16 w-8 shrink-0 rounded-[10px] border border-[#D3E9FC] bg-white/70 dark:border-white/10 dark:bg-slate-800/70 sm:block" />
 
         <div className="relative z-[1] flex items-start justify-start gap-0.5 sm:gap-1">
           {rightTyres.map((tyre) => (
@@ -176,16 +176,16 @@ function UnitDiagram({
   )
 
   return (
-    <div className="rounded-[18px] border border-[#D3E9FC] bg-gradient-to-b from-[#F3F8FF] to-[#EAF4FF] p-3 shadow-[0_2px_10px_rgba(33,142,231,0.06)] sm:p-4">
+    <div className="rounded-[18px] border border-[#D3E9FC] bg-gradient-to-b from-[#F3F8FF] to-[#EAF4FF] p-3 shadow-[0_2px_10px_rgba(33,142,231,0.06)] dark:border-white/10 dark:from-slate-900/80 dark:to-slate-900/60 dark:shadow-black/20 sm:p-4">
       <div className="mb-3 flex items-center justify-center">
-        <div className="rounded-[12px] bg-white/90 px-4 py-2 text-sm font-semibold text-[#2A376F] shadow-sm ring-1 ring-blue-100">
+        <div className="rounded-[12px] bg-white/90 px-4 py-2 text-sm font-semibold text-[#2A376F] shadow-sm ring-1 ring-blue-100 dark:bg-slate-800/90 dark:text-slate-100 dark:ring-white/10">
           {title}
         </div>
       </div>
 
       <div className="mx-auto mb-4 flex w-full max-w-[16rem] flex-col items-center">
         <div className="h-4 w-16 rounded-t-[10px] border border-b-0 border-[#89CFF0] bg-[#DDF0FF]" />
-        <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner" />
+        <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner dark:border-blue-500/40 dark:from-slate-800 dark:to-slate-900" />
         <div className="mt-1 h-2 w-10 rounded-full bg-[#BFE3F5]" />
       </div>
 
@@ -222,16 +222,16 @@ const TREAD_WEAR_SCALE = [
 function TyreCheckLegends() {
   return (
     <div className="grid gap-3 md:grid-cols-2 md:items-start">
-      <div className="rounded-[16px] border border-[#D3E9FC] bg-white/90 p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
-        <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F]">
+      <div className="rounded-[16px] border border-[#D3E9FC] bg-white/90 p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+        <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F] dark:text-slate-100">
           Tyre Tread Depth & Wear Scale
         </h3>
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
           Visual tread wear reference only.
         </p>
 
-        <div className="mt-3 overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF]">
-          <div className="grid grid-cols-2 gap-2 bg-[#EAF4FF] px-3 py-2">
+        <div className="mt-3 overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-800/60">
+          <div className="grid grid-cols-2 gap-2 bg-[#EAF4FF] px-3 py-2 dark:bg-slate-800/70">
             <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF]">
               Tyre tread depth
             </span>
@@ -262,16 +262,16 @@ function TyreCheckLegends() {
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
-        <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F]">
+      <div className="rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+        <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F] dark:text-slate-100">
           Tyre Condition Indicators
         </h3>
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
           Tread depth statuses are separate from Dirty and Defect flags.
         </p>
 
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <div className="rounded-[12px] border border-[#D3E9FC] bg-[#EAF4FF]/70 px-3 py-2.5">
+          <div className="rounded-[12px] border border-[#D3E9FC] bg-[#EAF4FF]/70 px-3 py-2.5 dark:border-white/10 dark:bg-slate-800/50">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF]">
               Tread condition
             </p>
@@ -291,7 +291,7 @@ function TyreCheckLegends() {
                       tyreStatusClasses(status).dot,
                     )}
                   />
-                  <span className="text-xs font-semibold text-[#113C69]">
+                  <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">
                     {tyreStatusLabel(status)}
                   </span>
                 </li>
@@ -299,21 +299,21 @@ function TyreCheckLegends() {
             </ul>
           </div>
 
-          <div className="rounded-[12px] border border-[#D3E9FC] bg-[#EAF4FF]/70 px-3 py-2.5">
+          <div className="rounded-[12px] border border-[#D3E9FC] bg-[#EAF4FF]/70 px-3 py-2.5 dark:border-white/10 dark:bg-slate-800/50">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF]">
               Additional condition
             </p>
             <ul className="mt-2 space-y-1.5">
               <li className="flex items-center gap-2.5">
                 <span className="size-2.5 shrink-0 rounded-full bg-yellow-400" />
-                <span className="text-xs font-semibold text-[#113C69]">Dirty</span>
+                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">Dirty</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <TriangleAlert
                   className="size-3.5 shrink-0 text-rose-600"
                   aria-hidden
                 />
-                <span className="text-xs font-semibold text-[#113C69]">Defect</span>
+                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">Defect</span>
               </li>
             </ul>
           </div>

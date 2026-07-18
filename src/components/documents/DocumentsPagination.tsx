@@ -29,7 +29,7 @@ export function DocumentsPagination({
         <select
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-9 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-sm font-medium text-[#113C69]"
+          className="h-9 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-sm font-medium text-[#113C69] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
           aria-label="Rows per page"
         >
           {DOCUMENT_PAGE_SIZE_OPTIONS.map((size) => (

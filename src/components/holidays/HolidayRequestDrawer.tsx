@@ -58,17 +58,17 @@ export function HolidayRequestDrawer({
         onClick={onClose}
       />
 
-      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-[0_0_40px_rgba(15,23,42,0.18)]">
-        <div className="border-b border-[rgba(75,120,220,0.10)] px-5 py-4">
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-[0_0_40px_rgba(15,23,42,0.18)] dark:bg-slate-900/95">
+        <div className="border-b border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 Holiday Request
               </p>
-              <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+              <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
                 {request.workerName}
               </h2>
-              <p className="mt-0.5 text-sm text-slate-500">
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                 {request.workerRole ?? 'No role assigned'}
               </p>
             </div>
@@ -103,37 +103,37 @@ export function HolidayRequestDrawer({
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Start date</dt>
-                <dd className="font-medium tabular-nums text-[#2A376F]">
+                <dd className="font-medium tabular-nums text-[#2A376F] dark:text-slate-100">
                   {formatDate(request.startDate)}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">End date</dt>
-                <dd className="font-medium tabular-nums text-[#2A376F]">
+                <dd className="font-medium tabular-nums text-[#2A376F] dark:text-slate-100">
                   {formatDate(request.endDate)}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Calendar days away</dt>
-                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                <dd className="font-semibold tabular-nums text-[#2A376F] dark:text-slate-100">
                   {request.calendarDaysTotal}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Holiday days deducted</dt>
-                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                <dd className="font-semibold tabular-nums text-[#2A376F] dark:text-slate-100">
                   {request.holidayDaysDeducted}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Non-working days excluded</dt>
-                <dd className="font-semibold tabular-nums text-[#2A376F]">
+                <dd className="font-semibold tabular-nums text-[#2A376F] dark:text-slate-100">
                   {request.nonWorkingDaysExcluded}
                 </dd>
               </div>
               <div>
                 <dt className="text-slate-500">Reason</dt>
-                <dd className="mt-1 rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-slate-700">
+                <dd className="mt-1 rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-slate-700 dark:bg-slate-900/70 dark:text-slate-100">
                   {request.reason?.trim() || 'No reason provided'}
                 </dd>
               </div>
@@ -162,10 +162,10 @@ export function HolidayRequestDrawer({
                       onChange={(event) => setManagerNote(event.target.value)}
                       rows={3}
                       placeholder="Optional note for the worker or audit trail"
-                      className="w-full rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100"
+                      className="w-full rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus:ring-blue-900/40"
                     />
                   ) : (
-                    <p className="rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-slate-700">
+                    <p className="rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-slate-700 dark:bg-slate-900/70 dark:text-slate-100">
                       {request.managerNote?.trim() || 'No manager note'}
                     </p>
                   )}

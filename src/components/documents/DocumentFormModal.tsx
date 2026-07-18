@@ -163,14 +163,14 @@ export function DocumentFormModal({
       }}
     >
       <div
-        className="max-h-[min(92vh,900px)] w-full max-w-2xl overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)]"
+        className="max-h-[min(92vh,900px)] w-full max-w-2xl overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="document-form-title"
       >
-        <div className="flex items-start justify-between border-b border-[#D3E9FC] px-5 py-4">
+        <div className="flex items-start justify-between border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           <div>
-            <h2 id="document-form-title" className="text-lg font-semibold text-[#113C69]">
+            <h2 id="document-form-title" className="text-lg font-semibold text-[#113C69] dark:text-slate-100">
               {mode === 'create' ? 'Add Document' : 'Edit Document'}
             </h2>
             <p className="mt-0.5 text-sm text-[#5499BF]">
@@ -181,7 +181,7 @@ export function DocumentFormModal({
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-lg p-2 text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#113C69]"
+            className="rounded-lg p-2 text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#113C69] dark:hover:bg-slate-800/50 dark:hover:text-slate-100"
             aria-label="Close"
           >
             <X className="size-5" />
@@ -197,7 +197,7 @@ export function DocumentFormModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="sm:col-span-2 block">
-              <span className="text-sm font-semibold text-[#113C69]">Applies to</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Applies to</span>
               <select
                 value={values.appliesTo}
                 onChange={(event) => updateAppliesTo(event.target.value as DocumentAppliesTo)}
@@ -212,7 +212,7 @@ export function DocumentFormModal({
 
             {values.appliesTo === 'worker' ? (
               <label className="sm:col-span-2 block">
-                <span className="text-sm font-semibold text-[#113C69]">Worker</span>
+                <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Worker</span>
                 <select
                   value={values.workerId}
                   onChange={(event) => setValues((c) => ({ ...c, workerId: event.target.value }))}
@@ -231,7 +231,7 @@ export function DocumentFormModal({
 
             {values.appliesTo === 'vehicle' ? (
               <label className="sm:col-span-2 block">
-                <span className="text-sm font-semibold text-[#113C69]">Vehicle</span>
+                <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Vehicle</span>
                 <select
                   value={values.vehicleId}
                   onChange={(event) => setValues((c) => ({ ...c, vehicleId: event.target.value }))}
@@ -249,7 +249,7 @@ export function DocumentFormModal({
             ) : null}
 
             <label className="block">
-              <span className="text-sm font-semibold text-[#113C69]">Document name</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Document name</span>
               <input
                 value={values.documentName}
                 onChange={(event) =>
@@ -262,7 +262,7 @@ export function DocumentFormModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-[#113C69]">Document type</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Document type</span>
               <select
                 value={values.documentType}
                 onChange={(event) =>
@@ -280,7 +280,7 @@ export function DocumentFormModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-[#113C69]">Reference number</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Reference number</span>
               <input
                 value={values.referenceNumber}
                 onChange={(event) =>
@@ -291,7 +291,7 @@ export function DocumentFormModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-[#113C69]">Issue date</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Issue date</span>
               <input
                 type="date"
                 value={values.issueDate}
@@ -301,7 +301,7 @@ export function DocumentFormModal({
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="text-sm font-semibold text-[#113C69]">Expiry date</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Expiry date</span>
               <input
                 type="date"
                 value={values.expiryDate}
@@ -311,7 +311,7 @@ export function DocumentFormModal({
             </label>
 
             <div className="sm:col-span-2">
-              <span className="text-sm font-semibold text-[#113C69]">Attachment</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Attachment</span>
               <div className="mt-1.5">
                 {isMedicalType && !canChangeMedicalFile ? (
                   <div className="rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] px-4 py-3 text-sm text-[#5499BF]">
@@ -345,7 +345,7 @@ export function DocumentFormModal({
             </div>
 
             <label className="sm:col-span-2 block">
-              <span className="text-sm font-semibold text-[#113C69]">Notes</span>
+              <span className="text-sm font-semibold text-[#113C69] dark:text-slate-100">Notes</span>
               <textarea
                 value={values.notes}
                 onChange={(event) => setValues((c) => ({ ...c, notes: event.target.value }))}

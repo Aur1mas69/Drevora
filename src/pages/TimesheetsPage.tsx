@@ -641,12 +641,12 @@ export default function TimesheetsPage() {
         />
 
         {isLoading ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center">
-            <p className="text-sm font-semibold text-[#2A376F]">Loading timesheets…</p>
+          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center dark:border-white/10 dark:bg-slate-900/70">
+            <p className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">Loading timesheets…</p>
           </div>
         ) : loadError ? (
-          <div className="rounded-[14px] border border-rose-200 bg-white px-6 py-10 text-center">
-            <p className="text-sm font-semibold text-rose-700">{loadError}</p>
+          <div className="rounded-[14px] border border-rose-200 bg-white px-6 py-10 text-center dark:border-rose-900/40 dark:bg-slate-900/70">
+            <p className="text-sm font-semibold text-rose-700 dark:text-rose-400">{loadError}</p>
             <button
               type="button"
               onClick={() => void loadTimesheets()}
@@ -664,9 +664,9 @@ export default function TimesheetsPage() {
             isCreating={isSaving}
           />
         ) : items.length === 0 ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center">
-            <p className="text-sm font-semibold text-[#2A376F]">No matching timesheets</p>
-            <p className="mt-1 text-sm text-slate-500">
+          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center dark:border-white/10 dark:bg-slate-900/70">
+            <p className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">No matching timesheets</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Adjust filters or search to find records for {weekDisplay.weekTitle}.
             </p>
           </div>

@@ -79,7 +79,7 @@ export function VehicleProfileDriverReportsTab({
         <div className="flex size-11 items-center justify-center rounded-xl bg-[#EEF6FF] text-[#218EE7] ring-1 ring-[#C5DFFB]">
           <FileWarning className="size-5" />
         </div>
-        <p className="mt-3 text-base font-semibold text-[#113C69]">
+        <p className="mt-3 text-base font-semibold text-[#113C69] dark:text-slate-100">
           No driver reports linked to this vehicle.
         </p>
         <Link
@@ -110,7 +110,7 @@ export function VehicleProfileDriverReportsTab({
           <tbody>
             {items.map((report) => (
               <tr key={report.id} className={vehicleProfileTableRowClass}>
-                <td className="px-4 py-3 text-sm font-semibold text-[#113C69]">{report.title}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-[#113C69] dark:text-slate-100">{report.title}</td>
                 <td className="px-4 py-3 text-sm text-[#5499BF]">{report.reportType}</td>
                 <td className="px-4 py-3">
                   <span
@@ -130,7 +130,7 @@ export function VehicleProfileDriverReportsTab({
                   {report.workerName ?? '—'}
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-sm font-medium tabular-nums text-[#113C69]">
+                  <p className="text-sm font-medium tabular-nums text-[#113C69] dark:text-slate-100">
                     {report.issueDatetime
                       ? formatDate(report.issueDatetime.slice(0, 10))
                       : formatDate(report.createdAt.slice(0, 10))}

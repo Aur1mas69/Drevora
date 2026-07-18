@@ -86,10 +86,10 @@ function VehicleKpiCard({
     style.leftBorder,
     style.baseShadow,
     interactive
-      ? `cursor-pointer hover:-translate-y-[3px] active:-translate-y-px active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/45 focus-visible:ring-offset-2 ${style.hoverGradient} ${style.hoverBorder} ${style.hoverShadow}`
+      ? `cursor-pointer hover:-translate-y-[3px] active:-translate-y-px active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/45 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${style.hoverGradient} ${style.hoverBorder} ${style.hoverShadow}`
       : '',
     isActive
-      ? 'z-[1] -translate-y-px scale-[0.995] border-2 shadow-[0_0_0_1px_rgba(17,60,105,0.12),0_12px_28px_rgba(17,60,105,0.14)] ring-2 ring-[#113C69]/20'
+      ? 'z-[1] -translate-y-px scale-[0.995] border-2 shadow-[0_0_0_1px_rgba(17,60,105,0.12),0_12px_28px_rgba(17,60,105,0.14)] ring-2 ring-[#113C69]/20 dark:border-slate-100/30 dark:shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_12px_28px_rgba(0,0,0,0.4)] dark:ring-blue-400/30'
       : '',
   ]
     .filter(Boolean)
@@ -115,7 +115,7 @@ function VehicleKpiCard({
 
         <div className="min-w-0 flex-1">
           {isLoading ? (
-            <div className="h-8 w-12 animate-pulse rounded-md bg-white/60" />
+            <div className="h-8 w-12 animate-pulse rounded-md bg-white/60 dark:bg-slate-700/60" />
           ) : (
             <p
               className={`text-2xl font-bold leading-none tracking-[-0.04em] tabular-nums sm:text-3xl ${style.valueClass}`}

@@ -251,14 +251,14 @@ export function VehicleCheckChecklistForm({
       {[...grouped.entries()].map(([category, categoryItems]) => (
         <section
           key={category}
-          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_6px_18px_rgba(33,142,231,0.06)]"
+          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_6px_18px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
         >
-          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1.5">
+          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1.5 dark:from-slate-800/70 dark:to-slate-800/50">
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               {category}
             </h3>
           </div>
-          <div className="divide-y divide-[#D3E9FC]/70">
+          <div className="divide-y divide-[#D3E9FC]/70 dark:divide-white/10">
             {categoryItems.map((item) => {
               const key = getVehicleCheckItemKey(item)
               const itemNumber = numberedItems.get(key) ?? 0
@@ -404,24 +404,24 @@ export function VehicleCheckChecklistForm({
             onClick={() => setHelpItem(null)}
           />
           <div
-            className="relative max-h-[70vh] w-full max-w-md overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]"
+            className="relative max-h-[70vh] w-full max-w-md overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
             role="dialog"
             aria-modal="true"
             aria-label={`${helpItem.itemName} guidance`}
           >
-            <div className="flex items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3">
+            <div className="flex items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3 dark:border-white/10 dark:from-slate-800/70 dark:to-slate-800/50">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
                   Guidance
                 </p>
-                <h3 className="mt-1 text-sm font-semibold leading-5 text-[#113C69]">
+                <h3 className="mt-1 text-sm font-semibold leading-5 text-[#113C69] dark:text-slate-100">
                   {helpItem.itemName}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setHelpItem(null)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm dark:bg-slate-800 dark:text-blue-300"
                 aria-label="Close guidance"
               >
                 <X className="size-4" />

@@ -200,7 +200,7 @@ export default function WorkerComplianceProfilePage() {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="h-48 animate-pulse rounded-[22px] bg-white ring-1 ring-blue-100/70" />
+        <div className="h-48 animate-pulse rounded-[22px] bg-white ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10" />
       </AdminLayout>
     )
   }
@@ -208,7 +208,7 @@ export default function WorkerComplianceProfilePage() {
   if (errorMessage || !worker) {
     return (
       <AdminLayout>
-        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
           <p className="text-lg font-semibold text-slate-950">{errorMessage ?? 'Worker not found'}</p>
           <Button asChild className="mt-6 h-11 rounded-[16px] bg-[#3B82F6] px-5 font-semibold text-white hover:bg-[#2563EB]">
             <Link to="/documents">Back to Documents</Link>
@@ -222,7 +222,7 @@ export default function WorkerComplianceProfilePage() {
 
   return (
     <AdminLayout>
-      <section className="rounded-[28px] bg-white/75 p-5 shadow-[0_24px_70px_rgba(59,130,246,0.10)] ring-1 ring-white/70 backdrop-blur-xl sm:p-6">
+      <section className="rounded-[28px] bg-white/75 p-5 shadow-[0_24px_70px_rgba(59,130,246,0.10)] ring-1 ring-white/70 backdrop-blur-xl dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20 sm:p-6">
         <Link
           to="/documents"
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#2563EB] hover:text-[#1d4ed8]"
@@ -261,13 +261,13 @@ export default function WorkerComplianceProfilePage() {
       {activeTab === 'overview' ? (
         <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Valid Documents', value: counts.valid, tone: 'text-emerald-700' },
-            { label: 'Expiring Soon', value: counts.expiring, tone: 'text-amber-700' },
-            { label: 'Expired', value: counts.expired, tone: 'text-rose-700' },
+            { label: 'Valid Documents', value: counts.valid, tone: 'text-emerald-700 dark:text-emerald-300' },
+            { label: 'Expiring Soon', value: counts.expiring, tone: 'text-amber-700 dark:text-amber-300' },
+            { label: 'Expired', value: counts.expired, tone: 'text-rose-700 dark:text-rose-300' },
             { label: 'Compliance Score', value: `${complianceScore}%`, tone: getScoreTone(complianceScore) },
           ].map((card) => (
-            <div key={card.label} className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
-              <p className="text-sm font-semibold text-slate-500">{card.label}</p>
+            <div key={card.label} className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{card.label}</p>
               <p className={`mt-3 text-3xl font-semibold tracking-[-0.05em] ${card.tone}`}>{card.value}</p>
             </div>
           ))}
@@ -276,14 +276,14 @@ export default function WorkerComplianceProfilePage() {
 
       {activeTab === 'overview' ? (
         <section className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+          <div className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
             <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">Contact</h2>
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <p className="flex items-center gap-2"><Mail className="size-4 text-slate-400" />{worker.email}</p>
               <p className="flex items-center gap-2"><Phone className="size-4 text-slate-400" />{worker.phone ?? '—'}</p>
             </div>
           </div>
-          <div className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+          <div className="rounded-[20px] bg-white p-5 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
             <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-400">Recommended Documents</h2>
             {suggestedMissing.length > 0 ? (
               <ul className="mt-4 space-y-2 text-sm text-slate-600">
@@ -314,7 +314,7 @@ export default function WorkerComplianceProfilePage() {
             </Button>
           </div>
           {documents.length === 0 ? (
-            <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+            <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
               <p className="text-lg font-semibold text-slate-950">No compliance records yet</p>
               <p className="mt-2 text-sm text-slate-500">Add licences, training and certifications for this worker.</p>
             </div>
@@ -330,7 +330,7 @@ export default function WorkerComplianceProfilePage() {
       ) : null}
 
       {activeTab === 'documents' ? (
-        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
           <FileText className="mx-auto size-10 text-slate-300" />
           <p className="mt-4 text-lg font-semibold text-slate-950">Document files</p>
           <p className="mt-2 text-sm text-slate-500">
@@ -348,7 +348,7 @@ export default function WorkerComplianceProfilePage() {
       ) : null}
 
       {activeTab === 'history' ? (
-        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <div className="rounded-[22px] bg-white px-6 py-14 text-center shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10 dark:shadow-black/20">
           <p className="text-lg font-semibold text-slate-950">Compliance history</p>
           <p className="mt-2 text-sm text-slate-500">
             Audit trail and change history will be available in a future release.

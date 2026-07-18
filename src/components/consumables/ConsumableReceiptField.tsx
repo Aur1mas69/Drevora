@@ -79,7 +79,7 @@ export function ConsumableReceiptField({
                 size="sm"
                 disabled={disabled || isOpening}
                 onClick={() => void handleViewExisting()}
-                className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] hover:bg-[#E8F3FE]"
+                className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
               >
                 {isOpening ? 'Opening…' : 'View receipt'}
               </Button>
@@ -89,7 +89,7 @@ export function ConsumableReceiptField({
                 size="sm"
                 disabled={disabled}
                 onClick={() => inputRef.current?.click()}
-                className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#113C69] hover:bg-[#E8F3FE]"
+                className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#113C69] hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-800/50"
               >
                 Replace receipt
               </Button>
@@ -99,7 +99,7 @@ export function ConsumableReceiptField({
                 size="sm"
                 disabled={disabled}
                 onClick={onRemoveExisting}
-                className="h-9 rounded-[10px] border-rose-200 bg-white px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                className="h-9 rounded-[10px] border-rose-200 bg-white px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-slate-800/70 dark:hover:bg-rose-950/40"
               >
                 Remove receipt
               </Button>
@@ -115,7 +115,7 @@ export function ConsumableReceiptField({
             size="sm"
             disabled={disabled}
             onClick={onUndoRemoveExisting}
-            className="h-8 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7]"
+            className="h-8 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300"
           >
             Undo
           </Button>
@@ -127,7 +127,7 @@ export function ConsumableReceiptField({
           type="button"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
-          className="mt-1.5 flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-8 text-center transition-colors hover:border-[#218EE7] hover:bg-[#E8F3FE]/50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1.5 flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-8 text-center transition-colors hover:border-[#218EE7] hover:bg-[#E8F3FE]/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-slate-800/60 dark:hover:border-blue-400 dark:hover:bg-slate-800/50"
         >
           <Upload className="size-6 text-[#218EE7]" strokeWidth={1.8} />
           <p className="mt-3 text-sm font-semibold text-[#113C69]">Upload receipt or photo</p>
@@ -136,7 +136,7 @@ export function ConsumableReceiptField({
       ) : null}
 
       {selectedFile ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#D3E9FC] bg-white px-4 py-3">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#D3E9FC] bg-white px-4 py-3 dark:border-white/10 dark:bg-slate-900/70">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[#3D7A9C]">
               Selected file
@@ -151,7 +151,7 @@ export function ConsumableReceiptField({
             size="sm"
             disabled={disabled}
             onClick={onClearSelectedFile}
-            className="h-8 w-8 shrink-0 rounded-[10px] p-0 text-slate-500 hover:bg-[#F5FAFF]"
+            className="h-8 w-8 shrink-0 rounded-[10px] p-0 text-slate-500 hover:bg-[#F5FAFF] dark:hover:bg-slate-800/50"
             aria-label="Clear selected file"
           >
             <X className="size-4" />

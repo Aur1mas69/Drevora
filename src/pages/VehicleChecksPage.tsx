@@ -448,26 +448,26 @@ export default function VehicleChecksPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
+          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-400 dark:shadow-black/20">
             Loading inspections…
           </div>
         ) : showNoRecordsState ? (
           <VehicleChecksEmptyState onCreateFirst={() => setIsNewModalOpen(true)} />
         ) : showNoTodayState ? (
-          <div className="rounded-[18px] border border-[#D3E9FC] bg-white px-6 py-10 text-center shadow-[0_10px_30px_rgba(33,142,231,0.08)]">
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+          <div className="rounded-[18px] border border-[#D3E9FC] bg-white px-6 py-10 text-center shadow-[0_10px_30px_rgba(33,142,231,0.08)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
               No checks completed today.
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               Change the date range or clear the date filters to view previous checks.
             </p>
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center shadow-[0_2px_8px_rgba(40,80,140,0.04)]">
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+          <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
               No matching inspections
             </h2>
-            <p className="mt-2 text-sm text-slate-500">Try adjusting your search or filters.</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Try adjusting your search or filters.</p>
           </div>
         ) : (
           <div>
@@ -539,7 +539,7 @@ export default function VehicleChecksPage() {
 
       {isLoadingDetail ? (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px]">
-          <div className="rounded-[12px] bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-lg">
+          <div className="rounded-[12px] bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-lg dark:bg-slate-900/95 dark:text-slate-200 dark:shadow-black/40">
             Loading inspection…
           </div>
         </div>

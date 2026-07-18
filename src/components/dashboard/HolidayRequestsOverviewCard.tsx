@@ -85,8 +85,8 @@ function HolidayDonutChart({ segments, total }: { segments: StatusSegment[]; tot
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-bold leading-none tabular-nums text-[#163A63]">{total}</span>
-        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D]">
+        <span className="text-xl font-bold leading-none tabular-nums text-[#163A63] dark:text-slate-100">{total}</span>
+        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D] dark:text-slate-400">
           Total
         </span>
       </div>
@@ -105,9 +105,9 @@ function StatusLegend({ segments }: { segments: StatusSegment[] }) {
               style={{ backgroundColor: segment.color }}
               aria-hidden="true"
             />
-            <span className="truncate font-medium text-[#163A63]">{segment.label}</span>
+            <span className="truncate font-medium text-[#163A63] dark:text-slate-100">{segment.label}</span>
           </span>
-          <span className="shrink-0 font-semibold tabular-nums text-[#3B82F6]">{segment.value}</span>
+          <span className="shrink-0 font-semibold tabular-nums text-[#3B82F6] dark:text-blue-300">{segment.value}</span>
         </li>
       ))}
     </ul>

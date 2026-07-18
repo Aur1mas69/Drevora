@@ -64,113 +64,137 @@ function getActivityAccent(activity: DashboardRecentActivity): ActivityAccent {
     case 'worker':
       return {
         label: 'Worker',
-        stripeClass: 'border-l-[#3B82F6]',
-        boxClass: 'border-[#CFE3F5]/80 bg-[#F8FBFF]/95',
+        stripeClass: 'border-l-[#3B82F6] dark:border-l-blue-400',
+        boxClass:
+          'border-[#CFE3F5]/80 bg-[#F8FBFF]/95 dark:border-blue-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#CFE3F5] hover:bg-[#F8FBFF] hover:shadow-md hover:shadow-[rgba(22,58,99,0.06)]',
-        pillClass: 'bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]/50',
+          'hover:border-[#CFE3F5] hover:bg-[#F8FBFF] hover:shadow-md hover:shadow-[rgba(22,58,99,0.06)] dark:hover:border-blue-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]/50 dark:bg-blue-950/55 dark:text-blue-300 dark:ring-blue-500/30',
       }
     case 'vehicle':
       return {
         label: 'Vehicle',
-        stripeClass: 'border-l-[#2BB8D4]',
-        boxClass: 'border-[#B8EBF5]/80 bg-[#F2FCFE]/95',
+        stripeClass: 'border-l-[#2BB8D4] dark:border-l-cyan-400',
+        boxClass:
+          'border-[#B8EBF5]/80 bg-[#F2FCFE]/95 dark:border-cyan-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10',
-        pillClass: 'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50',
+          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10 dark:hover:border-cyan-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50 dark:bg-cyan-950/55 dark:text-cyan-300 dark:ring-cyan-500/30',
       }
     case 'availability':
       if (isAvailabilityWarningStatus(activity.title)) {
         return {
           label: 'Fleet',
-          stripeClass: 'border-l-[#E8843A]',
-          boxClass: 'border-[#FFDCC8]/80 bg-[#FFF8F3]/95',
+          stripeClass: 'border-l-[#E8843A] dark:border-l-orange-400',
+          boxClass:
+            'border-[#FFDCC8]/80 bg-[#FFF8F3]/95 dark:border-orange-500/25 dark:bg-slate-800/75',
           hoverClass:
-            'hover:border-[#FFCFAF] hover:bg-[#FFF3EB] hover:shadow-md hover:shadow-[#E8843A]/10',
-          pillClass: 'bg-[#FFEDE3] text-[#C65A12] ring-1 ring-[#FFDCC8]/60',
+            'hover:border-[#FFCFAF] hover:bg-[#FFF3EB] hover:shadow-md hover:shadow-[#E8843A]/10 dark:hover:border-orange-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+          pillClass:
+            'bg-[#FFEDE3] text-[#C65A12] ring-1 ring-[#FFDCC8]/60 dark:bg-orange-950/55 dark:text-orange-300 dark:ring-orange-500/30',
         }
       }
       return {
         label: 'Vehicle',
-        stripeClass: 'border-l-[#2BB8D4]',
-        boxClass: 'border-[#B8EBF5]/80 bg-[#F2FCFE]/95',
+        stripeClass: 'border-l-[#2BB8D4] dark:border-l-cyan-400',
+        boxClass:
+          'border-[#B8EBF5]/80 bg-[#F2FCFE]/95 dark:border-cyan-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10',
-        pillClass: 'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50',
+          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10 dark:hover:border-cyan-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50 dark:bg-cyan-950/55 dark:text-cyan-300 dark:ring-cyan-500/30',
       }
     case 'holiday_request':
       return {
         label: 'Holiday',
-        stripeClass: 'border-l-[#A855C8]',
-        boxClass: 'border-[#E9D5FF]/80 bg-[#FAF5FF]/95',
+        stripeClass: 'border-l-[#A855C8] dark:border-l-violet-400',
+        boxClass:
+          'border-[#E9D5FF]/80 bg-[#FAF5FF]/95 dark:border-violet-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#DCC4F5] hover:bg-[#F5EDFF] hover:shadow-md hover:shadow-[#A855C8]/10',
-        pillClass: 'bg-[#F3E8FF] text-[#7E3FA8] ring-1 ring-[#E9D5FF]/60',
+          'hover:border-[#DCC4F5] hover:bg-[#F5EDFF] hover:shadow-md hover:shadow-[#A855C8]/10 dark:hover:border-violet-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#F3E8FF] text-[#7E3FA8] ring-1 ring-[#E9D5FF]/60 dark:bg-violet-950/55 dark:text-violet-300 dark:ring-violet-500/30',
       }
     case 'timesheet':
       return {
         label: 'Timesheet',
-        stripeClass: 'border-l-[#22A861]',
-        boxClass: 'border-[#BBEAD0]/80 bg-[#F3FBF6]/95',
+        stripeClass: 'border-l-[#22A861] dark:border-l-emerald-400',
+        boxClass:
+          'border-[#BBEAD0]/80 bg-[#F3FBF6]/95 dark:border-emerald-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#A3DFC0] hover:bg-[#EBF8F0] hover:shadow-md hover:shadow-[#22A861]/10',
-        pillClass: 'bg-[#E3F6EA] text-[#1A7A45] ring-1 ring-[#BBEAD0]/60',
+          'hover:border-[#A3DFC0] hover:bg-[#EBF8F0] hover:shadow-md hover:shadow-[#22A861]/10 dark:hover:border-emerald-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#E3F6EA] text-[#1A7A45] ring-1 ring-[#BBEAD0]/60 dark:bg-emerald-950/55 dark:text-emerald-300 dark:ring-emerald-500/30',
       }
     case 'vehicle_check':
       if (activity.severity === 'danger') {
         return {
           label: 'Check Failed',
-          stripeClass: 'border-l-[#DC2626]',
-          boxClass: 'border-[#FECACA]/80 bg-[#FFF1F2]/95',
+          stripeClass: 'border-l-[#DC2626] dark:border-l-rose-400',
+          boxClass:
+            'border-[#FECACA]/80 bg-[#FFF1F2]/95 dark:border-rose-500/25 dark:bg-slate-800/75',
           hoverClass:
-            'hover:border-[#FCA5A5] hover:bg-[#FFE4E6] hover:shadow-md hover:shadow-[#DC2626]/10',
-          pillClass: 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECACA]/60',
+            'hover:border-[#FCA5A5] hover:bg-[#FFE4E6] hover:shadow-md hover:shadow-[#DC2626]/10 dark:hover:border-rose-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+          pillClass:
+            'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECACA]/60 dark:bg-rose-950/55 dark:text-rose-300 dark:ring-rose-500/30',
         }
       }
       if (activity.severity === 'warning') {
         return {
           label: 'Check Issue',
-          stripeClass: 'border-l-[#EA580C]',
-          boxClass: 'border-[#FED7AA]/80 bg-[#FFF7ED]/95',
+          stripeClass: 'border-l-[#EA580C] dark:border-l-orange-400',
+          boxClass:
+            'border-[#FED7AA]/80 bg-[#FFF7ED]/95 dark:border-orange-500/25 dark:bg-slate-800/75',
           hoverClass:
-            'hover:border-[#FDBA74] hover:bg-[#FFEDD5] hover:shadow-md hover:shadow-[#EA580C]/10',
-          pillClass: 'bg-[#FFEDD5] text-[#C2410C] ring-1 ring-[#FED7AA]/60',
+            'hover:border-[#FDBA74] hover:bg-[#FFEDD5] hover:shadow-md hover:shadow-[#EA580C]/10 dark:hover:border-orange-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+          pillClass:
+            'bg-[#FFEDD5] text-[#C2410C] ring-1 ring-[#FED7AA]/60 dark:bg-orange-950/55 dark:text-orange-300 dark:ring-orange-500/30',
         }
       }
       return {
         label: 'Vehicle Check',
-        stripeClass: 'border-l-[#14A89E]',
-        boxClass: 'border-[#B8EBE8]/80 bg-[#F0FAFA]/95',
+        stripeClass: 'border-l-[#14A89E] dark:border-l-teal-400',
+        boxClass:
+          'border-[#B8EBE8]/80 bg-[#F0FAFA]/95 dark:border-teal-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#9FE0DC] hover:bg-[#E8F7F6] hover:shadow-md hover:shadow-[#14A89E]/10',
-        pillClass: 'bg-[#E0F5F3] text-[#0F7A72] ring-1 ring-[#B8EBE8]/60',
+          'hover:border-[#9FE0DC] hover:bg-[#E8F7F6] hover:shadow-md hover:shadow-[#14A89E]/10 dark:hover:border-teal-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#E0F5F3] text-[#0F7A72] ring-1 ring-[#B8EBE8]/60 dark:bg-teal-950/55 dark:text-teal-300 dark:ring-teal-500/30',
       }
     case 'driver_report':
       return {
         label: 'Driver Report',
-        stripeClass: 'border-l-[#F08A24]',
-        boxClass: 'border-[#FFDDB8]/80 bg-[#FFF9F3]/95',
+        stripeClass: 'border-l-[#F08A24] dark:border-l-amber-400',
+        boxClass:
+          'border-[#FFDDB8]/80 bg-[#FFF9F3]/95 dark:border-amber-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#FFD0A0] hover:bg-[#FFF4EA] hover:shadow-md hover:shadow-[#F08A24]/10',
-        pillClass: 'bg-[#FFEDD5] text-[#C45F08] ring-1 ring-[#FFDDB8]/60',
+          'hover:border-[#FFD0A0] hover:bg-[#FFF4EA] hover:shadow-md hover:shadow-[#F08A24]/10 dark:hover:border-amber-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#FFEDD5] text-[#C45F08] ring-1 ring-[#FFDDB8]/60 dark:bg-amber-950/55 dark:text-amber-300 dark:ring-amber-500/30',
       }
     case 'document':
       return {
         label: 'Document',
-        stripeClass: 'border-l-[#64748B]',
-        boxClass: 'border-[#D5DEE8]/80 bg-[#F8FAFC]/95',
+        stripeClass: 'border-l-[#64748B] dark:border-l-slate-400',
+        boxClass:
+          'border-[#D5DEE8]/80 bg-[#F8FAFC]/95 dark:border-slate-500/30 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#C4D0DC] hover:bg-[#F1F5F9] hover:shadow-md hover:shadow-slate-400/10',
-        pillClass: 'bg-[#EEF2F6] text-[#475569] ring-1 ring-[#D5DEE8]/60',
+          'hover:border-[#C4D0DC] hover:bg-[#F1F5F9] hover:shadow-md hover:shadow-slate-400/10 dark:hover:border-slate-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#EEF2F6] text-[#475569] ring-1 ring-[#D5DEE8]/60 dark:bg-slate-700/70 dark:text-slate-300 dark:ring-slate-500/35',
       }
     case 'consumable':
       return {
         label: 'Consumables',
-        stripeClass: 'border-l-[#D4A017]',
-        boxClass: 'border-[#F5E6B8]/80 bg-[#FFFBF0]/95',
+        stripeClass: 'border-l-[#D4A017] dark:border-l-yellow-400',
+        boxClass:
+          'border-[#F5E6B8]/80 bg-[#FFFBF0]/95 dark:border-yellow-500/25 dark:bg-slate-800/75',
         hoverClass:
-          'hover:border-[#EFD996] hover:bg-[#FFF8E8] hover:shadow-md hover:shadow-[#D4A017]/10',
-        pillClass: 'bg-[#FEF3D6] text-[#9A7209] ring-1 ring-[#F5E6B8]/60',
+          'hover:border-[#EFD996] hover:bg-[#FFF8E8] hover:shadow-md hover:shadow-[#D4A017]/10 dark:hover:border-yellow-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
+        pillClass:
+          'bg-[#FEF3D6] text-[#9A7209] ring-1 ring-[#F5E6B8]/60 dark:bg-yellow-950/50 dark:text-yellow-300 dark:ring-yellow-500/30',
       }
   }
 }
@@ -252,8 +276,8 @@ function RecentActivityItem({
       >
         {accent.label}
       </span>
-      <p className="text-sm font-bold leading-snug text-[#163A63]">{getTimelineTitle(item)}</p>
-      <p className="mt-1 text-xs font-medium text-[#5D7C9D]">
+      <p className="text-sm font-bold leading-snug text-[#163A63] dark:text-slate-100">{getTimelineTitle(item)}</p>
+      <p className="mt-1 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
         {formatRelativeDateTime(item.createdAt)}
       </p>
     </>
@@ -307,8 +331,8 @@ function RecentActivityPanel({
 
       <div className="relative z-[1] mt-4 min-h-0 flex-1 max-md:overflow-visible xl:overflow-y-auto xl:max-h-[calc(100dvh-14rem)] xl:pr-1">
         {activity.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#D2E5F5] bg-[#F8FBFF]/70 px-4 py-10 text-center">
-            <p className="text-sm font-medium text-[#5D7C9D]">No recent activity yet.</p>
+          <div className="rounded-xl border-2 border-dashed border-[#D2E5F5] bg-[#F8FBFF]/70 px-4 py-10 text-center dark:border-white/10 dark:bg-slate-800/40">
+            <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">No recent activity yet.</p>
           </div>
         ) : (
           <ul className="relative z-[1] space-y-2.5">
@@ -531,13 +555,13 @@ export function DashboardOverview({
 export function DashboardOnboardingCard() {
   return (
     <div className={`${dashboardOverviewCardStaticClass} px-6 py-12 text-center`}>
-      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]">
+      <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5] dark:bg-slate-800 dark:text-blue-300 dark:ring-white/10">
         <Users className="size-7" strokeWidth={2} />
       </div>
-      <p className="mt-4 text-xl font-semibold tracking-[-0.03em] text-[#163A63]">
+      <p className="mt-4 text-xl font-semibold tracking-[-0.03em] text-[#163A63] dark:text-slate-100">
         Welcome to DREVORA
       </p>
-      <p className="mt-2 text-sm text-[#5D7C9D]">
+      <p className="mt-2 text-sm text-[#5D7C9D] dark:text-slate-400">
         Add workers and vehicles to unlock your operations dashboard.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -549,7 +573,7 @@ export function DashboardOnboardingCard() {
         </Link>
         <Link
           to="/vehicles"
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-[#CFE3F5] bg-white px-4 text-sm font-semibold text-[#3B82F6] hover:bg-[#F8FBFF]"
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-[#CFE3F5] bg-white px-4 text-sm font-semibold text-[#3B82F6] hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/80"
         >
           Add Vehicle
         </Link>

@@ -74,7 +74,7 @@ export function VehicleProfileChecksTab({ vehicleId }: VehicleProfileChecksTabPr
         <div className="flex size-11 items-center justify-center rounded-xl bg-[#EEF6FF] text-[#218EE7] ring-1 ring-[#C5DFFB]">
           <ClipboardCheck className="size-5" />
         </div>
-        <p className="mt-3 text-base font-semibold text-[#113C69]">
+        <p className="mt-3 text-base font-semibold text-[#113C69] dark:text-slate-100">
           No vehicle checks recorded for this vehicle.
         </p>
         <Link
@@ -104,7 +104,7 @@ export function VehicleProfileChecksTab({ vehicleId }: VehicleProfileChecksTabPr
             {items.map((item) => (
               <tr key={item.id} className={vehicleProfileTableRowClass}>
                 <td className="px-4 py-3">
-                  <p className="text-sm font-semibold tabular-nums text-[#113C69]">
+                  <p className="text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                     {formatDate(item.inspectionDate)}
                   </p>
                   <p className="mt-0.5 text-xs text-[#5499BF]">{formatDateTime(item.createdAt)}</p>
@@ -117,7 +117,7 @@ export function VehicleProfileChecksTab({ vehicleId }: VehicleProfileChecksTabPr
                     {formatVehicleCheckResultLabel(item.overallResult)}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69]">
+                <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                   {item.failCount}
                 </td>
                 <td className="px-4 py-3 text-right">

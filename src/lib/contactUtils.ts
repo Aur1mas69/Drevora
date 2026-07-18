@@ -21,24 +21,24 @@ export function getCategoryLabel(category: ContactCategory): string {
 export function getCategoryBadgeClass(category: ContactCategory): string {
   switch (category) {
     case 'customer':
-      return 'bg-[#E8F3FE] text-[#0B68BE] ring-[#BFE3F5]'
+      return 'bg-[#E8F3FE] text-[#0B68BE] ring-[#BFE3F5] dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
     case 'supplier':
-      return 'bg-violet-50 text-violet-700 ring-violet-100'
+      return 'bg-violet-50 text-violet-700 ring-violet-100 dark:bg-violet-950/50 dark:text-violet-300 dark:ring-violet-900/60'
     case 'garage_workshop':
-      return 'bg-amber-50 text-amber-800 ring-amber-100'
+      return 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
     case 'site_plant':
-      return 'bg-teal-50 text-teal-700 ring-teal-100'
+      return 'bg-teal-50 text-teal-700 ring-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60'
     case 'insurance':
-      return 'bg-indigo-50 text-indigo-700 ring-indigo-100'
+      return 'bg-indigo-50 text-indigo-700 ring-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/60'
     case 'accountant':
-      return 'bg-sky-50 text-sky-700 ring-sky-100'
+      return 'bg-sky-50 text-sky-700 ring-sky-100 dark:bg-sky-950/45 dark:text-sky-300 dark:ring-sky-900/60'
     case 'emergency':
-      return 'bg-rose-50 text-rose-700 ring-rose-100'
+      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
     case 'worker':
-      return 'bg-[#E8F3FE] text-[#0B68BE] ring-[#89CFF0]'
+      return 'bg-[#E8F3FE] text-[#0B68BE] ring-[#89CFF0] dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
     case 'other':
     default:
-      return 'bg-slate-100 text-slate-700 ring-slate-200'
+      return 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
   }
 }
 
@@ -48,8 +48,8 @@ export function getStatusLabel(status: ContactStatus): string {
 
 export function getStatusBadgeClass(status: ContactStatus): string {
   return status === 'active'
-    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-    : 'bg-slate-100 text-slate-600 ring-slate-200'
+    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
+    : 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
 }
 
 export function getContactPrimaryName(contact: Pick<Contact, 'name' | 'organisation'>): string {

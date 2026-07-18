@@ -65,7 +65,7 @@ export function VehicleProfileDocumentsTab({ vehicle }: VehicleProfileDocumentsT
         <div className="flex size-11 items-center justify-center rounded-xl bg-[#EEF6FF] text-[#218EE7] ring-1 ring-[#C5DFFB]">
           <FileText className="size-5" />
         </div>
-        <p className="mt-3 text-base font-semibold text-[#113C69]">
+        <p className="mt-3 text-base font-semibold text-[#113C69] dark:text-slate-100">
           No documents for this vehicle yet.
         </p>
         <Link
@@ -96,14 +96,14 @@ export function VehicleProfileDocumentsTab({ vehicle }: VehicleProfileDocumentsT
           <tbody>
             {items.map((document) => (
               <tr key={document.id} className={vehicleProfileTableRowClass}>
-                <td className="px-4 py-3 text-sm font-semibold text-[#113C69]">
+                <td className="px-4 py-3 text-sm font-semibold text-[#113C69] dark:text-slate-100">
                   {document.documentName}
                 </td>
                 <td className="px-4 py-3 text-sm text-[#5499BF]">{document.documentType}</td>
                 <td className="px-4 py-3 text-sm text-[#5499BF]">
                   {document.referenceNumber ?? '—'}
                 </td>
-                <td className="px-4 py-3 text-sm tabular-nums text-[#113C69]">
+                <td className="px-4 py-3 text-sm tabular-nums text-[#113C69] dark:text-slate-100">
                   {document.expiryDate ? formatCompanyDate(document.expiryDate) : formatDate(null)}
                 </td>
                 <td className="px-4 py-3">

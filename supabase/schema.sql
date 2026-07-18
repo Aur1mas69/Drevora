@@ -1290,6 +1290,49 @@ grant select, insert, update, delete on public.contacts to anon, authenticated;
 
 
 -- -----------------------------------------------------------------------------
+-- Admin notifications (see 20260718020000_create_admin_notifications.sql)
+-- -----------------------------------------------------------------------------
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete cascade,
+  notification_type text not null,
+  severity text not null,
+  title text not null,
+  message text,
+  entity_type text,
+  entity_id uuid,
+  target_path text,
+  metadata jsonb not null default '{}'::jsonb,
+  dedupe_key text not null,
+  created_at timestamptz not null default now(),
+  constraint notifications_severity_check check (
+    severity in ('info', 'warning', 'critical')
+  ),
+  constraint notifications_company_dedupe_unique unique (company_id, dedupe_key)
+);
+
+create table if not exists public.notification_reads (
+  notification_id uuid not null references public.notifications (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (notification_id, user_id)
+);
+
+create index if not exists notifications_company_id_idx
+  on public.notifications (company_id);
+create index if not exists notifications_created_at_desc_idx
+  on public.notifications (created_at desc);
+create index if not exists notifications_severity_idx
+  on public.notifications (severity);
+create index if not exists notifications_type_idx
+  on public.notifications (notification_type);
+create index if not exists notification_reads_user_id_idx
+  on public.notification_reads (user_id);
+create index if not exists notification_reads_notification_id_idx
+  on public.notification_reads (notification_id);
+
+
+-- -----------------------------------------------------------------------------
 -- Next steps
 -- 1. Run policies.sql  — RLS configuration (MVP: disabled)
 -- 2. Run seed.sql      — optional demo data (local/dev only)

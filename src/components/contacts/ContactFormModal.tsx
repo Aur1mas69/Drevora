@@ -127,18 +127,18 @@ export function ContactFormModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+        className="flex max-h-[min(92vh,100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="contact-form-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-100 px-5 py-4 dark:border-white/10 sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#218EE7]">
               {mode === 'create' ? 'New contact' : 'Edit contact'}
             </p>
-            <h2 id="contact-form-title" className="mt-1 text-xl font-semibold text-[#113C69]">
+            <h2 id="contact-form-title" className="mt-1 text-xl font-semibold text-[#113C69] dark:text-slate-100">
               {mode === 'create' ? 'Add Contact' : 'Edit Contact'}
             </h2>
           </div>
@@ -360,7 +360,7 @@ export function ContactFormModal({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:px-6">
             <Button
               type="button"
               variant="ghost"

@@ -33,7 +33,7 @@ export function ContactsPagination({
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70"
+            className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-500/30"
           >
             {CONTACT_PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>

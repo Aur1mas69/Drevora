@@ -12,7 +12,7 @@ import {
   vehicleTableShellClass,
 } from '@/components/vehicles/vehicleUiStyles'
 import { Button } from '@/components/ui/button'
-import { adminTableEntityName } from '@/lib/adminUiStyles'
+import { adminBadgeDark, adminTableEntityName } from '@/lib/adminUiStyles'
 import {
   formatShortDate,
   formatStartsInText,
@@ -52,11 +52,13 @@ function getVehicleName(vehicle: Vehicle): string {
 
 function FleetNumberBadge({ fleetNumber }: { fleetNumber: string | null }) {
   if (!fleetNumber) {
-    return <span className="text-xs font-medium text-[#5499BF]/70">—</span>
+    return <span className="text-xs font-medium text-[#5499BF]/70 dark:text-slate-500">—</span>
   }
 
   return (
-    <span className="inline-flex rounded-md bg-[#EEF6FF] px-2 py-0.5 text-[11px] font-bold tabular-nums text-[#0B68BE] ring-1 ring-[#C5DFFB]">
+    <span
+      className={`inline-flex rounded-md bg-[#EEF6FF] px-2 py-0.5 text-[11px] font-bold tabular-nums text-[#0B68BE] ring-1 ring-[#C5DFFB] ${adminBadgeDark.blue}`}
+    >
       {fleetNumber}
     </span>
   )
@@ -64,11 +66,13 @@ function FleetNumberBadge({ fleetNumber }: { fleetNumber: string | null }) {
 
 function VehicleTypeBadge({ vehicleType }: { vehicleType: string | null }) {
   if (!vehicleType) {
-    return <span className="text-xs font-medium text-[#5499BF]/70">—</span>
+    return <span className="text-xs font-medium text-[#5499BF]/70 dark:text-slate-500">—</span>
   }
 
   return (
-    <span className="inline-flex rounded-full bg-[#F5FAFF] px-2.5 py-0.5 text-[11px] font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC]">
+    <span
+      className={`inline-flex rounded-full bg-[#F5FAFF] px-2.5 py-0.5 text-[11px] font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC] ${adminBadgeDark.softBlue}`}
+    >
       {vehicleType}
     </span>
   )
@@ -79,12 +83,12 @@ function DocumentExpiryBadge({ expiry }: { expiry: string | null }) {
 
   const toneClass =
     status === 'expired'
-      ? 'bg-rose-50 text-rose-700 ring-rose-200'
+      ? `bg-rose-50 text-rose-700 ring-rose-200 ${adminBadgeDark.rose}`
       : status === 'warning'
-        ? 'bg-amber-50 text-amber-800 ring-amber-200'
+        ? `bg-amber-50 text-amber-800 ring-amber-200 ${adminBadgeDark.amber}`
         : status === 'valid'
-          ? 'bg-[#EEF6FF] text-[#0B68BE] ring-[#C5DFFB]'
-          : 'bg-slate-50 text-slate-500 ring-slate-200'
+          ? `bg-[#EEF6FF] text-[#0B68BE] ring-[#C5DFFB] ${adminBadgeDark.blue}`
+          : `bg-slate-50 text-slate-500 ring-slate-200 ${adminBadgeDark.muted}`
 
   return (
     <span
@@ -105,7 +109,11 @@ function NextEventCell({
   const nextEvent = getNextPlanningEvent(vehicle)
 
   if (!nextEvent) {
-    return <span className="text-xs font-medium text-[#5499BF]/80">None scheduled</span>
+    return (
+      <span className="text-xs font-medium text-[#5499BF]/80 dark:text-slate-500">
+        None scheduled
+      </span>
+    )
   }
 
   const daysUntil = getDaysUntilDate(nextEvent.startDate)
@@ -122,10 +130,10 @@ function NextEventCell({
       >
         {nextEvent.label === 'Off Road' ? 'OFF ROAD' : nextEvent.label}
       </span>
-      <p className="mt-1 truncate text-[11px] font-medium tabular-nums text-[#113C69]">
+      <p className="mt-1 truncate text-[11px] font-medium tabular-nums text-[#113C69] dark:text-slate-100">
         {formatShortDate(nextEvent.startDate)}
       </p>
-      <p className="truncate text-[10px] font-semibold text-[#218EE7] group-hover:text-[#0B68BE]">
+      <p className="truncate text-[10px] font-semibold text-[#218EE7] group-hover:text-[#0B68BE] dark:text-blue-300 dark:group-hover:text-blue-200">
         {formatStartsInText(daysUntil)}
       </p>
     </button>
@@ -281,16 +289,16 @@ export function VehiclesDataTable({
       <div
         className={`flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${vehicleTableFooterClass}`}
       >
-        <p className="text-sm font-medium text-[#5499BF]">
+        <p className="text-sm font-medium text-[#5499BF] dark:text-slate-400">
           Showing {rangeStart}–{rangeEnd} of {total} vehicle{total === 1 ? '' : 's'}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF]">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF] dark:text-slate-400">
             Rows
             <select
               value={pageSize}
               onChange={(event) => handlePageSizeChange(Number(event.target.value))}
-              className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70"
+              className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-500/30"
               aria-label="Rows per page"
             >
               {VEHICLES_PAGE_SIZE_OPTIONS.map((size) => (
@@ -306,12 +314,12 @@ export function VehiclesDataTable({
             size="sm"
             disabled={safePage <= 1}
             onClick={() => onPageChange(safePage - 1)}
-            className="h-8 rounded-[10px] border-[#C5DFFB] px-2.5 text-[#0B68BE] hover:bg-[#F5FAFF]"
+            className="h-8 rounded-[10px] border-[#C5DFFB] px-2.5 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:text-blue-300 dark:hover:bg-slate-800/50"
           >
             <ChevronLeft className="size-4" />
             Previous
           </Button>
-          <span className="px-2 text-sm font-medium tabular-nums text-[#113C69]">
+          <span className="px-2 text-sm font-medium tabular-nums text-[#113C69] dark:text-slate-100">
             Page {safePage} of {totalPages}
           </span>
           <Button
@@ -320,7 +328,7 @@ export function VehiclesDataTable({
             size="sm"
             disabled={safePage >= totalPages}
             onClick={() => onPageChange(safePage + 1)}
-            className="h-8 rounded-[10px] border-[#C5DFFB] px-2.5 text-[#0B68BE] hover:bg-[#F5FAFF]"
+            className="h-8 rounded-[10px] border-[#C5DFFB] px-2.5 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:text-blue-300 dark:hover:bg-slate-800/50"
           >
             Next
             <ChevronRight className="size-4" />
@@ -338,7 +346,7 @@ export function VehiclesTableSkeleton() {
         {Array.from({ length: 8 }).map((_, index) => (
           <div
             key={index}
-            className="h-11 animate-pulse rounded-[10px] bg-[#EEF6FF]/80"
+            className="h-11 animate-pulse rounded-[10px] bg-[#EEF6FF]/80 dark:bg-slate-800/60"
           />
         ))}
       </div>

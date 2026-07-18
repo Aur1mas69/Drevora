@@ -133,11 +133,11 @@ function HolidayEntitlementTile({
     <div
       className={`rounded-[14px] border px-3 py-2 ${
         tone === 'warning'
-          ? 'border-amber-200 bg-amber-50 text-amber-900'
-          : 'border-[#D3E9FC] bg-white/75 text-[#113C69]'
+          ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+          : 'border-[#D3E9FC] bg-white/75 text-[#113C69] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100'
       }`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF]">
+      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF] dark:text-slate-400">
         {label}
       </p>
       <p className="mt-1 text-sm font-semibold tabular-nums">{value}</p>
@@ -173,20 +173,20 @@ function HolidayEntitlementEditModal({
   }
 
   const inputClass =
-    'mt-1.5 h-10 w-full rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#E8F3FE]'
+    'mt-1.5 h-10 w-full rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#E8F3FE] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus:ring-blue-500/30'
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg rounded-[18px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+        className="w-full max-w-lg rounded-[18px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-950 dark:ring-white/10"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#218EE7]">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#218EE7] dark:text-blue-300">
               Holiday Entitlement
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-[#113C69]">
+            <h3 className="mt-1 text-lg font-semibold text-[#113C69] dark:text-slate-100">
               Edit entitlement
             </h3>
           </div>
@@ -550,7 +550,7 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
           />
           <HolidayEntitlementTile label="Unpaid leave allowed" value={unpaidLeaveAllowed ? 'Yes' : 'No'} />
           {entitlementWorker.holidayEntitlementNotes ? (
-            <div className="rounded-[14px] border border-[#D3E9FC] bg-white/75 px-3 py-2 text-[#113C69] sm:col-span-2 lg:col-span-3">
+            <div className="rounded-[14px] border border-[#D3E9FC] bg-white/75 px-3 py-2 text-[#113C69] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 sm:col-span-2 lg:col-span-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#5499BF]">
                 Notes
               </p>

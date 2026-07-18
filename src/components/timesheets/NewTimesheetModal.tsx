@@ -101,7 +101,7 @@ export function NewTimesheetModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div
-        className="w-full max-w-lg rounded-[18px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 sm:p-6"
+        className="w-full max-w-lg rounded-[18px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-timesheet-title"
@@ -110,7 +110,7 @@ export function NewTimesheetModal({
           <div>
             <h2
               id="new-timesheet-title"
-              className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]"
+              className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100"
             >
               New Timesheet
             </h2>
@@ -124,7 +124,7 @@ export function NewTimesheetModal({
             size="icon"
             onClick={onClose}
             disabled={isSaving}
-            className="size-8 shrink-0 rounded-[10px] text-slate-500 hover:bg-slate-50"
+            className="size-8 shrink-0 rounded-[10px] text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50"
           >
             <X className="size-4" />
           </Button>
@@ -144,8 +144,8 @@ export function NewTimesheetModal({
               onClick={() => setMode(option.value)}
               className={`rounded-[12px] border px-3 py-2.5 text-left transition-colors ${
                 mode === option.value
-                  ? 'border-[#2563EB] bg-[#EEF4FF]'
-                  : 'border-[rgba(75,120,220,0.12)] bg-white hover:bg-[#F8FBFF]'
+                  ? 'border-[#2563EB] bg-[#EEF4FF] dark:border-blue-500 dark:bg-blue-950/40'
+                  : 'border-[rgba(75,120,220,0.12)] bg-white hover:bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70 dark:hover:bg-slate-800/50'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -154,9 +154,9 @@ export function NewTimesheetModal({
                 ) : (
                   <Users className="size-4 text-[#2563EB]" />
                 )}
-                <span className="text-sm font-semibold text-[#2A376F]">{option.label}</span>
+                <span className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">{option.label}</span>
               </div>
-              <p className="mt-1 text-xs text-slate-500">{option.description}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{option.description}</p>
             </button>
           ))}
         </div>
@@ -178,7 +178,7 @@ export function NewTimesheetModal({
         >
           {mode === 'single' ? (
             <label className="block">
-              <span className="text-xs font-semibold text-slate-700">Worker</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Worker</span>
               <select
                 value={driverId}
                 onChange={(event) => setDriverId(event.target.value)}
@@ -199,7 +199,7 @@ export function NewTimesheetModal({
               </select>
             </label>
           ) : (
-            <p className="rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-xs text-slate-600">
+            <p className="rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-xs text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
               {mode === 'allActive'
                 ? `${activeDrivers.length} active workers will receive draft timesheets. Existing records for this week are skipped.`
                 : `${activeDriverRoleCount} active drivers will receive draft timesheets. Existing records for this week are skipped.`}
@@ -207,7 +207,7 @@ export function NewTimesheetModal({
           )}
 
           <label className="block">
-            <span className="text-xs font-semibold text-slate-700">Week</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Week</span>
             <Input
               type="date"
               value={weekStart}
@@ -234,7 +234,7 @@ export function NewTimesheetModal({
               variant="ghost"
               onClick={onClose}
               disabled={isSaving}
-              className="h-9 rounded-[10px] px-3 text-sm font-semibold text-slate-600"
+              className="h-9 rounded-[10px] px-3 text-sm font-semibold text-slate-600 dark:text-slate-300 dark:hover:bg-slate-800/50"
             >
               Cancel
             </Button>

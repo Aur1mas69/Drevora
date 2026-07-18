@@ -20,40 +20,40 @@ export function HolidayDayBreakdownSummary({
   const isUnpaidLeave = balance !== null && balance.holidayDaysDeducted === 0 && balance.calendarDaysTotal > 0
 
   return (
-    <div className="rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#EEF6FF] p-4 shadow-sm shadow-[#BDDDFB]/25">
+    <div className="rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#EEF6FF] p-4 shadow-sm shadow-[#BDDDFB]/25 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:shadow-black/20">
       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#218EE7]">
         Holiday day calculation
       </p>
       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         {balance ? (
           <>
-            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Paid holiday entitlement</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10 dark:bg-slate-900/70 dark:ring-white/10">
+              <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400 dark:text-slate-400">Paid holiday entitlement</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100 dark:text-slate-100">
                 {balance.allowanceKnown ? formatDayCount(balance.annualAllowance) : 'Allowance not set'}
               </dd>
             </div>
-            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Bank holiday entitlement</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+              <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Bank holiday entitlement</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                 {formatDayCount(balance.bankHolidayEntitlementDays)}
               </dd>
             </div>
-            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Used paid holiday</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+              <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Used paid holiday</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                 {formatDayCount(balance.usedHolidayDays)}
               </dd>
             </div>
-            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Pending paid holiday</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+              <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Pending paid holiday</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                 {formatDayCount(balance.pendingHolidayDays)}
               </dd>
             </div>
-            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-              <dt className="text-xs font-medium text-[#5499BF]">Remaining after pending</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+            <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+              <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Remaining after pending</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                 {balance.allowanceKnown && Number.isFinite(balance.remainingAfterPendingRequests)
                   ? formatDayCount(balance.remainingAfterPendingRequests)
                   : 'Allowance not set'}
@@ -61,28 +61,28 @@ export function HolidayDayBreakdownSummary({
             </div>
           </>
         ) : null}
-        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-          <dt className="text-xs font-medium text-[#5499BF]">Calendar days</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+          <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Calendar days</dt>
+          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
             {formatDayCount(breakdown.calendarDaysTotal)}
           </dd>
         </div>
-        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-          <dt className="text-xs font-medium text-[#5499BF]">Holiday days deducted</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+          <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Holiday days deducted</dt>
+          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
             {isUnpaidLeave ? '0 paid days (unpaid)' : formatDayCount(breakdown.holidayDaysDeducted)}
           </dd>
         </div>
-        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-          <dt className="text-xs font-medium text-[#5499BF]">
+        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+          <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
             Weekend / non-working days excluded
           </dt>
-          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69]">
+          <dd className="mt-0.5 font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
             {formatDayCount(breakdown.nonWorkingDaysExcluded)}
           </dd>
         </div>
-        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80">
-          <dt className="text-xs font-medium text-[#5499BF]">Remaining after request</dt>
+        <div className="rounded-[14px] bg-white/75 px-3 py-2 ring-1 ring-[#D3E9FC]/80 dark:bg-slate-900/70 dark:ring-white/10">
+          <dt className="text-xs font-medium text-[#5499BF] dark:text-slate-400">Remaining after request</dt>
           <dd
             className={`mt-0.5 font-semibold tabular-nums ${
               balance &&
@@ -90,7 +90,7 @@ export function HolidayDayBreakdownSummary({
               Number.isFinite(balance.remainingAfterRequest) &&
               balance.remainingAfterRequest < 0
                 ? 'text-rose-700'
-                : 'text-[#113C69]'
+                : 'text-[#113C69] dark:text-slate-100'
             }`}
           >
             {isLoadingBalance
@@ -106,7 +106,7 @@ export function HolidayDayBreakdownSummary({
       {balance &&
       balance.allowanceKnown &&
       balance.bankHolidayEntitlementDays > 0 ? (
-        <p className="mt-3 text-xs leading-5 text-[#5499BF]">
+        <p className="mt-3 text-xs leading-5 text-[#5499BF] dark:text-slate-400">
           Bank holidays are tracked separately and are not included in remaining paid holiday.
         </p>
       ) : null}

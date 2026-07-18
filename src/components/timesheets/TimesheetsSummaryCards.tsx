@@ -6,22 +6,25 @@ const cards = [
     key: 'driversSubmitted' as const,
     label: 'Drivers Submitted',
     icon: Send,
-    accent: 'bg-blue-50 text-blue-700 ring-blue-100',
-    surface: 'bg-[#EEF4FF]',
+    accent:
+      'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/55 dark:text-blue-300 dark:ring-blue-500/35',
+    surface: 'bg-[#EEF4FF] dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/20',
   },
   {
     key: 'pendingApproval' as const,
     label: 'Pending Approval',
     icon: Clock3,
-    accent: 'bg-amber-50 text-amber-700 ring-amber-100',
-    surface: 'bg-[#EAF2FF]',
+    accent:
+      'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/55 dark:text-amber-300 dark:ring-amber-500/35',
+    surface: 'bg-[#EAF2FF] dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/20',
   },
   {
     key: 'approved' as const,
     label: 'Approved',
     icon: CheckCircle2,
-    accent: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-    surface: 'bg-[#E8F1FF]',
+    accent:
+      'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/55 dark:text-emerald-300 dark:ring-emerald-500/35',
+    surface: 'bg-[#E8F1FF] dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/20',
   },
 ]
 
@@ -46,10 +49,10 @@ export function TimesheetsSummaryCards({ stats }: TimesheetsSummaryCardsProps) {
             >
               <Icon className="size-4" strokeWidth={2} />
             </div>
-            <p className="text-2xl font-semibold tracking-[-0.04em] text-[#2A376F]">
+            <p className="text-2xl font-semibold tracking-[-0.04em] text-[#2A376F] dark:text-slate-100">
               {value}
             </p>
-            <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+            <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500 dark:text-slate-400">
               {card.label}
             </p>
           </div>

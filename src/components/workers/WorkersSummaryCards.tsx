@@ -24,112 +24,134 @@ type WorkerKpiVisualStyle = {
 
 const workerKpiVisualStyles = {
   total: {
-    baseGradient: 'bg-gradient-to-br from-[#F5FAFF] via-[#E8F3FE]/95 to-[#D3E9FC]',
-    baseBorder: 'border-[#BFE3F5]',
-    leftBorder: 'border-l-[#218EE7]',
-    baseShadow: 'shadow-[0_8px_24px_rgba(33,142,231,0.14)]',
-    glowClass: 'bg-[#89CFF0]',
-    iconWrap: 'bg-[#E8F3FE] ring-1 ring-[#C5DFFB]',
-    iconClass: 'text-[#0B68BE]',
-    valueClass: 'text-[#113C69]',
-    labelClass: 'text-[#0B68BE]',
-    subtitleClass: 'text-[#3D7A9C]',
-    hoverGradient: 'hover:from-[#E8F3FE] hover:via-[#D3E9FC]/90 hover:to-[#BFE3F5]/80',
-    hoverBorder: 'hover:border-[#89CFF0]',
+    baseGradient:
+      'bg-gradient-to-br from-[#F5FAFF] via-[#E8F3FE]/95 to-[#D3E9FC] dark:from-slate-900 dark:via-slate-900/95 dark:to-blue-950/45',
+    baseBorder: 'border-[#BFE3F5] dark:border-white/10',
+    leftBorder: 'border-l-[#218EE7] dark:border-l-blue-400',
+    baseShadow:
+      'shadow-[0_8px_24px_rgba(33,142,231,0.14)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]',
+    glowClass: 'bg-[#89CFF0] dark:bg-blue-500/35',
+    iconWrap:
+      'bg-[#E8F3FE] ring-1 ring-[#C5DFFB] dark:bg-blue-950/55 dark:ring-blue-500/35',
+    iconClass: 'text-[#0B68BE] dark:text-blue-300',
+    valueClass: 'text-[#113C69] dark:text-slate-100',
+    labelClass: 'text-[#0B68BE] dark:text-blue-300',
+    subtitleClass: 'text-[#3D7A9C] dark:text-slate-400',
+    hoverGradient:
+      'hover:from-[#E8F3FE] hover:via-[#D3E9FC]/90 hover:to-[#BFE3F5]/80 dark:hover:from-slate-800 dark:hover:via-slate-900/95 dark:hover:to-blue-950/55',
+    hoverBorder: 'hover:border-[#89CFF0] dark:hover:border-blue-500/40',
     hoverShadow:
-      'hover:shadow-[0_0_0_1px_rgba(33,142,231,0.2),0_16px_36px_rgba(33,142,231,0.18)]',
-    selectedGradient: 'from-[#E8F3FE] via-[#D3E9FC] to-[#BFE3F5]',
-    selectedBorder: 'border-[#218EE7]',
+      'hover:shadow-[0_0_0_1px_rgba(33,142,231,0.2),0_16px_36px_rgba(33,142,231,0.18)] dark:hover:shadow-[0_0_0_1px_rgba(59,130,246,0.25),0_16px_36px_rgba(0,0,0,0.4)]',
+    selectedGradient:
+      'from-[#E8F3FE] via-[#D3E9FC] to-[#BFE3F5] dark:from-slate-800 dark:via-slate-900 dark:to-blue-950/60',
+    selectedBorder: 'border-[#218EE7] dark:border-blue-400/70',
     selectedShadow:
-      'shadow-[0_0_0_2px_rgba(33,142,231,0.3),0_14px_34px_rgba(33,142,231,0.24)]',
-    selectedRing: 'ring-2 ring-[#89CFF0]/80',
+      'shadow-[0_0_0_2px_rgba(33,142,231,0.3),0_14px_34px_rgba(33,142,231,0.24)] dark:shadow-[0_0_0_2px_rgba(59,130,246,0.28),0_14px_34px_rgba(0,0,0,0.45)]',
+    selectedRing: 'ring-2 ring-[#89CFF0]/80 dark:ring-blue-500/45',
   },
   drivers: {
-    baseGradient: 'bg-gradient-to-br from-cyan-50 via-sky-50/95 to-[#CFFAFE]',
-    baseBorder: 'border-cyan-200',
-    leftBorder: 'border-l-cyan-500',
-    baseShadow: 'shadow-[0_8px_24px_rgba(6,182,212,0.14)]',
-    glowClass: 'bg-cyan-300',
-    iconWrap: 'bg-cyan-100 ring-1 ring-cyan-200',
-    iconClass: 'text-cyan-700',
-    valueClass: 'text-cyan-950',
-    labelClass: 'text-cyan-800',
-    subtitleClass: 'text-cyan-800/75',
-    hoverGradient: 'hover:from-cyan-100/90 hover:via-sky-100/85 hover:to-cyan-200/70',
-    hoverBorder: 'hover:border-cyan-400',
+    baseGradient:
+      'bg-gradient-to-br from-cyan-50 via-sky-50/95 to-[#CFFAFE] dark:from-slate-900 dark:via-slate-900/95 dark:to-cyan-950/40',
+    baseBorder: 'border-cyan-200 dark:border-white/10',
+    leftBorder: 'border-l-cyan-500 dark:border-l-cyan-400',
+    baseShadow:
+      'shadow-[0_8px_24px_rgba(6,182,212,0.14)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]',
+    glowClass: 'bg-cyan-300 dark:bg-cyan-500/35',
+    iconWrap:
+      'bg-cyan-100 ring-1 ring-cyan-200 dark:bg-cyan-950/55 dark:ring-cyan-500/35',
+    iconClass: 'text-cyan-700 dark:text-cyan-300',
+    valueClass: 'text-cyan-950 dark:text-slate-100',
+    labelClass: 'text-cyan-800 dark:text-cyan-300',
+    subtitleClass: 'text-cyan-800/75 dark:text-slate-400',
+    hoverGradient:
+      'hover:from-cyan-100/90 hover:via-sky-100/85 hover:to-cyan-200/70 dark:hover:from-slate-800 dark:hover:via-slate-900/95 dark:hover:to-cyan-950/50',
+    hoverBorder: 'hover:border-cyan-400 dark:hover:border-cyan-500/40',
     hoverShadow:
-      'hover:shadow-[0_0_0_1px_rgba(6,182,212,0.2),0_16px_36px_rgba(6,182,212,0.18)]',
-    selectedGradient: 'from-cyan-100 via-sky-100 to-cyan-200/85',
-    selectedBorder: 'border-cyan-500',
+      'hover:shadow-[0_0_0_1px_rgba(6,182,212,0.2),0_16px_36px_rgba(6,182,212,0.18)] dark:hover:shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_16px_36px_rgba(0,0,0,0.4)]',
+    selectedGradient:
+      'from-cyan-100 via-sky-100 to-cyan-200/85 dark:from-slate-800 dark:via-slate-900 dark:to-cyan-950/55',
+    selectedBorder: 'border-cyan-500 dark:border-cyan-400/70',
     selectedShadow:
-      'shadow-[0_0_0_2px_rgba(6,182,212,0.28),0_14px_34px_rgba(6,182,212,0.22)]',
-    selectedRing: 'ring-2 ring-cyan-300/70',
+      'shadow-[0_0_0_2px_rgba(6,182,212,0.28),0_14px_34px_rgba(6,182,212,0.22)] dark:shadow-[0_0_0_2px_rgba(34,211,238,0.28),0_14px_34px_rgba(0,0,0,0.45)]',
+    selectedRing: 'ring-2 ring-cyan-300/70 dark:ring-cyan-500/45',
   },
   office: {
-    baseGradient: 'bg-gradient-to-br from-violet-50 via-purple-50/95 to-[#EDE9FE]',
-    baseBorder: 'border-violet-200',
-    leftBorder: 'border-l-violet-500',
-    baseShadow: 'shadow-[0_8px_24px_rgba(139,92,246,0.14)]',
-    glowClass: 'bg-violet-300',
-    iconWrap: 'bg-violet-100 ring-1 ring-violet-200',
-    iconClass: 'text-violet-700',
-    valueClass: 'text-violet-950',
-    labelClass: 'text-violet-800',
-    subtitleClass: 'text-violet-800/75',
+    baseGradient:
+      'bg-gradient-to-br from-violet-50 via-purple-50/95 to-[#EDE9FE] dark:from-slate-900 dark:via-slate-900/95 dark:to-violet-950/40',
+    baseBorder: 'border-violet-200 dark:border-white/10',
+    leftBorder: 'border-l-violet-500 dark:border-l-violet-400',
+    baseShadow:
+      'shadow-[0_8px_24px_rgba(139,92,246,0.14)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]',
+    glowClass: 'bg-violet-300 dark:bg-violet-500/35',
+    iconWrap:
+      'bg-violet-100 ring-1 ring-violet-200 dark:bg-violet-950/55 dark:ring-violet-500/35',
+    iconClass: 'text-violet-700 dark:text-violet-300',
+    valueClass: 'text-violet-950 dark:text-slate-100',
+    labelClass: 'text-violet-800 dark:text-violet-300',
+    subtitleClass: 'text-violet-800/75 dark:text-slate-400',
     hoverGradient:
-      'hover:from-violet-100/90 hover:via-purple-100/85 hover:to-violet-200/70',
-    hoverBorder: 'hover:border-violet-400',
+      'hover:from-violet-100/90 hover:via-purple-100/85 hover:to-violet-200/70 dark:hover:from-slate-800 dark:hover:via-slate-900/95 dark:hover:to-violet-950/50',
+    hoverBorder: 'hover:border-violet-400 dark:hover:border-violet-500/40',
     hoverShadow:
-      'hover:shadow-[0_0_0_1px_rgba(139,92,246,0.2),0_16px_36px_rgba(139,92,246,0.18)]',
-    selectedGradient: 'from-violet-100 via-purple-100 to-violet-200/85',
-    selectedBorder: 'border-violet-500',
+      'hover:shadow-[0_0_0_1px_rgba(139,92,246,0.2),0_16px_36px_rgba(139,92,246,0.18)] dark:hover:shadow-[0_0_0_1px_rgba(167,139,250,0.25),0_16px_36px_rgba(0,0,0,0.4)]',
+    selectedGradient:
+      'from-violet-100 via-purple-100 to-violet-200/85 dark:from-slate-800 dark:via-slate-900 dark:to-violet-950/55',
+    selectedBorder: 'border-violet-500 dark:border-violet-400/70',
     selectedShadow:
-      'shadow-[0_0_0_2px_rgba(139,92,246,0.28),0_14px_34px_rgba(139,92,246,0.22)]',
-    selectedRing: 'ring-2 ring-violet-300/70',
+      'shadow-[0_0_0_2px_rgba(139,92,246,0.28),0_14px_34px_rgba(139,92,246,0.22)] dark:shadow-[0_0_0_2px_rgba(167,139,250,0.28),0_14px_34px_rgba(0,0,0,0.45)]',
+    selectedRing: 'ring-2 ring-violet-300/70 dark:ring-violet-500/45',
   },
   garage: {
-    baseGradient: 'bg-gradient-to-br from-orange-50 via-amber-50/95 to-[#FFEDD5]',
-    baseBorder: 'border-orange-200',
-    leftBorder: 'border-l-orange-500',
-    baseShadow: 'shadow-[0_8px_24px_rgba(249,115,22,0.14)]',
-    glowClass: 'bg-orange-300',
-    iconWrap: 'bg-orange-100 ring-1 ring-orange-200',
-    iconClass: 'text-orange-700',
-    valueClass: 'text-orange-950',
-    labelClass: 'text-orange-800',
-    subtitleClass: 'text-orange-800/75',
+    baseGradient:
+      'bg-gradient-to-br from-orange-50 via-amber-50/95 to-[#FFEDD5] dark:from-slate-900 dark:via-slate-900/95 dark:to-orange-950/40',
+    baseBorder: 'border-orange-200 dark:border-white/10',
+    leftBorder: 'border-l-orange-500 dark:border-l-orange-400',
+    baseShadow:
+      'shadow-[0_8px_24px_rgba(249,115,22,0.14)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]',
+    glowClass: 'bg-orange-300 dark:bg-orange-500/35',
+    iconWrap:
+      'bg-orange-100 ring-1 ring-orange-200 dark:bg-orange-950/55 dark:ring-orange-500/35',
+    iconClass: 'text-orange-700 dark:text-orange-300',
+    valueClass: 'text-orange-950 dark:text-slate-100',
+    labelClass: 'text-orange-800 dark:text-orange-300',
+    subtitleClass: 'text-orange-800/75 dark:text-slate-400',
     hoverGradient:
-      'hover:from-orange-100/90 hover:via-amber-100/85 hover:to-orange-200/70',
-    hoverBorder: 'hover:border-orange-400',
+      'hover:from-orange-100/90 hover:via-amber-100/85 hover:to-orange-200/70 dark:hover:from-slate-800 dark:hover:via-slate-900/95 dark:hover:to-orange-950/50',
+    hoverBorder: 'hover:border-orange-400 dark:hover:border-orange-500/40',
     hoverShadow:
-      'hover:shadow-[0_0_0_1px_rgba(249,115,22,0.2),0_16px_36px_rgba(249,115,22,0.18)]',
-    selectedGradient: 'from-orange-100 via-amber-100 to-orange-200/85',
-    selectedBorder: 'border-orange-500',
+      'hover:shadow-[0_0_0_1px_rgba(249,115,22,0.2),0_16px_36px_rgba(249,115,22,0.18)] dark:hover:shadow-[0_0_0_1px_rgba(251,146,60,0.25),0_16px_36px_rgba(0,0,0,0.4)]',
+    selectedGradient:
+      'from-orange-100 via-amber-100 to-orange-200/85 dark:from-slate-800 dark:via-slate-900 dark:to-orange-950/55',
+    selectedBorder: 'border-orange-500 dark:border-orange-400/70',
     selectedShadow:
-      'shadow-[0_0_0_2px_rgba(249,115,22,0.28),0_14px_34px_rgba(249,115,22,0.22)]',
-    selectedRing: 'ring-2 ring-orange-300/70',
+      'shadow-[0_0_0_2px_rgba(249,115,22,0.28),0_14px_34px_rgba(249,115,22,0.22)] dark:shadow-[0_0_0_2px_rgba(251,146,60,0.28),0_14px_34px_rgba(0,0,0,0.45)]',
+    selectedRing: 'ring-2 ring-orange-300/70 dark:ring-orange-500/45',
   },
   managers: {
-    baseGradient: 'bg-gradient-to-br from-emerald-50 via-teal-50/95 to-[#D1FAE5]',
-    baseBorder: 'border-emerald-200',
-    leftBorder: 'border-l-emerald-500',
-    baseShadow: 'shadow-[0_8px_24px_rgba(16,185,129,0.14)]',
-    glowClass: 'bg-emerald-300',
-    iconWrap: 'bg-emerald-100 ring-1 ring-emerald-200',
-    iconClass: 'text-emerald-700',
-    valueClass: 'text-emerald-950',
-    labelClass: 'text-emerald-800',
-    subtitleClass: 'text-emerald-800/75',
+    baseGradient:
+      'bg-gradient-to-br from-emerald-50 via-teal-50/95 to-[#D1FAE5] dark:from-slate-900 dark:via-slate-900/95 dark:to-emerald-950/40',
+    baseBorder: 'border-emerald-200 dark:border-white/10',
+    leftBorder: 'border-l-emerald-500 dark:border-l-emerald-400',
+    baseShadow:
+      'shadow-[0_8px_24px_rgba(16,185,129,0.14)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]',
+    glowClass: 'bg-emerald-300 dark:bg-emerald-500/35',
+    iconWrap:
+      'bg-emerald-100 ring-1 ring-emerald-200 dark:bg-emerald-950/55 dark:ring-emerald-500/35',
+    iconClass: 'text-emerald-700 dark:text-emerald-300',
+    valueClass: 'text-emerald-950 dark:text-slate-100',
+    labelClass: 'text-emerald-800 dark:text-emerald-300',
+    subtitleClass: 'text-emerald-800/75 dark:text-slate-400',
     hoverGradient:
-      'hover:from-emerald-100/90 hover:via-teal-100/85 hover:to-emerald-200/70',
-    hoverBorder: 'hover:border-emerald-400',
+      'hover:from-emerald-100/90 hover:via-teal-100/85 hover:to-emerald-200/70 dark:hover:from-slate-800 dark:hover:via-slate-900/95 dark:hover:to-emerald-950/50',
+    hoverBorder: 'hover:border-emerald-400 dark:hover:border-emerald-500/40',
     hoverShadow:
-      'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.2),0_16px_36px_rgba(16,185,129,0.18)]',
-    selectedGradient: 'from-emerald-100 via-teal-100 to-emerald-200/85',
-    selectedBorder: 'border-emerald-500',
+      'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.2),0_16px_36px_rgba(16,185,129,0.18)] dark:hover:shadow-[0_0_0_1px_rgba(52,211,153,0.25),0_16px_36px_rgba(0,0,0,0.4)]',
+    selectedGradient:
+      'from-emerald-100 via-teal-100 to-emerald-200/85 dark:from-slate-800 dark:via-slate-900 dark:to-emerald-950/55',
+    selectedBorder: 'border-emerald-500 dark:border-emerald-400/70',
     selectedShadow:
-      'shadow-[0_0_0_2px_rgba(16,185,129,0.28),0_14px_34px_rgba(16,185,129,0.22)]',
-    selectedRing: 'ring-2 ring-emerald-300/70',
+      'shadow-[0_0_0_2px_rgba(16,185,129,0.28),0_14px_34px_rgba(16,185,129,0.22)] dark:shadow-[0_0_0_2px_rgba(52,211,153,0.28),0_14px_34px_rgba(0,0,0,0.45)]',
+    selectedRing: 'ring-2 ring-emerald-300/70 dark:ring-emerald-500/45',
   },
 } satisfies Record<WorkerRoleQuickFilter, WorkerKpiVisualStyle>
 
@@ -210,7 +232,7 @@ function WorkerKpiCard({
     style.leftBorder,
     style.baseShadow,
     interactive
-      ? `cursor-pointer hover:-translate-y-[3px] active:-translate-y-px active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/45 focus-visible:ring-offset-2 ${style.hoverGradient} ${style.hoverBorder} ${style.hoverShadow}`
+      ? `cursor-pointer hover:-translate-y-[3px] active:-translate-y-px active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/45 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${style.hoverGradient} ${style.hoverBorder} ${style.hoverShadow}`
       : '',
     isActive
       ? `bg-gradient-to-br ${style.selectedGradient} ${style.selectedBorder} ${style.selectedShadow} ${style.selectedRing} -translate-y-[2px]`
@@ -231,7 +253,7 @@ function WorkerKpiCard({
       <div className="relative flex items-start gap-3">
         <div
           className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-200 group-hover:brightness-[1.03] sm:size-11 sm:rounded-2xl ${style.iconWrap} ${
-            isActive ? 'ring-2 ring-white/70' : ''
+            isActive ? 'ring-2 ring-white/70 dark:ring-slate-600/80' : ''
           }`}
         >
           <Icon className={`size-4 sm:size-[1.125rem] ${style.iconClass}`} strokeWidth={2.1} />
@@ -239,7 +261,7 @@ function WorkerKpiCard({
 
         <div className="min-w-0 flex-1">
           {isLoading ? (
-            <div className="h-8 w-12 animate-pulse rounded-md bg-white/60" />
+            <div className="h-8 w-12 animate-pulse rounded-md bg-white/60 dark:bg-slate-700/60" />
           ) : (
             <p
               className={`text-2xl font-bold leading-none tracking-[-0.04em] tabular-nums sm:text-3xl ${style.valueClass}`}

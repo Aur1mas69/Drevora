@@ -31,9 +31,9 @@ function formatDate(value: string | null): string {
 
 function DetailField({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3">
-      <p className={vehicleProfileFieldLabelClass}>{label}</p>
-      <p className={vehicleProfileFieldValueClass}>{value}</p>
+    <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3 dark:border-white/10 dark:bg-slate-900/70">
+      <p className={`${vehicleProfileFieldLabelClass} dark:text-slate-400`}>{label}</p>
+      <p className={`${vehicleProfileFieldValueClass} dark:text-slate-100`}>{value}</p>
     </div>
   )
 }
@@ -50,8 +50,8 @@ function ExpiryField({ label, expiry }: { label: string; expiry: string | null }
           : 'text-[#5499BF]'
 
   return (
-    <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3">
-      <p className={vehicleProfileFieldLabelClass}>{label}</p>
+    <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3 dark:border-white/10 dark:bg-slate-900/70">
+      <p className={`${vehicleProfileFieldLabelClass} dark:text-slate-400`}>{label}</p>
       <p className={`mt-1 text-sm font-semibold tabular-nums ${toneClass}`}>{formatDate(expiry)}</p>
     </div>
   )
@@ -126,7 +126,7 @@ export function VehicleProfileOverviewTab({
                 >
                   {nextEvent.label === 'Off Road' ? 'OFF ROAD' : nextEvent.label}
                 </span>
-                <span className="text-sm font-semibold tabular-nums text-[#113C69]">
+                <span className="text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
                   {formatShortDate(nextEvent.startDate)}
                 </span>
                 <span className="text-xs font-semibold text-[#218EE7]">
@@ -147,8 +147,8 @@ export function VehicleProfileOverviewTab({
           <DetailField label="Model" value={vehicle.model || 'Not set'} />
           <DetailField label="Year" value={vehicle.year ?? 'Not set'} />
           <DetailField label="Assigned worker" value={assignedWorkerLabel} />
-          <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3">
-            <p className={vehicleProfileFieldLabelClass}>Current status</p>
+          <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3 dark:border-white/10 dark:bg-slate-900/70">
+            <p className={`${vehicleProfileFieldLabelClass} dark:text-slate-400`}>Current status</p>
             <div className="mt-2">
               <VehicleStatusBadge status={currentStatus} />
             </div>
@@ -158,9 +158,9 @@ export function VehicleProfileOverviewTab({
           <ExpiryField label="Tax expiry" expiry={vehicle.roadTaxExpiry} />
           <ExpiryField label="Tachograph calibration" expiry={vehicle.tachographExpiry} />
           {vehicle.notes ? (
-            <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3 sm:col-span-2 lg:col-span-3">
-              <p className={vehicleProfileFieldLabelClass}>Notes</p>
-              <p className="mt-1 text-sm font-medium leading-relaxed text-[#113C69]">
+            <div className="rounded-[14px] border border-[#D3E9FC]/80 bg-white/75 px-3.5 py-3 dark:border-white/10 dark:bg-slate-900/70 sm:col-span-2 lg:col-span-3">
+              <p className={`${vehicleProfileFieldLabelClass} dark:text-slate-400`}>Notes</p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-[#113C69] dark:text-slate-100">
                 {vehicle.notes}
               </p>
             </div>

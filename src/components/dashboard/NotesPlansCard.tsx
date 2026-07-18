@@ -51,7 +51,7 @@ function sortNotes(rows: DashboardNote[]): DashboardNote[] {
 }
 
 const notesPlansCardClass =
-  'relative overflow-visible rounded-[18px] border border-[#FDA4AF]/70 bg-[linear-gradient(145deg,rgba(255,251,251,0.98)_0%,rgba(255,241,242,0.96)_45%,rgba(255,228,230,0.92)_100%)] p-3.5 shadow-[0_8px_22px_rgba(244,63,94,0.10)] transition-all duration-[200ms] ease-out hover:-translate-y-[2px] hover:border-[#FB7185]/80 hover:shadow-[0_12px_28px_rgba(244,63,94,0.14)] active:-translate-y-px active:scale-[0.99] sm:p-4'
+  'relative overflow-visible rounded-[18px] border border-[#FDA4AF]/70 bg-[linear-gradient(145deg,rgba(255,251,251,0.98)_0%,rgba(255,241,242,0.96)_45%,rgba(255,228,230,0.92)_100%)] p-3.5 shadow-[0_8px_22px_rgba(244,63,94,0.10)] transition-all duration-[200ms] ease-out hover:-translate-y-[2px] hover:border-[#FB7185]/80 hover:shadow-[0_12px_28px_rgba(244,63,94,0.14)] active:-translate-y-px active:scale-[0.99] dark:border-rose-900/45 dark:bg-[linear-gradient(145deg,rgba(30,41,59,0.97)_0%,rgba(22,32,52,0.98)_52%,rgba(55,25,35,0.42)_100%)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)] dark:hover:border-rose-700/50 dark:hover:shadow-[0_12px_28px_rgba(0,0,0,0.42)] sm:p-4'
 
 function DeleteNoteDialog({
   note,
@@ -76,21 +76,21 @@ function DeleteNoteDialog({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div
-        className="w-full max-w-md rounded-[20px] border border-[#FECDD3] bg-[#FFFBFB] p-5 shadow-[0_30px_80px_rgba(190,18,60,0.14)] sm:p-6"
+        className="w-full max-w-md rounded-[20px] border border-[#FECDD3] bg-[#FFFBFB] p-5 shadow-[0_30px_80px_rgba(190,18,60,0.14)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-dashboard-note-title"
       >
         <h2
           id="delete-dashboard-note-title"
-          className="text-xl font-semibold leading-snug tracking-[-0.03em] text-[#163A63]"
+          className="text-xl font-semibold leading-snug tracking-[-0.03em] text-[#163A63] dark:text-slate-100"
         >
           Delete note?
         </h2>
-        <p className="mt-2 text-sm font-medium leading-6 text-[#9F1239]/75">
+        <p className="mt-2 text-sm font-medium leading-6 text-[#9F1239]/75 dark:text-slate-400">
           This reminder will be permanently removed.
         </p>
-        <p className="mt-4 rounded-[14px] border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] px-4 py-3 text-sm font-medium leading-snug text-[#163A63]">
+        <p className="mt-4 rounded-[14px] border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] px-4 py-3 text-sm font-medium leading-snug text-[#163A63] dark:border-white/10 dark:border-l-rose-500 dark:bg-slate-800/60 dark:text-slate-100">
           {note.note}
         </p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -131,7 +131,7 @@ function CompactNotePreview({
             onOpen(note)
           }
         }}
-        className="group/note relative flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-[#FECDD3]/80 border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2]/90 px-2.5 py-2 text-left shadow-[0_2px_8px_rgba(244,63,94,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185]/70 hover:bg-[#FFE4E6]/90 hover:shadow-[0_8px_18px_rgba(244,63,94,0.10)]"
+        className="group/note relative flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-[#FECDD3]/80 border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2]/90 px-2.5 py-2 text-left shadow-[0_2px_8px_rgba(244,63,94,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185]/70 hover:bg-[#FFE4E6]/90 hover:shadow-[0_8px_18px_rgba(244,63,94,0.10)] dark:border-white/10 dark:border-l-rose-500 dark:bg-slate-800/60 dark:hover:bg-slate-800/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
       >
         <button
           type="button"
@@ -142,14 +142,14 @@ function CompactNotePreview({
             onToggleDone(note)
           }}
           className={[
-            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-[#FDA4AF]/80 bg-white text-transparent transition-colors hover:border-[#F43F5E] group-hover/note:text-[#E11D48]',
+            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-[#FDA4AF]/80 bg-white text-transparent transition-colors hover:border-[#F43F5E] group-hover/note:text-[#E11D48] dark:border-white/10 dark:bg-slate-900/70 dark:group-hover/note:text-rose-400',
             isBusy ? 'cursor-not-allowed opacity-60' : '',
           ].join(' ')}
         >
           <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
         </button>
 
-        <p className="min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug text-[#163A63]">
+        <p className="min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug text-[#163A63] dark:text-slate-100">
           {note.note}
         </p>
 
@@ -161,7 +161,7 @@ function CompactNotePreview({
             event.stopPropagation()
             onDelete(note)
           }}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#9F1239]/70 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#9F1239]/70 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:text-rose-400/70 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
         >
           <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
         </button>
@@ -249,20 +249,20 @@ function NotesPlansModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/45 px-0 py-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8">
       <div
-        className="flex h-[min(92dvh,100%)] w-full max-w-[960px] flex-col overflow-hidden rounded-t-[20px] border border-[#C6DFF4] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FBFF_100%)] shadow-[0_30px_80px_rgba(30,64,175,0.18)] sm:h-auto sm:max-h-[min(85dvh,52rem)] sm:rounded-[20px]"
+        className="flex h-[min(92dvh,100%)] w-full max-w-[960px] flex-col overflow-hidden rounded-t-[20px] border border-[#C6DFF4] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FBFF_100%)] shadow-[0_30px_80px_rgba(30,64,175,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:h-auto sm:max-h-[min(85dvh,52rem)] sm:rounded-[20px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="notes-plans-modal-title"
       >
-        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#D2E5F5] px-4 py-4 sm:px-6">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#D2E5F5] px-4 py-4 dark:border-white/10 sm:px-6">
           <div className="min-w-0">
             <h2
               id="notes-plans-modal-title"
-              className="text-lg font-semibold tracking-[-0.02em] text-[#163A63] sm:text-xl"
+              className="text-lg font-semibold tracking-[-0.02em] text-[#163A63] dark:text-slate-100 sm:text-xl"
             >
               Notes / Plans
             </h2>
-            <p className="mt-0.5 text-xs font-medium text-[#5D7C9D] sm:text-[13px]">
+            <p className="mt-0.5 text-xs font-medium text-[#5D7C9D] dark:text-slate-400 sm:text-[13px]">
               {openCount} open note{openCount === 1 ? '' : 's'}
             </p>
           </div>
@@ -271,7 +271,7 @@ function NotesPlansModal({
             <button
               type="button"
               onClick={onToggleAdding}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#C6DFF4] bg-[#F0F7FF] px-2.5 py-1.5 text-xs font-semibold text-[#2563EB] transition-colors hover:bg-[#E0EFFF]"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#C6DFF4] bg-[#F0F7FF] px-2.5 py-1.5 text-xs font-semibold text-[#2563EB] transition-colors hover:bg-[#E0EFFF] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300 dark:hover:bg-slate-800"
             >
               <Plus className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
               Add note
@@ -280,7 +280,7 @@ function NotesPlansModal({
               type="button"
               aria-label="Close notes"
               onClick={onClose}
-              className="inline-flex size-9 items-center justify-center rounded-lg border border-[#D2E5F5] bg-white text-[#5D7C9D] transition-colors hover:bg-[#F0F7FF] hover:text-[#163A63]"
+              className="inline-flex size-9 items-center justify-center rounded-lg border border-[#D2E5F5] bg-white text-[#5D7C9D] transition-colors hover:bg-[#F0F7FF] hover:text-[#163A63] dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             >
               <X className="size-4" strokeWidth={2.2} aria-hidden="true" />
             </button>
@@ -288,20 +288,20 @@ function NotesPlansModal({
         </div>
 
         {isAdding ? (
-          <div className="shrink-0 border-b border-[#D2E5F5] bg-[#F8FBFF] px-4 py-3 sm:px-6">
+          <div className="shrink-0 border-b border-[#D2E5F5] bg-[#F8FBFF] px-4 py-3 dark:border-white/10 dark:bg-slate-800/40 sm:px-6">
             <textarea
               value={newNoteText}
               onChange={(event) => onNewNoteTextChange(event.target.value)}
               rows={3}
               placeholder="Write a quick reminder…"
-              className="w-full resize-none rounded-xl border border-[#C6DFF4] bg-white px-3 py-2 text-sm text-[#163A63] outline-none placeholder:text-[#5D7C9D]/55 focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+              className="w-full resize-none rounded-xl border border-[#C6DFF4] bg-white px-3 py-2 text-sm text-[#163A63] outline-none placeholder:text-[#5D7C9D]/55 focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60 dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/25"
             />
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
                 disabled={isSavingNew}
                 onClick={onCancelAdding}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE] dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -326,16 +326,16 @@ function NotesPlansModal({
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
           {notes.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#C6DFF4] bg-[#F8FBFF]/80 px-4 py-12 text-center">
-              <p className="text-sm font-medium text-[#5D7C9D]">No notes yet. Add your first plan.</p>
+            <div className="rounded-xl border border-dashed border-[#C6DFF4] bg-[#F8FBFF]/80 px-4 py-12 text-center dark:border-white/10 dark:bg-slate-800/40">
+              <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">No notes yet. Add your first plan.</p>
             </div>
           ) : (
             <>
               {/* Desktop / tablet table */}
-              <div className="hidden overflow-hidden rounded-[16px] border border-[#D2E5F5] md:block">
+              <div className="hidden overflow-hidden rounded-[16px] border border-[#D2E5F5] dark:border-white/10 md:block">
                 <table className="w-full table-fixed border-collapse text-left">
-                  <thead className="bg-[#F0F7FF]">
-                    <tr className="border-b border-[#D2E5F5] text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D]">
+                  <thead className="bg-[#F0F7FF] dark:bg-slate-800/60">
+                    <tr className="border-b border-[#D2E5F5] text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5D7C9D] dark:border-white/10 dark:text-slate-400">
                       <th className="w-[100px] px-3 py-3">Status</th>
                       <th className="px-3 py-3">Note / Plan</th>
                       <th className="w-[140px] px-3 py-3">Created</th>
@@ -356,12 +356,12 @@ function NotesPlansModal({
                             rowRefs.current[note.id] = node
                           }}
                           className={[
-                            'align-top border-b border-[#E8F3FE] last:border-b-0 transition-colors',
+                            'align-top border-b border-[#E8F3FE] last:border-b-0 transition-colors dark:border-white/10',
                             isFocused
-                              ? 'bg-[#FFF1F2] ring-2 ring-inset ring-[#FB7185]/70'
+                              ? 'bg-[#FFF1F2] ring-2 ring-inset ring-[#FB7185]/70 dark:bg-rose-950/30 dark:ring-rose-500/40'
                               : isDone
-                                ? 'bg-[#FAFCFF]/80'
-                                : 'bg-white',
+                                ? 'bg-[#FAFCFF]/80 dark:bg-slate-800/50'
+                                : 'bg-white dark:bg-slate-900/70',
                           ].join(' ')}
                         >
                           <td className="px-3 py-3">
@@ -369,8 +369,8 @@ function NotesPlansModal({
                               className={[
                                 'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]',
                                 isDone
-                                  ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80'
-                                  : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80',
+                                  ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80 dark:bg-slate-700/70 dark:text-slate-300 dark:ring-white/10'
+                                  : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80 dark:bg-rose-950/55 dark:text-rose-300 dark:ring-rose-800/50',
                               ].join(' ')}
                             >
                               {isDone ? 'Done' : 'Open'}
@@ -383,14 +383,14 @@ function NotesPlansModal({
                                   value={editText}
                                   onChange={(event) => onEditTextChange(event.target.value)}
                                   rows={3}
-                                  className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+                                  className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60 dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/25"
                                 />
                                 <div className="mt-2 flex justify-end gap-2">
                                   <button
                                     type="button"
                                     disabled={isSavingEdit}
                                     onClick={onCancelEdit}
-                                    className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                                    className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE] dark:text-slate-400 dark:hover:bg-slate-800"
                                   >
                                     Cancel
                                   </button>
@@ -407,7 +407,7 @@ function NotesPlansModal({
                             ) : (
                               <p
                                 className={[
-                                  'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63]',
+                                  'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63] dark:text-slate-100',
                                   isDone ? 'line-through decoration-[#94A3B8]/60' : '',
                                 ].join(' ')}
                               >
@@ -415,10 +415,10 @@ function NotesPlansModal({
                               </p>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D]">
+                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
                             {formatDateTime(note.createdAt)}
                           </td>
-                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D]">
+                          <td className="px-3 py-3 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
                             {formatDateTime(note.updatedAt)}
                           </td>
                           <td className="px-3 py-3">
@@ -427,7 +427,7 @@ function NotesPlansModal({
                                 type="button"
                                 aria-label="View note"
                                 onClick={() => onFocusNote(note.id)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63]"
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                               >
                                 <Eye className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                               </button>
@@ -436,7 +436,7 @@ function NotesPlansModal({
                                 aria-label={isDone ? 'Reopen note' : 'Mark complete'}
                                 disabled={busyNoteId === note.id}
                                 onClick={() => onToggleDone(note)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400"
                               >
                                 <Check className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
                               </button>
@@ -445,7 +445,7 @@ function NotesPlansModal({
                                 aria-label="Edit note"
                                 disabled={busyNoteId === note.id}
                                 onClick={() => onStartEdit(note)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63] disabled:opacity-50"
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-[#E8F3FE] hover:text-[#163A63] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                               >
                                 <Pencil className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                               </button>
@@ -454,7 +454,7 @@ function NotesPlansModal({
                                 aria-label="Delete note"
                                 disabled={busyNoteId === note.id}
                                 onClick={() => onDelete(note)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
                               >
                                 <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                               </button>
@@ -481,8 +481,8 @@ function NotesPlansModal({
                         rowRefs.current[note.id] = node
                       }}
                       className={[
-                        'rounded-xl border border-[#D2E5F5] bg-white p-3 shadow-sm transition-colors',
-                        isFocused ? 'border-[#FB7185] bg-[#FFF1F2] ring-2 ring-[#FB7185]/40' : '',
+                        'rounded-xl border border-[#D2E5F5] bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none',
+                        isFocused ? 'border-[#FB7185] bg-[#FFF1F2] ring-2 ring-[#FB7185]/40 dark:border-rose-500/50 dark:bg-rose-950/30 dark:ring-rose-500/30' : '',
                       ].join(' ')}
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
@@ -490,8 +490,8 @@ function NotesPlansModal({
                           className={[
                             'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]',
                             isDone
-                              ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80'
-                              : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80',
+                              ? 'bg-stone-100 text-stone-500 ring-1 ring-stone-200/80 dark:bg-slate-700/70 dark:text-slate-300 dark:ring-white/10'
+                              : 'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECDD3]/80 dark:bg-rose-950/55 dark:text-rose-300 dark:ring-rose-800/50',
                           ].join(' ')}
                         >
                           {isDone ? 'Done' : 'Open'}
@@ -501,7 +501,7 @@ function NotesPlansModal({
                             type="button"
                             aria-label="View note"
                             onClick={() => onFocusNote(note.id)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE] dark:text-slate-400 dark:hover:bg-slate-800"
                           >
                             <Eye className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                           </button>
@@ -510,7 +510,7 @@ function NotesPlansModal({
                             aria-label={isDone ? 'Reopen note' : 'Mark complete'}
                             disabled={busyNoteId === note.id}
                             onClick={() => onToggleDone(note)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50"
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400"
                           >
                             <Check className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
                           </button>
@@ -519,7 +519,7 @@ function NotesPlansModal({
                             aria-label="Edit note"
                             disabled={busyNoteId === note.id}
                             onClick={() => onStartEdit(note)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE] disabled:opacity-50"
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-[#E8F3FE] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
                           >
                             <Pencil className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                           </button>
@@ -528,7 +528,7 @@ function NotesPlansModal({
                             aria-label="Delete note"
                             disabled={busyNoteId === note.id}
                             onClick={() => onDelete(note)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-[#5D7C9D] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
                           >
                             <Trash2 className="size-3.5" strokeWidth={2.1} aria-hidden="true" />
                           </button>
@@ -541,14 +541,14 @@ function NotesPlansModal({
                             value={editText}
                             onChange={(event) => onEditTextChange(event.target.value)}
                             rows={3}
-                            className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60"
+                            className="w-full resize-y rounded-lg border border-[#C6DFF4] bg-white px-2.5 py-2 text-sm text-[#163A63] outline-none focus:border-[#93C5FD] focus:ring-2 focus:ring-[#BFDBFE]/60 dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/25"
                           />
                           <div className="mt-2 flex justify-end gap-2">
                             <button
                               type="button"
                               disabled={isSavingEdit}
                               onClick={onCancelEdit}
-                              className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE]"
+                              className="rounded-lg px-2 py-1 text-xs font-semibold text-[#5D7C9D] hover:bg-[#E8F3FE] dark:text-slate-400 dark:hover:bg-slate-800"
                             >
                               Cancel
                             </button>
@@ -565,7 +565,7 @@ function NotesPlansModal({
                       ) : (
                         <p
                           className={[
-                            'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63]',
+                            'whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-[#163A63] dark:text-slate-100',
                             isDone ? 'line-through decoration-[#94A3B8]/60' : '',
                           ].join(' ')}
                         >
@@ -573,7 +573,7 @@ function NotesPlansModal({
                         </p>
                       )}
 
-                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#5D7C9D]">
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#5D7C9D] dark:text-slate-400">
                         <span>Created {formatDateTime(note.createdAt)}</span>
                         <span>Updated {formatDateTime(note.updatedAt)}</span>
                       </div>
@@ -768,20 +768,20 @@ export function NotesPlansCard() {
 
         <div className="mb-2.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#FFE4E6] ring-1 ring-[#FECDD3]/90">
-                <StickyNote className="size-3.5 text-[#E11D48]" strokeWidth={2.1} aria-hidden="true" />
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#FFE4E6] ring-1 ring-[#FECDD3]/90 dark:bg-rose-950/55 dark:ring-rose-800/50">
+                <StickyNote className="size-3.5 text-[#E11D48] dark:text-rose-400" strokeWidth={2.1} aria-hidden="true" />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <h3 className="text-[13px] font-semibold tracking-[-0.02em] text-[#163A63] sm:text-sm">
+                  <h3 className="text-[13px] font-semibold tracking-[-0.02em] text-[#163A63] dark:text-slate-100 sm:text-sm">
                     Notes / Plans
                   </h3>
                   {openCount > 0 ? (
-                    <span className="text-[11px] font-semibold tabular-nums text-[#BE123C]">
+                    <span className="text-[11px] font-semibold tabular-nums text-[#BE123C] dark:text-rose-400">
                       {openCount} open
                     </span>
                   ) : (
-                    <span className="text-[11px] text-[#5D7C9D]">No open notes</span>
+                    <span className="text-[11px] text-[#5D7C9D] dark:text-slate-400">No open notes</span>
                   )}
                 </div>
               </div>
@@ -791,7 +791,7 @@ export function NotesPlansCard() {
               <button
                 type="button"
                 onClick={() => openModal()}
-                className="text-[11px] font-semibold text-[#E11D48] transition-colors hover:text-[#BE123C] hover:underline"
+                className="text-[11px] font-semibold text-[#E11D48] transition-colors hover:text-[#BE123C] hover:underline dark:text-rose-400 dark:hover:text-rose-300"
               >
                 View all
               </button>
@@ -803,7 +803,7 @@ export function NotesPlansCard() {
                   setEditingNote(null)
                   setEditText('')
                 }}
-                className="inline-flex size-8 items-center justify-center rounded-lg border border-[#FDA4AF]/80 bg-[#FFF1F2] text-[#BE123C] shadow-sm shadow-rose-500/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185] hover:bg-[#FFE4E6] active:translate-y-0 active:scale-[0.98]"
+                className="inline-flex size-8 items-center justify-center rounded-lg border border-[#FDA4AF]/80 bg-[#FFF1F2] text-[#BE123C] shadow-sm shadow-rose-500/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185] hover:bg-[#FFE4E6] active:translate-y-0 active:scale-[0.98] dark:border-white/10 dark:bg-slate-800/60 dark:text-rose-400 dark:hover:bg-slate-800"
               >
                 <Plus className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
               </button>
@@ -811,13 +811,13 @@ export function NotesPlansCard() {
           </div>
 
           {isAdding ? (
-            <div className="mb-2.5 rounded-xl border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] p-2.5 shadow-sm">
+            <div className="mb-2.5 rounded-xl border border-[#FECDD3] border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2] p-2.5 shadow-sm dark:border-white/10 dark:border-l-rose-500 dark:bg-slate-800/60">
               <textarea
                 value={newNoteText}
                 onChange={(event) => setNewNoteText(event.target.value)}
                 rows={2}
                 placeholder="Write a quick reminder…"
-                className="w-full resize-none rounded-lg border border-[#FECDD3] bg-white/95 px-2.5 py-1.5 text-[13px] text-[#163A63] outline-none placeholder:text-[#9F1239]/40 focus:border-[#FB7185] focus:ring-2 focus:ring-[#FECDD3]/50"
+                className="w-full resize-none rounded-lg border border-[#FECDD3] bg-white/95 px-2.5 py-1.5 text-[13px] text-[#163A63] outline-none placeholder:text-[#9F1239]/40 focus:border-[#FB7185] focus:ring-2 focus:ring-[#FECDD3]/50 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-rose-500/50 dark:focus:ring-rose-500/25"
               />
               <div className="mt-2 flex justify-end gap-2">
                 <button
@@ -827,7 +827,7 @@ export function NotesPlansCard() {
                     setIsAdding(false)
                     setNewNoteText('')
                   }}
-                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#9F1239]/80 hover:bg-[#FFE4E6]"
+                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#9F1239]/80 hover:bg-[#FFE4E6] dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
@@ -851,7 +851,7 @@ export function NotesPlansCard() {
           ) : null}
 
           {loadError ? (
-            <p className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700">
+            <p className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
               {loadError}
             </p>
           ) : null}
@@ -862,13 +862,13 @@ export function NotesPlansCard() {
                 {Array.from({ length: 2 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-11 animate-pulse rounded-xl border border-[#FECDD3]/60 bg-[#FFE4E6]/50"
+                    className="h-11 animate-pulse rounded-xl border border-[#FECDD3]/60 bg-[#FFE4E6]/50 dark:border-white/10 dark:bg-slate-800/50"
                   />
                 ))}
               </div>
             ) : openCount === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#FDA4AF]/60 bg-[#FFF1F2]/70 px-3 py-4 text-center">
-                <p className="text-[12px] font-medium text-[#5D7C9D]">No open notes</p>
+              <div className="rounded-xl border border-dashed border-[#FDA4AF]/60 bg-[#FFF1F2]/70 px-3 py-4 text-center dark:border-white/10 dark:bg-slate-800/40">
+                <p className="text-[12px] font-medium text-[#5D7C9D] dark:text-slate-400">No open notes</p>
               </div>
             ) : (
               <ul className="space-y-2">

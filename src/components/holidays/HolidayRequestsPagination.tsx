@@ -22,18 +22,18 @@ export function HolidayRequestsPagination({
   const to = Math.min(page * pageSize, totalCount)
 
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-[#D3E9FC]/70 bg-[#F8FBFF]/80 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-medium text-[#5499BF]">
+    <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-[#D3E9FC]/70 bg-[#F8FBFF]/80 px-4 py-2.5 dark:border-white/10 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
         Showing {from}–{to} of {totalCount}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF]">
+        <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF] dark:text-slate-400">
           Rows
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70"
+            className="h-8 rounded-[10px] border border-[#C5DFFB]/80 bg-white px-2 text-xs font-medium text-[#113C69] focus-visible:border-[#89CFF0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:ring-blue-500/30"
           >
             {HOLIDAY_PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -50,12 +50,12 @@ export function HolidayRequestsPagination({
             size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF]"
+            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF] dark:text-blue-300 dark:hover:bg-slate-800/50"
             aria-label="Previous page"
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-[#113C69]">
+          <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
             {page} / {totalPages}
           </span>
           <Button
@@ -64,7 +64,7 @@ export function HolidayRequestsPagination({
             size="sm"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF]"
+            className="h-8 w-8 rounded-[10px] p-0 text-[#0B68BE] hover:bg-[#EEF6FF] dark:text-blue-300 dark:hover:bg-slate-800/50"
             aria-label="Next page"
           >
             <ChevronRight className="size-4" />

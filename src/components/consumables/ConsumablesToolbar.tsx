@@ -40,7 +40,7 @@ const PERIOD_OPTIONS: { value: ConsumableSummaryPeriod; label: string }[] = [
 ]
 
 const selectClassName =
-  'h-9 w-full rounded-xl border border-[#BFE3F5] bg-white px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#218EE7] focus:border-[#218EE7] focus:ring-2 focus:ring-[#218EE7]/20'
+  'h-9 w-full rounded-xl border border-[#BFE3F5] bg-white px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#218EE7] focus:border-[#218EE7] focus:ring-2 focus:ring-[#218EE7]/20 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-slate-600'
 
 const filterPanelClassName =
   'max-h-[min(85dvh,40rem)] overflow-y-auto rounded-2xl border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
@@ -230,7 +230,7 @@ export function ConsumablesToolbar({
                 }))
                 setCustomDateError(null)
               }}
-              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm"
+              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
               aria-label="Start date"
             />
           </label>
@@ -246,7 +246,7 @@ export function ConsumablesToolbar({
                 }))
                 setCustomDateError(null)
               }}
-              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm"
+              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
               aria-label="End date"
             />
           </label>
@@ -331,7 +331,7 @@ export function ConsumablesToolbar({
           type="button"
           variant="ghost"
           onClick={resetFilters}
-          className="h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
+          className="h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF] dark:text-blue-300 dark:hover:bg-slate-800/50"
         >
           <X className="mr-1.5 size-4" />
           Reset Filters

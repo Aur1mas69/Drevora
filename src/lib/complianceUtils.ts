@@ -58,10 +58,14 @@ const LEGACY_VEHICLE_FIELDS: { field: keyof Vehicle; documentType: string }[] = 
 ]
 
 export const statusClassMap: Record<ComplianceRecordStatus, string> = {
-  Valid: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  'Expiring Soon': 'bg-orange-50 text-orange-700 ring-orange-200',
-  Expired: 'bg-rose-50 text-rose-700 ring-rose-200',
-  'Not Added': 'bg-slate-100 text-slate-500 ring-slate-200',
+  Valid:
+    'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+  'Expiring Soon':
+    'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
+  Expired:
+    'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
+  'Not Added':
+    'bg-slate-100 text-slate-500 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-400 dark:ring-white/10',
 }
 
 export function getToday(): Date {
@@ -431,13 +435,13 @@ export function filterDocumentsBySearch(
 }
 
 export function getScoreTone(score: number): string {
-  if (score >= 90) return 'text-emerald-700'
-  if (score >= 75) return 'text-amber-700'
-  return 'text-rose-700'
+  if (score >= 90) return 'text-emerald-700 dark:text-emerald-300'
+  if (score >= 75) return 'text-amber-700 dark:text-amber-300'
+  return 'text-rose-700 dark:text-rose-300'
 }
 
 export function getScoreRingTone(score: number): string {
-  if (score >= 90) return 'bg-emerald-50 ring-emerald-100'
-  if (score >= 75) return 'bg-amber-50 ring-amber-100'
-  return 'bg-rose-50 ring-rose-100'
+  if (score >= 90) return 'bg-emerald-50 ring-emerald-100 dark:bg-emerald-950/55 dark:ring-emerald-500/35'
+  if (score >= 75) return 'bg-amber-50 ring-amber-100 dark:bg-amber-950/55 dark:ring-amber-500/35'
+  return 'bg-rose-50 ring-rose-100 dark:bg-rose-950/55 dark:ring-rose-500/35'
 }

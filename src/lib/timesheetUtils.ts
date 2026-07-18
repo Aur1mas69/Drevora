@@ -15,6 +15,7 @@ import {
 } from '@/lib/companySettingsTypes'
 import {
   getGlobalOvertimeMultiplier,
+  getGlobalTimesheetOvertimeRules,
   getSetting,
   getTimesheetWeekSettings,
 } from '@/lib/companySettingsGlobals'
@@ -53,7 +54,11 @@ export function calculateAutomaticOvertimeMinutes(
 export function buildTimesheetOvertimeRules(
   partial: Partial<TimesheetOvertimeRules> = {},
 ): TimesheetOvertimeRules {
-  return { ...DEFAULT_TIMESHEET_OVERTIME_RULES, ...partial }
+  return {
+    ...DEFAULT_TIMESHEET_OVERTIME_RULES,
+    ...getGlobalTimesheetOvertimeRules(),
+    ...partial,
+  }
 }
 
 export function resolveDayOvertimeRules(
@@ -470,13 +475,13 @@ export function getStatusLabel(status: TimesheetStatus): string {
 export function getStatusBadgeClass(status: TimesheetStatus): string {
   switch (status) {
     case 'Draft':
-      return 'bg-slate-100 text-slate-600 ring-slate-200'
+      return 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
     case 'Submitted':
-      return 'bg-blue-50 text-blue-700 ring-blue-100'
+      return 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
     case 'Approved':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
     case 'Rejected':
-      return 'bg-rose-50 text-rose-700 ring-rose-100'
+      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
   }
 }
 

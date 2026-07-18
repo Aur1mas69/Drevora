@@ -173,7 +173,7 @@ export function ConsumablesDefaultPricesPanel({
               ))}
             </select>
           ) : (
-            <div className="mt-2 flex h-11 items-center rounded-[16px] bg-[#EEF4FF] px-3 text-sm font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)]">
+            <div className="mt-2 flex h-11 items-center rounded-[16px] bg-[#EEF4FF] px-3 text-sm font-semibold text-[#2563EB] ring-1 ring-[rgba(75,120,220,0.12)] dark:bg-slate-800 dark:text-blue-300 dark:ring-blue-500/25">
               {displayUnit}
             </div>
           )}
@@ -202,13 +202,13 @@ export function ConsumablesDefaultPricesPanel({
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-[12px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 ring-1 ring-rose-100">
+        <div className="mt-4 rounded-[12px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 ring-1 ring-rose-100 dark:bg-rose-950/40 dark:text-rose-200 dark:ring-rose-900/50">
           {error}
         </div>
       ) : null}
 
       {successMessage ? (
-        <div className="mt-4 rounded-[12px] bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
+        <div className="mt-4 rounded-[12px] bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900/50">
           {successMessage}
         </div>
       ) : null}

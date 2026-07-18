@@ -39,12 +39,19 @@ export type SavedTyreCheck = {
   trailerId: string | null
   trailerLabel: string | null
   checkedBy: string
-  axleCount: number
+  truckAxleCount: number
+  trailerAxleCount: number | null
   summaryLabel: string
   notes: string
   photoCount: number
   measurements: TyreMeasurement[]
 }
+
+/** Maximum combined Truck + Trailer axles for one tyre check. */
+export const MAX_COMBINED_TYRE_AXLES = 6
+
+export const DEFAULT_TRUCK_AXLE_COUNT = 3
+export const DEFAULT_TRAILER_AXLE_COUNT = 3
 
 export function treadDepthToStatus(depthMm: number | null, dirty: boolean): TyreStatus {
   if (dirty) return 'dirty'
@@ -69,7 +76,7 @@ export function tyreStatusLabel(status: TyreStatus): string {
   }
 }
 
-/** Baby-blue DREVORA status colours for tyre tiles. */
+/** Baby-blue DREVORA status colours for tyre tiles (light + Admin dark). */
 export function tyreStatusClasses(status: TyreStatus): {
   tile: string
   badge: string
@@ -78,32 +85,40 @@ export function tyreStatusClasses(status: TyreStatus): {
   switch (status) {
     case 'good':
       return {
-        tile: 'border-emerald-200 bg-emerald-50',
-        badge: 'bg-emerald-100 text-emerald-800',
+        tile:
+          'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/45',
+        badge:
+          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-900/60',
         dot: 'bg-emerald-500',
       }
     case 'attention':
       return {
-        tile: 'border-amber-200 bg-amber-50',
-        badge: 'bg-amber-100 text-amber-800',
+        tile:
+          'border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/45',
+        badge:
+          'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-1 dark:ring-amber-900/60',
         dot: 'bg-amber-500',
       }
     case 'critical':
       return {
-        tile: 'border-rose-200 bg-rose-50',
-        badge: 'bg-rose-100 text-rose-800',
+        tile: 'border-rose-200 bg-rose-50 dark:border-rose-800/60 dark:bg-rose-950/45',
+        badge:
+          'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-1 dark:ring-rose-900/60',
         dot: 'bg-rose-500',
       }
     case 'dirty':
       return {
-        tile: 'border-yellow-200 bg-yellow-50',
-        badge: 'bg-yellow-100 text-yellow-800',
+        tile:
+          'border-yellow-200 bg-yellow-50 dark:border-yellow-800/55 dark:bg-yellow-950/40',
+        badge:
+          'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-300 dark:ring-1 dark:ring-yellow-900/55',
         dot: 'bg-yellow-400',
       }
     case 'not_checked':
       return {
-        tile: 'border-slate-200 bg-slate-50',
-        badge: 'bg-slate-100 text-slate-600',
+        tile: 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-800/60',
+        badge:
+          'bg-slate-100 text-slate-600 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-1 dark:ring-white/10',
         dot: 'bg-slate-400',
       }
   }
@@ -124,11 +139,88 @@ function positionsForAxle(unit: TyreUnit, axleNumber: number): TyrePosition[] {
   return ['Outer Left', 'Inner Left', 'Inner Right', 'Outer Right']
 }
 
-export function buildTyreLayout(axleCount: number, includeTrailer: boolean): TyreMeasurement[] {
-  const clamped = Math.min(6, Math.max(1, Math.round(axleCount)))
+function clampAxleCount(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+/** Allowed Truck axle values for the current Trailer selection. */
+export function truckAxleOptions(trailerAxleCount: number | null): number[] {
+  if (trailerAxleCount == null) {
+    return [1, 2, 3, 4, 5, 6]
+  }
+  const maxTruck = MAX_COMBINED_TYRE_AXLES - trailerAxleCount
+  return Array.from({ length: maxTruck }, (_, index) => index + 1)
+}
+
+/** Allowed Trailer axle values for the current Truck selection. */
+export function trailerAxleOptions(truckAxleCount: number): number[] {
+  const maxTrailer = MAX_COMBINED_TYRE_AXLES - truckAxleCount
+  if (maxTrailer < 1) return []
+  return Array.from({ length: maxTrailer }, (_, index) => index + 1)
+}
+
+/**
+ * Shared client validation for Truck / Trailer axle counts.
+ * Returns an error message, or null when valid.
+ */
+export function validateTyreAxleCounts(
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): string | null {
+  if (!Number.isInteger(truckAxleCount) || truckAxleCount < 1) {
+    return 'Truck and Trailer can have a maximum of 6 axles combined.'
+  }
+
+  if (trailerAxleCount == null) {
+    if (truckAxleCount > MAX_COMBINED_TYRE_AXLES) {
+      return 'Truck and Trailer can have a maximum of 6 axles combined.'
+    }
+    return null
+  }
+
+  if (
+    !Number.isInteger(trailerAxleCount) ||
+    trailerAxleCount < 1 ||
+    truckAxleCount + trailerAxleCount > MAX_COMBINED_TYRE_AXLES
+  ) {
+    return 'Truck and Trailer can have a maximum of 6 axles combined.'
+  }
+
+  return null
+}
+
+export function formatAxleCountLabel(
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): string {
+  if (trailerAxleCount == null) return String(truckAxleCount)
+  return `${truckAxleCount} + ${trailerAxleCount}`
+}
+
+export function totalAxleCount(
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): number {
+  return truckAxleCount + (trailerAxleCount ?? 0)
+}
+
+/**
+ * Build the active Truck (+ optional Trailer) tyre layout.
+ * Truck and Trailer axle counts are independent; Trailer numbering restarts at 1
+ * but tyre ids remain unique via unit + axle + position.
+ */
+export function buildTyreLayout(
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): TyreMeasurement[] {
+  const truckAxles = clampAxleCount(
+    truckAxleCount,
+    1,
+    trailerAxleCount == null ? MAX_COMBINED_TYRE_AXLES : MAX_COMBINED_TYRE_AXLES - 1,
+  )
   const rows: TyreMeasurement[] = []
 
-  for (let axleNumber = 1; axleNumber <= clamped; axleNumber += 1) {
+  for (let axleNumber = 1; axleNumber <= truckAxles; axleNumber += 1) {
     for (const position of positionsForAxle('vehicle', axleNumber)) {
       rows.push({
         id: `vehicle-${axleNumber}-${position}`,
@@ -142,8 +234,13 @@ export function buildTyreLayout(axleCount: number, includeTrailer: boolean): Tyr
     }
   }
 
-  if (includeTrailer) {
-    for (let axleNumber = 1; axleNumber <= clamped; axleNumber += 1) {
+  if (trailerAxleCount != null) {
+    const trailerAxles = clampAxleCount(
+      trailerAxleCount,
+      1,
+      MAX_COMBINED_TYRE_AXLES - truckAxles,
+    )
+    for (let axleNumber = 1; axleNumber <= trailerAxles; axleNumber += 1) {
       for (const position of positionsForAxle('trailer', axleNumber)) {
         rows.push({
           id: `trailer-${axleNumber}-${position}`,

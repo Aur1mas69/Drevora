@@ -125,12 +125,12 @@ function AvailabilityModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100">
+      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10">
         <form onSubmit={onSubmit} className="p-5 sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
             Vehicle Availability
           </p>
-          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+          <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
             Add Availability
           </h2>
 
@@ -142,12 +142,12 @@ function AvailabilityModal({
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Status</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Status</span>
               <select
                 name="status"
                 value={form.status}
                 onChange={onChange}
-                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               >
                 {vehicleStatuses.map((status) => (
                   <option key={status} value={status}>
@@ -159,13 +159,13 @@ function AvailabilityModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Reason</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Reason</span>
               {reasonOptions.length > 0 ? (
                 <select
                   name="reason"
                   value={form.reason}
                   onChange={onChange}
-                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                  className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
                 >
                   <option value="">Select reason</option>
                   {reasonOptions.map((reason) => (
@@ -179,42 +179,42 @@ function AvailabilityModal({
                   name="reason"
                   value={form.reason}
                   onChange={onChange}
-                  className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                  className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
                 />
               )}
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">Start Date</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Start Date</span>
               <Input
                 name="startDate"
                 type="date"
                 value={form.startDate}
                 onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
               <FieldError message={errors.startDate} />
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">End Date</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">End Date</span>
               <Input
                 name="endDate"
                 type="date"
                 value={form.endDate}
                 onChange={onChange}
-                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200"
+                className="mt-2 h-11 rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 focus-visible:ring-3 focus-visible:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="text-sm font-semibold text-slate-700">Notes</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Notes</span>
               <textarea
                 name="notes"
                 value={form.notes}
                 onChange={onChange}
                 rows={4}
-                className="mt-2 w-full resize-none rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200"
+                className="mt-2 w-full resize-none rounded-[16px] border-0 bg-[#F8FBFF] px-3 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-blue-100 outline-none transition-all duration-[250ms] ease-out focus:ring-3 focus:ring-blue-200 dark:bg-slate-900/70 dark:text-slate-100 dark:ring-white/10"
               />
             </label>
           </div>
@@ -225,7 +225,7 @@ function AvailabilityModal({
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB]"
+              className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
             >
               Cancel
             </Button>
@@ -654,9 +654,9 @@ function VehicleDetailsPage() {
   if (!vehicle && !loadError) {
     return (
       <AdminLayout>
-        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10">
           <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
+            <p className="text-xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-slate-100">
               Vehicle not found
             </p>
             <Button
@@ -677,9 +677,9 @@ function VehicleDetailsPage() {
   if (loadError || !vehicle) {
     return (
       <AdminLayout>
-        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70">
+        <Card className="rounded-[20px] border-0 bg-white py-0 shadow-[0_18px_45px_rgba(59,130,246,0.09)] ring-1 ring-blue-100/70 dark:bg-slate-900/70 dark:ring-white/10">
           <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-            <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+            <p className="text-lg font-semibold tracking-[-0.02em] text-slate-950 dark:text-slate-100">
               Unable to load vehicle details.
             </p>
             <p className="mt-2 max-w-md text-sm font-medium text-slate-500">

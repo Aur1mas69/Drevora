@@ -262,16 +262,16 @@ export function EditVehicleCheckModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
       <div
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-vehicle-check-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10 sm:px-6">
           <div>
             <h2
               id="edit-vehicle-check-title"
-              className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]"
+              className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100"
             >
               Edit Inspection
             </h2>

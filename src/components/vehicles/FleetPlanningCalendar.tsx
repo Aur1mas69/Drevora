@@ -36,7 +36,7 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, month) => ({
 }))
 
 const calendarInputClass =
-  'h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#BFE3F5] focus:border-[#89CFF0] focus:ring-3 focus:ring-[#BFE3F5]/70'
+  'h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#113C69] shadow-sm outline-none transition-colors hover:border-[#BFE3F5] focus:border-[#89CFF0] focus:ring-3 focus:ring-[#BFE3F5]/70 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-blue-400 dark:focus:ring-blue-500/30'
 
 type FleetCalendarDay = {
   date: Date
@@ -122,7 +122,7 @@ function getMonthCellBackgroundClass(
     if (isWeekend) {
       return 'border-[#9CBEE0] bg-gradient-to-br from-[#D4E4F0]/98 to-[#B8CFE0]/92'
     }
-    return 'border-[#D3E9FC] bg-white/95'
+    return 'border-[#D3E9FC] bg-white/95 dark:border-white/10 dark:bg-slate-900/70'
   }
 
   if (isWeekend) {
@@ -135,7 +135,7 @@ function getMonthCellBackgroundClass(
 function getDayNumberClass(isToday: boolean, isWeekend: boolean): string {
   if (isToday) return 'bg-[#218EE7] text-white'
   if (isWeekend) return 'text-[#0B477F]'
-  return 'text-[#113C69]'
+  return 'text-[#113C69] dark:text-slate-100'
 }
 
 function getUniqueEventDotColors(events: PlanningEvent[]): string[] {
@@ -513,10 +513,10 @@ export function FleetPlanningCalendar({
                 <CalendarDays className="size-4" />
               </span>
               <div>
-                <p className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
+                <p className="text-lg font-semibold tracking-[-0.03em] text-[#113C69] dark:text-slate-100">
                   Fleet Availability Calendar
                 </p>
-                <p className="mt-0.5 text-sm font-medium text-[#5499BF]">
+                <p className="mt-0.5 text-sm font-medium text-[#5499BF] dark:text-slate-400">
                   Plan availability, maintenance, and document renewals across the year.
                 </p>
               </div>
@@ -524,7 +524,7 @@ export function FleetPlanningCalendar({
           </div>
 
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-1 shadow-sm ring-1 ring-[#C5DFFB]/40">
+            <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-1 shadow-sm ring-1 ring-[#C5DFFB]/40 dark:border-white/10 dark:bg-slate-900/70 dark:ring-white/10">
               {(['Day', 'Week', 'Month', 'Year'] as const).map((item) => (
                 <button
                   key={item}
@@ -533,7 +533,7 @@ export function FleetPlanningCalendar({
                   className={`rounded-[10px] px-3 py-1.5 text-sm font-semibold transition-colors ${
                     view === item
                       ? 'bg-[#218EE7] text-white shadow-[0_4px_12px_rgba(33,142,231,0.2)]'
-                      : 'text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]'
+                      : 'text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE] dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100'
                   }`}
                 >
                   {item}
@@ -577,7 +577,7 @@ export function FleetPlanningCalendar({
                 <div className="flex flex-wrap items-center gap-2">
                   <label
                     htmlFor="fleet-calendar-date"
-                    className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF]"
+                    className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF] dark:text-slate-400"
                   >
                     {view === 'Week' ? 'Week of' : 'Date'}
                   </label>
@@ -622,7 +622,7 @@ export function FleetPlanningCalendar({
                           : 'day',
                   )
                 }
-                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF]"
+                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
                 aria-label="Previous period"
               >
                 <ChevronLeft className="size-4" />
@@ -632,7 +632,7 @@ export function FleetPlanningCalendar({
                 variant="ghost"
                 size="sm"
                 onClick={goToToday}
-                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF]"
+                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-3 text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
               >
                 Today
               </Button>
@@ -652,7 +652,7 @@ export function FleetPlanningCalendar({
                           : 'day',
                   )
                 }
-                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF]"
+                className="h-9 rounded-[12px] border border-[#C5DFFB] bg-white/80 px-2 text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
                 aria-label="Next period"
               >
                 <ChevronRight className="size-4" />
@@ -665,7 +665,7 @@ export function FleetPlanningCalendar({
           {planningLegend.map((label) => (
             <span
               key={label}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-[#5499BF] ring-1 ring-[#D3E9FC] dark:bg-slate-900/70 dark:text-slate-400 dark:ring-white/10"
             >
               <span className={`size-2 shrink-0 rounded-full ${getLegendDotClass(label)}`} />
               {label}
@@ -674,10 +674,10 @@ export function FleetPlanningCalendar({
         </div>
 
         {view !== 'Year' ? (
-          <p className="mt-5 text-lg font-semibold tracking-[-0.03em] text-[#113C69]">
+          <p className="mt-5 text-lg font-semibold tracking-[-0.03em] text-[#113C69] dark:text-slate-100">
             {periodLabel}
             {view === 'Month' ? (
-              <span className="ml-2 text-sm font-medium text-[#5499BF]">
+              <span className="ml-2 text-sm font-medium text-[#5499BF] dark:text-slate-400">
                 · {getEventsForMonth(planningEvents, focusYear, focusMonth).length} events
               </span>
             ) : null}
@@ -695,10 +695,10 @@ export function FleetPlanningCalendar({
                   key={month}
                   type="button"
                   onClick={() => openMonth(focusYear, month)}
-                  className="cursor-pointer rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] p-3.5 text-left shadow-sm ring-1 ring-[#C5DFFB]/30 transition-[border-color,box-shadow,filter] hover:border-[#C5DFFB] hover:shadow-[0_8px_20px_rgba(33,142,231,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#89CFF0]"
+                  className="cursor-pointer rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] p-3.5 text-left shadow-sm ring-1 ring-[#C5DFFB]/30 transition-[border-color,box-shadow,filter] hover:border-[#C5DFFB] hover:shadow-[0_8px_20px_rgba(33,142,231,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#89CFF0] dark:border-white/10 dark:bg-slate-900/70 dark:ring-white/10 dark:hover:border-slate-600"
                 >
                   <div className="flex items-start justify-between gap-3 px-1">
-                    <p className="text-xl font-semibold tracking-[-0.02em] text-[#113C69]">
+                    <p className="text-xl font-semibold tracking-[-0.02em] text-[#113C69] dark:text-slate-100">
                       {formatMonthLabel(month)}
                     </p>
                     <span className="shrink-0 rounded-full bg-[#EEF6FF] px-2.5 py-1 text-xs font-semibold text-[#0B68BE] ring-1 ring-[#C5DFFB]">
@@ -706,9 +706,9 @@ export function FleetPlanningCalendar({
                     </span>
                   </div>
 
-                  <div className="mt-2.5 rounded-[12px] border border-[#D3E9FC]/80 bg-white/80 p-2 shadow-sm">
+                  <div className="mt-2.5 rounded-[12px] border border-[#D3E9FC]/80 bg-white/80 p-2 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
                     {monthEvents.length === 0 ? (
-                      <p className="px-2 py-3 text-sm font-medium text-[#5499BF]">
+                      <p className="px-2 py-3 text-sm font-medium text-[#5499BF] dark:text-slate-400">
                         No events planned
                       </p>
                     ) : (
@@ -772,9 +772,9 @@ export function FleetPlanningCalendar({
 
               {planningVehicles.map((vehicle) => (
                 <div key={vehicle.id} className="contents">
-                  <div className="rounded-[12px] border border-[#D3E9FC]/80 bg-white px-4 py-3 text-sm font-semibold text-[#113C69] shadow-sm">
+                  <div className="rounded-[12px] border border-[#D3E9FC]/80 bg-white px-4 py-3 text-sm font-semibold text-[#113C69] shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100">
                     {vehicle.registration}
-                    <p className="mt-1 text-xs font-medium text-[#5499BF]">
+                    <p className="mt-1 text-xs font-medium text-[#5499BF] dark:text-slate-400">
                       {getVehicleName(vehicle)}
                     </p>
                   </div>

@@ -34,13 +34,13 @@ export const settingsInnerCardClassName =
   'rounded-[16px] border border-[rgba(75,120,220,0.12)] bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60'
 
 const inputClassName =
-  'mt-2 h-11 w-full rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-[#2A376F] shadow-sm ring-1 ring-[rgba(75,120,220,0.12)] outline-none transition-all placeholder:text-slate-400 focus:ring-3 focus:ring-blue-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:placeholder:text-slate-500 dark:focus:ring-blue-500/40'
+  'mt-2 h-11 w-full rounded-[16px] border-0 bg-white px-3 text-sm font-medium text-[#2A376F] shadow-sm ring-1 ring-[rgba(75,120,220,0.12)] outline-none transition-all placeholder:text-slate-400 focus:ring-3 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-slate-100 dark:ring-blue-500/25 dark:placeholder:text-slate-500 dark:focus:ring-blue-500/40 dark:disabled:bg-slate-800/70 dark:disabled:text-slate-400'
 
 export const settingsFieldClassName = inputClassName
 export const settingsSelectClassName = inputClassName
 
 export const settingsSaveButtonClassName =
-  'h-11 rounded-[14px] bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50'
+  'h-11 rounded-[14px] bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50 dark:disabled:bg-blue-800/60 dark:disabled:text-slate-200/80'
 
 function settingsChoiceCardClass(selected: boolean, disabled = false) {
   return cn(
@@ -498,7 +498,7 @@ export function SettingsTabs<T extends string>({
 }: SettingsTabsProps<T>) {
   return (
     <nav
-      className="flex gap-1 overflow-x-auto rounded-[16px] border border-[rgba(75,120,220,0.10)] bg-[#F8FBFF] p-1 dark:border-slate-700 dark:bg-slate-800/60"
+      className="settings-tabs-nav flex gap-1 overflow-x-auto rounded-[16px] border border-[rgba(75,120,220,0.10)] bg-[#F8FBFF] p-1 dark:border-slate-700 dark:bg-slate-800/60"
       aria-label="Settings sections"
     >
       {tabs.map((tab) => (

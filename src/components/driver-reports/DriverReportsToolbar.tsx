@@ -264,13 +264,13 @@ function DriverReportsFilterPanelBody({
         </label>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 border-t border-[#D3E9FC] pt-3">
+      <div className="mt-4 flex flex-col gap-2 border-t border-[#D3E9FC] pt-3 dark:border-white/10">
         <div className="flex items-center justify-between gap-2">
           <Button
             type="button"
             variant="ghost"
             onClick={onClear}
-            className="h-9 rounded-[10px] px-3 text-xs font-semibold text-[#0D477F] hover:bg-[#E8F3FE]"
+            className="h-9 rounded-[10px] px-3 text-xs font-semibold text-[#0D477F] hover:bg-[#E8F3FE] dark:text-blue-300 dark:hover:bg-slate-800/50"
           >
             Reset
           </Button>

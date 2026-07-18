@@ -400,6 +400,19 @@ create policy vehicle_check_template_items_company_delete
 
 
 -- -----------------------------------------------------------------------------
+-- Admin notifications — RLS ALWAYS ENABLED (not MVP-open)
+-- Applied fully by 20260718020000_create_admin_notifications.sql
+-- -----------------------------------------------------------------------------
+alter table public.notifications enable row level security;
+alter table public.notification_reads enable row level security;
+
+revoke all on public.notifications from anon;
+revoke all on public.notification_reads from anon;
+
+grant select on public.notifications to authenticated;
+grant select, insert, delete on public.notification_reads to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Production — enable RLS and add policies (NOT active during MVP)
 -- Uncomment and adapt before go-live. Example pattern shown below.
 -- -----------------------------------------------------------------------------

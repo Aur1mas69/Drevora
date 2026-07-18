@@ -257,6 +257,10 @@ export function DashboardKpiCard({
     styles.activeGradient,
     styles.activeShadow,
     'group-active:scale-[0.97]',
+    'dark:from-slate-800/95 dark:via-slate-800/90 dark:to-slate-900 dark:border-slate-600/70',
+    'dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
+    'dark:group-hover:border-slate-500 dark:group-hover:from-slate-700/95 dark:group-hover:via-slate-800 dark:group-hover:to-slate-900',
+    'dark:group-active:border-slate-500 dark:group-active:from-slate-800 dark:group-active:via-slate-800 dark:group-active:to-slate-900',
   ].join(' ')
 
   const widget = (
@@ -309,7 +313,7 @@ export function DashboardKpiCard({
                 />
               </div>
 
-              <p className="w-full text-[clamp(1.35rem,5vw,1.65rem)] font-bold leading-none tracking-[-0.04em] text-[#163A63] sm:text-[2rem] lg:text-[2.15rem]">
+              <p className="w-full text-[clamp(1.35rem,5vw,1.65rem)] font-bold leading-none tracking-[-0.04em] text-[#163A63] dark:text-slate-100 sm:text-[2rem] lg:text-[2.15rem]">
                 {value}
               </p>
 
@@ -325,7 +329,7 @@ export function DashboardKpiCard({
 
       <p
         className={`mt-2 w-full min-w-0 px-0.5 text-center text-[10px] leading-snug break-words sm:px-1 sm:text-[11px] ${
-          helperTone === 'danger' ? 'font-semibold text-rose-600' : 'text-[#5D7C9D]'
+          helperTone === 'danger' ? 'font-semibold text-rose-600 dark:text-rose-400' : 'text-[#5D7C9D] dark:text-slate-400'
         }`}
       >
         {helperTone === 'danger' ? (

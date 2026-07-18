@@ -1,192 +1,103 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import {
-  Coffee,
-  Clock3,
-  Moon,
-  Play,
-  Sparkles,
-  Timer,
-} from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { getTimeGreeting } from '@/lib/greeting'
+import { WORKER_NAV_ITEMS } from '@/lib/workerNavigation'
+import { cn } from '@/lib/utils'
+import { Truck } from 'lucide-react'
 
-const accentBlue = '#7DB8FF'
+function DashboardPage() {
+  const { worker, isLoading, error } = useCurrentWorker()
+  const { companyName, companyLoading } = useCompanySettings()
 
-function DashboardHeader() {
-  const currentDate = new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date())
-
-  return (
-    <header className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-3xl font-semibold tracking-tight text-slate-950">
-            Good Morning 👋
-          </p>
-          <p className="mt-2 text-sm font-medium text-slate-500">
-            {currentDate}
-          </p>
-        </div>
-        <div className="flex size-12 items-center justify-center rounded-3xl bg-white shadow-lg shadow-slate-200/70">
-          <Sparkles className="size-5 text-[#7DB8FF]" />
-        </div>
-      </div>
-
-      <Card className="gap-0 rounded-[2rem] border border-slate-100 bg-white py-0 shadow-xl shadow-slate-200/70">
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-              Driver
-            </p>
-            <p className="mt-1 text-lg font-semibold text-slate-950">Aurimas</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-              Company
-            </p>
-            <p className="mt-1 text-lg font-semibold text-slate-950">
-              North Haul Ltd
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </header>
-  )
-}
-
-function StatusCard() {
-  return (
-    <Card className="overflow-hidden rounded-[2.25rem] border border-slate-100 bg-white py-0 text-center shadow-2xl shadow-slate-200/80">
-      <CardContent className="p-7 sm:p-10">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#EAF4FF]">
-          <Play className="ml-1 size-7 fill-[#7DB8FF] text-[#7DB8FF]" />
-        </div>
-        <p className="mt-6 text-sm font-medium uppercase tracking-[0.25em] text-slate-400">
-          Status
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-          Ready to Start
-        </h1>
-        <Button
-          type="button"
-          size="lg"
-          className="mt-7 h-14 w-full rounded-3xl bg-[#7DB8FF] text-base font-semibold text-white shadow-xl shadow-blue-200/80 hover:bg-[#68A9F8] sm:max-w-xs"
-        >
-          START SHIFT
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: string
-  icon: typeof Clock3
-}) {
-  return (
-    <Card className="rounded-[1.75rem] border border-slate-100 bg-white py-0 shadow-lg shadow-slate-200/60">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-slate-500">{label}</p>
-            <p className="mt-3 text-2xl font-semibold text-slate-950">
-              {value}
-            </p>
-          </div>
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#EAF4FF]">
-            <Icon className="size-5 text-[#7DB8FF]" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ActivityTimeline() {
-  function TimelineItem({
-    label,
-    isLast = false,
-  }: {
-    label: string
-    isLast?: boolean
-  }) {
+  if (isLoading || companyLoading) {
     return (
-      <div className="flex gap-3">
-        <div className="flex flex-col items-center">
-          <div className="mt-1 size-3 rounded-full bg-[#7DB8FF] ring-4 ring-[#EAF4FF]" />
-          {!isLast ? <div className="h-10 w-px bg-slate-200" /> : null}
-        </div>
-        <p className="pb-5 text-sm font-medium text-slate-700">{label}</p>
+      <div
+        className="min-h-[50vh] rounded-[1.75rem] bg-white/60"
+        aria-label="Loading worker home"
+        role="status"
+      />
+    )
+  }
+
+  if (error || !worker) {
+    return (
+      <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
+        <h1 className="text-lg font-semibold text-slate-950">Worker profile</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          {error ??
+            'We could not find a worker profile linked to your account. Please contact your manager.'}
+        </p>
       </div>
     )
   }
 
+  const firstName = worker.firstName.trim() || 'Worker'
+  const verifiedCompany =
+    companyName?.trim() || worker.company?.trim() || 'Your company'
+  const defaultVehicleLabel =
+    worker.defaultVehicleRegistration?.trim() ||
+    worker.assignment?.trim() ||
+    null
+
   return (
-    <Card className="rounded-[2rem] border border-slate-100 bg-white py-0 shadow-xl shadow-slate-200/70">
-      <CardHeader className="px-5 pt-5 pb-2">
-        <CardTitle className="text-lg font-semibold text-slate-950">
-          Recent Activity
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-5 pb-5">
-        <div className="space-y-1">
-          <TimelineItem label="Shift Started" />
-          <TimelineItem label="Break Started" />
-          <TimelineItem label="Break Finished" />
-          <TimelineItem label="Shift Finished" isLast />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+    <div className="mx-auto max-w-md space-y-5 lg:max-w-3xl">
+      <header className="space-y-1">
+        <p className="text-sm font-medium text-slate-500">{getTimeGreeting()}</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+          Hello, {firstName}
+        </h1>
+        <p className="text-sm font-medium text-slate-500">{verifiedCompany}</p>
+      </header>
 
-function DashboardPage() {
-  return (
-    <div className="mx-auto max-w-md space-y-6 lg:max-w-3xl">
-      <DashboardHeader />
-
-      <StatusCard />
-
-      <section className="space-y-3">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5FA7FA]">
-              Today&apos;s Summary
+      {defaultVehicleLabel ? (
+        <div className="flex items-center gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-3 shadow-sm shadow-slate-200/50">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[#EAF4FF]">
+            <Truck className="size-5 text-[#2F80ED]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+              Default vehicle
             </p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-950">
-              Work overview
-            </h2>
+            <p className="truncate text-sm font-semibold text-slate-950">
+              {defaultVehicleLabel}
+            </p>
           </div>
         </div>
+      ) : null}
 
-        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
-          <SummaryCard label="Today's Hours" value="0.00h" icon={Clock3} />
-          <SummaryCard label="Break" value="0m" icon={Coffee} />
-          <SummaryCard label="Night Hours" value="0.00h" icon={Moon} />
-          <SummaryCard label="Overtime" value="0.00h" icon={Timer} />
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Quick actions
+        </h2>
+        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+          {WORKER_NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.id}
+                to={item.to}
+                className={cn(
+                  'flex min-h-[6.5rem] flex-col justify-between rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-lg shadow-slate-200/60 transition-colors',
+                  'hover:border-[#BFDFFF] hover:bg-[#F8FBFF] active:bg-[#EAF4FF]',
+                )}
+              >
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-[#EAF4FF]">
+                  <Icon className="size-5 text-[#2F80ED]" />
+                </div>
+                <p className="text-base font-semibold text-slate-950">{item.label}</p>
+              </Link>
+            )
+          })}
         </div>
       </section>
 
-      <ActivityTimeline />
-
-      <div
-        aria-hidden="true"
-        className="mx-auto h-1 w-28 rounded-full"
-        style={{ backgroundColor: accentBlue }}
-      />
+      <Link
+        to="/worker/vehicles"
+        className="flex min-h-14 items-center justify-center rounded-[1.5rem] bg-[#2F80ED] px-4 text-base font-semibold text-white shadow-lg shadow-blue-200/70 transition-colors hover:bg-[#2569C7]"
+      >
+        Start Vehicle Check
+      </Link>
     </div>
   )
 }

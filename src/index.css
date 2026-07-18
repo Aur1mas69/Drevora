@@ -225,6 +225,24 @@ body {
   background: var(--admin-dashboard-background) !important;
 }
 
+/* Admin dashboard dark — deep navy/slate canvas with soft baby-blue depth */
+.dark .admin-main-column.admin-dashboard {
+  --drevora-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  --admin-dashboard-background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(59, 130, 246, 0.16) 0%,
+      rgba(15, 23, 42, 0) 38%
+    ),
+    radial-gradient(
+      circle at 88% 78%,
+      rgba(37, 99, 235, 0.1) 0%,
+      transparent 42%
+    ),
+    linear-gradient(135deg, #101b2e 0%, #0f172a 48%, #0b1528 100%);
+  background: var(--admin-dashboard-background) !important;
+}
+
 .admin-main-column.admin-dashboard .admin-main-content {
   background: transparent !important;
 }
@@ -256,6 +274,24 @@ body {
   box-shadow: 0 8px 24px rgba(30, 64, 175, 0.08) !important;
 }
 
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.94) 0%,
+    rgba(22, 32, 52, 0.96) 46%,
+    rgba(15, 27, 46, 0.98) 100%
+  ) !important;
+  border-color: rgba(96, 165, 250, 0.22) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34) !important;
+}
+
+@media (min-width: 768px) {
+  .dark .admin-dashboard .admin-main-content .dashboard-overview-card:hover {
+    border-color: rgba(147, 197, 253, 0.34) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42) !important;
+  }
+}
+
 .admin-dashboard .admin-main-content .dashboard-overview-card::before {
   content: '';
   pointer-events: none;
@@ -270,9 +306,53 @@ body {
   z-index: 0;
 }
 
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card::before {
+  background: radial-gradient(
+    ellipse 90% 70% at 12% 8%,
+    rgba(59, 130, 246, 0.14) 0%,
+    transparent 55%
+  );
+}
+
 .admin-dashboard .admin-main-content .dashboard-overview-card > * {
   position: relative;
   z-index: 1;
+}
+
+/* Overview card text contrast in dark (paired light hex utilities) */
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card [class*='text-[#163A63]'] {
+  color: #e2e8f0 !important;
+}
+
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card [class*='text-[#5D7C9D]'] {
+  color: #94a3b8 !important;
+}
+
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card [class*='text-[#3B82F6]'] {
+  color: #93c5fd !important;
+}
+
+.dark .admin-dashboard .admin-main-content .dashboard-overview-card [class*='text-[#2563EB]'] {
+  color: #93c5fd !important;
+}
+
+/* Soft separators/dividers only — leave coloured border-l accents alone */
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .border-b[class*='border-[#D2E5F5]'],
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .border-t[class*='border-[#D2E5F5]'],
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  hr[class*='border-[#D2E5F5]'] {
+  border-color: rgba(148, 163, 184, 0.22) !important;
 }
 
 /* Admin dashboard — nested rows and statistic boxes */
@@ -298,6 +378,73 @@ body {
   .rounded-xl.border[class*='border-[#D2E5F5]']:not([class*='border-l-[3px]']) {
   background: rgba(244, 249, 255, 0.9) !important;
   border-color: #d2e5f5 !important;
+}
+
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  li.rounded-xl[class*='border-[#CFE3F5]'],
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  li.rounded-xl[class*='border-[#D2E5F5]'],
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-lg.border[class*='border-[#CFE3F5]'],
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-xl.border[class*='border-[#CFE3F5]']:not([class*='border-l-[3px]']),
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-xl.border[class*='border-[#D2E5F5]']:not([class*='border-l-[3px]']),
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  [class*='bg-[rgba(244,249,255,0.9)]'] {
+  background: rgba(30, 41, 59, 0.78) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  li.rounded-xl[class*='border-[#CFE3F5]']:hover,
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  li.rounded-xl[class*='border-[#D2E5F5]']:hover,
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-lg.border[class*='border-[#CFE3F5]']:hover,
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-xl.border[class*='border-[#CFE3F5]']:not([class*='border-l-[3px]']):hover,
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  .rounded-xl.border[class*='border-[#D2E5F5]']:not([class*='border-l-[3px]']):hover,
+.dark
+  .admin-dashboard
+  .admin-main-content
+  .dashboard-overview-card
+  [class*='bg-[rgba(244,249,255,0.9)]']:hover {
+  background: rgba(51, 65, 85, 0.88) !important;
 }
 
 .admin-main-column.admin-dashboard
@@ -372,6 +519,54 @@ body {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
 }
 
+/* Admin shell — dark scrollbars (sidebar, page, nested panels) */
+.dark .drevora-app-shell {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.65) transparent;
+}
+
+.dark .drevora-app-shell * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.65) transparent;
+}
+
+.dark .drevora-app-shell ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark .drevora-app-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark .drevora-app-shell ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.55);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark .drevora-app-shell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.75);
+  background-clip: padding-box;
+}
+
+.dark .drevora-app-shell ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Settings tab row — keep horizontal scroll, hide bright scrollbar */
+.dark .drevora-app-shell .settings-tabs-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dark .drevora-app-shell .settings-tabs-nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 @media (max-width: 639px) {
   .drevora-app-shell__orb,
   .drevora-app-shell__noise {
@@ -401,6 +596,19 @@ body {
 
   .admin-mobile-drawer {
     background: rgba(252, 253, 255, 0.99) !important;
+  }
+
+  /* Dark overrides — same breakpoint/specificity as light !important rules */
+  .dark .admin-mobile-header {
+    background: rgba(15, 23, 42, 0.96) !important;
+    border-bottom-color: rgba(71, 85, 105, 0.75) !important;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.4) !important;
+  }
+
+  .dark .admin-mobile-drawer {
+    background: rgba(15, 23, 42, 0.98) !important;
+    border-right-color: rgba(71, 85, 105, 0.75) !important;
+    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.45) !important;
   }
 
   .fleet-weather-card {

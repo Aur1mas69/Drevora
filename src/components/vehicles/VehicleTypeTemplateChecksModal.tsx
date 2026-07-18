@@ -179,23 +179,23 @@ export function VehicleTypeTemplateChecksModal({
         }}
       />
       <div
-        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]"
+        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="vehicle-type-template-checks-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3 dark:border-white/10 dark:from-slate-900 dark:to-slate-900">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF] dark:text-slate-400">
               Template checks
             </p>
             <h2
               id="vehicle-type-template-checks-title"
-              className="mt-1 text-base font-semibold leading-5 text-[#113C69]"
+              className="mt-1 text-base font-semibold leading-5 text-[#113C69] dark:text-slate-100"
             >
               Extra checks for {vehicleType}
             </h2>
-            <p className="mt-1 text-xs text-[#5499BF]">
+            <p className="mt-1 text-xs text-[#5499BF] dark:text-slate-400">
               Applies to all vehicles with this type. Basic DVSA checks are unchanged.
             </p>
           </div>
@@ -203,7 +203,7 @@ export function VehicleTypeTemplateChecksModal({
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm dark:bg-slate-800 dark:text-blue-300"
             aria-label="Close"
           >
             <X className="size-4" />

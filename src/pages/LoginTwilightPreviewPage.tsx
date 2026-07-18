@@ -1,13 +1,13 @@
 import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/contexts/AuthContext'
+import { useRoleBasedAuthRedirect } from '@/hooks/useRoleBasedAuthRedirect'
 import {
   authService,
   AuthServiceError,
 } from '@/services/authService'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
 
 const previewInputClassName =
   'h-11 w-full rounded-xl border border-sky-200/80 bg-white/75 pl-10 pr-4 text-sm text-[#0F1B35] shadow-sm outline-none placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 lg:h-[60px] lg:rounded-[10px] lg:border-sky-300/85 lg:bg-white/80 lg:pl-12 lg:pr-5 lg:text-base lg:focus:ring-[3px] lg:focus:ring-[#2563EB]/28'
@@ -33,20 +33,14 @@ function OrbitDecoration() {
 }
 
 function LoginTwilightPreviewPage() {
-  const navigate = useNavigate()
-  const { isAuthenticated, setAuthenticatedSession } = useAuth()
+  const { setAuthenticatedSession } = useAuth()
+  useRoleBasedAuthRedirect()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/admin', { replace: true })
-    }
-  }, [isAuthenticated, navigate])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -55,8 +49,8 @@ function LoginTwilightPreviewPage() {
 
     try {
       const result = await authService.signIn(email, password)
+      // Portal is presentation preference only; shell is chosen by membership role.
       setAuthenticatedSession(result.session, 'admin')
-      navigate('/admin', { replace: true })
     } catch (error) {
       setErrorMessage(
         error instanceof AuthServiceError

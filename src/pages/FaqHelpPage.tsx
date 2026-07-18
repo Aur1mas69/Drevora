@@ -10,7 +10,7 @@ export default function FaqHelpPage() {
     <AdminLayout premiumBackground>
       <div className="space-y-5 pb-10">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2563EB] dark:text-blue-400">
             Support
           </p>
           <h1 className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${adminHeading}`}>

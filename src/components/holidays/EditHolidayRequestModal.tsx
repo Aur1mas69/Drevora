@@ -38,7 +38,7 @@ type EditHolidayRequestModalProps = {
 }
 
 const selectClassName =
-  'mt-1.5 h-10 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+  'mt-1.5 h-10 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus:ring-blue-900/40'
 
 const STATUS_OPTIONS: HolidayRequestStatus[] = [
   'Pending',
@@ -219,21 +219,21 @@ export function EditHolidayRequestModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100"
+        className="flex max-h-[min(92vh,100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-holiday-request-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-white/10 sm:px-6">
             <div>
               <h2
                 id="edit-holiday-request-title"
-                className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]"
+                className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100"
               >
                 Edit Holiday Request
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 {request.workerName}
                 {request.workerRole ? ` · ${request.workerRole}` : ''}
               </p>
@@ -257,7 +257,7 @@ export function EditHolidayRequestModal({
             <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
               <HolidayDatePickerGroup>
                 <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="block min-w-0 text-sm font-medium text-slate-700">
+                  <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                     Start date
                     <HolidayDateInput
                       value={startDate}
@@ -267,20 +267,20 @@ export function EditHolidayRequestModal({
                           setEndDate(value)
                         }
                       }}
-                      className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
+                      className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70"
                       layout="modal"
                       required
                       blurOnSelect
                       aria-label="Start date"
                     />
                   </label>
-                  <label className="block min-w-0 text-sm font-medium text-slate-700">
+                  <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                     End date
                     <HolidayDateInput
                       value={endDate}
                       onChange={setEndDate}
                       min={startDate || undefined}
-                      className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF]"
+                      className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70"
                       layout="modal"
                       required
                       blurOnSelect
@@ -317,7 +317,7 @@ export function EditHolidayRequestModal({
                 </div>
               ) : null}
 
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Leave type
                 <select
                   value={leaveType}
@@ -332,7 +332,7 @@ export function EditHolidayRequestModal({
                 </select>
               </label>
 
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Status
                 <select
                   value={status}
@@ -347,13 +347,13 @@ export function EditHolidayRequestModal({
                 </select>
               </label>
 
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Reason
                 <textarea
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   rows={3}
-                  className="mt-1.5 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100"
+                  className="mt-1.5 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:focus:ring-blue-900/40"
                 />
               </label>
 
@@ -362,12 +362,12 @@ export function EditHolidayRequestModal({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
+            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:px-6">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={onClose}
-                className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600"
+                className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600 dark:text-slate-300 dark:hover:bg-slate-800/50"
               >
                 Cancel
               </Button>
