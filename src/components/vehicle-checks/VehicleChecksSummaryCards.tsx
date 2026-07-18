@@ -5,15 +5,15 @@ import {
   AlertTriangle,
   CalendarCheck,
   CheckCircle2,
+  ClipboardList,
   ShieldQuestion,
-  XCircle,
 } from 'lucide-react'
 
 export type VehicleChecksKpiFilter =
   | 'checksToday'
   | 'passedToday'
-  | 'failedToday'
-  | 'defectsReported'
+  | 'defectsFound'
+  | 'awaitingReview'
   | 'vehiclesNotChecked'
   | null
 
@@ -50,8 +50,8 @@ type VehicleCheckKpiCard = {
 
 const blue = adminKpiDarkAccent.blue
 const green = adminKpiDarkAccent.green
-const rose = adminKpiDarkAccent.rose
 const amber = adminKpiDarkAccent.amber
+const rose = adminKpiDarkAccent.rose
 const violet = adminKpiDarkAccent.violet
 
 const styles = {
@@ -81,19 +81,6 @@ const styles = {
     labelClass: `text-emerald-800 ${green.label}`,
     subtitleClass: `text-emerald-800/75 ${green.subtitle}`,
   },
-  rose: {
-    gradient: `bg-gradient-to-br from-rose-50 via-orange-50/85 to-[#FFE4E6] ${rose.surface}`,
-    border: `border-rose-300 ${rose.border}`,
-    leftBorder: `border-l-rose-500 ${rose.leftBorder}`,
-    shadow: `shadow-[0_8px_24px_rgba(225,29,72,0.14)] ${rose.shadow}`,
-    hover: `hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-[0_0_0_1px_rgba(225,29,72,0.2),0_16px_36px_rgba(225,29,72,0.18)] ${rose.hoverBorder} ${rose.hoverShadow}`,
-    selected: `border-rose-500 ring-2 ring-rose-300/70 shadow-[0_0_0_2px_rgba(225,29,72,0.28),0_14px_34px_rgba(225,29,72,0.22)] ${rose.selectedBorder} ${rose.selectedRing} ${rose.selectedShadow}`,
-    iconWrap: `bg-rose-100 ring-rose-200 ${rose.iconWrap}`,
-    iconClass: `text-rose-700 ${rose.icon}`,
-    valueClass: `text-rose-950 ${rose.value}`,
-    labelClass: `text-rose-800 ${rose.label}`,
-    subtitleClass: `text-rose-800/75 ${rose.subtitle}`,
-  },
   amber: {
     gradient: `bg-gradient-to-br from-amber-50 via-orange-50/95 to-[#FFEDD5] ${amber.surface}`,
     border: `border-amber-200 ${amber.border}`,
@@ -106,6 +93,19 @@ const styles = {
     valueClass: `text-amber-950 ${amber.value}`,
     labelClass: `text-amber-800 ${amber.label}`,
     subtitleClass: `text-amber-800/75 ${amber.subtitle}`,
+  },
+  rose: {
+    gradient: `bg-gradient-to-br from-rose-50 via-orange-50/85 to-[#FFE4E6] ${rose.surface}`,
+    border: `border-rose-300 ${rose.border}`,
+    leftBorder: `border-l-rose-500 ${rose.leftBorder}`,
+    shadow: `shadow-[0_8px_24px_rgba(225,29,72,0.14)] ${rose.shadow}`,
+    hover: `hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-[0_0_0_1px_rgba(225,29,72,0.2),0_16px_36px_rgba(225,29,72,0.18)] ${rose.hoverBorder} ${rose.hoverShadow}`,
+    selected: `border-rose-500 ring-2 ring-rose-300/70 shadow-[0_0_0_2px_rgba(225,29,72,0.28),0_14px_34px_rgba(225,29,72,0.22)] ${rose.selectedBorder} ${rose.selectedRing} ${rose.selectedShadow}`,
+    iconWrap: `bg-rose-100 ring-rose-200 ${rose.iconWrap}`,
+    iconClass: `text-rose-700 ${rose.icon}`,
+    valueClass: `text-rose-950 ${rose.value}`,
+    labelClass: `text-rose-800 ${rose.label}`,
+    subtitleClass: `text-rose-800/75 ${rose.subtitle}`,
   },
   purple: {
     gradient: `bg-gradient-to-br from-violet-50 via-slate-50 to-[#EDE9FE] ${violet.surface}`,
@@ -134,29 +134,28 @@ const cards: VehicleCheckKpiCard[] = [
   {
     id: 'passedToday',
     label: 'Passed Today',
-    subtitle: 'Passed inspections',
+    subtitle: 'Zero defects',
     icon: CheckCircle2,
     value: (stats) => stats.passedToday,
     resultFilter: 'Pass',
     style: styles.green,
   },
   {
-    id: 'failedToday',
-    label: 'Failed Today',
-    subtitle: 'Failed inspections',
-    icon: XCircle,
-    value: (stats) => stats.failedToday,
-    resultFilter: 'Fail',
-    style: styles.rose,
+    id: 'defectsFound',
+    label: 'Defects Found',
+    subtitle: 'Inspections with defects',
+    icon: AlertTriangle,
+    value: (stats) => stats.defectsFoundToday,
+    resultFilter: 'Advisory',
+    style: styles.amber,
   },
   {
-    id: 'defectsReported',
-    label: 'Defects Reported',
-    subtitle: 'Failed or advisory items',
-    icon: AlertTriangle,
-    value: (stats) => stats.defectsReported,
-    resultFilter: 'Defects',
-    style: styles.amber,
+    id: 'awaitingReview',
+    label: 'Awaiting Review',
+    subtitle: 'Manager decision needed',
+    icon: ClipboardList,
+    value: (stats) => stats.awaitingReview,
+    style: styles.rose,
   },
   {
     id: 'vehiclesNotChecked',

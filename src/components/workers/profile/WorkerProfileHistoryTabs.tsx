@@ -635,8 +635,8 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
 }
 
 function formatVehicleCheckDefectsSummary(check: VehicleCheckListItem): string {
-  if (check.failCount > 0) {
-    return `${check.failCount} defect${check.failCount === 1 ? '' : 's'}`
+  if (check.defectCount > 0) {
+    return `${check.defectCount} defect${check.defectCount === 1 ? '' : 's'}`
   }
   if (check.notes?.trim()) {
     return check.notes.trim()

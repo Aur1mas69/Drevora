@@ -382,7 +382,7 @@ export function NewVehicleCheckModal({
                   ? `Checklist for ${selectedVehicle.registration}${
                       selectedVehicle.vehicleType ? ` · ${selectedVehicle.vehicleType}` : ''
                     }`
-                  : 'Mark each item as Pass, Advisory or Fail.'}
+                  : 'Mark each item as OK, Defect, or N/A.'}
             </p>
           </div>
           <Button
@@ -554,9 +554,11 @@ export function NewVehicleCheckModal({
               {items.length > 0 ? (
                 <p className="mt-3 text-sm text-slate-600">
                   Overall result:{' '}
-                  <span className="font-semibold text-[#2A376F]">{overallResult}</span>
-                  {overallResult === 'Fail' ? (
-                    <span className="text-slate-400"> — one or more items failed</span>
+                  <span className="font-semibold text-[#2A376F]">
+                    {overallResult === 'Advisory' ? 'Defects found' : 'Passed'}
+                  </span>
+                  {overallResult === 'Advisory' ? (
+                    <span className="text-slate-400"> — one or more defects reported</span>
                   ) : null}
                 </p>
               ) : null}

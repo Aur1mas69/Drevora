@@ -587,6 +587,11 @@ create table if not exists public.vehicle_checks (
   inspection_started_at timestamptz,
   inspection_completed_at timestamptz,
   duration_seconds integer,
+  defect_review_status text,
+  defect_reviewed_at timestamptz,
+  defect_reviewed_by uuid references auth.users (id) on delete set null,
+  defect_reviewed_by_name text,
+  defect_review_notes text,
   constraint vehicle_checks_status_check check (
     status in ('Completed', 'Pending', 'In Progress')
   ),
@@ -595,6 +600,16 @@ create table if not exists public.vehicle_checks (
   ),
   constraint vehicle_checks_odometer_unit_check check (
     odometer_unit in ('miles', 'km')
+  ),
+  constraint vehicle_checks_defect_review_status_check check (
+    defect_review_status is null
+    or defect_review_status in (
+      'awaiting_review',
+      'safe_to_operate',
+      'repair_required',
+      'vehicle_off_road',
+      'resolved'
+    )
   )
 );
 
@@ -604,7 +619,12 @@ alter table public.vehicle_checks
   add column if not exists signed_at timestamptz,
   add column if not exists inspection_started_at timestamptz,
   add column if not exists inspection_completed_at timestamptz,
-  add column if not exists duration_seconds integer;
+  add column if not exists duration_seconds integer,
+  add column if not exists defect_review_status text,
+  add column if not exists defect_reviewed_at timestamptz,
+  add column if not exists defect_reviewed_by uuid references auth.users (id) on delete set null,
+  add column if not exists defect_reviewed_by_name text,
+  add column if not exists defect_review_notes text;
 
 update public.vehicle_checks
 set odometer_unit = 'miles'
@@ -630,6 +650,21 @@ alter table public.vehicle_checks
 alter table public.vehicle_checks
   add constraint vehicle_checks_duration_seconds_non_negative check (
     duration_seconds is null or duration_seconds >= 0
+  );
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_defect_review_status_check;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_defect_review_status_check check (
+    defect_review_status is null
+    or defect_review_status in (
+      'awaiting_review',
+      'safe_to_operate',
+      'repair_required',
+      'vehicle_off_road',
+      'resolved'
+    )
   );
 
 create table if not exists public.vehicle_check_items (
@@ -660,6 +695,7 @@ create index if not exists vehicle_checks_worker_id_idx on public.vehicle_checks
 create index if not exists vehicle_checks_inspection_date_idx on public.vehicle_checks (inspection_date);
 create index if not exists vehicle_checks_status_idx on public.vehicle_checks (status);
 create index if not exists vehicle_checks_overall_result_idx on public.vehicle_checks (overall_result);
+create index if not exists vehicle_checks_defect_review_status_idx on public.vehicle_checks (defect_review_status);
 create index if not exists vehicle_check_items_check_id_idx on public.vehicle_check_items (vehicle_check_id);
 create index if not exists vehicle_check_items_result_idx on public.vehicle_check_items (result);
 

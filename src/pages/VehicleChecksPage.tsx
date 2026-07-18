@@ -1,6 +1,7 @@
 import { DeleteVehicleCheckModal } from '@/components/vehicle-checks/DeleteVehicleCheckModal'
 import { EditVehicleCheckModal } from '@/components/vehicle-checks/EditVehicleCheckModal'
 import { NewVehicleCheckModal } from '@/components/vehicle-checks/NewVehicleCheckModal'
+import { ReviewVehicleCheckDefectsModal } from '@/components/vehicle-checks/ReviewVehicleCheckDefectsModal'
 import { TyreCheckPanel } from '@/components/vehicle-checks/TyreCheckPanel'
 import { VehicleCheckDrawer } from '@/components/vehicle-checks/VehicleCheckDrawer'
 import { VehicleChecksDataTable } from '@/components/vehicle-checks/VehicleChecksDataTable'
@@ -18,10 +19,12 @@ import { VehicleChecksToolbar } from '@/components/vehicle-checks/VehicleChecksT
 import AdminLayout from '@/layouts/AdminLayout'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import type {
+  SaveVehicleCheckDefectReviewInput,
   VehicleCheck,
   VehicleCheckListItem,
   VehicleCheckOdometerUnit,
   VehicleCheckResultFilter,
+  VehicleCheckReviewStatusFilter,
   VehicleCheckStatusFilter,
   VehicleCheckSummaryStats,
 } from '@/lib/vehicleCheckTypes'
@@ -32,6 +35,7 @@ import {
   deleteVehicleCheck,
   fetchVehicleCheckById,
   fetchVehicleChecks,
+  saveVehicleCheckDefectReview,
   updateVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
@@ -62,11 +66,10 @@ export default function VehicleChecksPage() {
     totalChecks: 0,
     checksToday: 0,
     passedToday: 0,
-    failedToday: 0,
-    defectsReported: 0,
-    openDefects: 0,
+    defectsFoundToday: 0,
+    awaitingReview: 0,
+    defectItemsReported: 0,
     vehiclesChecked: 0,
-    failedInspections: 0,
   })
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
@@ -76,6 +79,8 @@ export default function VehicleChecksPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<VehicleCheckStatusFilter>('all')
   const [resultFilter, setResultFilter] = useState<VehicleCheckResultFilter>('all')
+  const [reviewStatusFilter, setReviewStatusFilter] =
+    useState<VehicleCheckReviewStatusFilter>('all')
   const [vehicleFilter, setVehicleFilter] = useState('all')
   const [workerFilter, setWorkerFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState(() => getCurrentViewToday())
@@ -86,6 +91,7 @@ export default function VehicleChecksPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [viewCheck, setViewCheck] = useState<VehicleCheck | null>(null)
   const [editCheck, setEditCheck] = useState<VehicleCheck | null>(null)
+  const [reviewCheck, setReviewCheck] = useState<VehicleCheck | null>(null)
   const [deletingCheck, setDeletingCheck] = useState<VehicleCheckListItem | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -97,6 +103,7 @@ export default function VehicleChecksPage() {
     debouncedSearch.trim().length > 0 ||
     statusFilter !== 'all' ||
     resultFilter !== 'all' ||
+    reviewStatusFilter !== 'all' ||
     vehicleFilter !== 'all' ||
     workerFilter !== 'all' ||
     dateFrom.length > 0 ||
@@ -114,7 +121,17 @@ export default function VehicleChecksPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [dateFrom, dateTo, debouncedSearch, pageSize, resultFilter, statusFilter, vehicleFilter, workerFilter])
+  }, [
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    pageSize,
+    resultFilter,
+    reviewStatusFilter,
+    statusFilter,
+    vehicleFilter,
+    workerFilter,
+  ])
 
   const loadReferenceData = useCallback(async () => {
     const [loadedVehicles, loadedDrivers] = await Promise.all([
@@ -134,6 +151,7 @@ export default function VehicleChecksPage() {
         search: debouncedSearch,
         status: statusFilter,
         result: resultFilter,
+        reviewStatus: reviewStatusFilter,
         vehicleId: vehicleFilter,
         workerId: workerFilter,
         dateFrom: dateFrom || undefined,
@@ -156,7 +174,18 @@ export default function VehicleChecksPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [dateFrom, dateTo, debouncedSearch, page, pageSize, resultFilter, statusFilter, vehicleFilter, workerFilter])
+  }, [
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    page,
+    pageSize,
+    resultFilter,
+    reviewStatusFilter,
+    statusFilter,
+    vehicleFilter,
+    workerFilter,
+  ])
 
   useEffect(() => {
     if (!companyReady || !companyId) {
@@ -218,6 +247,7 @@ export default function VehicleChecksPage() {
     setDebouncedSearch('')
     setStatusFilter('all')
     setResultFilter('all')
+    setReviewStatusFilter('all')
     setVehicleFilter('all')
     setWorkerFilter('all')
     setDateFrom('')
@@ -235,6 +265,7 @@ export default function VehicleChecksPage() {
     if (!value) {
       setStatusFilter('all')
       setResultFilter('all')
+      setReviewStatusFilter('all')
       setDateFrom('')
       setDateTo('')
       return
@@ -243,17 +274,61 @@ export default function VehicleChecksPage() {
     setDateFrom(getCurrentViewToday())
     setDateTo(getCurrentViewToday())
     setStatusFilter('all')
+    setReviewStatusFilter('all')
 
     if (value === 'passedToday') {
       setResultFilter('Pass')
-    } else if (value === 'failedToday') {
-      setResultFilter('Fail')
-    } else if (value === 'defectsReported') {
-      setResultFilter('Defects')
+    } else if (value === 'defectsFound') {
+      setResultFilter('Advisory')
+    } else if (value === 'awaitingReview') {
+      setResultFilter('all')
+      setReviewStatusFilter('awaiting_review')
       setDateFrom('')
       setDateTo('')
     } else {
       setResultFilter('all')
+    }
+  }
+
+  async function openReviewDefects(id: string) {
+    setIsLoadingDetail(true)
+    try {
+      const detail = await fetchVehicleCheckById(id)
+      if (!detail) {
+        showToast('Inspection not found')
+        return
+      }
+      if (detail.defectCount <= 0) {
+        showToast('This inspection has no defects to review')
+        return
+      }
+      setReviewCheck(detail)
+    } catch (error) {
+      const message =
+        error instanceof VehicleChecksServiceError
+          ? error.message
+          : 'Failed to load inspection'
+      showToast(message)
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  async function handleSaveDefectReview(input: SaveVehicleCheckDefectReviewInput) {
+    if (!reviewCheck) return
+    setIsSaving(true)
+    try {
+      await saveVehicleCheckDefectReview(reviewCheck.id, input)
+      setReviewCheck(null)
+      showToast('Review decision saved')
+      await loadChecks()
+      await loadReferenceData()
+    } catch (error) {
+      throw error instanceof VehicleChecksServiceError
+        ? error
+        : new VehicleChecksServiceError('Failed to save review decision')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -337,6 +412,7 @@ export default function VehicleChecksPage() {
 
       if (viewCheck?.id === deletingCheck.id) setViewCheck(null)
       if (editCheck?.id === deletingCheck.id) setEditCheck(null)
+      if (reviewCheck?.id === deletingCheck.id) setReviewCheck(null)
 
       setDeletingCheck(null)
       showToast('Vehicle check deleted')
@@ -414,6 +490,11 @@ export default function VehicleChecksPage() {
             setResultFilter(value)
             setActiveKpiFilter(null)
           }}
+          reviewStatusFilter={reviewStatusFilter}
+          onReviewStatusFilterChange={(value) => {
+            setReviewStatusFilter(value)
+            setActiveKpiFilter(null)
+          }}
           vehicleFilter={vehicleFilter}
           onVehicleFilterChange={(value) => {
             setVehicleFilter(value)
@@ -475,6 +556,7 @@ export default function VehicleChecksPage() {
               checks={items}
               onView={(check) => void openCheckDetail(check.id, 'view')}
               onEdit={(check) => void openCheckDetail(check.id, 'edit')}
+              onReviewDefects={(check) => void openReviewDefects(check.id)}
               onDelete={(check) => {
                 setDeleteError(null)
                 setDeletingCheck(check)
@@ -521,6 +603,17 @@ export default function VehicleChecksPage() {
           setEditCheck(viewCheck)
           setViewCheck(null)
         }}
+      />
+
+      <ReviewVehicleCheckDefectsModal
+        check={reviewCheck}
+        isOpen={reviewCheck !== null}
+        isSaving={isSaving}
+        onClose={() => {
+          if (isSaving) return
+          setReviewCheck(null)
+        }}
+        onSave={handleSaveDefectReview}
       />
 
       {deletingCheck ? (

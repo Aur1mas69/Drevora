@@ -1,4 +1,6 @@
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
+import { TyreChecksPagination } from '@/components/vehicle-checks/TyreChecksPagination'
+import { TyreChecksToolbar } from '@/components/vehicle-checks/TyreChecksToolbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -6,7 +8,6 @@ import {
   adminPanel,
   adminSelect,
   adminTableEntityName,
-  adminTableFooter,
   adminTableHeader,
   adminTableRow,
   adminTableShell,
@@ -17,7 +18,9 @@ import {
   buildTyreLayout,
   DEFAULT_TRAILER_AXLE_COUNT,
   DEFAULT_TRUCK_AXLE_COUNT,
+  DEFAULT_TYRE_CHECK_PAGE_SIZE,
   formatAxleCountLabel,
+  formatTyreCheckResultLabel,
   formatTyreSummaryLabel,
   MAX_COMBINED_TYRE_AXLES,
   summarizeTyreMeasurements,
@@ -29,13 +32,20 @@ import {
   tyreStatusLabel,
   validateTyreAxleCounts,
   type SavedTyreCheck,
+  type TyreCheckListItem,
+  type TyreCheckResultFilter,
   type TyreMeasurement,
 } from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import type { Driver } from '@/services/driversService'
+import {
+  fetchTyreCheckDetail,
+  fetchTyreChecks,
+  TyreChecksServiceError,
+} from '@/services/tyreChecksService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { Camera, StickyNote } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type TyreCheckPanelProps = {
   vehicles: Vehicle[]
@@ -79,8 +89,23 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   )
   const [selectedTyreId, setSelectedTyreId] = useState<string | null>(null)
   const [recentChecks, setRecentChecks] = useState<SavedTyreCheck[]>([])
+  const [historyItems, setHistoryItems] = useState<TyreCheckListItem[]>([])
+  const [historyTotalCount, setHistoryTotalCount] = useState(0)
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [resultFilter, setResultFilter] = useState<TyreCheckResultFilter>('all')
+  const [vehicleFilter, setVehicleFilter] = useState('all')
+  const [workerFilter, setWorkerFilter] = useState('all')
+  const [trailerFilter, setTrailerFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_TYRE_CHECK_PAGE_SIZE)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [viewingCheck, setViewingCheck] = useState<SavedTyreCheck | null>(null)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const tyreEditorRef = useRef<HTMLDivElement>(null)
 
@@ -88,6 +113,80 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const truckOptions = truckAxleOptions(hasTrailer ? trailerAxleCount : null)
   const trailerOptions = trailerAxleOptions(truckAxleCount)
   const combinedAxles = totalAxleCount(truckAxleCount, hasTrailer ? trailerAxleCount : null)
+
+  const hasActiveHistoryFilters =
+    debouncedSearch.trim().length > 0 ||
+    resultFilter !== 'all' ||
+    vehicleFilter !== 'all' ||
+    workerFilter !== 'all' ||
+    trailerFilter !== 'all' ||
+    dateFrom.length > 0 ||
+    dateTo.length > 0
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
+    setPage(1)
+  }, [
+    debouncedSearch,
+    resultFilter,
+    vehicleFilter,
+    workerFilter,
+    trailerFilter,
+    dateFrom,
+    dateTo,
+    pageSize,
+  ])
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    setHistoryError(null)
+    try {
+      const result = await fetchTyreChecks({
+        search: debouncedSearch,
+        result: resultFilter,
+        vehicleId: vehicleFilter,
+        workerId: workerFilter,
+        trailerVehicleId: trailerFilter,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        page,
+        pageSize,
+        sortDir: 'desc',
+      })
+      setHistoryItems(result.items)
+      setHistoryTotalCount(result.totalCount)
+    } catch (error) {
+      const message =
+        error instanceof TyreChecksServiceError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to load tyre checks'
+      setHistoryError(message)
+      setHistoryItems([])
+      setHistoryTotalCount(0)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    page,
+    pageSize,
+    resultFilter,
+    trailerFilter,
+    vehicleFilter,
+    workerFilter,
+  ])
+
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
 
   useEffect(() => {
     const next = buildTyreLayout(
@@ -227,6 +326,75 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
 
   function handleViewRecent(check: SavedTyreCheck) {
     setViewingCheck(check)
+  }
+
+  async function handleViewHistory(check: TyreCheckListItem) {
+    setIsLoadingDetail(true)
+    try {
+      const detail = await fetchTyreCheckDetail(check.id)
+      if (!detail) {
+        showToast('Tyre check not found')
+        return
+      }
+      const vehicleMakeModel = [detail.listItem.vehicleMake, detail.listItem.vehicleModel]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+      const trailerLabel =
+        detail.listItem.trailerRegistration ||
+        detail.listItem.trailerNumber ||
+        null
+      setViewingCheck({
+        id: detail.listItem.id,
+        checkedAt: detail.listItem.inspectedAt,
+        vehicleId: detail.listItem.vehicleId,
+        vehicleLabel: vehicleMakeModel
+          ? `${detail.listItem.vehicleRegistration} · ${vehicleMakeModel}`
+          : detail.listItem.vehicleRegistration,
+        trailerId: detail.listItem.trailerVehicleId,
+        trailerLabel,
+        checkedBy: detail.listItem.workerName,
+        truckAxleCount: detail.listItem.truckAxleCount,
+        trailerAxleCount: detail.listItem.trailerAxleCount,
+        summaryLabel: detail.listItem.summaryLabel,
+        notes: detail.listItem.notes?.trim() || '',
+        photoCount: 0,
+        measurements: detail.measurements,
+      })
+    } catch (error) {
+      const message =
+        error instanceof TyreChecksServiceError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to open tyre check'
+      showToast(message)
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  function handleClearHistoryFilters() {
+    setResultFilter('all')
+    setVehicleFilter('all')
+    setWorkerFilter('all')
+    setTrailerFilter('all')
+    setDateFrom('')
+    setDateTo('')
+  }
+
+  function trailerDisplayLabel(check: TyreCheckListItem): string {
+    if (check.trailerRegistration && check.trailerNumber) {
+      return `${check.trailerRegistration} · ${check.trailerNumber}`
+    }
+    return check.trailerRegistration || check.trailerNumber || '—'
+  }
+
+  function vehicleDisplayLabel(check: TyreCheckListItem): string {
+    const makeModel = [check.vehicleMake, check.vehicleModel].filter(Boolean).join(' ').trim()
+    return makeModel
+      ? `${check.vehicleRegistration} · ${makeModel}`
+      : check.vehicleRegistration
   }
 
   return (
@@ -559,73 +727,168 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
         </Button>
       </section>
 
-      <section className={adminTableShell}>
-        <div className="border-b border-[rgba(75,120,220,0.10)] px-4 py-3">
-          <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
-            Recent Tyre Checks
-          </h2>
+      <section className="space-y-3">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
+              Tyre Check History
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Search and filter company tyre inspections across the full archive.
+            </p>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className={adminTableHeader}>
-              <tr>
-                {['Date', 'Vehicle', 'Trailer', 'Checked by', 'Axles', 'Summary', 'Actions'].map(
-                  (heading) => (
+
+        <TyreChecksToolbar
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          resultFilter={resultFilter}
+          onResultFilterChange={setResultFilter}
+          vehicleFilter={vehicleFilter}
+          onVehicleFilterChange={setVehicleFilter}
+          workerFilter={workerFilter}
+          onWorkerFilterChange={setWorkerFilter}
+          trailerFilter={trailerFilter}
+          onTrailerFilterChange={setTrailerFilter}
+          dateFrom={dateFrom}
+          onDateFromChange={setDateFrom}
+          dateTo={dateTo}
+          onDateToChange={setDateTo}
+          vehicles={vehicles}
+          workers={drivers}
+          hasActiveFilters={hasActiveHistoryFilters}
+          onClearFilters={handleClearHistoryFilters}
+          loading={historyLoading}
+        />
+
+        <div className={adminTableShell}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className={adminTableHeader}>
+                <tr>
+                  {[
+                    'Date',
+                    'Vehicle',
+                    'Trailer',
+                    'Checked by',
+                    'Result',
+                    'Axles',
+                    'Summary',
+                    'Actions',
+                  ].map((heading) => (
                     <th
                       key={heading}
-                      className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.07em] text-[#0D477F]"
+                      className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.07em] text-[#0D477F] dark:text-sky-300"
                     >
                       {heading}
                     </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {recentChecks.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
-                    No tyre checks saved in this session yet.
-                  </td>
+                  ))}
                 </tr>
-              ) : (
-                recentChecks.map((check) => (
-                  <tr key={check.id} className={adminTableRow}>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatCheckedAt(check.checkedAt)}
-                    </td>
-                    <td className={`px-4 py-3 ${adminTableEntityName}`}>
-                      {check.vehicleLabel}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {check.trailerLabel ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{check.checkedBy}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatAxleCountLabel(
-                        check.truckAxleCount,
-                        check.trailerAxleCount,
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{check.summaryLabel}</td>
-                    <td className="px-4 py-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 rounded-[10px] px-3 text-xs"
-                        onClick={() => handleViewRecent(check)}
-                      >
-                        View
-                      </Button>
+              </thead>
+              <tbody>
+                {historyLoading ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400"
+                    >
+                      Loading tyre checks…
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className={`${adminTableFooter} px-4 py-3 text-xs text-slate-500`}>
-          Session list for this Office page. Durable archive storage can be added next.
+                ) : historyError ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-10 text-center text-sm text-rose-600 dark:text-rose-300"
+                    >
+                      {historyError}
+                    </td>
+                  </tr>
+                ) : historyItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400"
+                    >
+                      {hasActiveHistoryFilters
+                        ? 'No tyre checks match your search or filters.'
+                        : 'No tyre checks have been recorded yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  historyItems.map((check) => (
+                    <tr key={check.id} className={adminTableRow}>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {formatCheckedAt(check.inspectedAt)}
+                      </td>
+                      <td className={`px-4 py-3 ${adminTableEntityName}`}>
+                        {vehicleDisplayLabel(check)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {trailerDisplayLabel(check)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {check.workerName}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {formatTyreCheckResultLabel(check.overallResult)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {formatAxleCountLabel(
+                          check.truckAxleCount,
+                          check.trailerAxleCount,
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {check.summaryLabel}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 rounded-[10px] px-3 text-xs"
+                          disabled={isLoadingDetail}
+                          onClick={() => void handleViewHistory(check)}
+                        >
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {recentChecks.length > 0 ? (
+            <div className="border-t border-[rgba(75,120,220,0.10)] px-4 py-3 dark:border-white/10">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
+                Saved this session
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {recentChecks.map((check) => (
+                  <Button
+                    key={check.id}
+                    type="button"
+                    variant="outline"
+                    className="h-8 rounded-[10px] px-3 text-xs"
+                    onClick={() => handleViewRecent(check)}
+                  >
+                    {check.vehicleLabel} · {formatCheckedAt(check.checkedAt)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <TyreChecksPagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={historyTotalCount}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            disabled={historyLoading}
+          />
         </div>
       </section>
 

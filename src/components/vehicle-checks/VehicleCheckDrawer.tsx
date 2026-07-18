@@ -2,7 +2,14 @@ import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
 import type { VehicleCheck, VehicleCheckItem } from '@/lib/vehicleCheckTypes'
-import { getResultBadgeClass, getStatusBadgeClass } from '@/lib/vehicleCheckUtils'
+import {
+  formatDefectReviewStatusLabel,
+  formatVehicleCheckItemResultLabel,
+  formatVehicleCheckResultLabel,
+  getDefectReviewBadgeClass,
+  getResultBadgeClass,
+  getStatusBadgeClass,
+} from '@/lib/vehicleCheckUtils'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
 import { X } from 'lucide-react'
@@ -96,9 +103,11 @@ export function VehicleCheckDrawer({
     failOnDefect: item.failOnDefect,
   }))
   const passedItems = check.items.filter((item) => item.result === 'Pass')
-  const failedItems = check.items.filter((item) => item.result === 'Fail')
-  const defectItems = check.items.filter((item) => item.result === 'Fail' || item.result === 'Advisory')
-  const photoItems = check.items.filter((item) => item.photoUrl)
+  const naItems = check.items.filter((item) => item.result === 'Fail')
+  const defectItems = check.items.filter((item) => item.result === 'Advisory')
+  const photoItems = check.items.filter(
+    (item) => item.photoUrl && item.result === 'Advisory',
+  )
   const submittedAt = new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
@@ -164,17 +173,17 @@ export function VehicleCheckDrawer({
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
-                <dt className="text-slate-500">Result</dt>
+                <dt className="text-slate-500">Inspection result</dt>
                 <dd>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(check.overallResult)}`}
                   >
-                    {check.overallResult}
+                    {formatVehicleCheckResultLabel(check.overallResult)}
                   </span>
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
-                <dt className="text-slate-500">Status</dt>
+                <dt className="text-slate-500">Completion</dt>
                 <dd>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getStatusBadgeClass(check.status)}`}
@@ -184,13 +193,58 @@ export function VehicleCheckDrawer({
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Manager review</dt>
+                <dd>
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getDefectReviewBadgeClass(check.defectReviewStatus, check.defectCount)}`}
+                  >
+                    {formatDefectReviewStatusLabel(
+                      check.defectReviewStatus,
+                      check.defectCount,
+                    )}
+                  </span>
+                </dd>
+              </div>
+              {check.defectReviewedAt ? (
+                <>
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">Reviewed by</dt>
+                    <dd className="text-right text-slate-700 dark:text-slate-200">
+                      {check.defectReviewedByName ?? 'Office user'}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">Reviewed at</dt>
+                    <dd className="text-right tabular-nums text-slate-700 dark:text-slate-200">
+                      {new Intl.DateTimeFormat('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      }).format(new Date(check.defectReviewedAt))}
+                    </dd>
+                  </div>
+                </>
+              ) : null}
+              {check.defectReviewNotes?.trim() ? (
+                <div>
+                  <dt className="text-slate-500">Manager notes</dt>
+                  <dd className="mt-1 rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+                    {check.defectReviewNotes}
+                  </dd>
+                </div>
+              ) : null}
+              <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Submitted</dt>
                 <dd className="text-right text-slate-700">{submittedAt}</dd>
               </div>
               <div className="flex items-start justify-between gap-4">
-                <dt className="text-slate-500">Checklist result</dt>
+                <dt className="text-slate-500">Checklist summary</dt>
                 <dd className="text-right text-slate-700">
-                  {passedItems.length} passed · {failedItems.length} failed
+                  {passedItems.length} OK · {defectItems.length} defect
+                  {defectItems.length === 1 ? '' : 's'} · {naItems.length} N/A
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
@@ -230,7 +284,7 @@ export function VehicleCheckDrawer({
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(item.result)}`}
                       >
-                        {item.result}
+                        {formatVehicleCheckItemResultLabel(item.result)}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-amber-800/80">{item.category}</p>

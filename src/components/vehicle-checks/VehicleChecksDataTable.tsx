@@ -8,9 +8,10 @@ import {
 import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import {
+  formatDefectReviewStatusLabel,
   formatVehicleCheckResultLabel,
+  getDefectReviewBadgeClass,
   getResultBadgeClass,
-  getStatusBadgeClass,
 } from '@/lib/vehicleCheckUtils'
 import {
   adminTableEntityName,
@@ -20,29 +21,46 @@ import {
   adminText,
   adminTextStrong,
 } from '@/lib/adminUiStyles'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { ClipboardCheck, Eye, Pencil, Trash2 } from 'lucide-react'
 
 type VehicleChecksDataTableProps = {
   checks: VehicleCheckListItem[]
   onView: (check: VehicleCheckListItem) => void
   onEdit: (check: VehicleCheckListItem) => void
   onDelete: (check: VehicleCheckListItem) => void
+  onReviewDefects: (check: VehicleCheckListItem) => void
 }
 
 function VehicleCheckRowActions({
+  canReview,
   onView,
   onEdit,
   onDelete,
+  onReviewDefects,
 }: {
+  canReview: boolean
   onView: () => void
   onEdit: () => void
   onDelete: () => void
+  onReviewDefects: () => void
 }) {
   const actions: RowAction[] = [
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
+  ]
+
+  if (canReview) {
+    actions.push({
+      id: 'review',
+      label: 'Review defects',
+      icon: ClipboardCheck,
+      onClick: onReviewDefects,
+    })
+  }
+
+  actions.push(
     { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
     { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
-  ]
+  )
 
   return <RowActionsMenu actions={actions} />
 }
@@ -52,6 +70,7 @@ export function VehicleChecksDataTable({
   onView,
   onEdit,
   onDelete,
+  onReviewDefects,
 }: VehicleChecksDataTableProps) {
   const { formatDate, compactTables } = useCompanySettings()
   const rowPadding = compactTables ? 'py-3' : 'py-4'
@@ -94,7 +113,7 @@ export function VehicleChecksDataTable({
       className={`${adminTableShell} shadow-[0_8px_24px_rgba(33,142,231,0.08)] ring-1 ring-[#D3E9FC]/80`}
     >
       <div className="max-h-[calc(100vh-22rem)] overflow-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
           <thead className={adminTableHeader}>
             <tr className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF] sm:text-sm sm:tracking-[0.06em]">
               <th className={headerPadding}>Date / Time</th>
@@ -103,7 +122,7 @@ export function VehicleChecksDataTable({
               <th className={headerPadding}>Result</th>
               <th className={headerPadding}>Defects</th>
               <th className={headerPadding}>Duration</th>
-              <th className={headerPadding}>Status</th>
+              <th className={headerPadding}>Review status</th>
               <TableActionsHeader className={headerPadding} />
             </tr>
           </thead>
@@ -138,7 +157,9 @@ export function VehicleChecksDataTable({
                 </td>
                 <td
                   className={`${cellPadding} align-middle font-medium ${
-                    check.defectCount > 0 ? 'font-semibold text-amber-700' : adminText
+                    check.defectCount > 0
+                      ? 'font-semibold text-amber-700 dark:text-amber-300'
+                      : adminText
                   }`}
                 >
                   {getDefectsLabel(check)}
@@ -147,15 +168,22 @@ export function VehicleChecksDataTable({
                   {getDurationLabel(check)}
                 </td>
                 <td className={`${cellPadding} align-middle`}>
-                  <span className={`${badgeClassName} ${getStatusBadgeClass(check.status)}`}>
-                    {check.status}
+                  <span
+                    className={`${badgeClassName} ${getDefectReviewBadgeClass(check.defectReviewStatus, check.defectCount)}`}
+                  >
+                    {formatDefectReviewStatusLabel(
+                      check.defectReviewStatus,
+                      check.defectCount,
+                    )}
                   </span>
                 </td>
                 <TableActionsCell className={rowPadding}>
                   <VehicleCheckRowActions
+                    canReview={check.defectCount > 0}
                     onView={() => onView(check)}
                     onEdit={() => onEdit(check)}
                     onDelete={() => onDelete(check)}
+                    onReviewDefects={() => onReviewDefects(check)}
                   />
                 </TableActionsCell>
               </tr>

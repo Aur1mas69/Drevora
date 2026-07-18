@@ -3,6 +3,27 @@ export type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+/**
+ * Normalize a stale PWA/shell launch at `/` to `/login` before React mounts.
+ *
+ * The production manifest start_url is `/login`. Older installed PWAs (or a
+ * service-worker navigation fallback) may still open `/` while serving
+ * index.html — leaving a generic root URL in the address bar. Role-based
+ * redirects then run from the login route via useRoleBasedAuthRedirect.
+ */
+export function normalizeAppLaunchPath(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (window.location.pathname !== '/') {
+    return
+  }
+
+  const nextUrl = `/login${window.location.search}${window.location.hash}`
+  window.history.replaceState(window.history.state, '', nextUrl)
+}
+
 export function isStandaloneDisplayMode(): boolean {
   if (typeof window === 'undefined') {
     return false

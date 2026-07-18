@@ -1,5 +1,6 @@
 import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import type {
+  VehicleCheckDefectReviewStatus,
   VehicleCheckItem,
   VehicleCheckItemInput,
   VehicleCheckItemResult,
@@ -8,6 +9,11 @@ import type {
   VehicleCheckSummaryStats,
   VehicleChecklistSection,
 } from '@/lib/vehicleCheckTypes'
+
+/** Defect answers are stored as Advisory. N/A is stored as Fail and must never count as a defect. */
+export function isVehicleCheckDefectResult(result: string | null | undefined): boolean {
+  return result === 'Advisory'
+}
 
 type VehicleCheckItemDescriptionSource = {
   description?: string | null
@@ -196,13 +202,44 @@ export function mergeChecklistWithExistingItems(
   })
 }
 
+/**
+ * Canonical inspection result from saved checklist answers.
+ * - zero Defect (Advisory) answers → Pass ("Passed")
+ * - one or more Defect answers → Advisory ("Defects found")
+ * N/A (Fail) never changes the inspection result.
+ */
 export function computeOverallResult(
   items: Pick<VehicleCheckItemInput, 'result' | 'isAnswered'>[],
 ): VehicleCheckResult {
-  const answeredItems = items.filter((item) => item.isAnswered === true)
-  // Defect (Advisory) drives overall result. N/A is stored as Fail and does not fail the inspection.
-  if (answeredItems.some((item) => item.result === 'Advisory')) return 'Advisory'
+  const hasAnswerFlags = items.some((item) => item.isAnswered !== undefined)
+  const considered = hasAnswerFlags
+    ? items.filter((item) => item.isAnswered === true)
+    : items
+  if (considered.some((item) => isVehicleCheckDefectResult(item.result))) {
+    return 'Advisory'
+  }
   return 'Pass'
+}
+
+export function countDefectAnswers(
+  items: Pick<{ result: string }, 'result'>[],
+): number {
+  return items.filter((item) => isVehicleCheckDefectResult(item.result)).length
+}
+
+export function resolveInspectionResult(
+  overallResult: string | null | undefined,
+  defectCount: number,
+): VehicleCheckResult {
+  if (defectCount > 0) return 'Advisory'
+  if (overallResult === 'Advisory') return 'Advisory'
+  return 'Pass'
+}
+
+export function defaultDefectReviewStatus(
+  defectCount: number,
+): VehicleCheckDefectReviewStatus | null {
+  return defectCount > 0 ? 'awaiting_review' : null
 }
 
 function normalizeVehicleCheckItemResults(
@@ -219,9 +256,8 @@ export function vehicleCheckHasIssue(
   const items = normalizeVehicleCheckItemResults(itemResults)
 
   return (
-    overallResult === 'Fail' ||
     overallResult === 'Advisory' ||
-    items.some((item) => item.result === 'Fail' || item.result === 'Advisory')
+    items.some((item) => isVehicleCheckDefectResult(item.result))
   )
 }
 
@@ -231,17 +267,7 @@ export function getVehicleCheckActivitySeverity(
   overallResult: string,
   itemResults: { result: string }[] | { result: string } | null | undefined,
 ): VehicleCheckActivitySeverity {
-  const items = normalizeVehicleCheckItemResults(itemResults)
-
-  const hasFail =
-    overallResult === 'Fail' || items.some((item) => item.result === 'Fail')
-  if (hasFail) return 'danger'
-
-  const hasAdvisory =
-    overallResult === 'Advisory' ||
-    items.some((item) => item.result === 'Advisory')
-  if (hasAdvisory) return 'warning'
-
+  if (vehicleCheckHasIssue(overallResult, itemResults)) return 'warning'
   return 'success'
 }
 
@@ -278,9 +304,21 @@ export function formatVehicleCheckResultLabel(result: VehicleCheckResult): strin
     case 'Pass':
       return 'Passed'
     case 'Advisory':
-      return 'Defects'
+      return 'Defects found'
     case 'Fail':
-      return 'Failed'
+      // Legacy overall_result only — new inspections never store Fail as overall.
+      return 'Defects found'
+  }
+}
+
+export function formatVehicleCheckItemResultLabel(result: VehicleCheckItemResult): string {
+  switch (result) {
+    case 'Pass':
+      return 'OK'
+    case 'Advisory':
+      return 'Defect'
+    case 'Fail':
+      return 'N/A'
   }
 }
 
@@ -288,29 +326,75 @@ export function getItemResultBadgeClass(result: VehicleCheckItemResult): string 
   return getResultBadgeClass(result)
 }
 
+export function formatDefectReviewStatusLabel(
+  status: VehicleCheckDefectReviewStatus | null | undefined,
+  defectCount: number,
+): string {
+  if (defectCount <= 0 || !status) return 'No review needed'
+
+  switch (status) {
+    case 'awaiting_review':
+      return 'Awaiting review'
+    case 'safe_to_operate':
+      return 'Safe to operate'
+    case 'repair_required':
+      return 'Repair required'
+    case 'vehicle_off_road':
+      return 'Vehicle off road'
+    case 'resolved':
+      return 'Resolved'
+  }
+}
+
+export function getDefectReviewBadgeClass(
+  status: VehicleCheckDefectReviewStatus | null | undefined,
+  defectCount: number,
+): string {
+  if (defectCount <= 0 || !status) {
+    return 'bg-slate-50 text-slate-600 ring-slate-100 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
+  }
+
+  switch (status) {
+    case 'awaiting_review':
+      return 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
+    case 'safe_to_operate':
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
+    case 'repair_required':
+      return 'bg-orange-50 text-orange-800 ring-orange-100 dark:bg-orange-950/40 dark:text-orange-300 dark:ring-orange-900/60'
+    case 'vehicle_off_road':
+      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
+    case 'resolved':
+      return 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
+  }
+}
+
 export function computeVehicleCheckSummaryStats(
-  checks: Pick<VehicleCheckListItem, 'inspectionDate' | 'overallResult' | 'vehicleId'>[],
+  checks: Pick<
+    VehicleCheckListItem,
+    'inspectionDate' | 'overallResult' | 'vehicleId' | 'defectCount' | 'defectReviewStatus'
+  >[],
   defectItemCount: number,
 ): VehicleCheckSummaryStats {
   const today = todayIsoDate()
   const todayChecks = checks.filter((check) => check.inspectionDate === today)
   const checksToday = todayChecks.length
-  const passedToday = todayChecks.filter((check) => check.overallResult === 'Pass').length
-  const failedToday = todayChecks.filter((check) => check.overallResult === 'Fail').length
-  const vehiclesChecked = new Set(
-    todayChecks.map((check) => check.vehicleId),
-  ).size
-  const failedInspections = checks.filter((check) => check.overallResult === 'Fail').length
+  const passedToday = todayChecks.filter(
+    (check) => resolveInspectionResult(check.overallResult, check.defectCount) === 'Pass',
+  ).length
+  const defectsFoundToday = todayChecks.filter((check) => check.defectCount > 0).length
+  const awaitingReview = checks.filter(
+    (check) => check.defectCount > 0 && check.defectReviewStatus === 'awaiting_review',
+  ).length
+  const vehiclesChecked = new Set(todayChecks.map((check) => check.vehicleId)).size
 
   return {
     totalChecks: checks.length,
     checksToday,
     passedToday,
-    failedToday,
-    defectsReported: defectItemCount,
+    defectsFoundToday,
+    awaitingReview,
+    defectItemsReported: defectItemCount,
     vehiclesChecked,
-    openDefects: defectItemCount,
-    failedInspections,
   }
 }
 

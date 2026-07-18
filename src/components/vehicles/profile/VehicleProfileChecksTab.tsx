@@ -118,7 +118,7 @@ export function VehicleProfileChecksTab({ vehicleId }: VehicleProfileChecksTabPr
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
-                  {item.failCount}
+                  {item.defectCount}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link

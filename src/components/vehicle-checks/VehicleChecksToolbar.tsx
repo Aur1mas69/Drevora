@@ -1,7 +1,11 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { VehicleCheckResultFilter, VehicleCheckStatusFilter } from '@/lib/vehicleCheckTypes'
+import type {
+  VehicleCheckResultFilter,
+  VehicleCheckReviewStatusFilter,
+  VehicleCheckStatusFilter,
+} from '@/lib/vehicleCheckTypes'
 import type { Vehicle } from '@/services/vehiclesService'
 import type { Driver } from '@/services/driversService'
 import { X } from 'lucide-react'
@@ -14,6 +18,8 @@ type VehicleChecksToolbarProps = {
   onStatusFilterChange: (value: VehicleCheckStatusFilter) => void
   resultFilter: VehicleCheckResultFilter
   onResultFilterChange: (value: VehicleCheckResultFilter) => void
+  reviewStatusFilter: VehicleCheckReviewStatusFilter
+  onReviewStatusFilterChange: (value: VehicleCheckReviewStatusFilter) => void
   vehicleFilter: string
   onVehicleFilterChange: (value: string) => void
   workerFilter: string
@@ -44,6 +50,8 @@ export function VehicleChecksToolbar({
   onStatusFilterChange,
   resultFilter,
   onResultFilterChange,
+  reviewStatusFilter,
+  onReviewStatusFilterChange,
   vehicleFilter,
   onVehicleFilterChange,
   workerFilter,
@@ -78,12 +86,21 @@ export function VehicleChecksToolbar({
     let count = 0
     if (statusFilter !== 'all') count += 1
     if (resultFilter !== 'all') count += 1
+    if (reviewStatusFilter !== 'all') count += 1
     if (vehicleFilter !== 'all') count += 1
     if (workerFilter !== 'all') count += 1
     if (dateFrom) count += 1
     if (dateTo) count += 1
     return count
-  }, [dateFrom, dateTo, resultFilter, statusFilter, vehicleFilter, workerFilter])
+  }, [
+    dateFrom,
+    dateTo,
+    resultFilter,
+    reviewStatusFilter,
+    statusFilter,
+    vehicleFilter,
+    workerFilter,
+  ])
 
   useEffect(() => {
     if (!isFiltersOpen) return
@@ -217,20 +234,41 @@ export function VehicleChecksToolbar({
                 >
                   <option value="all">All results</option>
                   <option value="Pass">Passed</option>
-                  <option value="Fail">Failed</option>
-                  <option value="Defects">Defects</option>
+                  <option value="Advisory">Defects found</option>
                 </select>
               </label>
 
               <label className="block space-y-1.5">
-                <span className={labelClass}>Status</span>
+                <span className={labelClass}>Review status</span>
+                <select
+                  value={reviewStatusFilter}
+                  onChange={(event) =>
+                    onReviewStatusFilterChange(
+                      event.target.value as VehicleCheckReviewStatusFilter,
+                    )
+                  }
+                  className={`${selectClass} w-full`}
+                  aria-label="Filter by review status"
+                >
+                  <option value="all">All review statuses</option>
+                  <option value="none">No review needed</option>
+                  <option value="awaiting_review">Awaiting review</option>
+                  <option value="safe_to_operate">Safe to operate</option>
+                  <option value="repair_required">Repair required</option>
+                  <option value="vehicle_off_road">Vehicle off road</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className={labelClass}>Completion status</span>
                 <select
                   value={statusFilter}
                   onChange={(event) =>
                     onStatusFilterChange(event.target.value as VehicleCheckStatusFilter)
                   }
                   className={`${selectClass} w-full`}
-                  aria-label="Filter by status"
+                  aria-label="Filter by completion status"
                 >
                   <option value="all">All statuses</option>
                   <option value="Completed">Completed</option>

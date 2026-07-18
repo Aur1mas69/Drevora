@@ -4,9 +4,18 @@ export const DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT: VehicleCheckOdometerUnit = 'mi
 
 export type VehicleCheckStatus = 'Completed' | 'Pending' | 'In Progress'
 
+/** Stored checklist / overall result values (DB CHECK). Defect = Advisory; N/A = Fail. */
 export type VehicleCheckResult = 'Pass' | 'Advisory' | 'Fail'
 
 export type VehicleCheckItemResult = VehicleCheckResult
+
+/** Manager operational decision for inspections that contain defects. */
+export type VehicleCheckDefectReviewStatus =
+  | 'awaiting_review'
+  | 'safe_to_operate'
+  | 'repair_required'
+  | 'vehicle_off_road'
+  | 'resolved'
 
 export type VehicleCheckItemTemplateRef = {
   description: string | null
@@ -39,6 +48,7 @@ export type VehicleCheckListItem = {
   fleetNumber: string | null
   vehicleMake: string | null
   vehicleModel: string | null
+  vehicleStatus: string | null
   workerId: string
   workerName: string
   inspectionDate: string
@@ -52,8 +62,13 @@ export type VehicleCheckListItem = {
   inspectionStartedAt: string | null
   inspectionCompletedAt: string | null
   durationSeconds: number | null
-  failCount: number
+  /** Count of Defect (Advisory) items only — N/A (Fail) is excluded. */
   defectCount: number
+  defectReviewStatus: VehicleCheckDefectReviewStatus | null
+  defectReviewedAt: string | null
+  defectReviewedBy: string | null
+  defectReviewedByName: string | null
+  defectReviewNotes: string | null
 }
 
 export type VehicleCheck = VehicleCheckListItem & {
@@ -64,17 +79,20 @@ export type VehicleCheckSummaryStats = {
   totalChecks: number
   checksToday: number
   passedToday: number
-  failedToday: number
-  defectsReported: number
+  /** Completed inspections today with one or more Defect items. */
+  defectsFoundToday: number
+  /** Defect inspections still awaiting manager review. */
+  awaitingReview: number
+  /** Individual Defect (Advisory) item count (all-time, company-scoped). */
+  defectItemsReported: number
   vehiclesChecked: number
-  openDefects: number
-  failedInspections: number
 }
 
 export type VehicleChecksQuery = {
   search?: string
   status?: VehicleCheckStatus | 'all'
   result?: VehicleCheckResultFilter
+  reviewStatus?: VehicleCheckReviewStatusFilter
   vehicleId?: string | 'all'
   workerId?: string | 'all'
   inspectionDate?: string
@@ -134,12 +152,25 @@ export type UpdateVehicleCheckInput = {
   items?: VehicleCheckItemInput[]
 }
 
+export type SaveVehicleCheckDefectReviewInput = {
+  reviewStatus: Exclude<VehicleCheckDefectReviewStatus, 'awaiting_review'>
+  notes?: string | null
+  reviewerName: string
+  confirmVehicleOffRoad?: boolean
+}
+
 export const VEHICLE_CHECK_PAGE_SIZE_OPTIONS = [25, 50, 100] as const
 export const DEFAULT_VEHICLE_CHECK_PAGE_SIZE = 50
 
 export type VehicleCheckStatusFilter = VehicleCheckStatus | 'all'
 
-export type VehicleCheckResultFilter = VehicleCheckResult | 'Defects' | 'all'
+/** UI result filter — Fail (N/A) is not an inspection-level result. */
+export type VehicleCheckResultFilter = 'Pass' | 'Advisory' | 'all'
+
+export type VehicleCheckReviewStatusFilter =
+  | VehicleCheckDefectReviewStatus
+  | 'none'
+  | 'all'
 
 export type VehicleChecklistSection = {
   section: string

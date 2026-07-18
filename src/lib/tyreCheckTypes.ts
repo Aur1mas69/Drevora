@@ -47,6 +47,82 @@ export type SavedTyreCheck = {
   measurements: TyreMeasurement[]
 }
 
+/** Stored parent overall_result values (DB CHECK / compute function). */
+export type TyreCheckOverallResult = 'incomplete' | 'pass' | 'attention' | 'fail'
+
+/**
+ * Result filter for the Tyre Checks history table.
+ * - pass → Passed
+ * - fail → Defects found (critical tread and/or defect flags per DB compute)
+ */
+export type TyreCheckResultFilter = 'all' | 'pass' | 'fail'
+
+export type TyreCheckListItem = {
+  id: string
+  createdAt: string
+  submittedAt: string | null
+  inspectedAt: string
+  vehicleId: string
+  vehicleRegistration: string
+  vehicleMake: string | null
+  vehicleModel: string | null
+  trailerVehicleId: string | null
+  trailerRegistration: string | null
+  trailerNumber: string | null
+  workerId: string
+  workerName: string
+  workerEmail: string | null
+  truckAxleCount: number
+  trailerAxleCount: number | null
+  overallResult: TyreCheckOverallResult
+  goodCount: number
+  attentionCount: number
+  criticalCount: number
+  dirtyCount: number
+  defectCount: number
+  notCheckedCount: number
+  summaryLabel: string
+  notes: string | null
+  status: 'draft' | 'in_progress' | 'submitted'
+}
+
+export type TyreChecksQuery = {
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  result?: TyreCheckResultFilter
+  vehicleId?: string | 'all'
+  workerId?: string | 'all'
+  trailerVehicleId?: string | 'all'
+  page?: number
+  pageSize?: number
+  sortDir?: 'asc' | 'desc'
+}
+
+export type TyreChecksPageResult = {
+  items: TyreCheckListItem[]
+  totalCount: number
+  page: number
+  pageSize: number
+}
+
+export const TYRE_CHECK_PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+export const DEFAULT_TYRE_CHECK_PAGE_SIZE = 25
+
+/** Display label aligned with the history table Result column. */
+export function formatTyreCheckResultLabel(result: TyreCheckOverallResult): string {
+  switch (result) {
+    case 'pass':
+      return 'Passed'
+    case 'fail':
+      return 'Defects found'
+    case 'attention':
+      return 'Attention'
+    case 'incomplete':
+      return 'Incomplete'
+  }
+}
+
 /** Maximum combined Truck + Trailer axles for one tyre check. */
 export const MAX_COMBINED_TYRE_AXLES = 6
 
