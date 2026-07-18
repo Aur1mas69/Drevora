@@ -89,9 +89,11 @@
                 <section class="legal-section" id="what-we-use">
                     <h2>3. Technologies DREVORA actually uses</h2>
                     <p>
-                        The public marketing website at drevora.app does not set first-party cookies and does
-                        not write local storage or session storage through DREVORA’s landing-page code. It is
-                        a static product site with a demo request form.
+                        The public marketing website at drevora.app does not set first-party cookies for
+                        advertising or analytics. Apart from the first-visit necessary-storage notice
+                        acknowledgement described below (<code>drevora.cookie_notice.v1</code>), the landing
+                        page does not write other local storage or session storage through DREVORA’s
+                        marketing-site code. It is a static product site with a demo request form.
                     </p>
                     <p>
                         The authenticated web application at app.drevora.app uses browser storage for login
@@ -279,7 +281,30 @@
                                 <div><dt>Surface</dt><dd>app.drevora.app</dd></div>
                             </dl>
                         </article>
+
+                        <article class="legal-tech-card" role="listitem">
+                            <h3>Landing cookie-notice acknowledgement</h3>
+                            <dl>
+                                <div><dt>Name / key</dt><dd><code>drevora.cookie_notice.v1</code></dd></div>
+                                <div><dt>Provider</dt><dd>DREVORA</dd></div>
+                                <div><dt>Purpose</dt><dd>Remember that the visitor acknowledged the necessary-storage notice on the public website</dd></div>
+                                <div><dt>Category</dt><dd>Preference / functional (acknowledgement)</dd></div>
+                                <div><dt>Storage type</dt><dd>Local storage</dd></div>
+                                <div><dt>Duration</dt><dd>Browser-controlled until cleared, or until a future notice version (for example <code>v2</code>) replaces it</dd></div>
+                                <div><dt>Consent required</dt><dd>No (records acknowledgement of necessary technologies; not used for advertising or behavioural tracking)</dd></div>
+                                <div><dt>Surface</dt><dd>drevora.app (landing and legal pages)</dd></div>
+                            </dl>
+                        </article>
                     </div>
+
+                    <p>
+                        The public website displays a first-visit notice about necessary cookies and similar
+                        browser storage. When a visitor selects “Accept necessary cookies”, the acknowledgement
+                        value <code>accepted</code> is saved under <code>drevora.cookie_notice.v1</code> in
+                        localStorage so the notice does not reappear until browser storage is cleared or a
+                        newer notice version is introduced. That key is not used for advertising or behavioural
+                        tracking.
+                    </p>
 
                     <p>
                         The marketing website may load icon fonts from Google Fonts (fonts.googleapis.com /
@@ -294,7 +319,9 @@
                     <p>
                         DREVORA does not currently provide a separate in-product “Cookie Settings” control
                         because the verified technologies above are limited to necessary authentication,
-                        functional operation, and user-requested preferences.
+                        functional operation, and user-requested preferences. On the public website, visitors
+                        acknowledge the necessary-storage notice; that acknowledgement is stored only as
+                        described for <code>drevora.cookie_notice.v1</code>.
                     </p>
                     <p>
                         Appearance and similar product preferences can usually be changed inside the relevant

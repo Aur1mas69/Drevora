@@ -13,8 +13,103 @@ function restoreMobileScroll() {
 window.addEventListener('pageshow', restoreMobileScroll)
 window.addEventListener('load', restoreMobileScroll)
 
+const COOKIE_NOTICE_STORAGE_KEY = 'drevora.cookie_notice.v1'
+const COOKIE_NOTICE_VALUE = 'accepted'
+const COOKIE_NOTICE_ROOT_ID = 'drevora-cookie-notice-root'
+
+function hasCookieNoticeAcknowledgement() {
+    try {
+        return window.localStorage.getItem(COOKIE_NOTICE_STORAGE_KEY) === COOKIE_NOTICE_VALUE
+    } catch {
+        return false
+    }
+}
+
+function storeCookieNoticeAcknowledgement() {
+    try {
+        window.localStorage.setItem(COOKIE_NOTICE_STORAGE_KEY, COOKIE_NOTICE_VALUE)
+        return true
+    } catch {
+        return false
+    }
+}
+
+function removeCookieNotice() {
+    const root = document.getElementById(COOKIE_NOTICE_ROOT_ID)
+    if (root) {
+        root.remove()
+    }
+    document.documentElement.classList.remove('cookie-notice-open')
+}
+
+function acknowledgeCookieNotice() {
+    storeCookieNoticeAcknowledgement()
+    removeCookieNotice()
+}
+
+function createCookieNotice() {
+    if (document.getElementById(COOKIE_NOTICE_ROOT_ID)) {
+        return
+    }
+
+    const root = document.createElement('div')
+    root.id = COOKIE_NOTICE_ROOT_ID
+    root.className = 'cookie-notice-root'
+    root.innerHTML = `
+        <div class="cookie-notice-backdrop" aria-hidden="true"></div>
+        <div
+            class="cookie-notice"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="cookie-notice-title"
+            aria-describedby="cookie-notice-body"
+        >
+            <div class="cookie-notice__content">
+                <h2 id="cookie-notice-title" class="cookie-notice__title">Cookies and browser storage</h2>
+                <p id="cookie-notice-body" class="cookie-notice__body">
+                    DREVORA uses necessary cookies and similar browser storage technologies to support
+                    secure sign-in, remember user preferences and provide essential platform features.
+                    DREVORA does not currently use advertising or behavioural tracking cookies.
+                </p>
+                <div class="cookie-notice__actions">
+                    <a class="cookie-notice__link" href="/cookies">View Cookie Policy</a>
+                    <button type="button" class="cookie-notice__accept" data-cookie-notice-accept>
+                        Accept necessary cookies
+                    </button>
+                </div>
+            </div>
+        </div>
+    `
+
+    document.body.appendChild(root)
+    document.documentElement.classList.add('cookie-notice-open')
+
+    const acceptButton = root.querySelector('[data-cookie-notice-accept]')
+    if (acceptButton instanceof HTMLButtonElement) {
+        acceptButton.addEventListener('click', () => {
+            acknowledgeCookieNotice()
+        })
+    }
+
+    // Acknowledgement is required — Escape must not dismiss the notice.
+    root.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+        }
+    })
+}
+
+function initCookieNotice() {
+    if (hasCookieNoticeAcknowledgement()) {
+        return
+    }
+    createCookieNotice()
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     restoreMobileScroll()
+    initCookieNotice()
 
     const footerYear = document.getElementById('footer-year')
     if (footerYear) {
