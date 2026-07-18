@@ -391,17 +391,66 @@ button {
 
 .footer-logo-link {
   display: block;
-  width: 300px;
+  width: 168px;
+  max-width: 100%;
   height: auto;
   flex: 0 0 auto;
+  border-radius: 0.25rem;
+}
+
+.footer-logo-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 footer .footer-logo {
   display: block !important;
-  width: 300px !important;
-  max-width: 300px !important;
+  width: 168px !important;
+  max-width: 100% !important;
   height: auto !important;
   object-fit: contain !important;
+}
+
+.footer-link {
+  width: fit-content;
+  border-radius: 0.25rem;
+  text-underline-offset: 2px;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.footer-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  color: var(--color-primary);
+  background: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.footer-social-link:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary-container);
+}
+
+.footer-social-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.footer-social-link .fab {
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 @media (max-width: 767px) {
@@ -416,12 +465,12 @@ footer .footer-logo {
   }
 
   .footer-logo-link {
-    width: 240px;
+    width: 148px;
   }
 
   footer .footer-logo {
-    width: 240px !important;
-    max-width: 240px !important;
+    width: 148px !important;
+    max-width: 100% !important;
   }
 }
 
