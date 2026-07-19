@@ -179,8 +179,7 @@ button {
 
 .product-screenshot,
 .hero-dashboard-frame .product-screenshot,
-.hero-mobile-frame .product-screenshot,
-#dashboard-slider .product-screenshot {
+.hero-mobile-frame .product-screenshot {
     width: 100%;
     height: auto;
     max-width: 100%;
@@ -197,8 +196,16 @@ button {
     aspect-ratio: 354 / 706;
 }
 
+#dashboard-slider figure {
+    aspect-ratio: 3 / 2;
+}
+
 #dashboard-slider .product-screenshot {
-    aspect-ratio: 2169 / 1264;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center;
 }
 
 /* Hero monitor size: responsive, ~600px on desktop */
@@ -380,12 +387,17 @@ button {
   overflow: visible;
 }
 
+#main-header .navbar-logo-link {
+  width: auto;
+}
+
 #main-header .navbar-logo {
   display: block !important;
-  width: 220px !important;
-  max-width: 220px !important;
-  height: auto !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 70px !important;
   object-fit: contain !important;
+  object-position: left center;
   flex-shrink: 0;
 }
 
@@ -459,9 +471,14 @@ footer .footer-logo {
     height: auto;
   }
 
+  #main-header .navbar-logo-link {
+    width: auto;
+  }
+
   #main-header .navbar-logo {
-    width: 160px !important;
-    max-width: 160px !important;
+    width: auto !important;
+    max-width: none !important;
+    height: 51px !important;
   }
 
   .footer-logo-link {
