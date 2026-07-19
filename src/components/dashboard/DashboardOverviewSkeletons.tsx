@@ -18,7 +18,7 @@ export function DashboardKpiSkeleton() {
 export function DashboardOverviewCardSkeleton() {
   return (
     <div
-      className={`${dashboardOverviewCardBase} h-44 bg-[#F8FBFF]/40 dark:bg-slate-800/40`}
+      className={`${dashboardOverviewCardBase} h-full min-h-44 bg-[#F8FBFF]/40 dark:bg-slate-800/40`}
       aria-hidden="true"
     />
   )
@@ -27,7 +27,7 @@ export function DashboardOverviewCardSkeleton() {
 export function RecentActivitySkeleton() {
   return (
     <section
-      className={`${dashboardOverviewCardStaticClass} flex min-h-[360px] flex-col sm:min-h-[360px] xl:min-h-[520px]`}
+      className={`${dashboardOverviewCardStaticClass} flex min-w-0 flex-col`}
       aria-hidden="true"
     >
       <div className={`shrink-0 border-b ${dashboardOverviewDividerClass} pb-4`}>
@@ -36,9 +36,12 @@ export function RecentActivitySkeleton() {
           Latest changes across your operation
         </p>
       </div>
-      <div className="mt-4 space-y-2.5">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="h-[4.25rem] rounded-xl border border-[#D2E5F5] bg-[#F8FBFF]/80 dark:border-white/10 dark:bg-slate-800/50" />
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[4.25rem] rounded-xl border border-[#D2E5F5] bg-[#F8FBFF]/80 dark:border-white/10 dark:bg-slate-800/50"
+          />
         ))}
       </div>
     </section>
@@ -53,17 +56,17 @@ export function DashboardOverviewSkeleton() {
           <DashboardKpiSkeleton key={index} />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4 sm:space-y-6">
-          <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <DashboardOverviewCardSkeleton key={index} />
-            ))}
-          </div>
-          <div className={`${dashboardOverviewCardBase} h-56 bg-[#F8FBFF]/40 dark:bg-slate-800/40`} aria-hidden="true" />
-        </div>
-        <RecentActivitySkeleton />
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <DashboardOverviewCardSkeleton key={`row1-${index}`} />
+        ))}
       </div>
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <DashboardOverviewCardSkeleton key={`row2-${index}`} />
+        ))}
+      </div>
+      <RecentActivitySkeleton />
     </div>
   )
 }

@@ -9,7 +9,7 @@ import type {
 import type { Vehicle } from '@/services/vehiclesService'
 import type { Driver } from '@/services/driversService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 type VehicleChecksToolbarProps = {
   searchTerm: string
@@ -33,6 +33,7 @@ type VehicleChecksToolbarProps = {
   hasActiveFilters: boolean
   onClearFilters: () => void
   onNewCheck: () => void
+  secondaryActions?: ReactNode
 }
 
 const selectClass =
@@ -65,6 +66,7 @@ export function VehicleChecksToolbar({
   hasActiveFilters,
   onClearFilters,
   onNewCheck,
+  secondaryActions,
 }: VehicleChecksToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -141,6 +143,7 @@ export function VehicleChecksToolbar({
       filterOpen={isFiltersOpen}
       activeFilterCount={activeFilterCount}
       filterAnchorRef={filtersRef}
+      secondaryActions={secondaryActions}
       filterPanel={
         isFiltersOpen ? (
           <div

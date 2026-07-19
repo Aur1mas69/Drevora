@@ -23,7 +23,7 @@ import {
   adminText,
   adminTextMuted,
 } from '@/lib/adminUiStyles'
-import { MessageSquare, Pencil, X } from 'lucide-react'
+import { Download, Loader2, MessageSquare, Pencil, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 function useBodyScrollLock(locked: boolean) {
@@ -51,8 +51,10 @@ type TimesheetDrawerProps = {
   mode: 'view' | 'edit'
   isSaving?: boolean
   saveError?: string | null
+  isDownloadingPdf?: boolean
   onClose: () => void
   onEdit?: () => void
+  onDownloadPdf?: () => void
   onSave?: (entries: TimesheetEntryInput[]) => Promise<void>
   onSubmit?: (entries: TimesheetEntryInput[]) => Promise<void>
 }
@@ -119,8 +121,10 @@ export function TimesheetDrawer({
   mode,
   isSaving = false,
   saveError = null,
+  isDownloadingPdf = false,
   onClose,
   onEdit,
+  onDownloadPdf,
   onSave,
   onSubmit,
 }: TimesheetDrawerProps) {
@@ -336,6 +340,23 @@ export function TimesheetDrawer({
               >
                 {isEditable ? 'Editing' : 'Read-only'}
               </span>
+            ) : null}
+            {onDownloadPdf ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSaving || isDownloadingPdf}
+                onClick={onDownloadPdf}
+                className="h-8 rounded-full border-[#BDDDFB] bg-[#F5FAFF] px-3 text-[11px] font-semibold text-[#0D477F] dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="size-3.5" aria-hidden="true" />
+                )}
+                Download PDF
+              </Button>
             ) : null}
           </div>
           </div>

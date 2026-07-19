@@ -19,6 +19,7 @@ export const initialDashboardLoadingState: DashboardLoadingState = {
   driverReports: true,
   fleetStatus: true,
   vehicleChecks: true,
+  tyreChecks: true,
   consumables: true,
   recentActivity: true,
 }
@@ -30,6 +31,7 @@ const allLoadedState: DashboardLoadingState = {
   driverReports: false,
   fleetStatus: false,
   vehicleChecks: false,
+  tyreChecks: false,
   consumables: false,
   recentActivity: false,
 }
@@ -121,6 +123,7 @@ export function useDashboardStats() {
     loading.driverReports &&
     loading.fleetStatus &&
     loading.vehicleChecks &&
+    loading.tyreChecks &&
     loading.consumables &&
     loading.recentActivity
 

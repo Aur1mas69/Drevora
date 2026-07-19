@@ -7,16 +7,18 @@ import {
   getDriverReportStatusLabel,
   hasDriverReportAttachment,
 } from '@/lib/driverReportUtils'
-import { ExternalLink, Pencil, X } from 'lucide-react'
+import { Download, ExternalLink, Loader2, Pencil, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
 type DriverReportDrawerProps = {
   record: DriverReport | null
   isOpen: boolean
   formatDateTime: (value: string) => string
+  isDownloadingPdf?: boolean
   onClose: () => void
   onEdit: (report: DriverReport) => void
   onOpenAttachment: (report: DriverReport) => void
+  onDownloadPdf?: () => void
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -32,9 +34,11 @@ export function DriverReportDrawer({
   record,
   isOpen,
   formatDateTime,
+  isDownloadingPdf = false,
   onClose,
   onEdit,
   onOpenAttachment,
+  onDownloadPdf,
 }: DriverReportDrawerProps) {
   useBodyScrollLock(isOpen)
 
@@ -52,14 +56,34 @@ export function DriverReportDrawer({
             <h2 className="mt-1 text-xl font-semibold text-[#113C69] dark:text-slate-100">{record.title}</h2>
             <p className="mt-0.5 text-sm text-[#5499BF]">{record.reportType}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-[#5499BF] hover:bg-[#EEF6FF] dark:hover:bg-slate-800/50"
-            aria-label="Close"
-          >
-            <X className="size-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {onDownloadPdf ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isDownloadingPdf}
+                onClick={onDownloadPdf}
+                className="h-8 rounded-[10px] border-[#C5DFFB] px-2.5 text-xs font-semibold text-[#0B68BE]"
+                aria-label="Download driver report PDF"
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="size-3.5" aria-hidden="true" />
+                )}
+                PDF
+              </Button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-2 text-[#5499BF] hover:bg-[#EEF6FF] dark:hover:bg-slate-800/50"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">

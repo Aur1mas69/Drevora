@@ -18,7 +18,6 @@ import {
 } from 'lucide-react'
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell'
 import { AuthServiceError } from '@/services/authService'
-import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import drevoraMark from '@/assets/drevora-mark.png'
 import {
   adminMainNavigationItems,
@@ -165,7 +164,7 @@ function SidebarBrand({
   return (
     <div className="flex min-h-[80px] w-full items-center justify-center overflow-visible py-2">
       <img
-        src={drevoraLogoFull}
+        src="/drevora-logo-DNa5g0Qw.png"
         alt="DREVORA"
         className="block h-auto w-[220px] max-w-none object-contain"
         draggable={false}

@@ -11,8 +11,17 @@ import { HolidayRequestsSummaryCards } from '@/components/holidays/HolidayReques
 import { HolidayRequestsToolbar } from '@/components/holidays/HolidayRequestsToolbar'
 import { holidayPageCardClass } from '@/components/holidays/holidayUiStyles'
 import { NewHolidayRequestModal } from '@/components/holidays/NewHolidayRequestModal'
+import { ExportMenu } from '@/components/export/ExportMenu'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import {
+  downloadHolidayRequestPdf,
+  exportHolidayRequestsExcel,
+} from '@/lib/export/modules/holidaysExport'
 import type {
   HolidayRequest,
   HolidayLeaveType,
@@ -34,6 +43,8 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 
 export default function HolidayRequestsPage() {
+  const { companyName, settings } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<HolidayRequest[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -61,6 +72,8 @@ export default function HolidayRequestsPage() {
   const [editRequest, setEditRequest] = useState<HolidayRequest | null>(null)
   const [viewRequest, setViewRequest] = useState<HolidayRequest | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [calendarItems, setCalendarItems] = useState<HolidayRequest[]>([])
   const [calendarView, setCalendarView] = useState<HolidayCalendarView>('month')
@@ -367,6 +380,43 @@ export default function HolidayRequestsPage() {
           workers={workers}
           onClearFilters={clearFilters}
           onNewRequest={() => setIsNewModalOpen(true)}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={isLoading}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportHolidayRequestsExcel(
+                        {
+                          search: debouncedSearch || undefined,
+                          status: statusFilter,
+                          workerId: workerFilter,
+                          dateFrom: dateFrom || undefined,
+                          dateTo: dateTo || undefined,
+                        },
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: settings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Holiday Requests',
+                        }),
+                      )
+                      showToast('Exported holiday requests to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+              ]}
+            />
+          }
         />
 
         {loadError ? (
@@ -441,7 +491,24 @@ export default function HolidayRequestsPage() {
         request={viewRequest}
         isOpen={viewRequest !== null}
         isSaving={isSaving}
+        isDownloadingPdf={isDownloadingPdf}
         onClose={() => setViewRequest(null)}
+        onDownloadPdf={() => {
+          if (!viewRequest) return
+          setIsDownloadingPdf(true)
+          void downloadHolidayRequestPdf(
+            viewRequest,
+            resolveExportMeta({
+              companyName,
+              logoUrl: settings?.logoUrl,
+              generatedBy: session?.user.email ?? null,
+              documentTitle: 'Holiday Request',
+            }),
+          )
+            .then(() => showToast('Exported holiday request to PDF'))
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setIsDownloadingPdf(false))
+        }}
         onApprove={(note) => (viewRequest ? handleApprove(viewRequest, note) : Promise.resolve())}
         onReject={(note) => (viewRequest ? handleReject(viewRequest, note) : Promise.resolve())}
       />

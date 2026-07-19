@@ -32,7 +32,11 @@ export function DashboardOverviewCardHeader({
         </div>
       </div>
       {actionTo ? (
-        <Link to={actionTo} className={dashboardOverviewCardActionClass}>
+        <Link
+          to={actionTo}
+          className={dashboardOverviewCardActionClass}
+          aria-label={`${actionLabel} ${title}`}
+        >
           {actionLabel}
         </Link>
       ) : null}

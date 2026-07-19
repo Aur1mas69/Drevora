@@ -16,8 +16,20 @@ import {
   type VehicleChecksKpiFilter,
 } from '@/components/vehicle-checks/VehicleChecksSummaryCards'
 import { VehicleChecksToolbar } from '@/components/vehicle-checks/VehicleChecksToolbar'
+import { ExportConfirmDialog } from '@/components/export/ExportConfirmDialog'
+import { ExportMenu } from '@/components/export/ExportMenu'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import {
+  downloadVehicleCheckPdf,
+  exportVehicleChecksExcel,
+  exportVehicleChecksFilteredPdfs,
+} from '@/lib/export/modules/vehicleChecksExport'
+import { formatVehicleCheckResultLabel } from '@/lib/vehicleCheckUtils'
 import type {
   SaveVehicleCheckDefectReviewInput,
   VehicleCheck,
@@ -46,7 +58,7 @@ import {
   type VehicleStatus,
 } from '@/services/vehiclesService'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const vehicleUnavailableStatuses: VehicleStatus[] = [
   'Off Road',
@@ -58,6 +70,8 @@ const vehicleUnavailableStatuses: VehicleStatus[] = [
 ]
 
 export default function VehicleChecksPage() {
+  const { companyName, settings, formatDate } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [moduleTab, setModuleTab] = useState<VehicleChecksModuleTab>('vehicle-checks')
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
@@ -97,6 +111,9 @@ export default function VehicleChecksPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const hasActiveFilters =
@@ -113,6 +130,81 @@ export default function VehicleChecksPage() {
     setToastMessage(message)
     window.setTimeout(() => setToastMessage(null), 2800)
   }, [])
+
+  const exportQuery = useMemo(
+    () => ({
+      search: debouncedSearch || undefined,
+      status: statusFilter,
+      result: resultFilter,
+      reviewStatus: reviewStatusFilter,
+      vehicleId: vehicleFilter,
+      workerId: workerFilter,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    }),
+    [
+      debouncedSearch,
+      statusFilter,
+      resultFilter,
+      reviewStatusFilter,
+      vehicleFilter,
+      workerFilter,
+      dateFrom,
+      dateTo,
+    ],
+  )
+
+  const exportMeta = useMemo(
+    () =>
+      resolveExportMeta({
+        companyName,
+        logoUrl: settings?.logoUrl,
+        generatedBy: session?.user.email ?? null,
+        documentTitle: 'Vehicle Checks',
+      }),
+    [companyName, session?.user.email, settings?.logoUrl],
+  )
+
+  const exportConfirmFields = useMemo(() => {
+    const selectedVehicle = vehicles.find((vehicle) => vehicle.id === vehicleFilter)
+    const selectedWorker = drivers.find((driver) => driver.id === workerFilter)
+    const vehicleLabel =
+      vehicleFilter === 'all'
+        ? 'All vehicles'
+        : selectedVehicle?.registration?.trim() || 'Selected vehicle'
+    const workerLabel =
+      workerFilter === 'all'
+        ? 'All workers'
+        : selectedWorker
+          ? `${selectedWorker.firstName} ${selectedWorker.lastName}`.trim() || 'Selected worker'
+          : 'Selected worker'
+    const resultLabel =
+      resultFilter === 'all' ? 'All results' : formatVehicleCheckResultLabel(resultFilter)
+    const dateRangeLabel =
+      dateFrom && dateTo
+        ? `${formatDate(dateFrom)} – ${formatDate(dateTo)}`
+        : dateFrom
+          ? `From ${formatDate(dateFrom)}`
+          : dateTo
+            ? `Until ${formatDate(dateTo)}`
+            : 'All dates'
+
+    return [
+      { label: 'Date range', value: dateRangeLabel },
+      { label: 'Vehicle', value: vehicleLabel },
+      { label: 'Worker', value: workerLabel },
+      { label: 'Result', value: resultLabel },
+    ]
+  }, [
+    dateFrom,
+    dateTo,
+    drivers,
+    formatDate,
+    resultFilter,
+    vehicleFilter,
+    vehicles,
+    workerFilter,
+  ])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchTerm), 250)
@@ -520,6 +612,19 @@ export default function VehicleChecksPage() {
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilters}
           onNewCheck={() => setIsNewModalOpen(true)}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={isLoading}
+              actions={[
+                {
+                  id: 'open-export',
+                  label: 'Export filtered results…',
+                  onSelect: () => setIsExportDialogOpen(true),
+                },
+              ]}
+            />
+          }
         />
 
         {loadError ? (
@@ -594,14 +699,62 @@ export default function VehicleChecksPage() {
         onSubmit={handleUpdate}
       />
 
+      <ExportConfirmDialog
+        open={isExportDialogOpen}
+        title="Export Vehicle Checks"
+        fields={exportConfirmFields}
+        recordCount={totalCount}
+        busy={isExporting}
+        onClose={() => {
+          if (isExporting) return
+          setIsExportDialogOpen(false)
+        }}
+        onExportExcel={() => {
+          setIsExporting(true)
+          void exportVehicleChecksExcel(exportQuery, exportMeta)
+            .then(() => {
+              showToast('Exported vehicle checks to Excel')
+              setIsExportDialogOpen(false)
+            })
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setIsExporting(false))
+        }}
+        onExportPdf={() => {
+          setIsExporting(true)
+          void exportVehicleChecksFilteredPdfs(exportQuery, exportMeta)
+            .then(() => {
+              showToast(
+                totalCount === 1
+                  ? 'Exported vehicle check to PDF'
+                  : `Exported ${totalCount} vehicle checks to PDF`,
+              )
+              setIsExportDialogOpen(false)
+            })
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setIsExporting(false))
+        }}
+      />
+
       <VehicleCheckDrawer
         check={viewCheck}
         isOpen={viewCheck !== null}
+        isDownloadingPdf={isDownloadingPdf}
         onClose={() => setViewCheck(null)}
         onEdit={() => {
           if (!viewCheck) return
           setEditCheck(viewCheck)
           setViewCheck(null)
+        }}
+        onDownloadPdf={() => {
+          if (!viewCheck) return
+          setIsDownloadingPdf(true)
+          void downloadVehicleCheckPdf(viewCheck, {
+            ...exportMeta,
+            documentTitle: 'Vehicle Check',
+          })
+            .then(() => showToast('Exported vehicle check to PDF'))
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setIsDownloadingPdf(false))
         }}
       />
 

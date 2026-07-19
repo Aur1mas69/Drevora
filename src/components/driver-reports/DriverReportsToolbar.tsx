@@ -11,7 +11,15 @@ import {
 import type { CurrentViewMode } from '@/lib/currentViewVisibility'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { driverReportSelectClass } from './driverReportUiStyles'
 
@@ -50,6 +58,7 @@ type DriverReportsToolbarProps = {
   onClearFilters: () => void
   onCleanCurrentView: () => void
   onAddReport: () => void
+  secondaryActions?: ReactNode
 }
 
 const labelClassName =
@@ -322,6 +331,7 @@ export function DriverReportsToolbar(props: DriverReportsToolbarProps) {
     onClearFilters,
     onCleanCurrentView,
     onAddReport,
+    secondaryActions,
   } = props
 
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -524,6 +534,7 @@ export function DriverReportsToolbar(props: DriverReportsToolbarProps) {
         filterOpen={isFilterOpen}
         activeFilterCount={activeFilterCount}
         filterAnchorRef={filterRootRef}
+        secondaryActions={secondaryActions}
       />
       {desktopFilterPanel}
       {mobileFilterSheet}

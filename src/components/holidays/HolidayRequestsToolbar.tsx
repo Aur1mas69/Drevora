@@ -5,7 +5,7 @@ import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerG
 import type { HolidayRequestStatusFilter } from '@/lib/holidayRequestTypes'
 import type { Driver } from '@/services/driversService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { holidaySelectClass } from './holidayUiStyles'
 
 type HolidayRequestsToolbarProps = {
@@ -22,6 +22,7 @@ type HolidayRequestsToolbarProps = {
   workers: Driver[]
   onClearFilters: () => void
   onNewRequest: () => void
+  secondaryActions?: ReactNode
 }
 
 const filterPanelClass =
@@ -43,6 +44,7 @@ export function HolidayRequestsToolbar({
   workers,
   onClearFilters,
   onNewRequest,
+  secondaryActions,
 }: HolidayRequestsToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -105,6 +107,7 @@ export function HolidayRequestsToolbar({
       filterOpen={isFiltersOpen}
       activeFilterCount={activeFilterCount}
       filterAnchorRef={filtersRef}
+      secondaryActions={secondaryActions}
       filterPanel={
         isFiltersOpen ? (
           <div

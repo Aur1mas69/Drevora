@@ -14,7 +14,15 @@ import {
   type ConsumablesFilterValues,
 } from '@/components/consumables/ConsumablesToolbar'
 import { DeleteConsumableModal } from '@/components/consumables/DeleteConsumableModal'
+import { ExportMenu } from '@/components/export/ExportMenu'
 import AdminLayout from '@/layouts/AdminLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import {
+  exportConsumablesExcel,
+  exportConsumablesPdfSummary,
+} from '@/lib/export/modules/consumablesExport'
 import type { Consumable, ConsumableFormSubmitPayload } from '@/lib/consumableTypes'
 import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
@@ -52,7 +60,8 @@ function filtersAreDefault(filters: ConsumablesFilterValues): boolean {
 
 export default function ConsumablesPage() {
   const [searchParams] = useSearchParams()
-  const { settings: companySettings } = useCompanySettings()
+  const { companyName, settings: companySettings } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<Consumable[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -73,6 +82,7 @@ export default function ConsumablesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [summaryRefreshToken, setSummaryRefreshToken] = useState(0)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
@@ -381,6 +391,82 @@ export default function ConsumablesPage() {
           onResetFilters={resetFilters}
           onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onNewRecord={openCreateForm}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={isLoading}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportConsumablesExcel(
+                        {
+                          search: debouncedSearch || undefined,
+                          type: 'all',
+                          vehicleId: filters.vehicleId,
+                          dateFrom: listDateRange.dateFrom,
+                          dateTo: listDateRange.dateTo,
+                          viewMode: filters.viewMode,
+                        },
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: companySettings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Consumables',
+                        }),
+                      )
+                      showToast('Exported consumables to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+                {
+                  id: 'pdf-summary',
+                  label: 'Export PDF summary',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportConsumablesPdfSummary(
+                        {
+                          search: debouncedSearch || undefined,
+                          type: 'all',
+                          vehicleId: filters.vehicleId,
+                          dateFrom: listDateRange.dateFrom,
+                          dateTo: listDateRange.dateTo,
+                          viewMode: filters.viewMode,
+                        },
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: companySettings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Consumables Summary',
+                          filterSummary: [
+                            filters.period !== 'all_time' ? `Period ${filters.period}` : null,
+                            filters.vehicleId !== 'all' ? 'Vehicle filter' : null,
+                            filters.viewMode !== 'current' ? `View ${filters.viewMode}` : null,
+                            debouncedSearch ? `Search ${debouncedSearch}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · '),
+                        }),
+                      )
+                      showToast('Exported consumables PDF summary')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+              ]}
+            />
+          }
         />
 
         <ConsumablesMonthlySummary

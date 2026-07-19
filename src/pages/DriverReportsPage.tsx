@@ -12,8 +12,16 @@ import { DriverReportsPagination } from '@/components/driver-reports/DriverRepor
 import { DriverReportsSummaryCards } from '@/components/driver-reports/DriverReportsSummaryCards'
 import { DriverReportsToolbar } from '@/components/driver-reports/DriverReportsToolbar'
 import { driverReportPageCardClass } from '@/components/driver-reports/driverReportUiStyles'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import {
+  downloadDriverReportPdf,
+  exportDriverReportsExcel,
+} from '@/lib/export/modules/driverReportsExport'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import AdminLayout from '@/layouts/AdminLayout'
 import { isOfficeMembershipRole } from '@/lib/membershipRoles'
@@ -55,9 +63,11 @@ export default function DriverReportsPage() {
   const {
     formatDate,
     formatDateTime,
+    companyName,
     settings: companySettings,
     membershipRole,
   } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const { worker: currentWorker } = useCurrentWorker()
 
@@ -95,6 +105,8 @@ export default function DriverReportsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
   const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
@@ -479,6 +491,45 @@ export default function DriverReportsPage() {
           onClearFilters={clearFilters}
           onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onAddReport={openCreateModal}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={isLoading}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportDriverReportsExcel(
+                        filteredItems,
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: companySettings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Driver Reports',
+                        }),
+                        [
+                          statusFilter !== 'all' ? statusFilter : null,
+                          typeFilter !== 'all' ? typeFilter : null,
+                          priorityFilter !== 'all' ? priorityFilter : null,
+                          dateFrom || null,
+                          dateTo || null,
+                          debouncedSearch || null,
+                        ],
+                      )
+                      showToast('Exported driver reports to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+              ]}
+            />
+          }
         />
 
         {loadError ? (
@@ -534,9 +585,26 @@ export default function DriverReportsPage() {
         record={viewRecord}
         isOpen={Boolean(viewRecord)}
         formatDateTime={formatDateTime}
+        isDownloadingPdf={isDownloadingPdf}
         onClose={() => setViewRecord(null)}
         onEdit={openEditModal}
         onOpenAttachment={(record) => void handleOpenAttachment(record)}
+        onDownloadPdf={() => {
+          if (!viewRecord) return
+          setIsDownloadingPdf(true)
+          void downloadDriverReportPdf(
+            viewRecord,
+            resolveExportMeta({
+              companyName,
+              logoUrl: companySettings?.logoUrl,
+              generatedBy: session?.user.email ?? null,
+              documentTitle: 'Driver Report',
+            }),
+          )
+            .then(() => showToast('Exported driver report to PDF'))
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setIsDownloadingPdf(false))
+        }}
       />
 
       {deleteRecord ? (

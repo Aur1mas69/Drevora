@@ -5,7 +5,7 @@ import type { TyreCheckResultFilter } from '@/lib/tyreCheckTypes'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 type TyreChecksToolbarProps = {
   searchTerm: string
@@ -28,6 +28,7 @@ type TyreChecksToolbarProps = {
   onClearFilters: () => void
   disabled?: boolean
   loading?: boolean
+  secondaryActions?: ReactNode
 }
 
 const selectClass =
@@ -73,6 +74,7 @@ export function TyreChecksToolbar({
   onClearFilters,
   disabled = false,
   loading = false,
+  secondaryActions,
 }: TyreChecksToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -194,6 +196,7 @@ export function TyreChecksToolbar({
       filterAnchorRef={filtersRef}
       disabled={disabled}
       loading={loading}
+      secondaryActions={secondaryActions}
       filterPanel={
         isFiltersOpen ? (
           <div

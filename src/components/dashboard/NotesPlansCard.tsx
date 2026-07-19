@@ -755,7 +755,7 @@ export function NotesPlansCard() {
 
   return (
     <>
-      <section className={notesPlansCardClass}>
+      <section className={`${notesPlansCardClass} h-full`}>
         {openCount > 0 ? (
           <span
             className="notes-alert-badge pointer-events-none absolute top-0 right-5 z-20 inline-flex min-w-[26px] -translate-y-1/2 items-center justify-center gap-0.5 rounded-full bg-[#E11D48] px-1.5 py-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"

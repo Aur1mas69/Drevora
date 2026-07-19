@@ -1,4 +1,7 @@
 import { getGlobalPaidBreaks, getSetting } from '@/lib/companySettingsGlobals'
+import { MAX_ZIP_PDFS } from '@/lib/export/constants'
+import { downloadBlob } from '@/lib/export/downloadBlob'
+import { EXPORT_ERROR_ZIP_TOO_LARGE } from '@/lib/export/exportErrors'
 import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
 import {
   applyViewModeEntryTotals,
@@ -76,16 +79,6 @@ export function buildUniquePdfFileNames(timesheets: Timesheet[]): string[] {
 
     return `${stem}-${count}.pdf`
   })
-}
-
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  link.rel = 'noopener'
-  link.click()
-  URL.revokeObjectURL(url)
 }
 
 function formatGeneratedAt(): string {
@@ -500,7 +493,9 @@ export async function exportTimesheetsToPdf(timesheets: Timesheet[]): Promise<vo
     throw new Error('Select at least one timesheet to export.')
   }
 
-  console.info('DREVORA Timesheet PDF export v2')
+  if (timesheets.length > MAX_ZIP_PDFS) {
+    throw new Error(EXPORT_ERROR_ZIP_TOO_LARGE)
+  }
 
   if (timesheets.length === 1) {
     const doc = generateSingleTimesheetPdf(timesheets[0])

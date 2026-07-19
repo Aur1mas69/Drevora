@@ -1,8 +1,17 @@
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { TyreChecksPagination } from '@/components/vehicle-checks/TyreChecksPagination'
 import { TyreChecksToolbar } from '@/components/vehicle-checks/TyreChecksToolbar'
+import { ExportMenu } from '@/components/export/ExportMenu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useAuth } from '@/contexts/AuthContext'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import {
+  downloadTyreCheckPdfById,
+  exportTyreChecksExcel,
+} from '@/lib/export/modules/tyreChecksExport'
 import {
   adminHeading,
   adminPanel,
@@ -44,7 +53,7 @@ import {
   TyreChecksServiceError,
 } from '@/services/tyreChecksService'
 import type { Vehicle } from '@/services/vehiclesService'
-import { Camera, StickyNote } from 'lucide-react'
+import { Camera, Download, Loader2, StickyNote } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type TyreCheckPanelProps = {
@@ -66,6 +75,8 @@ function isTrailerVehicle(vehicle: Vehicle): boolean {
 }
 
 export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
+  const { companyName, settings } = useCompanySettings()
+  const { session } = useAuth()
   const tractorVehicles = useMemo(
     () => vehicles.filter((vehicle) => !isTrailerVehicle(vehicle)),
     [vehicles],
@@ -106,6 +117,8 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [viewingCheck, setViewingCheck] = useState<SavedTyreCheck | null>(null)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const tyreEditorRef = useRef<HTMLDivElement>(null)
 
@@ -759,6 +772,46 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
           hasActiveFilters={hasActiveHistoryFilters}
           onClearFilters={handleClearHistoryFilters}
           loading={historyLoading}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={historyLoading}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportTyreChecksExcel(
+                        {
+                          search: debouncedSearch || undefined,
+                          result: resultFilter,
+                          vehicleId: vehicleFilter,
+                          workerId: workerFilter,
+                          trailerVehicleId: trailerFilter,
+                          dateFrom: dateFrom || undefined,
+                          dateTo: dateTo || undefined,
+                          sortDir: 'desc',
+                        },
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: settings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Tyre Checks',
+                        }),
+                      )
+                      showToast('Exported tyre checks to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+              ]}
+            />
+          }
         />
 
         <div className={adminTableShell}>
@@ -910,14 +963,46 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                   {formatCheckedAt(viewingCheck.checkedAt)} · {viewingCheck.vehicleLabel}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 rounded-[10px]"
-                onClick={() => setViewingCheck(null)}
-              >
-                Close
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-[10px] px-2.5 text-xs font-semibold"
+                  disabled={isDownloadingPdf}
+                  aria-label="Download tyre check PDF"
+                  onClick={() => {
+                    setIsDownloadingPdf(true)
+                    void downloadTyreCheckPdfById(
+                      viewingCheck.id,
+                      resolveExportMeta({
+                        companyName,
+                        logoUrl: settings?.logoUrl,
+                        generatedBy: session?.user.email ?? null,
+                        documentTitle: 'Tyre Check',
+                      }),
+                    )
+                      .then(() => showToast('Exported tyre check to PDF'))
+                      .catch((error) => showToast(toExportUserMessage(error)))
+                      .finally(() => setIsDownloadingPdf(false))
+                  }}
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-3.5" aria-hidden="true" />
+                  )}
+                  PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-[10px]"
+                  disabled={isDownloadingPdf}
+                  onClick={() => setViewingCheck(null)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{viewingCheck.summaryLabel}</p>
             {viewingCheck.notes ? (

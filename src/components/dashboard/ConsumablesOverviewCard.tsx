@@ -4,25 +4,17 @@ import { dashboardOverviewCardClass } from '@/components/dashboard/dashboardOver
 import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import { Droplets } from 'lucide-react'
 
-const MAX_TYPE_TILES = 8
+const MAX_USAGE_ROWS = 5
 
 function CompactKpiStrip({ overview }: { overview: DashboardConsumablesOverview }) {
   const items = [
     { label: 'Entries', value: overview.totalEntries.toLocaleString('en-GB') },
-    {
-      label: 'Diesel',
-      value: `${formatSummaryQuantity(overview.dieselLitres)} L`,
-    },
-    {
-      label: 'AdBlue',
-      value: `${formatSummaryQuantity(overview.adBlueLitres)} L`,
-    },
-    { label: 'Cost', value: formatConsumableCost(overview.totalCost) },
     { label: 'Vehicles', value: overview.vehiclesUsed.toLocaleString('en-GB') },
+    { label: 'Total Cost', value: formatConsumableCost(overview.totalCost) },
   ]
 
   return (
-    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+    <div className="mb-3 grid grid-cols-3 gap-2">
       {items.map((item) => (
         <div
           key={item.label}
@@ -40,23 +32,47 @@ function CompactKpiStrip({ overview }: { overview: DashboardConsumablesOverview 
   )
 }
 
-function ConsumableTypeTile({
-  type,
-  quantity,
-  unit,
+function ConsumablesUsageSummary({
+  overview,
 }: {
-  type: string
-  quantity: number
-  unit: string
+  overview: DashboardConsumablesOverview
 }) {
+  const usageRows = overview.typeTiles.filter((tile) => tile.totalQuantity > 0)
+  const visibleRows = usageRows.slice(0, MAX_USAGE_ROWS)
+  const remainingCount = usageRows.length - visibleRows.length
+
+  if (visibleRows.length === 0) {
+    return (
+      <div className="mt-auto rounded-xl border border-dashed border-[#D2E5F5] bg-[#F8FBFF]/80 px-3 py-5 text-center dark:border-white/10 dark:bg-slate-800/40">
+        <p className="text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
+          No consumables recorded this month.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="rounded-xl border border-[#D2E5F5] bg-[rgba(244,249,255,0.9)] px-2.5 py-2.5 text-center transition-colors hover:bg-[#E8F3FE]/90 dark:border-white/10 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-      <p className="truncate text-[11px] font-semibold leading-tight text-[#5D7C9D] dark:text-slate-400" title={type}>
-        {type}
-      </p>
-      <p className="mt-1 text-base font-bold leading-none tabular-nums text-[#163A63] dark:text-slate-100">
-        {formatSummaryQuantity(quantity)} {unit}
-      </p>
+    <div className="mt-auto min-w-0">
+      <ul className="divide-y divide-[#D2E5F5] dark:divide-white/10" aria-label="Consumables used this month">
+        {visibleRows.map((tile) => (
+          <li
+            key={tile.consumableType}
+            className="flex min-w-0 items-baseline justify-between gap-3 py-2 first:pt-0 last:pb-0"
+          >
+            <span className="min-w-0 truncate text-sm font-medium text-[#163A63] dark:text-slate-100">
+              {tile.consumableType}
+            </span>
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-[#163A63] dark:text-slate-100">
+              {formatSummaryQuantity(tile.totalQuantity)} {tile.unit}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {remainingCount > 0 ? (
+        <p className="mt-2 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
+          + {remainingCount} more
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -66,8 +82,6 @@ export function ConsumablesOverviewCard({
 }: {
   overview: DashboardConsumablesOverview
 }) {
-  const typeTiles = overview.typeTiles.slice(0, MAX_TYPE_TILES)
-
   return (
     <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
       <DashboardOverviewCardHeader
@@ -82,23 +96,7 @@ export function ConsumablesOverviewCard({
       />
 
       <CompactKpiStrip overview={overview} />
-
-      {typeTiles.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#D2E5F5] bg-[#F8FBFF]/80 px-3 py-6 text-center dark:border-white/10 dark:bg-slate-800/40">
-          <p className="text-xs font-medium text-[#5D7C9D] dark:text-slate-400">No consumables recorded this month.</p>
-        </div>
-      ) : (
-        <div className="mt-auto grid grid-cols-2 gap-2">
-          {typeTiles.map((tile) => (
-            <ConsumableTypeTile
-              key={tile.consumableType}
-              type={tile.consumableType}
-              quantity={tile.totalQuantity}
-              unit={tile.unit}
-            />
-          ))}
-        </div>
-      )}
+      <ConsumablesUsageSummary overview={overview} />
     </section>
   )
 }

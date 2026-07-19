@@ -182,6 +182,14 @@ export type DashboardDailyVehicleChecksStats = {
   totalVehicles: number
 }
 
+/** Today's company-scoped Tyre Check summary (eligible active vehicles). */
+export type DashboardDailyTyreChecksStats = {
+  completedOk: number
+  issuesFound: number
+  notChecked: number
+  totalVehicles: number
+}
+
 export type DashboardStats = {
   workers: number
   workingToday: number
@@ -191,6 +199,7 @@ export type DashboardStats = {
   complianceAlerts: number
   vehicleChecksToday: DashboardVehicleChecksToday
   dailyVehicleChecksStats: DashboardDailyVehicleChecksStats
+  dailyTyreChecksStats: DashboardDailyTyreChecksStats
   availabilityAlerts: DashboardAvailabilityAlerts
   timesheetOverview: DashboardTimesheetOverview
   fleetStatus: DashboardFleetStatus
@@ -254,6 +263,12 @@ export const emptyDashboardStats: DashboardStats = {
   dailyVehicleChecksStats: {
     completedOk: 0,
     issuesFailed: 0,
+    notChecked: 0,
+    totalVehicles: 0,
+  },
+  dailyTyreChecksStats: {
+    completedOk: 0,
+    issuesFound: 0,
     notChecked: 0,
     totalVehicles: 0,
   },
@@ -1442,6 +1457,128 @@ function computeDailyVehicleChecksStats(
   }
 }
 
+type TodayTyreCheckRow = {
+  vehicle_id: string
+  status: string
+  overall_result: string
+  defect_count: number | null
+  critical_count: number | null
+  submitted_at: string | null
+  created_at: string
+}
+
+function isMissingTyreChecksTableError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('tyre_checks') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('could not find the table'))
+  )
+}
+
+function tyreCheckDayBoundsIso(dateOnly: string): { start: string; end: string } {
+  return {
+    start: `${dateOnly}T00:00:00.000Z`,
+    end: `${dateOnly}T23:59:59.999Z`,
+  }
+}
+
+function tyreCheckHasReportedIssue(row: TodayTyreCheckRow): boolean {
+  const result = row.overall_result?.trim().toLowerCase()
+  if (result === 'fail' || result === 'attention') return true
+  return (row.defect_count ?? 0) > 0 || (row.critical_count ?? 0) > 0
+}
+
+async function fetchTodayTyreCheckRows(
+  inspectionDate: string,
+  companyId: string,
+): Promise<TodayTyreCheckRow[]> {
+  const { start, end } = tyreCheckDayBoundsIso(inspectionDate)
+
+  // Match Tyre Checks history date filtering (created_at day window) and only
+  // pull today's submitted rows — never full history.
+  const { data, error } = await requireSupabase()
+    .from('tyre_checks')
+    .select(
+      'vehicle_id, status, overall_result, defect_count, critical_count, submitted_at, created_at',
+    )
+    .eq('company_id', companyId)
+    .eq('status', 'submitted')
+    .gte('created_at', start)
+    .lte('created_at', end)
+
+  logSupabaseQuery({
+    service: 'dashboardService.fetchTodayTyreCheckRows',
+    table: 'tyre_checks',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingTyreChecksTableError(error.message)) return []
+    return []
+  }
+
+  return (data ?? []) as TodayTyreCheckRow[]
+}
+
+function computeDailyTyreChecksStats(
+  vehicles: Vehicle[],
+  checks: TodayTyreCheckRow[],
+  companyToday: string,
+): DashboardDailyTyreChecksStats {
+  // Reuse the same active-vehicle eligibility as Daily Vehicle Checks.
+  const activeVehicleIds = getActiveVehicleIdsForDailyChecks(vehicles, companyToday)
+  const totalVehicles = activeVehicleIds.size
+
+  if (totalVehicles === 0) {
+    return {
+      completedOk: 0,
+      issuesFound: 0,
+      notChecked: 0,
+      totalVehicles: 0,
+    }
+  }
+
+  const vehicleOutcomes = new Map<string, 'ok' | 'issue'>()
+
+  for (const row of checks) {
+    if (!activeVehicleIds.has(row.vehicle_id)) continue
+    if (row.status !== 'submitted') continue
+
+    if (tyreCheckHasReportedIssue(row)) {
+      vehicleOutcomes.set(row.vehicle_id, 'issue')
+      continue
+    }
+
+    if (row.overall_result?.trim().toLowerCase() === 'pass') {
+      if (!vehicleOutcomes.has(row.vehicle_id)) {
+        vehicleOutcomes.set(row.vehicle_id, 'ok')
+      }
+    }
+  }
+
+  let completedOk = 0
+  let issuesFound = 0
+
+  for (const vehicleId of activeVehicleIds) {
+    const outcome = vehicleOutcomes.get(vehicleId)
+    if (outcome === 'issue') {
+      issuesFound += 1
+    } else if (outcome === 'ok') {
+      completedOk += 1
+    }
+  }
+
+  return {
+    completedOk,
+    issuesFound,
+    notChecked: totalVehicles - completedOk - issuesFound,
+    totalVehicles,
+  }
+}
+
 function buildConsumablesTypeTiles(
   typeSummaries: ReturnType<typeof computeMonthlyConsumablesSummary>['typeSummaries'],
 ): DashboardConsumablesTypeTile[] {
@@ -1632,6 +1769,7 @@ export type DashboardSectionKey =
   | 'driverReports'
   | 'fleetStatus'
   | 'vehicleChecks'
+  | 'tyreChecks'
   | 'consumables'
   | 'recentActivity'
 
@@ -1755,6 +1893,18 @@ export async function loadDashboardStatsProgressively(
       return todayChecks
     })
 
+    void fetchTodayTyreCheckRows(companyToday, companyScope.companyId).then((todayTyreChecks) => {
+      if (isAborted(signal)) return
+      onUpdate({
+        dailyTyreChecksStats: computeDailyTyreChecksStats(
+          dashboardVehicles,
+          todayTyreChecks,
+          companyToday,
+        ),
+      })
+      onSectionLoaded('tyreChecks')
+    })
+
     void Promise.all([workerCountsPromise, driverReportsPromise, vehicleChecksPromise]).then(
       () => {
         if (isAborted(signal)) return
@@ -1814,18 +1964,22 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       fetchConsumablesOverview(),
     ])
 
-    const [vehicleChecksToday, dailyVehicleChecksStats] = await (async () => {
-      const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
-      const todayChecks = await fetchTodayVehicleCheckRows(companyToday, companyScope.companyId)
-      return [
-        computeVehicleChecksTodayFromRows(todayChecks),
-        computeDailyVehicleChecksStats(
-          dashboardVehicles,
-          todayChecks,
-          companyToday,
-        ),
-      ] as const
-    })()
+    const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
+    const [todayChecks, todayTyreChecks] = await Promise.all([
+      fetchTodayVehicleCheckRows(companyToday, companyScope.companyId),
+      fetchTodayTyreCheckRows(companyToday, companyScope.companyId),
+    ])
+    const vehicleChecksToday = computeVehicleChecksTodayFromRows(todayChecks)
+    const dailyVehicleChecksStats = computeDailyVehicleChecksStats(
+      dashboardVehicles,
+      todayChecks,
+      companyToday,
+    )
+    const dailyTyreChecksStats = computeDailyTyreChecksStats(
+      dashboardVehicles,
+      todayTyreChecks,
+      companyToday,
+    )
 
     const vehicleRegistrations = new Map(
       dashboardVehicles.map((vehicle) => [vehicle.id, vehicle.registration]),
@@ -1846,6 +2000,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       complianceAlerts,
       vehicleChecksToday,
       dailyVehicleChecksStats,
+      dailyTyreChecksStats,
       availabilityAlerts: {
         offRoadToday: vehicleStatusCounts.offRoadToday,
         maintenanceToday: vehicleStatusCounts.maintenanceToday,

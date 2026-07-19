@@ -8,7 +8,15 @@ import type {
 } from '@/lib/timesheetTypes'
 import type { TimesheetRoleFilter, TimesheetStatusFilter } from '@/lib/timesheetUtils'
 import type { DriverRole } from '@/services/driversService'
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 import { createPortal } from 'react-dom'
 
 const selectClassName = adminSelectSm
@@ -63,6 +71,7 @@ type TimesheetsToolbarProps = {
   onClearFilters: () => void
   onCleanCurrentView: () => void
   onNewTimesheet: () => void
+  secondaryActions?: ReactNode
 }
 
 type FilterPanelPosition = {
@@ -277,6 +286,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     onCleanCurrentView,
     onClearFilters,
     onNewTimesheet,
+    secondaryActions,
   } = props
 
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -453,6 +463,7 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
         filterOpen={isFilterOpen}
         activeFilterCount={activeFilterCount}
         filterAnchorRef={filterRootRef}
+        secondaryActions={secondaryActions}
       />
       {desktopFilterPanel}
       {mobileFilterSheet}

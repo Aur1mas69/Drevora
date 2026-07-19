@@ -12,14 +12,16 @@ import {
 } from '@/lib/vehicleCheckUtils'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
-import { X } from 'lucide-react'
+import { Download, Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type VehicleCheckDrawerProps = {
   check: VehicleCheck | null
   isOpen: boolean
+  isDownloadingPdf?: boolean
   onClose: () => void
   onEdit?: () => void
+  onDownloadPdf?: () => void
 }
 
 function VehicleCheckPhotoThumb({ item }: { item: VehicleCheckItem }) {
@@ -73,8 +75,10 @@ function VehicleCheckPhotoThumb({ item }: { item: VehicleCheckItem }) {
 export function VehicleCheckDrawer({
   check,
   isOpen,
+  isDownloadingPdf = false,
   onClose,
   onEdit,
+  onDownloadPdf,
 }: VehicleCheckDrawerProps) {
   const { formatDate } = useCompanySettings()
 
@@ -82,12 +86,12 @@ export function VehicleCheckDrawer({
     if (!isOpen) return
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape' && !isDownloadingPdf) onClose()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, isDownloadingPdf, onClose])
 
   if (!isOpen || !check) return null
 
@@ -141,16 +145,36 @@ export function VehicleCheckDrawer({
                 {check.workerName}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
-              aria-label="Close"
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              {onDownloadPdf ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloadingPdf}
+                  onClick={onDownloadPdf}
+                  className="h-8 rounded-[10px] px-2.5 text-xs font-semibold"
+                  aria-label="Download vehicle check PDF"
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-3.5" aria-hidden="true" />
+                  )}
+                  PDF
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
 

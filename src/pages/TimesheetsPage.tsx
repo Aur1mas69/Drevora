@@ -5,11 +5,17 @@ import { TimesheetDrawer } from '@/components/timesheets/TimesheetDrawer'
 import { TimesheetsBulkActionsBar } from '@/components/timesheets/TimesheetsBulkActionsBar'
 import { TimesheetsDataTable } from '@/components/timesheets/TimesheetsDataTable'
 import { TimesheetsEmptyState } from '@/components/timesheets/TimesheetsEmptyState'
+import { TimesheetsLegendPanel } from '@/components/timesheets/TimesheetsLegendPanel'
 import { TimesheetsPagination } from '@/components/timesheets/TimesheetsPagination'
 import { TimesheetsSummaryStrip } from '@/components/timesheets/TimesheetsSummaryStrip'
 import { TimesheetsToolbar } from '@/components/timesheets/TimesheetsToolbar'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import { downloadTimesheetPdf, exportTimesheetsExcel } from '@/lib/export/modules/timesheetsExport'
 import { DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
@@ -53,7 +59,8 @@ type DrawerState = {
 }
 
 export default function TimesheetsPage() {
-  const { settings } = useCompanySettings()
+  const { settings, companyName } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -86,6 +93,8 @@ export default function TimesheetsPage() {
   const [drawerSaveError, setDrawerSaveError] = useState<string | null>(null)
   const [isBulkBusy, setIsBulkBusy] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isToolbarExporting, setIsToolbarExporting] = useState(false)
+  const [isDrawerPdfExporting, setIsDrawerPdfExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TimesheetListItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -564,15 +573,59 @@ export default function TimesheetsPage() {
           : `Exported ${timesheets.length} timesheets to ZIP`,
       )
     } catch (error) {
-      showToast(
-        error instanceof TimesheetsServiceError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to export timesheets',
-      )
+      showToast(toExportUserMessage(error, 'Failed to export timesheets'))
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  async function handleExportExcel() {
+    setIsToolbarExporting(true)
+    try {
+      const meta = resolveExportMeta({
+        companyName,
+        logoUrl: settings?.logoUrl,
+        generatedBy: session?.user.email ?? null,
+        documentTitle: 'Timesheets',
+        filterSummary: [
+          `Week ${weekFilter}`,
+          statusFilter !== 'all' ? `Status ${statusFilter}` : null,
+          roleFilter !== 'all' ? `Role ${roleFilter}` : null,
+          debouncedSearch ? `Search ${debouncedSearch}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })
+      await exportTimesheetsExcel(
+        {
+          weekStart: weekFilter,
+          search: debouncedSearch || undefined,
+          status: statusFilter,
+          role: roleFilter,
+          viewMode,
+          sortBy,
+          sortDir,
+        },
+        meta,
+      )
+      showToast('Exported timesheets to Excel')
+    } catch (error) {
+      showToast(toExportUserMessage(error))
+    } finally {
+      setIsToolbarExporting(false)
+    }
+  }
+
+  async function handleDrawerDownloadPdf() {
+    if (!drawerState?.timesheet) return
+    setIsDrawerPdfExporting(true)
+    try {
+      await downloadTimesheetPdf(drawerState.timesheet)
+      showToast('Exported timesheet to PDF')
+    } catch (error) {
+      showToast(toExportUserMessage(error))
+    } finally {
+      setIsDrawerPdfExporting(false)
     }
   }
 
@@ -628,6 +681,19 @@ export default function TimesheetsPage() {
             setCreateError(null)
             setIsNewModalOpen(true)
           }}
+          secondaryActions={
+            <ExportMenu
+              busy={isToolbarExporting}
+              disabled={isLoading || isExporting}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: () => void handleExportExcel(),
+                },
+              ]}
+            />
+          }
         />
 
         <TimesheetsBulkActionsBar
@@ -692,6 +758,8 @@ export default function TimesheetsPage() {
             />
           </>
         )}
+
+        <TimesheetsLegendPanel />
       </section>
 
       <TimesheetDrawer
@@ -699,6 +767,7 @@ export default function TimesheetsPage() {
         mode={drawerState?.mode ?? 'view'}
         isSaving={isSaving}
         saveError={drawerSaveError}
+        isDownloadingPdf={isDrawerPdfExporting}
         onClose={() => {
           setDrawerSaveError(null)
           setDrawerState(null)
@@ -708,6 +777,7 @@ export default function TimesheetsPage() {
           setDrawerSaveError(null)
           setDrawerState({ ...drawerState, mode: 'edit' })
         }}
+        onDownloadPdf={() => void handleDrawerDownloadPdf()}
         onSave={handleSaveEntries}
         onSubmit={handleSubmitTimesheet}
       />

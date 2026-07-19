@@ -11,6 +11,7 @@ import { FleetStatusOverviewCard } from '@/components/dashboard/FleetStatusOverv
 import { HolidayRequestsOverviewCard } from '@/components/dashboard/HolidayRequestsOverviewCard'
 import { NotesPlansCard } from '@/components/dashboard/NotesPlansCard'
 import { TimesheetOverviewCard } from '@/components/dashboard/TimesheetOverviewCard'
+import { TyreChecksOverviewCard } from '@/components/dashboard/TyreChecksOverviewCard'
 import {
   dashboardOverviewCardStaticClass,
   dashboardOverviewCardSubtitleClass,
@@ -261,7 +262,7 @@ function RecentActivityItem({
   const isClickable = Boolean(route)
 
   const itemClassName = [
-    'relative z-[1] w-full rounded-xl border border-l-[3px] px-3.5 py-2.5 text-left shadow-sm transition-all duration-200',
+    'relative z-[1] h-full w-full rounded-xl border border-l-[3px] px-3.5 py-2.5 text-left shadow-sm transition-all duration-200 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
     accent.stripeClass,
     accent.boxClass,
     isClickable
@@ -320,7 +321,7 @@ function RecentActivityPanel({
 
   return (
     <section
-      className={`${dashboardOverviewCardStaticClass} flex min-h-0 flex-col transition-shadow duration-[200ms] ease-out sm:min-h-[360px] md:hover:shadow-[0_12px_28px_rgba(30,64,175,0.12)] xl:min-h-[520px] xl:sticky xl:top-6`}
+      className={`${dashboardOverviewCardStaticClass} flex min-w-0 flex-col transition-shadow duration-[200ms] ease-out md:hover:shadow-[0_12px_28px_rgba(30,64,175,0.12)]`}
     >
       <div className={`shrink-0 border-b ${dashboardOverviewDividerClass} pb-4`}>
         <h3 className={dashboardOverviewCardTitleClass}>Recent Activity</h3>
@@ -329,13 +330,15 @@ function RecentActivityPanel({
         </p>
       </div>
 
-      <div className="relative z-[1] mt-4 min-h-0 flex-1 max-md:overflow-visible xl:overflow-y-auto xl:max-h-[calc(100dvh-14rem)] xl:pr-1">
+      <div className="relative z-[1] mt-4 max-h-[22rem] min-h-0 overflow-y-auto overscroll-contain pr-1 sm:max-h-[26rem] xl:max-h-[28rem]">
         {activity.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-[#D2E5F5] bg-[#F8FBFF]/70 px-4 py-10 text-center dark:border-white/10 dark:bg-slate-800/40">
-            <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">No recent activity yet.</p>
+            <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">
+              No recent activity yet.
+            </p>
           </div>
         ) : (
-          <ul className="relative z-[1] space-y-2.5">
+          <ul className="relative z-[1] grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {activity.map((item) => (
               <RecentActivityItem
                 key={`${item.type}-${item.id}`}
@@ -507,47 +510,49 @@ export function DashboardOverview({
         )}
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 overflow-visible sm:gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0">
-          <div className="grid min-w-0 items-start gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-            {loading.timesheet ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <TimesheetOverviewCard overview={stats.timesheetOverview} />
-            )}
-            {loading.holidays ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
-            )}
-            {loading.driverReports ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <DriverReportsOverviewCard summary={stats.driverReports} />
-            )}
-            {loading.fleetStatus ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
-            )}
-            {loading.vehicleChecks ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
-            )}
-            {loading.consumables ? (
-              <DashboardOverviewCardSkeleton />
-            ) : (
-              <ConsumablesOverviewCard overview={stats.consumablesOverview} />
-            )}
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4 overflow-visible sm:gap-6">
-          <NotesPlansCard />
-          <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
-        </div>
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        {loading.timesheet ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <TimesheetOverviewCard overview={stats.timesheetOverview} />
+        )}
+        {loading.holidays ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
+        )}
+        {loading.driverReports ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <DriverReportsOverviewCard summary={stats.driverReports} />
+        )}
+        <NotesPlansCard />
       </div>
+
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        {loading.fleetStatus ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
+        )}
+        {loading.vehicleChecks ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
+        )}
+        {loading.tyreChecks ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <TyreChecksOverviewCard stats={stats.dailyTyreChecksStats} />
+        )}
+        {loading.consumables ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <ConsumablesOverviewCard overview={stats.consumablesOverview} />
+        )}
+      </div>
+
+      <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
     </div>
   )
 }

@@ -6,14 +6,16 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
-import { Check, X } from 'lucide-react'
+import { Check, Download, Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type HolidayRequestDrawerProps = {
   request: HolidayRequest | null
   isOpen: boolean
   isSaving?: boolean
+  isDownloadingPdf?: boolean
   onClose: () => void
+  onDownloadPdf?: () => void
   onApprove?: (managerNote: string) => Promise<void>
   onReject?: (managerNote: string) => Promise<void>
 }
@@ -22,7 +24,9 @@ export function HolidayRequestDrawer({
   request,
   isOpen,
   isSaving = false,
+  isDownloadingPdf = false,
   onClose,
+  onDownloadPdf,
   onApprove,
   onReject,
 }: HolidayRequestDrawerProps) {
@@ -72,16 +76,36 @@ export function HolidayRequestDrawer({
                 {request.workerRole ?? 'No role assigned'}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
-              aria-label="Close"
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              {onDownloadPdf ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSaving || isDownloadingPdf}
+                  onClick={onDownloadPdf}
+                  className="h-8 rounded-[10px] px-2.5 text-xs font-semibold"
+                  aria-label="Download holiday request PDF"
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-3.5" aria-hidden="true" />
+                  )}
+                  PDF
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ import {
 } from '@/lib/consumableTypes'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 export type ConsumablesViewMode = 'current' | 'history' | 'all'
@@ -58,6 +58,7 @@ type ConsumablesToolbarProps = {
   onResetFilters: () => void
   onCleanCurrentView: () => void
   onNewRecord: () => void
+  secondaryActions?: ReactNode
 }
 
 type FilterPanelPosition = {
@@ -90,6 +91,7 @@ export function ConsumablesToolbar({
   onResetFilters,
   onCleanCurrentView,
   onNewRecord,
+  secondaryActions,
 }: ConsumablesToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const [draft, setDraft] = useState<ConsumablesFilterValues>(filters)
@@ -405,6 +407,7 @@ export function ConsumablesToolbar({
         filterOpen={isFiltersOpen}
         activeFilterCount={activeFilterCount}
         filterAnchorRef={filterRootRef}
+        secondaryActions={secondaryActions}
       />
       {desktopFilterPanel}
       {mobileFilterSheet}
