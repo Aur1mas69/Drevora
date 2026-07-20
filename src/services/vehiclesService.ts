@@ -1,6 +1,12 @@
 import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
+import {
+  formatVehiclePlanLimitError,
+  isVehiclePlanLimitError,
+  VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE,
+  VEHICLE_PLAN_LIMIT_REACHED,
+} from '@/lib/vehicleAllowance'
 import { todayString } from '@/lib/vehicleAvailability'
 
 export const vehicleTypeOptions = [
@@ -127,6 +133,8 @@ export type Vehicle = {
   offRoadNotes: string | null
   notes: string | null
   availabilityRecords: VehicleAvailability[]
+  /** Null = active plan seat. Set when archived (former Vehicle). */
+  archivedAt: string | null
 }
 
 export type VehicleInput = {
@@ -178,6 +186,7 @@ type VehicleRow = {
   off_road_return: string | null
   off_road_notes: string | null
   notes: string | null
+  archived_at?: string | null
 }
 
 type VehicleAvailabilityRow = {
@@ -192,10 +201,33 @@ type VehicleAvailabilityRow = {
 }
 
 export class VehiclesServiceError extends Error {
-  constructor(message: string) {
+  readonly code: string | null
+
+  constructor(message: string, code: string | null = null) {
     super(message)
     this.name = 'VehiclesServiceError'
+    this.code = code
   }
+}
+
+function planLimitErrorCodeFromMessage(message: string): string | null {
+  const upper = message.toUpperCase()
+  if (upper.includes(VEHICLE_PLAN_LIMIT_REACHED)) return VEHICLE_PLAN_LIMIT_REACHED
+  if (upper.includes(VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE)) {
+    return VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE
+  }
+  return null
+}
+
+function isMissingColumnError(error: { message?: string; code?: string }): boolean {
+  const message = (error.message ?? '').toLowerCase()
+  return (
+    error.code === 'PGRST204' ||
+    error.code === '42703' ||
+    message.includes('schema cache') ||
+    message.includes('could not find the') ||
+    (message.includes('column') && message.includes('does not exist'))
+  )
 }
 
 /**
@@ -375,10 +407,14 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
     offRoadNotes: row.off_road_notes,
     notes: row.notes,
     availabilityRecords: [],
+    archivedAt: row.archived_at?.trim() || null,
   }
 }
 
 const vehicleSelect =
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at'
+
+const vehicleSelectLegacy =
   'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
 
 const vehicleAvailabilitySelect =
@@ -393,9 +429,18 @@ function mapVehicleWriteError(error: unknown): never {
     code?: string
     message?: string
     details?: string
+    hint?: string
   } | null
 
-  const message = `${supabaseError?.message ?? ''} ${supabaseError?.details ?? ''}`
+  const message = `${supabaseError?.message ?? ''} ${supabaseError?.details ?? ''} ${supabaseError?.hint ?? ''}`
+  const planCode = planLimitErrorCodeFromMessage(message)
+  if (planCode || isVehiclePlanLimitError({ message, code: supabaseError?.code ?? null })) {
+    throw new VehiclesServiceError(
+      formatVehiclePlanLimitError({ message, code: planCode }),
+      planCode ?? planLimitErrorCodeFromMessage(message),
+    )
+  }
+
   const isDuplicateTrailerNumber =
     supabaseError?.code === '23505' &&
     (message.includes('trailer_number') ||
@@ -522,21 +567,41 @@ async function fetchRelevantAvailabilityRecords(
 export async function fetchVehicles(): Promise<Vehicle[]> {
   const table = 'vehicles'
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from(table)
-    .select(vehicleSelect)
-    .eq('company_id', companyId)
-    .order('created_at', { ascending: false })
+  let data: unknown[] | null = null
+  let errorMessage: string | null = null
+  let errorCode: string | undefined
+
+  {
+    const primary = await requireSupabase()
+      .from(table)
+      .select(vehicleSelect)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+    data = primary.data
+    errorMessage = primary.error?.message ?? null
+    errorCode = primary.error?.code
+
+    if (primary.error && isMissingColumnError(primary.error)) {
+      const legacy = await requireSupabase()
+        .from(table)
+        .select(vehicleSelectLegacy)
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+      data = legacy.data
+      errorMessage = legacy.error?.message ?? null
+      errorCode = legacy.error?.code
+    }
+  }
 
   logSupabaseQuery({
     service: 'vehiclesService.fetchVehicles',
     table,
     data,
-    error,
+    error: errorMessage ? { message: errorMessage, code: errorCode } : null,
   })
 
-  if (error) {
-    throw new VehiclesServiceError(error.message)
+  if (errorMessage) {
+    throw new VehiclesServiceError(errorMessage)
   }
 
   const vehicles = (data ?? []).map((row) => mapVehicleRow(row as VehicleRow))
@@ -566,15 +631,37 @@ export async function fetchVehicleTimelineRecords(
 
 export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('vehicles')
-    .select(vehicleSelect)
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .maybeSingle()
+  let data: unknown | null = null
+  let errorMessage: string | null = null
 
-  if (error) {
-    throw new VehiclesServiceError(error.message)
+  {
+    const primary = await requireSupabase()
+      .from('vehicles')
+      .select(vehicleSelect)
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .maybeSingle()
+    data = primary.data
+    errorMessage = primary.error?.message ?? null
+
+    // Live DB may not have archived_at until the vehicle-archive migration is applied.
+    // Match fetchVehicles(): fall back to the legacy column set so profile load still works.
+    if (primary.error && isMissingColumnError(primary.error)) {
+      const legacy = await requireSupabase()
+        .from('vehicles')
+        .select(vehicleSelectLegacy)
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle()
+      data = legacy.data
+      errorMessage = legacy.error?.message ?? null
+    }
+  }
+
+  if (errorMessage) {
+    throw new VehiclesServiceError(
+      'Unable to load vehicle details. Please try again.',
+    )
   }
 
   if (!data) return null
@@ -766,10 +853,11 @@ export async function createVehicle(input: VehicleInput): Promise<Vehicle> {
     await assertDriverInCompany(payload.current_driver_id, companyId)
   }
 
+  // Select without archived_at so create still works before the archive migration.
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .insert(payload)
-    .select(vehicleSelect)
+    .select(vehicleSelectLegacy)
     .single()
 
   if (error) {
@@ -796,7 +884,7 @@ export async function updateVehicle(
     .update(payload)
     .eq('id', id)
     .eq('company_id', companyId)
-    .select(vehicleSelect)
+    .select(vehicleSelectLegacy)
     .maybeSingle()
 
   if (error) {
@@ -834,6 +922,71 @@ export async function deleteVehicle(id: string): Promise<void> {
   }
 }
 
+/**
+ * Soft-archive a Vehicle. Frees an active plan seat without deleting history.
+ */
+export async function archiveVehicle(id: string): Promise<Vehicle> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .is('archived_at', null)
+    .select(vehicleSelectLegacy)
+    .maybeSingle()
+
+  if (error) {
+    if (isMissingColumnError(error)) {
+      throw new VehiclesServiceError(
+        'Vehicle archiving is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    mapVehicleWriteError(error)
+  }
+
+  if (!data) {
+    throw new VehiclesServiceError(
+      'Vehicle could not be archived for your company. Refresh and try again.',
+    )
+  }
+
+  return mapVehicleRow({ ...(data as VehicleRow), archived_at: new Date().toISOString() })
+}
+
+/**
+ * Reactivate an archived Vehicle when a plan seat is available.
+ * Server trigger rejects with VEHICLE_PLAN_LIMIT_REACHED when full.
+ */
+export async function reactivateVehicle(id: string): Promise<Vehicle> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .update({ archived_at: null })
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .not('archived_at', 'is', null)
+    .select(vehicleSelectLegacy)
+    .maybeSingle()
+
+  if (error) {
+    if (isMissingColumnError(error)) {
+      throw new VehiclesServiceError(
+        'Vehicle reactivation is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    mapVehicleWriteError(error)
+  }
+
+  if (!data) {
+    throw new VehiclesServiceError(
+      'Vehicle could not be reactivated for your company. Refresh and try again.',
+    )
+  }
+
+  return mapVehicleRow({ ...(data as VehicleRow), archived_at: null })
+}
+
 export const vehiclesService = {
   fetchVehicles,
   fetchVehicleById,
@@ -848,4 +1001,6 @@ export const vehiclesService = {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  archiveVehicle,
+  reactivateVehicle,
 }

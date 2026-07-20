@@ -89,7 +89,12 @@ export type TimesheetsQuery = {
   search?: string
   status?: TimesheetStatus | 'all'
   role?: DriverRole | 'all'
-  weekStart: string
+  /** Exact week. Omit when using weekStartFrom/To or unfiltered list/export. */
+  weekStart?: string
+  /** Inclusive lower bound on week_start (list From filter / export). */
+  weekStartFrom?: string
+  /** Inclusive upper bound on week_start (list To filter / export). */
+  weekStartTo?: string
   vehicleId?: string | 'all' | 'unassigned'
   viewMode?: TimesheetsViewMode
   page?: number

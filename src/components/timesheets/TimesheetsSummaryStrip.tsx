@@ -139,7 +139,7 @@ export function TimesheetsSummaryStrip({
     <section className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#3D7A9C] dark:text-slate-400">
-          Week summary
+          Summary
         </p>
         <div className="text-left sm:text-right">
           <TimesheetWeekLabel

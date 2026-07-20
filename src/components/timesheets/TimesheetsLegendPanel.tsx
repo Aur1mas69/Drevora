@@ -37,8 +37,8 @@ const STATUS_ITEMS = [
 
 const HOURS_ITEMS = [
   {
-    label: 'Worked',
-    explanation: 'Regular worked hours',
+    label: 'Basic',
+    explanation: 'Shift duration minus break',
   },
   {
     label: 'OT',
@@ -46,11 +46,11 @@ const HOURS_ITEMS = [
   },
   {
     label: 'Add. Hrs',
-    explanation: 'Additional payable hours',
+    explanation: 'Paid break plus manual additional hours',
   },
   {
     label: 'Total',
-    explanation: 'Worked + OT + Additional Hours',
+    explanation: 'Basic + OT (with multipliers) + Additional Hours',
   },
 ] as const
 

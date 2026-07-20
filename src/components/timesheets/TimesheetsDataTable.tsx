@@ -137,7 +137,7 @@ export function TimesheetsDataTable({
               <th className="px-2.5 py-2.5">Date range</th>
               <th className="px-2.5 py-2.5">Status</th>
               <th className="px-2.5 py-2.5 whitespace-nowrap">Submitted</th>
-              <th className="px-2.5 py-2.5 text-right">Worked</th>
+              <th className="px-2.5 py-2.5 text-right">Basic</th>
               <th className="px-2.5 py-2.5 text-right">OT</th>
               <th className="px-2.5 py-2.5 text-right">Add. hrs</th>
               <th className="px-2.5 py-2.5 text-right">Total</th>

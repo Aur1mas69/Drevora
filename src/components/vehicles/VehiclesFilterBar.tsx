@@ -1,5 +1,6 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
+import { VehiclesViewSwitcher } from '@/components/vehicles/VehiclesViewSwitcher'
 import {
   vehicleFilterFieldLabelClass,
   vehicleFilterPanelClass,
@@ -7,6 +8,7 @@ import {
 } from '@/components/vehicles/vehicleUiStyles'
 import type { DocumentFilter } from '@/lib/vehiclePageUtils'
 import { vehicleStatuses } from '@/lib/vehicleForm'
+import type { VehiclesViewMode } from '@/lib/vehiclesViewMode'
 import type { Driver } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
 import { Download, X } from 'lucide-react'
@@ -29,6 +31,9 @@ type VehiclesFilterBarProps = {
   onClearFilters: () => void
   onExportCsv: () => void
   onAddVehicle: () => void
+  canAddVehicle: boolean
+  viewMode: VehiclesViewMode
+  onViewModeChange: (mode: VehiclesViewMode) => void
   hasActiveFilters: boolean
 }
 
@@ -54,6 +59,9 @@ export function VehiclesFilterBar({
   onClearFilters,
   onExportCsv,
   onAddVehicle,
+  canAddVehicle,
+  viewMode,
+  onViewModeChange,
   hasActiveFilters,
 }: VehiclesFilterBarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
@@ -108,6 +116,7 @@ export function VehiclesFilterBar({
     <ModuleListToolbar
       primaryActionLabel="Add Vehicle"
       onPrimaryAction={onAddVehicle}
+      primaryActionDisabled={!canAddVehicle}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
       searchPlaceholder="Search registration, fleet #, make/model, or driver…"
@@ -235,16 +244,19 @@ export function VehiclesFilterBar({
         ) : null
       }
       secondaryActions={
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onExportCsv}
-          className="h-11 w-full rounded-2xl border-[#BFE3F5] bg-[#E8F3FE] px-4 text-sm font-semibold text-[#0B68BE] shadow-sm hover:border-[#89CFF0] hover:bg-[#DCEEFF] sm:w-auto"
-        >
-          <Download className="mr-1.5 size-4" />
-          Export CSV
-        </Button>
+        <>
+          <VehiclesViewSwitcher value={viewMode} onChange={onViewModeChange} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onExportCsv}
+            className="h-11 w-full rounded-2xl border-[#BFE3F5] bg-[#E8F3FE] px-4 text-sm font-semibold text-[#0B68BE] shadow-sm hover:border-[#89CFF0] hover:bg-[#DCEEFF] sm:w-auto"
+          >
+            <Download className="mr-1.5 size-4" />
+            Export CSV
+          </Button>
+        </>
       }
     />
   )

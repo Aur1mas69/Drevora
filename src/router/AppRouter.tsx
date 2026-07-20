@@ -3,6 +3,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
 } from 'react-router-dom'
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import {
@@ -33,6 +34,9 @@ const DriverLoginPage = lazy(() => import('@/pages/DriverLoginPage'))
 const WorkerLoginPage = lazy(() => import('@/pages/WorkerLoginPage'))
 const LoginTwilightPreviewPage = lazy(
   () => import('@/pages/LoginTwilightPreviewPage'),
+)
+const CompanyOnboardingPage = lazy(
+  () => import('@/pages/CompanyOnboardingPage'),
 )
 const DriversPage = lazy(() => import('@/pages/DriversPage'))
 const MyHolidaysPage = lazy(() => import('@/pages/MyHolidaysPage'))
@@ -72,6 +76,17 @@ function RouteLoadingFallback() {
   return <MembershipLoadingScreen />
 }
 
+/** Preserve plan query + auth hash when sending `/` to `/login`. */
+function RootToLoginRedirect() {
+  const location = useLocation()
+  return (
+    <Navigate
+      to={`/login${location.search}${location.hash}`}
+      replace
+    />
+  )
+}
+
 /**
  * Office shell: verified company_members office role only.
  * Never uses sessionStorage portal. Does not render Office pages while loading.
@@ -95,6 +110,10 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
 
   if (access.status === 'worker') {
     return <Navigate to={WORKER_HOME_PATH} replace />
+  }
+
+  if (access.status === 'unlinked') {
+    return <Navigate to="/onboarding" replace />
   }
 
   if (access.status === 'blocked') {
@@ -123,6 +142,10 @@ function RequireWorkerAccess() {
     return <Navigate to={OFFICE_HOME_PATH} replace />
   }
 
+  if (access.status === 'unlinked') {
+    return <Navigate to="/onboarding" replace />
+  }
+
   if (access.status === 'blocked') {
     return <MembershipAccessBlocked message={access.message} />
   }
@@ -143,12 +166,13 @@ function AppRouter() {
     <BrowserRouter>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<RootToLoginRedirect />} />
         <Route path="/login" element={<LoginTwilightPreviewPage />} />
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
         <Route path="/admin-login" element={<Navigate to="/login" replace />} />
         <Route path="/driver-login" element={<DriverLoginPage />} />
         <Route path="/worker-login" element={<WorkerLoginPage />} />
+        <Route path="/onboarding" element={<CompanyOnboardingPage />} />
         <Route
           path="/login-design-preview"
           element={<LoginTwilightPreviewPage />}

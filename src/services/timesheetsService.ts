@@ -318,7 +318,9 @@ function mapListRow(
     : 'Unknown worker'
 
   const summary = totals
-    ? summarizeTimesheetEntriesFromTotals(totals)
+    ? summarizeTimesheetEntriesFromTotals(totals, {
+        paidBreaks: getGlobalPaidBreaks(),
+      })
     : {
         workedHours: 0,
         breakHours: 0,
@@ -364,7 +366,9 @@ function mapTimesheetRow(row: TimesheetRow): Timesheet {
     .sort((a, b) => a.dayDate.localeCompare(b.dayDate))
 
   const listItem = mapListRow(row)
-  const totals = summarizeTimesheetEntries(entries)
+  const totals = summarizeTimesheetEntries(entries, {
+    paidBreaks: getGlobalPaidBreaks(),
+  })
 
   return {
     ...listItem,
@@ -518,7 +522,10 @@ async function fetchEntryTotalsByTimesheetIds(
     const totalMinutes = row.total_minutes ?? 0
     const overtimeMinutes = row.overtime_minutes ?? 0
     current.workedMinutes += totalMinutes
-    current.breakMinutes += row.break_minutes ?? 0
+    // Only count break on days with Basic Hours (avoids empty-day default breaks).
+    if (totalMinutes > 0) {
+      current.breakMinutes += row.break_minutes ?? 0
+    }
     current.overtimeMinutes += overtimeMinutes
     current.additionalHours += Number(row.additional_hours ?? 0)
     totals.set(row.timesheet_id, current)
@@ -543,7 +550,9 @@ function applyListTotals(
     const totals = totalsMap.get(item.id)
     if (!totals) return item
 
-    const summary = summarizeTimesheetEntriesFromTotals(totals)
+    const summary = summarizeTimesheetEntriesFromTotals(totals, {
+      paidBreaks: getGlobalPaidBreaks(),
+    })
     return { ...item, ...summary }
   })
 }
@@ -612,7 +621,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, query.page ?? 1)
   const pageSize = query.pageSize ?? DEFAULT_TIMESHEET_PAGE_SIZE
-  const weekStart = normalizeWeekStartForCompany(query.weekStart)
+  const weekStart = query.weekStart ? normalizeWeekStartForCompany(query.weekStart) : null
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
   const sortBy = query.sortBy ?? 'createdAt'
@@ -621,9 +630,19 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   let request = requireSupabase()
     .from('timesheets')
     .select(buildListSelect(query), { count: 'exact' })
-    .eq('week_start', weekStart)
     .eq('company_id', companyId)
     .is('deleted_at', null)
+
+  if (query.weekStartFrom || query.weekStartTo) {
+    if (query.weekStartFrom) {
+      request = request.gte('week_start', query.weekStartFrom)
+    }
+    if (query.weekStartTo) {
+      request = request.lte('week_start', query.weekStartTo)
+    }
+  } else if (weekStart) {
+    request = request.eq('week_start', weekStart)
+  }
 
   request = applyTimesheetsCleanedAtViewFilter(request, query.viewMode)
 
@@ -696,7 +715,15 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
     items = items.slice(from, to + 1)
   }
 
-  const stats = await fetchTimesheetWeekStatsForCompany(weekStart, query.viewMode, companyId)
+  const stats = await fetchTimesheetListStatsForCompany(
+    {
+      weekStart: weekStart ?? undefined,
+      weekStartFrom: query.weekStartFrom,
+      weekStartTo: query.weekStartTo,
+      viewMode: query.viewMode,
+    },
+    companyId,
+  )
 
   return {
     items,
@@ -729,26 +756,36 @@ function applyTimesheetsCleanedAtViewFilter(request: any, viewMode: TimesheetsQu
   return request.is('cleaned_at', null)
 }
 
-async function fetchTimesheetWeekStatsForCompany(
-  weekStart: string,
-  viewMode: TimesheetsQuery['viewMode'],
+async function fetchTimesheetListStatsForCompany(
+  query: Pick<
+    TimesheetsQuery,
+    'weekStart' | 'weekStartFrom' | 'weekStartTo' | 'viewMode'
+  >,
   companyId: string,
 ) {
-  const normalizedWeek = normalizeWeekStartForCompany(weekStart)
-
   let request = requireSupabase()
     .from('timesheets')
     .select('id, status')
-    .eq('week_start', normalizedWeek)
     .eq('company_id', companyId)
     .is('deleted_at', null)
 
-  request = applyTimesheetsCleanedAtViewFilter(request, viewMode)
+  if (query.weekStartFrom || query.weekStartTo) {
+    if (query.weekStartFrom) {
+      request = request.gte('week_start', query.weekStartFrom)
+    }
+    if (query.weekStartTo) {
+      request = request.lte('week_start', query.weekStartTo)
+    }
+  } else if (query.weekStart) {
+    request = request.eq('week_start', normalizeWeekStartForCompany(query.weekStart))
+  }
+
+  request = applyTimesheetsCleanedAtViewFilter(request, query.viewMode)
 
   const { data, error } = await request
 
   logSupabaseQuery({
-    service: 'timesheetsService.fetchTimesheetWeekStats',
+    service: 'timesheetsService.fetchTimesheetListStats',
     table: 'timesheets',
     data,
     error,
@@ -769,6 +806,17 @@ async function fetchTimesheetWeekStatsForCompany(
     rows.map((row) => ({
       status: normalizeStatus(row.status),
     })),
+  )
+}
+
+async function fetchTimesheetWeekStatsForCompany(
+  weekStart: string,
+  viewMode: TimesheetsQuery['viewMode'],
+  companyId: string,
+) {
+  return fetchTimesheetListStatsForCompany(
+    { weekStart, viewMode },
+    companyId,
   )
 }
 

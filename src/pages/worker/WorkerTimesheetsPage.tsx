@@ -7,10 +7,13 @@ import type { Timesheet, TimesheetEntryInput, TimesheetStatus } from '@/lib/time
 import {
   buildTimesheetOvertimeRules,
   formatDayLabel,
+  formatHours,
   formatHoursFromMinutes,
   formatLocalDateString,
   formatTotalHours,
   getDefaultWeekStartMonday,
+  getEntryCombinedAdditionalHours,
+  getEntryPaidBreakMinutes,
   getStatusBadgeClass,
   getStatusLabel,
   normalizeWeekStartForCompany,
@@ -117,9 +120,19 @@ export default function WorkerTimesheetsPage() {
     () =>
       summarizeTimesheetEntries(entries, {
         overtimeRules,
+        paidBreaks,
       }),
-    [entries, overtimeRules],
+    [entries, overtimeRules, paidBreaks],
   )
+
+  function validateManualAdditional(nextEntries: TimesheetEntryInput[]): string | null {
+    for (const entry of nextEntries) {
+      if (entry.additionalHours > 0 && !entry.dailyComment.trim()) {
+        return `Add a daily comment for ${formatDayLabel(entry.dayDate)} explaining the Additional Hours (for example night-shift allowance).`
+      }
+    }
+    return null
+  }
 
   const applyLoadedTimesheet = useCallback(
     (loaded: Timesheet) => {
@@ -257,7 +270,11 @@ export default function WorkerTimesheetsPage() {
     patch: Partial<
       Pick<
         TimesheetEntryInput,
-        'startTime' | 'finishTime' | 'breakMinutes' | 'dailyComment'
+        | 'startTime'
+        | 'finishTime'
+        | 'breakMinutes'
+        | 'dailyComment'
+        | 'additionalHours'
       >
     >,
   ) {
@@ -292,6 +309,11 @@ export default function WorkerTimesheetsPage() {
         overtimeRules,
         paidBreaks,
       })
+      const validationError = validateManualAdditional(recalculated)
+      if (validationError) {
+        setActionError(validationError)
+        return
+      }
       await upsertTimesheetEntries(timesheet.id, recalculated)
       const refreshed = await fetchTimesheetById(timesheet.id)
       if (refreshed.driverId !== worker?.id) {
@@ -330,6 +352,11 @@ export default function WorkerTimesheetsPage() {
         overtimeRules,
         paidBreaks,
       })
+      const validationError = validateManualAdditional(recalculated)
+      if (validationError) {
+        setActionError(validationError)
+        return
+      }
       await upsertTimesheetEntries(timesheet.id, recalculated)
       const submitted = await submitTimesheet(timesheet.id)
       const refreshed = await fetchTimesheetById(submitted.id)
@@ -568,6 +595,43 @@ export default function WorkerTimesheetsPage() {
 
             <label className="mt-3 block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                Additional Hours
+              </span>
+              {editable ? (
+                <input
+                  type="number"
+                  min={0}
+                  step={0.25}
+                  value={entry.additionalHours > 0 ? entry.additionalHours : ''}
+                  onChange={(event) =>
+                    updateEntry(entry.dayDate, {
+                      additionalHours: Math.max(
+                        0,
+                        Number.parseFloat(event.target.value) || 0,
+                      ),
+                    })
+                  }
+                  placeholder="0"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
+                  aria-label={`Manual Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+                />
+              ) : (
+                <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+                  {getEntryCombinedAdditionalHours(entry, paidBreaks) > 0
+                    ? formatHours(getEntryCombinedAdditionalHours(entry, paidBreaks))
+                    : '—'}
+                </p>
+              )}
+              {getEntryPaidBreakMinutes(entry, paidBreaks) > 0 ? (
+                <p className="text-xs font-medium text-slate-500">
+                  +{formatHoursFromMinutes(getEntryPaidBreakMinutes(entry, paidBreaks))}{' '}
+                  paid break included automatically
+                </p>
+              ) : null}
+            </label>
+
+            <label className="mt-3 block space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                 Daily comment
               </span>
               {editable ? (
@@ -579,7 +643,11 @@ export default function WorkerTimesheetsPage() {
                       dailyComment: event.target.value,
                     })
                   }
-                  placeholder="Optional note"
+                  placeholder={
+                    entry.additionalHours > 0
+                      ? 'Required — e.g. Night-shift allowance'
+                      : 'Optional note'
+                  }
                   className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
                 />
               ) : (
@@ -592,7 +660,7 @@ export default function WorkerTimesheetsPage() {
             <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Worked
+                  Basic
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-950">
                   {formatHoursFromMinutes(entry.totalMinutes)}
@@ -608,12 +676,14 @@ export default function WorkerTimesheetsPage() {
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Paid
+                  Total
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-950">
                   {formatTotalHours(
-                    summarizeTimesheetEntries([entry], { overtimeRules })
-                      .totalHours,
+                    summarizeTimesheetEntries([entry], {
+                      overtimeRules,
+                      paidBreaks,
+                    }).totalHours,
                   )}
                 </p>
               </div>
@@ -626,13 +696,18 @@ export default function WorkerTimesheetsPage() {
         <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
           Weekly summary
         </h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 min-[380px]:grid-cols-4">
-          <SummaryStat label="Worked" value={formatHoursFromMinutes(summary.workedMinutes)} />
+        <div className="mt-3 grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
+          <SummaryStat label="Basic Hours" value={formatHoursFromMinutes(summary.workedMinutes)} />
+          <SummaryStat label="Break" value={formatHoursFromMinutes(summary.breakMinutes)} />
           <SummaryStat
             label="Overtime"
             value={formatHoursFromMinutes(Math.round(summary.overtimeHours * 60))}
           />
-          <SummaryStat label="Total" value={formatTotalHours(summary.totalHours)} />
+          <SummaryStat
+            label="Additional Hours"
+            value={formatHours(summary.additionalHours)}
+          />
+          <SummaryStat label="Total Hours" value={formatTotalHours(summary.totalHours)} />
           <SummaryStat label="Status" value={getStatusLabel(status)} />
         </div>
       </section>

@@ -12,6 +12,7 @@ import {
   formatSubmittedAtDisplay,
   formatTimeDisplay,
   formatTotalHours,
+  getEntryCombinedAdditionalHours,
   getStatusLabel,
   parseLocalDate,
   prepareEntryInputs,
@@ -127,6 +128,7 @@ function buildViewModeEntries(timesheet: Timesheet) {
 
 function buildSummary(timesheet: Timesheet): SummaryTotals {
   const entries = buildViewModeEntries(timesheet)
+  const paidBreaks = getGlobalPaidBreaks()
 
   return summarizeTimesheetEntries(
     entries.map((entry) => ({
@@ -138,26 +140,27 @@ function buildSummary(timesheet: Timesheet): SummaryTotals {
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
     })),
+    { paidBreaks },
   )
 }
 
-function formatPdfDailyRow(entry: TimesheetEntryInput): string[] {
+function formatPdfDailyRow(entry: TimesheetEntryInput, paidBreaks: boolean): string[] {
   const day = formatPdfDayName(entry.dayDate)
   const date = formatPdfDate(entry.dayDate)
+  const combinedAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
 
   if (!entryHasStartAndFinish(entry)) {
-    return [day, date, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
+    return [day, date, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
   }
 
   return [
     day,
     date,
-    formatTimeDisplay(entry.startTime),
+    `${formatTimeDisplay(entry.startTime)}–${formatTimeDisplay(entry.finishTime)}`,
     formatBreak(entry.breakMinutes),
-    formatTimeDisplay(entry.finishTime),
     formatHoursFromMinutes(entry.totalMinutes),
     formatHoursFromMinutes(entry.overtimeMinutes),
-    entry.additionalHours > 0 ? formatHours(entry.additionalHours) : EMPTY,
+    combinedAdditional > 0 ? formatHours(combinedAdditional) : EMPTY,
     entry.dailyComment.trim() || EMPTY,
   ]
 }
@@ -329,11 +332,12 @@ function renderSectionTitle(doc: jsPDF, title: string, startY: number): number {
 
 function renderDailyTable(doc: jsPDF, timesheet: Timesheet, startY: number): number {
   const entries = buildViewModeEntries(timesheet)
-  const tableBody = entries.map(formatPdfDailyRow)
+  const paidBreaks = getGlobalPaidBreaks()
+  const tableBody = entries.map((entry) => formatPdfDailyRow(entry, paidBreaks))
 
   autoTable(doc, {
     startY,
-    head: [['Day', 'Date', 'Start', 'Break', 'Finish', 'Worked', 'OT', 'Add. Hrs', 'Daily Note']],
+    head: [['Day', 'Date', 'Shift', 'Break', 'Basic', 'OT', 'Add. Hrs', 'Daily Note']],
     body: tableBody,
     theme: 'grid',
     styles: {
@@ -361,13 +365,12 @@ function renderDailyTable(doc: jsPDF, timesheet: Timesheet, startY: number): num
     columnStyles: {
       0: { cellWidth: 14, halign: 'left' },
       1: { cellWidth: 16, halign: 'left' },
-      2: { cellWidth: 13, halign: 'center' },
-      3: { cellWidth: 11, halign: 'center' },
-      4: { cellWidth: 13, halign: 'center' },
-      5: { cellWidth: 14, halign: 'center' },
-      6: { cellWidth: 10, halign: 'center' },
-      7: { cellWidth: 13, halign: 'center' },
-      8: { cellWidth: CONTENT_WIDTH - 104, halign: 'left' },
+      2: { cellWidth: 22, halign: 'center' },
+      3: { cellWidth: 12, halign: 'center' },
+      4: { cellWidth: 14, halign: 'center' },
+      5: { cellWidth: 12, halign: 'center' },
+      6: { cellWidth: 14, halign: 'center' },
+      7: { cellWidth: CONTENT_WIDTH - 104, halign: 'left' },
     },
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: 20 },
     tableWidth: CONTENT_WIDTH,
@@ -417,7 +420,7 @@ function renderSummaryCards(doc: jsPDF, summary: SummaryTotals, startY: number):
   const smallCardH = 17
 
   const metrics = [
-    { label: 'Worked Hours', value: formatHours(summary.workedHours) },
+    { label: 'Basic Hours', value: formatHours(summary.workedHours) },
     { label: 'Break', value: formatBreak(summary.breakMinutes) },
     { label: 'Overtime', value: formatHours(summary.overtimeHours) },
     { label: 'Additional Hours', value: formatHours(summary.additionalHours) },

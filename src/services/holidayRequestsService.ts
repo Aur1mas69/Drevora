@@ -116,9 +116,12 @@ function isMissingColumnReadError(error: { message?: string; code?: string } | n
 }
 
 export class HolidayRequestsServiceError extends Error {
-  constructor(message: string) {
+  readonly code: string | null
+
+  constructor(message: string, code: string | null = null) {
     super(message)
     this.name = 'HolidayRequestsServiceError'
+    this.code = code
   }
 }
 
@@ -825,6 +828,10 @@ export async function updateHolidayRequest(
   return mapRow(updated as unknown as HolidayRequestRow, settings)
 }
 
+/**
+ * Hard-delete a Pending holiday request for the verified company only.
+ * Approved / Declined / Cancelled rows are never deleted by this path.
+ */
 export async function deleteHolidayRequest(id: string): Promise<void> {
   const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
@@ -832,6 +839,7 @@ export async function deleteHolidayRequest(id: string): Promise<void> {
     .delete()
     .eq('id', id)
     .eq('company_id', companyId)
+    .eq('status', 'Pending')
     .select('id')
 
   logSupabaseQuery({
@@ -842,12 +850,59 @@ export async function deleteHolidayRequest(id: string): Promise<void> {
   })
 
   if (error) {
-    throw new HolidayRequestsServiceError(error.message)
+    const message = (error.message ?? '').toLowerCase()
+    const code = error.code ?? ''
+    if (
+      code === '42501' ||
+      message.includes('permission') ||
+      message.includes('policy') ||
+      message.includes('row-level security')
+    ) {
+      throw new HolidayRequestsServiceError(
+        'You do not have permission to delete this request.',
+        'PERMISSION_DENIED',
+      )
+    }
+    throw new HolidayRequestsServiceError(
+      'The holiday request could not be deleted. Please try again.',
+      'DELETE_FAILED',
+    )
   }
 
-  if (!data?.length) {
-    throw new HolidayRequestsServiceError('Holiday request not found.')
+  if (data?.length) return
+
+  const existing = await requireSupabase()
+    .from('holiday_requests')
+    .select('id, status')
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (existing.error) {
+    throw new HolidayRequestsServiceError(
+      'The holiday request could not be deleted. Please try again.',
+      'DELETE_FAILED',
+    )
   }
+
+  if (!existing.data) {
+    throw new HolidayRequestsServiceError(
+      'The holiday request could not be deleted. Please try again.',
+      'NOT_FOUND',
+    )
+  }
+
+  if ((existing.data as { status?: string }).status !== 'Pending') {
+    throw new HolidayRequestsServiceError(
+      'This request can no longer be deleted.',
+      'NOT_PENDING',
+    )
+  }
+
+  throw new HolidayRequestsServiceError(
+    'The holiday request could not be deleted. Please try again.',
+    'DELETE_FAILED',
+  )
 }
 
 export async function approveHolidayRequest(

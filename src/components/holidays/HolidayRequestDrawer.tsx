@@ -3,10 +3,11 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { HolidayRequest } from '@/lib/holidayRequestTypes'
 import {
   canApproveHolidayRequest,
+  canDeleteHolidayRequest,
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
-import { Check, Download, Loader2, X } from 'lucide-react'
+import { Check, Download, Loader2, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type HolidayRequestDrawerProps = {
@@ -18,6 +19,7 @@ type HolidayRequestDrawerProps = {
   onDownloadPdf?: () => void
   onApprove?: (managerNote: string) => Promise<void>
   onReject?: (managerNote: string) => Promise<void>
+  onDelete?: () => void
 }
 
 export function HolidayRequestDrawer({
@@ -29,6 +31,7 @@ export function HolidayRequestDrawer({
   onDownloadPdf,
   onApprove,
   onReject,
+  onDelete,
 }: HolidayRequestDrawerProps) {
   const { formatDate, formatDateTime } = useCompanySettings()
   const [managerNote, setManagerNote] = useState('')
@@ -52,6 +55,7 @@ export function HolidayRequestDrawer({
   if (!isOpen || !request) return null
 
   const canApprove = canApproveHolidayRequest(request.status)
+  const canDelete = canDeleteHolidayRequest(request.status) && Boolean(onDelete)
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -199,28 +203,42 @@ export function HolidayRequestDrawer({
           </section>
         </div>
 
-        {canApprove ? (
-          <div className="border-t border-[rgba(75,120,220,0.10)] px-5 py-4">
-            <div className="flex flex-wrap gap-2">
+        {canApprove || canDelete ? (
+          <div className="border-t border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10">
+            {canApprove ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void onApprove?.(managerNote)}
+                  className="h-10 flex-1 rounded-[12px] bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  <Check className="mr-1.5 size-4" />
+                  Approve
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void onReject?.(managerNote)}
+                  className="h-10 flex-1 rounded-[12px] bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700"
+                >
+                  <X className="mr-1.5 size-4" />
+                  Decline
+                </Button>
+              </div>
+            ) : null}
+            {canDelete ? (
               <Button
                 type="button"
                 disabled={isSaving}
-                onClick={() => void onApprove?.(managerNote)}
-                className="h-10 flex-1 rounded-[12px] bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={onDelete}
+                variant="outline"
+                className={`h-10 w-full rounded-[12px] border-rose-200 bg-rose-50/70 text-sm font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 ${canApprove ? 'mt-2' : ''}`}
               >
-                <Check className="mr-1.5 size-4" />
-                Approve
+                <Trash2 className="mr-1.5 size-4" aria-hidden="true" />
+                Delete request
               </Button>
-              <Button
-                type="button"
-                disabled={isSaving}
-                onClick={() => void onReject?.(managerNote)}
-                className="h-10 flex-1 rounded-[12px] bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700"
-              >
-                <X className="mr-1.5 size-4" />
-                Decline
-              </Button>
-            </div>
+            ) : null}
           </div>
         ) : null}
       </aside>

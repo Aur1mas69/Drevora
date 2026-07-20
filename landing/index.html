@@ -715,388 +715,146 @@
                     <p class="font-body-lg text-body-lg text-on-surface-variant">Choose the plan that fits your fleet
                         size. Scale as you grow.</p>
                 </div>
-                <div class="flex flex-col lg:flex-row justify-center items-center lg:items-stretch gap-6 lg:gap-8 w-full">
-                    <div
-                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border border-outline-variant/40 bg-gradient-to-b from-surface-container-lowest via-white to-primary/[0.04] shadow-[0_8px_30px_rgba(0,50,100,0.08)] hover:shadow-[0_16px_40px_rgba(0,80,160,0.12)] hover:-translate-y-1 hover:border-primary/25 transition-all duration-300 overflow-hidden">
-                        <div
-                            class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/8 to-transparent pointer-events-none">
-                        </div>
-                        <div class="relative mb-6 border-b border-outline-variant/25 pb-6">
-                            <div
-                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 ring-1 ring-primary/15 shadow-sm">
-                                <i class="fa-solid fa-truck text-lg"></i>
+                <div class="pricing-grid">
+                    <article class="pricing-card pricing-card--standard" aria-labelledby="pricing-starter-title">
+                        <div class="pricing-card__glow" aria-hidden="true"></div>
+                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
+                        <div class="pricing-card__header">
+                            <div class="pricing-card__icon">
+                                <i class="fa-solid fa-truck" aria-hidden="true"></i>
                             </div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Starter Fleet</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Up to 10 vehicles
-                                connected</p>
-                            <div class="mt-4 flex items-baseline gap-1">
-                                <span class="font-display-lg text-display-lg text-on-surface">£69.99</span>
-                                <span class="text-on-surface-variant">/mo</span>
+                            <h3 id="pricing-starter-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Starter
+                                Fleet</h3>
+                            <div class="pricing-card__limits font-body-sm text-body-sm">
+                                <p>Up to 10 vehicles</p>
+                                <p>Up to 20 active Workers</p>
+                            </div>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount font-display-lg text-display-lg">£69.99</span>
+                                <span class="pricing-card__period">/mo</span>
                             </div>
                         </div>
-                        <ul class="flex-1 space-y-3.5 mb-8">
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Fleet Management</strong></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dashboard</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Workers</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicles</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Timesheets</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Holiday Requests</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicle Checks</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Driver Reports</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
-                                        Observations)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Compliance</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Consumables</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dedicated Support</strong></div>
-                            </li>
+                        <ul class="pricing-card__features">
+                            <!-- partial:pricing-features -->
                         </ul>
-                        <div class="text-center mb-4">
-                            <span
-                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
-                                <i class="fa-solid fa-gift text-xs"></i>
-                                1 month free
-                            </span>
+                        <div class="pricing-card__footer">
+                            <div class="pricing-card__offer">
+                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
+                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
+                                    1 month free
+                                </span>
+                            </div>
+                            <a href="https://app.drevora.app/login?plan=starter"
+                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start
+                                Free Trial</a>
                         </div>
-                        <button
-                            class="w-full py-3.5 rounded-xl border-2 border-primary/30 font-label-bold text-label-bold text-primary bg-white/50 hover:bg-primary/5 hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">Start
-                            Free Trial</button>
-                    </div>
-                    <div
-                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border-2 border-primary/35 bg-gradient-to-b from-surface-container-lowest via-primary/[0.03] to-primary/[0.08] shadow-[0_12px_40px_rgba(0,80,160,0.14)] hover:shadow-[0_20px_50px_rgba(0,80,160,0.18)] hover:-translate-y-1 hover:border-primary/50 transition-all duration-300 overflow-hidden lg:-translate-y-2 ring-1 ring-primary/15">
-                        <div
-                            class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/12 to-transparent pointer-events-none">
-                        </div>
-                        <div class="relative mb-3 flex justify-center">
-                            <span
-                                class="inline-flex items-center gap-1.5 bg-gradient-to-r from-primary to-primary/85 text-on-primary text-[11px] font-bold tracking-wider uppercase px-4 py-1.5 rounded-full shadow-md shadow-primary/20">
-                                <i class="fa-solid fa-star text-[10px]"></i>
+                    </article>
+
+                    <article class="pricing-card pricing-card--popular" aria-labelledby="pricing-growing-title">
+                        <div class="pricing-card__glow" aria-hidden="true"></div>
+                        <div class="pricing-card__badge-slot">
+                            <span class="pricing-card__badge">
+                                <i class="fa-solid fa-star text-[10px]" aria-hidden="true"></i>
                                 Most Popular
                             </span>
                         </div>
-                        <div class="relative mb-6 border-b border-primary/15 pb-6">
-                            <div
-                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary mb-4 ring-1 ring-primary/20 shadow-sm">
-                                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+                        <div class="pricing-card__header">
+                            <div class="pricing-card__icon">
+                                <i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i>
                             </div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Growing Fleet</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Up to 25 vehicles
-                                connected</p>
-                            <div class="mt-4 flex items-baseline gap-1">
-                                <span class="font-display-lg text-display-lg text-on-surface">£119.99</span>
-                                <span class="text-on-surface-variant">/mo</span>
+                            <h3 id="pricing-growing-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Growing
+                                Fleet</h3>
+                            <div class="pricing-card__limits font-body-sm text-body-sm">
+                                <p>Up to 25 vehicles</p>
+                                <p>Up to 50 active Workers</p>
+                            </div>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount font-display-lg text-display-lg">£119.99</span>
+                                <span class="pricing-card__period">/mo</span>
                             </div>
                         </div>
-                        <ul class="flex-1 space-y-3.5 mb-8">
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Fleet Management</strong></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dashboard</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Workers</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicles</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Timesheets</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Holiday Requests</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicle Checks</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Driver Reports</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
-                                        Observations)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Compliance</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Consumables</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dedicated Support</strong></div>
-                            </li>
+                        <ul class="pricing-card__features">
+                            <!-- partial:pricing-features -->
                         </ul>
-                        <div class="text-center mb-4">
-                            <span
-                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
-                                <i class="fa-solid fa-gift text-xs"></i>
-                                1 month free
-                            </span>
-                        </div>
-                        <button
-                            class="w-full py-3.5 rounded-xl bg-primary text-on-primary font-label-bold text-label-bold hover:bg-primary-container shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">Start
-                            Free Trial</button>
-                    </div>
-                    <div
-                        class="group relative flex flex-col flex-1 w-full max-w-sm mx-auto lg:mx-0 p-8 rounded-2xl border border-outline-variant/40 bg-gradient-to-b from-surface-container-lowest via-white to-primary/[0.04] shadow-[0_8px_30px_rgba(0,50,100,0.08)] hover:shadow-[0_16px_40px_rgba(0,80,160,0.12)] hover:-translate-y-1 hover:border-primary/25 transition-all duration-300 overflow-hidden">
-                        <div
-                            class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/8 to-transparent pointer-events-none">
-                        </div>
-                        <div class="relative mb-6 border-b border-outline-variant/25 pb-6">
-                            <div
-                                class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 ring-1 ring-primary/15 shadow-sm">
-                                <i class="fa-solid fa-shield-halved text-lg"></i>
+                        <div class="pricing-card__footer">
+                            <div class="pricing-card__offer">
+                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
+                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
+                                    1 month free
+                                </span>
                             </div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface">Pro Fleet</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">50+ vehicles connected</p>
-                            <div class="mt-4 flex items-baseline gap-1">
-                                <span class="font-display-lg text-display-lg text-on-surface">£199.99</span>
-                                <span class="text-on-surface-variant">/mo</span>
+                            <a href="https://app.drevora.app/login?plan=growing"
+                                class="pricing-card__cta pricing-card__cta--filled font-label-bold text-label-bold">Start
+                                Free Trial</a>
+                        </div>
+                    </article>
+
+                    <article class="pricing-card pricing-card--standard" aria-labelledby="pricing-pro-title">
+                        <div class="pricing-card__glow" aria-hidden="true"></div>
+                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
+                        <div class="pricing-card__header">
+                            <div class="pricing-card__icon">
+                                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                            </div>
+                            <h3 id="pricing-pro-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Pro Fleet
+                            </h3>
+                            <div class="pricing-card__limits font-body-sm text-body-sm">
+                                <p>Up to 50 vehicles</p>
+                                <p>Up to 100 active Workers</p>
+                            </div>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount font-display-lg text-display-lg">£199.99</span>
+                                <span class="pricing-card__period">/mo</span>
                             </div>
                         </div>
-                        <ul class="flex-1 space-y-3.5 mb-8">
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Fleet Management</strong></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dashboard</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Real time overview)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Workers</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Team management)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicles</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Tracking & Maintenance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Timesheets</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Logs & Attendance)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Holiday Requests</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Management & Approvals)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Vehicle Checks</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Daily Inspections)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Driver Reports</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Incidents &
-                                        Observations)</span></div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Compliance</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Document Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Consumables</strong> <span
-                                        class="text-neutral-500 sm:inline block sm:ml-1">(Usage & Stock Tracking)</span>
-                                </div>
-                            </li>
-                            <li class="flex items-start gap-3 font-body-sm text-body-sm text-on-surface">
-                                <span
-                                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5 ring-1 ring-primary/10">
-                                    <i class="fa-solid fa-check text-primary text-[10px]"></i>
-                                </span>
-                                <div><strong>Dedicated Support</strong></div>
-                            </li>
+                        <ul class="pricing-card__features">
+                            <!-- partial:pricing-features -->
                         </ul>
-                        <div class="text-center mb-4">
-                            <span
-                                class="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 font-label-caps text-label-caps px-3.5 py-1.5 rounded-full shadow-sm">
-                                <i class="fa-solid fa-gift text-xs"></i>
-                                1 month free
-                            </span>
+                        <div class="pricing-card__footer">
+                            <div class="pricing-card__offer">
+                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
+                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
+                                    1 month free
+                                </span>
+                            </div>
+                            <a href="https://app.drevora.app/login?plan=pro"
+                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start
+                                Free Trial</a>
                         </div>
-                        <button
-                            class="w-full py-3.5 rounded-xl border-2 border-primary/30 font-label-bold text-label-bold text-primary bg-white/50 hover:bg-primary/5 hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">Start
-                            Free Trial</button>
-                    </div>
+                    </article>
+
+                    <article class="pricing-card pricing-card--custom" aria-labelledby="pricing-custom-title">
+                        <div class="pricing-card__glow" aria-hidden="true"></div>
+                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
+                        <div class="pricing-card__header">
+                            <div class="pricing-card__icon">
+                                <i class="fa-solid fa-building" aria-hidden="true"></i>
+                            </div>
+                            <h3 id="pricing-custom-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Custom
+                                Fleet</h3>
+                            <div class="pricing-card__limits font-body-sm text-body-sm">
+                                <p>50+ vehicles</p>
+                                <p>100+ active Workers</p>
+                            </div>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount font-display-lg text-display-lg">Custom</span>
+                                <span class="pricing-card__period">pricing</span>
+                            </div>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <!-- partial:pricing-features -->
+                        </ul>
+                        <div class="pricing-card__footer">
+                            <div class="pricing-card__offer" aria-hidden="true"></div>
+                            <a href="mailto:admin@drevora.uk?subject=DREVORA%20Custom%20Fleet%20enquiry"
+                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold"
+                                aria-label="Contact us about Custom Fleet pricing">Contact Us</a>
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>
@@ -1113,8 +871,8 @@
                         DREVORA fits your operations.</p>
                     <p class="demo-request-email-pill font-body-sm text-body-sm">
                         Prefer email? Contact us at
-                        <a href="mailto:Admin@drevora.uk"
-                            class="text-primary hover:underline font-medium">Admin@drevora.uk</a>
+                        <a href="mailto:admin@drevora.uk"
+                            class="text-primary hover:underline font-medium">admin@drevora.uk</a>
                     </p>
                 </div>
                 <form id="demo-request-form" class="demo-request-form" novalidate>

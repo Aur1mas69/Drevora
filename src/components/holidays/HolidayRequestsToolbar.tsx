@@ -91,9 +91,9 @@ export function HolidayRequestsToolbar({
     }
   }, [isFiltersOpen])
 
-  function handleClearFilters() {
+  function handleClearAll() {
     onClearFilters()
-    setIsFiltersOpen(false)
+    // Keep the panel open so the reset state is visible.
   }
 
   return (
@@ -174,6 +174,7 @@ export function HolidayRequestsToolbar({
                     <HolidayDateInput
                       value={dateFrom}
                       onChange={onDateFromChange}
+                      clearable
                       className={`${holidaySelectClass} w-full min-w-0 px-2`}
                       aria-label="Start date"
                     />
@@ -183,6 +184,7 @@ export function HolidayRequestsToolbar({
                     <HolidayDateInput
                       value={dateTo}
                       onChange={onDateToChange}
+                      clearable
                       min={dateFrom || undefined}
                       className={`${holidaySelectClass} w-full min-w-0 px-2`}
                       aria-label="End date"
@@ -192,23 +194,25 @@ export function HolidayRequestsToolbar({
               </HolidayDatePickerGroup>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3">
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3 dark:border-white/10">
               {hasDropdownFilters ? (
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={handleClearFilters}
-                  className="h-9 rounded-[12px] px-2.5 text-xs font-semibold text-[#5499BF] hover:bg-[#EEF6FF] hover:text-[#0B68BE]"
+                  onClick={handleClearAll}
+                  className="h-9 shrink-0 rounded-[12px] px-2.5 text-xs font-semibold text-[#0B68BE] hover:bg-[#EEF6FF] hover:text-[#095FA8] dark:text-blue-300 dark:hover:bg-slate-800"
                 >
-                  Clear filters
+                  Clear all
                 </Button>
               ) : (
-                <span className="text-xs text-[#5499BF]">No filters applied</span>
+                <span className="text-xs text-[#5499BF] dark:text-slate-400">
+                  No filters applied
+                </span>
               )}
               <Button
                 type="button"
                 onClick={() => setIsFiltersOpen(false)}
-                className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
+                className="h-9 shrink-0 rounded-[12px] bg-[#218EE7] px-3 text-xs font-semibold text-white hover:bg-[#1d7fd0]"
               >
                 Done
               </Button>

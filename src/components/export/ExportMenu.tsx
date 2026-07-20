@@ -1,4 +1,10 @@
+import { ExportDateRangeControls } from '@/components/export/ExportDateRangeControls'
 import { Button } from '@/components/ui/button'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  isExportDateRangeReady,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { ChevronDown, Download, Loader2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
@@ -15,6 +21,9 @@ type ExportMenuProps = {
   busyLabel?: string
   disabled?: boolean
   className?: string
+  /** When provided, date-range controls appear inside the Export menu. */
+  dateRange?: ExportDateRangeSelection
+  onDateRangeChange?: (value: ExportDateRangeSelection) => void
 }
 
 /**
@@ -27,11 +36,15 @@ export function ExportMenu({
   busyLabel = 'Preparing export…',
   disabled = false,
   className = '',
+  dateRange,
+  onDateRangeChange,
 }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
   const controlsDisabled = disabled || busy || actions.length === 0
+  const dateRangeEnabled = Boolean(dateRange && onDateRangeChange)
+  const dateRangeReady = !dateRangeEnabled || isExportDateRangeReady(dateRange ?? DEFAULT_EXPORT_DATE_RANGE)
 
   useEffect(() => {
     if (!open) return
@@ -89,14 +102,33 @@ export function ExportMenu({
           aria-label="Export options"
           className="absolute right-0 z-40 mt-2 w-[min(100vw-2rem,18rem)] rounded-2xl border border-[#C5DFFB] bg-white p-1.5 shadow-[0_12px_28px_rgba(30,64,175,0.14)] dark:border-white/10 dark:bg-slate-900"
         >
+          {dateRangeEnabled && dateRange && onDateRangeChange ? (
+            <div className="border-b border-[#E8F3FE] px-1.5 pb-2.5 pt-1 dark:border-white/10">
+              <ExportDateRangeControls
+                value={dateRange}
+                onChange={onDateRangeChange}
+                onCancel={() => {
+                  onDateRangeChange({
+                    ...dateRange,
+                    preset: 'all_time',
+                    customFrom: '',
+                    customTo: '',
+                  })
+                  setOpen(false)
+                }}
+              />
+            </div>
+          ) : null}
+
           {actions.map((action) => (
             <button
               key={action.id}
               type="button"
               role="menuitem"
-              disabled={action.disabled}
+              disabled={action.disabled || !dateRangeReady}
               className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#163A63] transition-colors hover:bg-[#E8F3FE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
               onClick={() => {
+                if (!dateRangeReady) return
                 setOpen(false)
                 void action.onSelect()
               }}

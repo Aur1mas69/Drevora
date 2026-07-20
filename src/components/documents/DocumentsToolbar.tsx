@@ -9,7 +9,7 @@ import { getDocumentTypesForAppliesTo } from '@/lib/documentUtils'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { documentSelectClass } from './documentUiStyles'
 
 type DocumentsToolbarProps = {
@@ -29,6 +29,7 @@ type DocumentsToolbarProps = {
   vehicles: Vehicle[]
   onClearFilters: () => void
   onAddDocument: () => void
+  secondaryActions?: ReactNode
 }
 
 const filterPanelClass =
@@ -51,6 +52,7 @@ export function DocumentsToolbar({
   vehicles,
   onClearFilters,
   onAddDocument,
+  secondaryActions,
 }: DocumentsToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -203,6 +205,7 @@ export function DocumentsToolbar({
           </div>
         ) : null
       }
+      secondaryActions={secondaryActions}
     />
   )
 }

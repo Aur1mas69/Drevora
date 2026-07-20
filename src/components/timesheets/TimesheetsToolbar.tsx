@@ -1,4 +1,6 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
+import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
 import { Button } from '@/components/ui/button'
 import { adminSelectSm } from '@/lib/adminUiStyles'
 import type {
@@ -43,7 +45,8 @@ const DRIVER_ROLES: DriverRole[] = [
 ]
 
 type FilterDraft = {
-  weekFilter: string
+  dateFrom: string
+  dateTo: string
   statusFilter: TimesheetStatusFilter
   roleFilter: TimesheetRoleFilter
   viewMode: TimesheetsViewMode
@@ -60,9 +63,10 @@ type TimesheetsToolbarProps = {
   onRoleFilterChange: (value: TimesheetRoleFilter) => void
   viewMode: TimesheetsViewMode
   onViewModeChange: (value: TimesheetsViewMode) => void
-  weekFilter: string
-  onWeekFilterChange: (value: string) => void
-  weekOptions: { value: string; label: string }[]
+  dateFrom: string
+  onDateFromChange: (value: string) => void
+  dateTo: string
+  onDateToChange: (value: string) => void
   sortBy: TimesheetsSortField
   onSortByChange: (value: TimesheetsSortField) => void
   sortDir: TimesheetsSortDirection
@@ -82,16 +86,21 @@ type FilterPanelPosition = {
 function countActivePanelFilters(
   statusFilter: TimesheetStatusFilter,
   roleFilter: TimesheetRoleFilter,
+  dateFrom: string,
+  dateTo: string,
 ): number {
   let count = 0
   if (statusFilter !== 'all') count += 1
   if (roleFilter !== 'all') count += 1
+  if (dateFrom.trim().length > 0) count += 1
+  if (dateTo.trim().length > 0) count += 1
   return count
 }
 
 function buildDraftFromProps(props: TimesheetsToolbarProps): FilterDraft {
   return {
-    weekFilter: props.weekFilter,
+    dateFrom: props.dateFrom,
+    dateTo: props.dateTo,
     statusFilter: props.statusFilter,
     roleFilter: props.roleFilter,
     viewMode: props.viewMode,
@@ -103,14 +112,12 @@ function buildDraftFromProps(props: TimesheetsToolbarProps): FilterDraft {
 function TimesheetFilterPanelBody({
   draft,
   setDraft,
-  weekOptions,
   onClear,
   onApply,
   onCleanCurrentView,
 }: {
   draft: FilterDraft
   setDraft: Dispatch<SetStateAction<FilterDraft>>
-  weekOptions: { value: string; label: string }[]
   onClear: () => void
   onApply: () => void
   onCleanCurrentView: () => void
@@ -118,22 +125,35 @@ function TimesheetFilterPanelBody({
   return (
     <>
       <div className="space-y-3">
-        <label className="block space-y-1.5">
-          <span className={labelClassName}>Week</span>
-          <select
-            value={draft.weekFilter}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, weekFilter: event.target.value }))
-            }
-            className={selectClassName}
-          >
-            {weekOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <HolidayDatePickerGroup>
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <label className="block min-w-0 space-y-1.5">
+              <span className={labelClassName}>From</span>
+              <HolidayDateInput
+                value={draft.dateFrom}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, dateFrom: value }))
+                }
+                clearable
+                className={`${selectClassName} w-full min-w-0 px-2`}
+                aria-label="From date"
+              />
+            </label>
+            <label className="block min-w-0 space-y-1.5">
+              <span className={labelClassName}>To</span>
+              <HolidayDateInput
+                value={draft.dateTo}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, dateTo: value }))
+                }
+                clearable
+                min={draft.dateFrom || undefined}
+                className={`${selectClassName} w-full min-w-0 px-2`}
+                aria-label="To date"
+              />
+            </label>
+          </div>
+        </HolidayDatePickerGroup>
 
         <label className="block space-y-1.5">
           <span className={labelClassName}>Status</span>
@@ -191,7 +211,7 @@ function TimesheetFilterPanelBody({
             <option value="createdAt">Date</option>
             <option value="weekStart">Week</option>
             <option value="driverName">Worker</option>
-            <option value="workedHours">Worked hours</option>
+            <option value="workedHours">Basic hours</option>
             <option value="status">Status</option>
           </select>
         </label>
@@ -273,14 +293,15 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     statusFilter,
     roleFilter,
     viewMode,
-    weekFilter,
-    weekOptions,
+    dateFrom,
+    dateTo,
     sortBy,
     sortDir,
     onStatusFilterChange,
     onRoleFilterChange,
     onViewModeChange,
-    onWeekFilterChange,
+    onDateFromChange,
+    onDateToChange,
     onSortByChange,
     onSortDirChange,
     onCleanCurrentView,
@@ -297,21 +318,22 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
   const filterMobilePanelRef = useRef<HTMLDivElement>(null)
 
   const activeFilterCount = useMemo(
-    () => countActivePanelFilters(statusFilter, roleFilter),
-    [roleFilter, statusFilter],
+    () => countActivePanelFilters(statusFilter, roleFilter, dateFrom, dateTo),
+    [dateFrom, dateTo, roleFilter, statusFilter],
   )
 
   useEffect(() => {
     if (!isFilterOpen) return
     setDraft({
-      weekFilter,
+      dateFrom,
+      dateTo,
       statusFilter,
       roleFilter,
       viewMode,
       sortBy,
       sortDir,
     })
-  }, [isFilterOpen, weekFilter, statusFilter, roleFilter, viewMode, sortBy, sortDir])
+  }, [isFilterOpen, dateFrom, dateTo, statusFilter, roleFilter, viewMode, sortBy, sortDir])
 
   useEffect(() => {
     if (!isFilterOpen) return
@@ -369,7 +391,8 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
   }, [isFilterOpen])
 
   function handleApplyFilters() {
-    onWeekFilterChange(draft.weekFilter)
+    onDateFromChange(draft.dateFrom)
+    onDateToChange(draft.dateTo)
     onStatusFilterChange(draft.statusFilter)
     onRoleFilterChange(draft.roleFilter)
     onViewModeChange(draft.viewMode)
@@ -382,6 +405,8 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
     onClearFilters()
     setDraft((current) => ({
       ...current,
+      dateFrom: '',
+      dateTo: '',
       statusFilter: 'all',
       roleFilter: 'all',
       viewMode: 'current',
@@ -410,7 +435,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
             <TimesheetFilterPanelBody
               draft={draft}
               setDraft={setDraft}
-              weekOptions={weekOptions}
               onClear={handleClearFilters}
               onApply={handleApplyFilters}
               onCleanCurrentView={handleCleanCurrentView}
@@ -440,7 +464,6 @@ export function TimesheetsToolbar(props: TimesheetsToolbarProps) {
               <TimesheetFilterPanelBody
                 draft={draft}
                 setDraft={setDraft}
-                weekOptions={weekOptions}
                 onClear={handleClearFilters}
                 onApply={handleApplyFilters}
                 onCleanCurrentView={handleCleanCurrentView}

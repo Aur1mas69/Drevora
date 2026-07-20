@@ -4,6 +4,7 @@ import {
   isOfficeMembershipRole,
   isWorkerMembershipRole,
 } from '@/lib/membershipRoles'
+import { NO_ACTIVE_MEMBERSHIP_MESSAGE } from '@/services/companyMembershipService'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
@@ -13,6 +14,7 @@ export type MembershipAccessState =
   | { status: 'unauthenticated' }
   | { status: 'office' }
   | { status: 'worker' }
+  | { status: 'unlinked' }
   | { status: 'blocked'; message: string }
 
 const UNSUPPORTED_ROLE_MESSAGE =
@@ -40,6 +42,10 @@ export function useMembershipAccessState(): MembershipAccessState {
 
   if (!isAuthenticated) {
     return { status: 'unauthenticated' }
+  }
+
+  if (membershipError === NO_ACTIVE_MEMBERSHIP_MESSAGE) {
+    return { status: 'unlinked' }
   }
 
   if (membershipError) {

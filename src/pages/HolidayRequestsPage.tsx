@@ -1,3 +1,4 @@
+import { DeleteHolidayRequestModal } from '@/components/holidays/DeleteHolidayRequestModal'
 import { EditHolidayRequestModal } from '@/components/holidays/EditHolidayRequestModal'
 import { HolidayRequestDrawer } from '@/components/holidays/HolidayRequestDrawer'
 import { HolidayRequestsDataTable } from '@/components/holidays/HolidayRequestsDataTable'
@@ -16,6 +17,11 @@ import AdminLayout from '@/layouts/AdminLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
@@ -29,6 +35,7 @@ import type {
   HolidayRequestSummaryStats,
 } from '@/lib/holidayRequestTypes'
 import { DEFAULT_HOLIDAY_PAGE_SIZE } from '@/lib/holidayRequestTypes'
+import { canDeleteHolidayRequest } from '@/lib/holidayRequestUtils'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import {
   approveHolidayRequest,
@@ -43,7 +50,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 
 export default function HolidayRequestsPage() {
-  const { companyName, settings } = useCompanySettings()
+  const { companyName, settings, weekStarts, timezone, formatDate } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<HolidayRequest[]>([])
@@ -66,11 +73,16 @@ export default function HolidayRequestsPage() {
   const [workerFilter, setWorkerFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_HOLIDAY_PAGE_SIZE)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [editRequest, setEditRequest] = useState<HolidayRequest | null>(null)
   const [viewRequest, setViewRequest] = useState<HolidayRequest | null>(null)
+  const [deleteRequest, setDeleteRequest] = useState<HolidayRequest | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
@@ -213,9 +225,8 @@ export default function HolidayRequestsPage() {
     void loadCalendarRequests()
   }, [companyReady, companyId, calendarRange, calendarRefreshKey, loadCalendarRequests])
 
+  /** Resets Status / Worker / date filters only. Search text is preserved. */
   function clearFilters() {
-    setSearchTerm('')
-    setDebouncedSearch('')
     setStatusFilter('all')
     setWorkerFilter('all')
     setDateFrom('')
@@ -319,26 +330,50 @@ export default function HolidayRequestsPage() {
     }
   }
 
-  async function handleDelete(request: HolidayRequest) {
-    const confirmed = window.confirm(
-      `Delete holiday request for ${request.workerName} (${request.startDate} – ${request.endDate})?`,
-    )
-    if (!confirmed) return
+  function openDeleteRequest(request: HolidayRequest) {
+    if (!canDeleteHolidayRequest(request.status)) return
+    setDeleteError(null)
+    setDeleteRequest(request)
+  }
 
-    setIsSaving(true)
+  function closeDeleteRequest() {
+    if (isDeleting) return
+    setDeleteRequest(null)
+    setDeleteError(null)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteRequest || isDeleting) return
+    if (!canDeleteHolidayRequest(deleteRequest.status)) {
+      setDeleteError('This request can no longer be deleted.')
+      return
+    }
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
     try {
-      await deleteHolidayRequest(request.id)
+      const deletedId = deleteRequest.id
+      await deleteHolidayRequest(deletedId)
+      setDeleteRequest(null)
+      setViewRequest((current) => (current?.id === deletedId ? null : current))
+      setEditRequest((current) => (current?.id === deletedId ? null : current))
       showToast('Holiday request deleted')
-      await loadRequests()
       setCalendarRefreshKey((current) => current + 1)
+
+      if (items.length <= 1 && page > 1) {
+        setPage(page - 1)
+      } else {
+        await loadRequests()
+      }
     } catch (error) {
       const message =
         error instanceof HolidayRequestsServiceError
           ? error.message
-          : 'Failed to delete holiday request'
-      showToast(message)
+          : 'The holiday request could not be deleted. Please try again.'
+      setDeleteError(message)
     } finally {
-      setIsSaving(false)
+      setIsDeleting(false)
     }
   }
 
@@ -384,6 +419,8 @@ export default function HolidayRequestsPage() {
             <ExportMenu
               busy={isExporting}
               disabled={isLoading}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'excel',
@@ -391,19 +428,25 @@ export default function HolidayRequestsPage() {
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
                       await exportHolidayRequestsExcel(
                         {
                           search: debouncedSearch || undefined,
                           status: statusFilter,
                           workerId: workerFilter,
-                          dateFrom: dateFrom || undefined,
-                          dateTo: dateTo || undefined,
+                          dateFrom: resolvedRange.dateFrom,
+                          dateTo: resolvedRange.dateTo,
                         },
                         resolveExportMeta({
                           companyName,
                           logoUrl: settings?.logoUrl,
                           generatedBy: session?.user.email ?? null,
                           documentTitle: 'Holiday Requests',
+                          filterSummary: `Date ${resolvedRange.label}`,
                         }),
                       )
                       showToast('Exported holiday requests to Excel')
@@ -446,7 +489,7 @@ export default function HolidayRequestsPage() {
               onEdit={setEditRequest}
               onApprove={(request) => void handleApprove(request)}
               onReject={(request) => void handleReject(request)}
-              onDelete={(request) => void handleDelete(request)}
+              onDelete={openDeleteRequest}
             />
             <HolidayRequestsPagination
               page={page}
@@ -490,7 +533,7 @@ export default function HolidayRequestsPage() {
       <HolidayRequestDrawer
         request={viewRequest}
         isOpen={viewRequest !== null}
-        isSaving={isSaving}
+        isSaving={isSaving || isDeleting}
         isDownloadingPdf={isDownloadingPdf}
         onClose={() => setViewRequest(null)}
         onDownloadPdf={() => {
@@ -511,7 +554,22 @@ export default function HolidayRequestsPage() {
         }}
         onApprove={(note) => (viewRequest ? handleApprove(viewRequest, note) : Promise.resolve())}
         onReject={(note) => (viewRequest ? handleReject(viewRequest, note) : Promise.resolve())}
+        onDelete={
+          viewRequest && canDeleteHolidayRequest(viewRequest.status)
+            ? () => openDeleteRequest(viewRequest)
+            : undefined
+        }
       />
+
+      {deleteRequest ? (
+        <DeleteHolidayRequestModal
+          request={deleteRequest}
+          errorMessage={deleteError}
+          isDeleting={isDeleting}
+          onCancel={closeDeleteRequest}
+          onConfirm={() => void handleConfirmDelete()}
+        />
+      ) : null}
 
       {toastMessage ? (
         <div className="fixed bottom-6 right-6 z-[60] rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-sm font-medium text-white shadow-lg">

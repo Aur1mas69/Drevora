@@ -4,7 +4,7 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { formatDateFromIso, getWeekdayLabels } from '@/lib/dateTimeFormat'
 import { normalizeHolidayIsoDate, toLocalIsoDate } from '@/lib/holidayRequestUtils'
 import { cn } from '@/lib/utils'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 /** Holiday date pickers always use Monday-first weeks. */
@@ -19,6 +19,8 @@ type HolidayDateInputProps = {
   min?: string
   'aria-label'?: string
   blurOnSelect?: boolean
+  /** When true and a value is set, show an accessible clear control. */
+  clearable?: boolean
   /** Full-width popover for use inside modals. */
   layout?: 'default' | 'modal'
 }
@@ -162,6 +164,7 @@ export function HolidayDateInput({
   min,
   'aria-label': ariaLabel,
   blurOnSelect = false,
+  clearable = false,
   layout = 'default',
 }: HolidayDateInputProps) {
   const { dateFormat } = useCompanySettings()
@@ -221,6 +224,8 @@ export function HolidayDateInput({
   }
 
   const displayValue = value ? formatDateFromIso(value, { dateFormat }) : ''
+  const showClear = clearable && value.length > 0
+  const clearLabel = ariaLabel ? `Clear ${ariaLabel}` : 'Clear date'
 
   return (
     <div ref={rootRef} className="relative min-w-0 w-full max-w-full" lang="en-GB">
@@ -237,8 +242,31 @@ export function HolidayDateInput({
           required={required}
           aria-label={ariaLabel}
           aria-expanded={isOpen}
-          className={cn(className, 'min-w-0 max-w-full cursor-pointer pr-9')}
+          className={cn(
+            className,
+            'min-w-0 max-w-full cursor-pointer',
+            showClear ? 'pr-14' : 'pr-9',
+          )}
         />
+        {showClear ? (
+          <button
+            type="button"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onChange('')
+              setOpen(false)
+            }}
+            className="absolute right-8 top-1/2 -translate-y-1/2 rounded-[6px] p-0.5 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40 dark:hover:bg-slate-800"
+            aria-label={clearLabel}
+          >
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
+        ) : null}
         <button
           type="button"
           tabIndex={-1}

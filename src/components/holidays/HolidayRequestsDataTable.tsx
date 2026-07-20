@@ -8,6 +8,7 @@ import {
 import type { HolidayRequest } from '@/lib/holidayRequestTypes'
 import {
   canApproveHolidayRequest,
+  canDeleteHolidayRequest,
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
@@ -56,13 +57,15 @@ function HolidayRequestRowActions({
     )
   }
 
-  actions.push({
-    id: 'delete',
-    label: 'Delete',
-    icon: Trash2,
-    tone: 'danger',
-    onClick: onDelete,
-  })
+  if (canDeleteHolidayRequest(request.status)) {
+    actions.push({
+      id: 'delete',
+      label: 'Delete request',
+      icon: Trash2,
+      tone: 'danger',
+      onClick: onDelete,
+    })
+  }
 
   return <RowActionsMenu actions={actions} />
 }

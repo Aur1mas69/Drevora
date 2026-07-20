@@ -155,8 +155,40 @@ export function calculateEntryPaidEquivalentHours(
   return normalHours + overtimeHours * overtimeMultiplier + additionalHours
 }
 
+/**
+ * Automatic paid-break minutes for Additional Hours.
+ * Only when company paid-breaks are enabled and the day has a recorded shift.
+ */
+export function getEntryPaidBreakMinutes(
+  entry: {
+    breakMinutes: number
+    startTime: string | null
+    finishTime: string | null
+  },
+  paidBreaks: boolean,
+): number {
+  if (!paidBreaks) return 0
+  if (!entryHasStartAndFinish(entry)) return 0
+  return Math.max(0, entry.breakMinutes)
+}
+
+/** Combined payable Additional Hours: automatic paid break + manual additional. */
+export function getEntryCombinedAdditionalHours(
+  entry: {
+    breakMinutes: number
+    additionalHours: number
+    startTime: string | null
+    finishTime: string | null
+  },
+  paidBreaks: boolean,
+): number {
+  const paidBreakHours = getEntryPaidBreakMinutes(entry, paidBreaks) / 60
+  return Math.max(0, (entry.additionalHours ?? 0) + paidBreakHours)
+}
+
 export type SummarizeTimesheetEntriesOptions = {
   overtimeRules?: Partial<TimesheetOvertimeRules>
+  paidBreaks?: boolean
 }
 
 export function summarizeTimesheetEntries(
@@ -176,28 +208,41 @@ export function summarizeTimesheetEntries(
   breakMinutes: number
   breakHours: number
   overtimeHours: number
+  /** Combined: automatic paid break + manual Additional Hours. */
   additionalHours: number
+  paidBreakMinutes: number
+  manualAdditionalHours: number
   totalHours: number
 } {
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
+  const paidBreaks = options.paidBreaks ?? false
 
   let workedMinutes = 0
   let breakMinutes = 0
   let overtimeMinutes = 0
+  let paidBreakMinutesTotal = 0
+  let manualAdditionalHoursTotal = 0
   let additionalHoursTotal = 0
   let totalPayableHours = 0
 
   for (const entry of entries) {
     workedMinutes += entry.totalMinutes
     overtimeMinutes += entry.overtimeMinutes ?? 0
-    additionalHoursTotal += entry.additionalHours ?? 0
+
+    const manualAdditional = entry.additionalHours ?? 0
+    const paidBreakMinutes = getEntryPaidBreakMinutes(entry, paidBreaks)
+    const combinedAdditional = manualAdditional + paidBreakMinutes / 60
+
+    manualAdditionalHoursTotal += manualAdditional
+    paidBreakMinutesTotal += paidBreakMinutes
+    additionalHoursTotal += combinedAdditional
 
     if (entryHasStartAndFinish(entry)) {
       breakMinutes += entry.breakMinutes
     }
 
     const hasPayableHours =
-      entry.totalMinutes > 0 || (entry.additionalHours ?? 0) > 0
+      entry.totalMinutes > 0 || combinedAdditional > 0
 
     if (hasPayableHours) {
       const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
@@ -207,14 +252,14 @@ export function summarizeTimesheetEntries(
           dayRules.guaranteedPaidHours,
           dayRules.afterHours,
           dayRules.multiplier,
-          entry.additionalHours ?? 0,
+          combinedAdditional,
         )
       } else {
         totalPayableHours += calculateEntryPaidEquivalentHours(
           {
             totalMinutes: entry.totalMinutes,
             overtimeMinutes: entry.overtimeMinutes,
-            additionalHours: entry.additionalHours,
+            additionalHours: combinedAdditional,
           },
           dayRules.multiplier,
         )
@@ -229,7 +274,9 @@ export function summarizeTimesheetEntries(
     breakHours: roundHoursOneDecimal(breakMinutes / 60),
     overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
     additionalHours: roundHoursOneDecimal(additionalHoursTotal),
-    // Total Hours is decimal payable hours — two dp, never 1-dp round (14.25 ≠ 14.3).
+    paidBreakMinutes: paidBreakMinutesTotal,
+    manualAdditionalHours: roundHoursOneDecimal(manualAdditionalHoursTotal),
+    // Payable Total Hours — kept at two dp internally; display via formatTotalHours → h/m.
     totalHours: roundHoursTwoDecimals(totalPayableHours),
   }
 }
@@ -245,23 +292,24 @@ export function parseTimeToMinutes(value: string | null): number | null {
   return hours * 60 + minutes
 }
 
+/**
+ * Basic Hours in minutes = shift span − recorded break.
+ * Paid breaks are not kept inside Basic; they contribute via Additional Hours.
+ * `options.paidBreaks` is accepted for call-site compatibility and ignored here.
+ */
 export function calculateEntryTotalMinutes(
   input: {
     startTime: string | null
     breakMinutes: number
     finishTime: string | null
   },
-  options: { paidBreaks?: boolean } = {},
+  _options: { paidBreaks?: boolean } = {},
 ): number {
   const start = parseTimeToMinutes(input.startTime)
   const finish = parseTimeToMinutes(input.finishTime)
   if (start === null || finish === null) return 0
 
   const spanMinutes = calculateShiftSpanMinutes(start, finish)
-  if (options.paidBreaks) {
-    return Math.max(0, spanMinutes)
-  }
-
   return Math.max(0, spanMinutes - input.breakMinutes)
 }
 
@@ -277,28 +325,34 @@ export function calculateEntryTotalHours(
 }
 
 
-export function summarizeTimesheetEntriesFromTotals(totals: {
-  workedMinutes: number
-  breakMinutes: number
-  overtimeMinutes: number
-  additionalHours?: number
-}) {
+export function summarizeTimesheetEntriesFromTotals(
+  totals: {
+    workedMinutes: number
+    breakMinutes: number
+    overtimeMinutes: number
+    additionalHours?: number
+  },
+  options: { paidBreaks?: boolean } = {},
+) {
   const workedHours = Math.round((totals.workedMinutes / 60) * 100) / 100
   const overtimeHours = roundHoursOneDecimal(totals.overtimeMinutes / 60)
-  const additionalHours = roundHoursOneDecimal(totals.additionalHours ?? 0)
+  const manualAdditional = totals.additionalHours ?? 0
+  const paidBreakHours = options.paidBreaks ? Math.max(0, totals.breakMinutes) / 60 : 0
+  const additionalHours = roundHoursOneDecimal(manualAdditional + paidBreakHours)
 
   return {
     workedHours,
     breakHours: Math.round((totals.breakMinutes / 60) * 100) / 100,
     overtimeHours,
     additionalHours,
-    // Total Hours is decimal payable hours — two dp, never 1-dp round (14.25 ≠ 14.3).
+    paidBreakMinutes: options.paidBreaks ? Math.max(0, totals.breakMinutes) : 0,
+    manualAdditionalHours: roundHoursOneDecimal(manualAdditional),
     totalHours: roundHoursTwoDecimals(
       calculateEntryPaidEquivalentHours(
         {
           totalMinutes: totals.workedMinutes,
           overtimeMinutes: totals.overtimeMinutes,
-          additionalHours: totals.additionalHours ?? 0,
+          additionalHours: manualAdditional + paidBreakHours,
         },
         getGlobalOvertimeMultiplier(),
       ),
@@ -451,10 +505,13 @@ export function formatHours(value: number): string {
   return formatHoursFromMinutes(Math.round(value * 60))
 }
 
-/** Decimal payable Total Hours display (exactly two places). Never Xh Ym. */
+/**
+ * Payable Total Hours display as hours-and-minutes.
+ * Converts via whole minutes so 13.75h → 13h 45m (never 13h 75m).
+ */
 export function formatTotalHours(value: number): string {
   if (value <= 0) return '—'
-  return roundHoursTwoDecimals(value).toFixed(2)
+  return formatHoursFromMinutes(Math.round(roundHoursTwoDecimals(value) * 60))
 }
 
 export function formatHoursFromMinutes(minutes: number): string {

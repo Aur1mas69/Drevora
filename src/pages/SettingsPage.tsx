@@ -21,6 +21,7 @@ import {
   settingsStatusTextClassName,
 } from '@/components/settings/SettingsControls'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { SettingsPlanSummary } from '@/components/settings/SettingsPlanSummary'
 import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
@@ -75,7 +76,8 @@ function formsEqual(left: CompanySettingsInput, right: CompanySettingsInput): bo
 
 function SettingsPage() {
   const [searchParams] = useSearchParams()
-  const { settings, isLoading, isSaving, updateSettings } = useCompanySettings()
+  const { settings, isLoading, isSaving, updateSettings, companyId } =
+    useCompanySettings()
   const [activeTab, setActiveTab] = useState<CompanySettingsTab>('general')
   const [form, setForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [savedForm, setSavedForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
@@ -192,6 +194,18 @@ function SettingsPage() {
             ) : null}
 
             {activeTab === 'general' ? (
+              <>
+              {companyId ? (
+                <SettingsSection
+                  title="Subscription plan"
+                  description="Current plan and allowances stored for your company. Payment setup is completed separately."
+                >
+                  <div className="sm:col-span-2">
+                    <SettingsPlanSummary companyId={companyId} />
+                  </div>
+                </SettingsSection>
+              ) : null}
+
               <SettingsSection
                 title="Company Profile"
                 description="Organisation name and profile shown on the dashboard and fleet operations header."
@@ -297,6 +311,7 @@ function SettingsPage() {
                   />
                 </SettingsField>
               </SettingsSection>
+              </>
             ) : null}
 
             {activeTab === 'regional' ? (

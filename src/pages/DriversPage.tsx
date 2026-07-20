@@ -5,39 +5,52 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
-  type ReactNode,
 } from 'react'
-import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, X } from 'lucide-react'
 import { ModuleListToolbar, moduleListPrimaryButtonClass } from '@/components/common/ModuleListToolbar'
 import AdminLayout from '@/layouts/AdminLayout'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  RowActionsMenu,
-  TableActionsCell,
-  TableActionsHeader,
-  type RowAction,
-} from '@/components/ui/RowActionsMenu'
-import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
-import { WorkerCodeBadge } from '@/components/workers/WorkerCodeBadge'
-import { WorkerComplianceBadge } from '@/components/workers/WorkerComplianceBadge'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import { WorkersSummaryCards } from '@/components/workers/WorkersSummaryCards'
 import {
-  DEFAULT_WORKER_PAGE_SIZE,
-  WorkersPagination,
-} from '@/components/workers/WorkersPagination'
+  WorkersCardGrid,
+  WorkersCardGridSkeleton,
+} from '@/components/workers/WorkersCardGrid'
+import {
+  WorkersListTable,
+  WorkersListTableSkeleton,
+} from '@/components/workers/WorkersListTable'
+import { DEFAULT_WORKER_PAGE_SIZE } from '@/components/workers/WorkersPagination'
+import { WorkersAllowanceNotice } from '@/components/workers/WorkersAllowanceNotice'
+import { WorkersViewSwitcher } from '@/components/workers/WorkersViewSwitcher'
 import {
   adminFilterChip,
   adminHeadingLg,
   adminPanel,
   adminSelect,
-  adminSkeletonPulse,
-  adminTableEntityName,
   adminTextMuted,
 } from '@/lib/adminUiStyles'
+import {
+  buildWorkerAllowanceSnapshot,
+  formatWorkerPlanLimitError,
+  isWorkerPlanLimitError,
+} from '@/lib/workerAllowance'
+import {
+  buildWorkerSlotPage,
+  isActiveWorkerForPlanSlot,
+} from '@/lib/workerPlanSlots'
+import {
+  fetchCompanyPlan,
+  type CompanyPlanRecord,
+} from '@/services/companyPlanService'
+import {
+  readWorkersViewMode,
+  writeWorkersViewMode,
+  type WorkersViewMode,
+} from '@/lib/workersViewMode'
 import {
   computeWorkerRoleSummaryStats,
   workerMatchesRoleQuickFilter,
@@ -117,58 +130,11 @@ const workerRoles: DriverRole[] = [
 
 const initialDriverForm: CreateDriverInput = emptyCreateDriverInput
 
-const statusClassMap: Record<DriverStatus, string> = {
-  Working: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
-  'Off Duty': 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
-  Holiday: 'bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/60',
-  Suspended: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
-}
-
-const roleClassMap: Record<DriverRole, string> = {
-  Admin: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:ring-violet-900/60',
-  Driver: 'bg-[#E8F3FE] text-[#0B68BE] ring-[#C5DFFB]/70 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60',
-  Yardman: 'bg-cyan-50 text-cyan-700 ring-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-300 dark:ring-cyan-900/60',
-  Cleaner: 'bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60',
-  Supervisor: 'bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:ring-purple-900/60',
-  Mechanic: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60',
-  'Transport Manager': 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/60',
-  Planner: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:ring-sky-900/60',
-  'Office Staff': 'bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
-  Warehouse: 'bg-[#EEF6FF] text-[#3D7A9C] ring-[#C5DFFB]/70 dark:bg-cyan-950/50 dark:text-cyan-300 dark:ring-cyan-900/60',
-  Other: 'bg-[#F1F5F9] text-slate-600 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
-}
-
-const workersTableCardClass =
+const workersPanelCardClass =
   'overflow-hidden rounded-2xl border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF]/98 to-[#EEF6FF]/92 shadow-[0_8px_24px_rgba(33,142,231,0.1),0_0_0_1px_rgba(197,223,251,0.35)] ring-1 ring-[#C5DFFB]/45 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10'
 
 function getDriverName(driver: Driver): string {
   return `${driver.firstName} ${driver.lastName}`.trim()
-}
-
-function getWorkerProfilePath(driver: Driver): string {
-  return `/drivers/${driver.id}`
-}
-
-function WorkerProfileLink({
-  driver,
-  className,
-  children,
-}: {
-  driver: Driver
-  className?: string
-  children: ReactNode
-}) {
-  const workerName = getDriverName(driver)
-
-  return (
-    <Link
-      to={getWorkerProfilePath(driver)}
-      aria-label={`View worker profile for ${workerName}`}
-      className={className}
-    >
-      {children}
-    </Link>
-  )
 }
 
 function resetAvatarFormState(setters: {
@@ -197,26 +163,6 @@ function validateDriverForm(form: CreateDriverForm): DriverFormErrors {
   return errors
 }
 
-function DriverStatusBadge({ status }: { status: DriverStatus }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusClassMap[status]}`}
-    >
-      {status}
-    </span>
-  )
-}
-
-function WorkerRoleBadge({ role }: { role: DriverRole }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${roleClassMap[role] ?? roleClassMap.Other}`}
-    >
-      {role}
-    </span>
-  )
-}
-
 function DriversToolbar({
   searchTerm,
   onSearchTermChange,
@@ -230,6 +176,9 @@ function DriversToolbar({
   isFilterOpen,
   onFilterToggle,
   onAddDriver,
+  canAddWorker,
+  viewMode,
+  onViewModeChange,
 }: {
   searchTerm: string
   onSearchTermChange: (value: string) => void
@@ -243,6 +192,9 @@ function DriversToolbar({
   isFilterOpen: boolean
   onFilterToggle: () => void
   onAddDriver: () => void
+  canAddWorker: boolean
+  viewMode: WorkersViewMode
+  onViewModeChange: (mode: WorkersViewMode) => void
 }) {
   const activeFilterCount =
     (statusFilter !== 'All' ? 1 : 0) +
@@ -253,12 +205,16 @@ function DriversToolbar({
     <ModuleListToolbar
       primaryActionLabel="Add Worker"
       onPrimaryAction={onAddDriver}
+      primaryActionDisabled={!canAddWorker}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
       searchPlaceholder="Search workers"
       onFilterToggle={onFilterToggle}
       filterOpen={isFilterOpen}
       activeFilterCount={activeFilterCount}
+      secondaryActions={
+        <WorkersViewSwitcher value={viewMode} onChange={onViewModeChange} />
+      }
       filterPanel={
         isFilterOpen ? (
           <div
@@ -333,184 +289,6 @@ function DriversToolbar({
   )
 }
 
-function DriverRowActions({
-  driver,
-  onEdit,
-  onDelete,
-}: {
-  driver: Driver
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const actions: RowAction[] = [
-    {
-      id: 'view',
-      label: 'View',
-      icon: Eye,
-      to: getWorkerProfilePath(driver),
-    },
-    {
-      id: 'edit',
-      label: 'Edit',
-      icon: Pencil,
-      onClick: onEdit,
-    },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: Trash2,
-      tone: 'danger',
-      onClick: onDelete,
-    },
-  ]
-
-  return <RowActionsMenu actions={actions} appearance="workers" />
-}
-
-function DriversTable({
-  drivers,
-  page,
-  pageSize,
-  totalCount,
-  onPageChange,
-  onPageSizeChange,
-  onEditDriver,
-  onDeleteDriver,
-}: {
-  drivers: Driver[]
-  page: number
-  pageSize: number
-  totalCount: number
-  onPageChange: (page: number) => void
-  onPageSizeChange: (pageSize: number) => void
-  onEditDriver: (driver: Driver) => void
-  onDeleteDriver: (driver: Driver) => void
-}) {
-  return (
-    <Card className={workersTableCardClass}>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] border-collapse">
-            <thead>
-              <tr className="border-b border-[#D3E9FC] bg-[#F5FAFF]/90 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0B68BE] dark:bg-slate-800/70 dark:text-blue-300">
-                <th className="px-6 py-4">Avatar</th>
-                <th className="px-6 py-4">Worker ID</th>
-                <th className="px-6 py-4">Worker</th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Default Vehicle</th>
-                <th className="px-6 py-4">Compliance</th>
-                <th className="px-6 py-4">Status</th>
-                <TableActionsHeader className="px-6 py-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {drivers.map((driver) => (
-                <tr
-                  key={driver.id}
-                  className="group border-b border-[#D3E9FC]/55 transition-all duration-200 last:border-b-0 hover:bg-[#F5FAFF]/95 hover:shadow-[inset_0_0_0_1px_rgba(191,227,245,0.45),0_4px_14px_rgba(33,142,231,0.06)] dark:hover:bg-slate-800/40"
-                >
-                  <td className="px-6 py-4">
-                    <WorkerProfileLink
-                      driver={driver}
-                      className="inline-flex rounded-full no-underline transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/45 [&>div]:cursor-pointer [&>div]:transition-all [&>div]:duration-200 hover:[&>div]:-translate-y-0.5 hover:[&>div]:ring-[#218EE7] hover:[&>div]:shadow-[0_6px_16px_rgba(33,142,231,0.16)]"
-                    >
-                      <WorkerAvatar
-                        firstName={driver.firstName}
-                        lastName={driver.lastName}
-                        avatarUrl={driver.avatarUrl}
-                        size="sm"
-                      />
-                    </WorkerProfileLink>
-                  </td>
-                  <td className="px-6 py-4">
-                    {driver.workerCode ? (
-                      <WorkerProfileLink
-                        driver={driver}
-                        className="inline-flex rounded-full no-underline transition-all duration-200 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/45 [&>span]:cursor-pointer [&>span]:transition-all [&>span]:duration-200 hover:[&>span]:bg-[#E8F3FE] hover:[&>span]:ring-[#89CFF0]/80"
-                      >
-                        <WorkerCodeBadge code={driver.workerCode} />
-                      </WorkerProfileLink>
-                    ) : (
-                      <WorkerCodeBadge code={driver.workerCode} />
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="min-w-0">
-                      <WorkerProfileLink
-                        driver={driver}
-                        className="block max-w-full rounded-sm no-underline transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
-                      >
-                        <p className={`truncate ${adminTableEntityName} transition-colors duration-200 hover:text-[#0B68BE] dark:hover:text-blue-300`}>
-                          {getDriverName(driver)}
-                        </p>
-                      </WorkerProfileLink>
-                      <p className="mt-1 truncate text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
-                        {driver.email}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <WorkerRoleBadge role={driver.role} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="max-w-[180px] truncate text-sm font-medium text-[#3D7A9C] dark:text-slate-300">
-                      {getWorkerDefaultVehicleLabel(driver)}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <WorkerComplianceBadge driver={driver} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <DriverStatusBadge status={driver.status} />
-                  </td>
-                  <TableActionsCell className="px-4 py-4">
-                    <div className="rounded-lg opacity-70 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100 [&_button[aria-haspopup=menu]]:group-hover:bg-[rgba(59,130,246,0.08)] [&_button[aria-haspopup=menu]]:group-hover:text-[#0B68BE] [&_button[aria-haspopup=menu]]:group-hover:ring-1 [&_button[aria-haspopup=menu]]:group-hover:ring-[rgba(147,197,253,0.45)]">
-                      <DriverRowActions
-                        driver={driver}
-                        onEdit={() => onEditDriver(driver)}
-                        onDelete={() => onDeleteDriver(driver)}
-                      />
-                    </div>
-                  </TableActionsCell>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <WorkersPagination
-          page={page}
-          pageSize={pageSize}
-          totalCount={totalCount}
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
-        />
-      </CardContent>
-    </Card>
-  )
-}
-
-function DriversLoadingSkeleton() {
-  return (
-    <Card className={workersTableCardClass}>
-      <CardContent className="space-y-4 p-6">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className={`flex items-center gap-4 rounded-2xl p-4 ${adminSkeletonPulse} bg-[#F8FBFF] dark:bg-slate-800/60`}
-          >
-            <div className="size-11 rounded-[15px] bg-blue-100 dark:bg-slate-700/60" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 w-40 rounded-full bg-blue-100 dark:bg-slate-700/60" />
-              <div className="h-3 w-64 max-w-full rounded-full bg-blue-50 dark:bg-slate-700/40" />
-            </div>
-            <div className="hidden h-8 w-24 rounded-full bg-blue-100 dark:bg-slate-700/60 sm:block" />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
-
 function DriversErrorState({
   onRetry,
   message,
@@ -519,7 +297,7 @@ function DriversErrorState({
   message: string
 }) {
   return (
-    <Card className={workersTableCardClass}>
+    <Card className={workersPanelCardClass}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
         <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           Unable to load workers.
@@ -537,19 +315,28 @@ function DriversErrorState({
   )
 }
 
-function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
+function DriversEmptyState({
+  onAddDriver,
+  canAddWorker,
+}: {
+  onAddDriver: () => void
+  canAddWorker: boolean
+}) {
   return (
-    <Card className={workersTableCardClass}>
+    <Card className={workersPanelCardClass}>
       <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
         <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
           No workers yet
         </p>
         <p className="mt-2 max-w-md text-sm font-medium text-slate-500">
-          Add your first worker to begin.
+          {canAddWorker
+            ? 'Add your first worker to begin.'
+            : 'Worker creation is blocked until a valid plan allowance is available.'}
         </p>
         <Button
           type="button"
           onClick={onAddDriver}
+          disabled={!canAddWorker}
           className={`mt-6 ${moduleListPrimaryButtonClass}`}
         >
           <Plus className="size-4" />
@@ -560,16 +347,16 @@ function DriversEmptyState({ onAddDriver }: { onAddDriver: () => void }) {
   )
 }
 
-function DeleteDriverModal({
+function ArchiveDriverModal({
   driver,
   errorMessage,
-  isDeleting,
+  isArchiving,
   onCancel,
   onConfirm,
 }: {
   driver: Driver
   errorMessage: string | null
-  isDeleting: boolean
+  isArchiving: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
@@ -577,13 +364,14 @@ function DeleteDriverModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-500">
-          Delete Worker
+          Archive Worker
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
-          Are you sure you want to delete this worker?
+          Archive this worker?
         </h2>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-          {getDriverName(driver)} will be removed from DREVORA.
+          {getDriverName(driver)} will be archived and will no longer occupy an
+          active Worker seat. Historical records stay intact.
         </p>
 
         {errorMessage ? (
@@ -597,7 +385,7 @@ function DeleteDriverModal({
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={isDeleting}
+            disabled={isArchiving}
             className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
           >
             Cancel
@@ -605,10 +393,10 @@ function DeleteDriverModal({
           <Button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isArchiving}
             className="h-11 rounded-[16px] bg-rose-600 px-5 font-semibold text-white shadow-[0_14px_28px_rgba(225,29,72,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-rose-700 disabled:translate-y-0 disabled:opacity-70"
           >
-            {isDeleting ? 'Deleting...' : 'Delete Worker'}
+            {isArchiving ? 'Archiving...' : 'Archive Worker'}
           </Button>
         </div>
       </div>
@@ -631,17 +419,20 @@ function DriversPage() {
   const [roleQuickFilter, setRoleQuickFilter] = useState<WorkerRoleQuickFilter | null>(null)
   const [companyFilter, setCompanyFilter] = useState('All')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<WorkersViewMode>(() => readWorkersViewMode())
+  const [gridPage, setGridPage] = useState(1)
   const [tablePage, setTablePage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_WORKER_PAGE_SIZE)
+  const [companyPlan, setCompanyPlan] = useState<CompanyPlanRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
-  const [deletingDriver, setDeletingDriver] = useState<Driver | null>(null)
+  const [archivingDriver, setArchivingDriver] = useState<Driver | null>(null)
   const [form, setForm] = useState<CreateDriverForm>(initialDriverForm)
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
   const [createError, setCreateError] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
@@ -695,6 +486,30 @@ function DriversPage() {
   }, [companyReady, companyId])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      setCompanyPlan(null)
+      return
+    }
+
+    let cancelled = false
+    void fetchCompanyPlan(companyId)
+      .then((record) => {
+        if (!cancelled) {
+          setCompanyPlan(record)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCompanyPlan(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyReady, companyId])
+
+  useEffect(() => {
     if (!toastMessage) return
 
     const timeoutId = window.setTimeout(() => {
@@ -713,21 +528,38 @@ function DriversPage() {
     navigate(location.pathname, { replace: true, state: null })
   }, [location.pathname, location.state, navigate])
 
-  const companyOptions = useMemo(
-    () =>
-      Array.from(new Set(drivers.map((driver) => driver.company).filter(Boolean))).sort(),
+  const visibleDrivers = useMemo(
+    () => drivers.filter((driver) => driver.archivedAt == null),
     [drivers],
   )
 
+  const workerAllowance = useMemo(
+    () =>
+      buildWorkerAllowanceSnapshot({
+        drivers,
+        plan: companyPlan,
+      }),
+    [companyPlan, drivers],
+  )
+
+  const companyOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(visibleDrivers.map((driver) => driver.company).filter(Boolean)),
+      ).sort(),
+    [visibleDrivers],
+  )
+
   const roleSummaryStats = useMemo(
-    () => computeWorkerRoleSummaryStats(drivers),
-    [drivers],
+    () => computeWorkerRoleSummaryStats(visibleDrivers),
+    [visibleDrivers],
   )
 
   const filteredDrivers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
-    return drivers.filter((driver) => {
+    return visibleDrivers.filter((driver) => {
+      const vehicleLabel = getWorkerDefaultVehicleLabel(driver)
       const matchesSearch =
         !query ||
         [
@@ -738,6 +570,7 @@ function DriversPage() {
           driver.role,
           driver.workerCode ?? '',
           driver.assignment ?? '',
+          vehicleLabel,
         ].some((value) => value.toLowerCase().includes(query))
 
       const matchesStatus =
@@ -759,18 +592,81 @@ function DriversPage() {
         matchesRoleQuickFilter
       )
     })
-  }, [companyFilter, drivers, roleFilter, roleQuickFilter, searchTerm, statusFilter])
+  }, [
+    companyFilter,
+    roleFilter,
+    roleQuickFilter,
+    searchTerm,
+    statusFilter,
+    visibleDrivers,
+  ])
+
+  const hasListConstraints =
+    searchTerm.trim() !== '' ||
+    statusFilter !== 'All' ||
+    roleFilter !== 'All' ||
+    companyFilter !== 'All' ||
+    roleQuickFilter != null
+
+  const activeWorkersForSlots = useMemo(
+    () => drivers.filter(isActiveWorkerForPlanSlot),
+    [drivers],
+  )
+
+  const slotWorkers = useMemo(() => {
+    if (hasListConstraints) {
+      return filteredDrivers.filter(isActiveWorkerForPlanSlot)
+    }
+    return activeWorkersForSlots
+  }, [activeWorkersForSlots, filteredDrivers, hasListConstraints])
 
   useEffect(() => {
+    setGridPage(1)
     setTablePage(1)
   }, [searchTerm, statusFilter, roleFilter, roleQuickFilter, companyFilter, pageSize])
 
-  const paginatedDrivers = useMemo(() => {
+  const slotPage = useMemo(
+    () =>
+      buildWorkerSlotPage({
+        workers: slotWorkers,
+        // Shared with List: company allowance, never search/filter size.
+        allowance: workerAllowance.allowance,
+        page: gridPage,
+        constrainToWorkersOnly: hasListConstraints,
+      }),
+    [gridPage, hasListConstraints, slotWorkers, workerAllowance.allowance],
+  )
+
+  useEffect(() => {
+    if (gridPage !== slotPage.page) {
+      setGridPage(slotPage.page)
+    }
+  }, [gridPage, slotPage.page])
+
+  const listPage = useMemo(() => {
     const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / pageSize))
-    const safePage = Math.min(tablePage, totalPages)
-    const start = (safePage - 1) * pageSize
-    return filteredDrivers.slice(start, start + pageSize)
+    const page = Math.min(tablePage, totalPages)
+    const start = (page - 1) * pageSize
+    return {
+      page,
+      totalPages,
+      drivers: filteredDrivers.slice(start, start + pageSize),
+    }
   }, [filteredDrivers, pageSize, tablePage])
+
+  useEffect(() => {
+    if (tablePage !== listPage.page) {
+      setTablePage(listPage.page)
+    }
+  }, [listPage.page, tablePage])
+
+  function handleViewModeChange(mode: WorkersViewMode) {
+    if (mode === viewMode) return
+    setViewMode(mode)
+    writeWorkersViewMode(mode)
+    setGridPage(1)
+    setTablePage(1)
+  }
 
   function handleStatusFilterChange(value: StatusFilter) {
     setStatusFilter(value)
@@ -801,6 +697,11 @@ function DriversPage() {
   }
 
   function openAddDriverModal() {
+    if (!workerAllowance.canAddWorker) {
+      setToastMessage(workerAllowance.title || 'Worker allowance reached')
+      return
+    }
+
     setForm(initialDriverForm)
     setFormErrors({})
     setCreateError(null)
@@ -818,9 +719,9 @@ function DriversPage() {
     setIsModalOpen(true)
   }
 
-  function openDeleteDriverModal(driver: Driver) {
-    setDeleteError(null)
-    setDeletingDriver(driver)
+  function openArchiveDriverModal(driver: Driver) {
+    setArchiveError(null)
+    setArchivingDriver(driver)
   }
 
   function closeAddDriverModal() {
@@ -861,6 +762,14 @@ function DriversPage() {
     setCreateError(null)
 
     if (Object.keys(validationErrors).length > 0) {
+      return
+    }
+
+    if (!editingDriver && !workerAllowance.canAddWorker) {
+      setCreateError(
+        workerAllowance.detail ??
+          'Worker allowance reached. Archive an inactive Worker or change the company plan to add another Worker.',
+      )
       return
     }
 
@@ -919,29 +828,33 @@ function DriversPage() {
       if (import.meta.env.DEV) {
         console.error('[DriversPage] save worker failed:', error)
       }
-      setCreateError(
-        'Unable to save worker. Please check required fields or database setup.',
-      )
+      if (isWorkerPlanLimitError(error)) {
+        setCreateError(formatWorkerPlanLimitError(error))
+      } else {
+        setCreateError(
+          'Unable to save worker. Please check required fields or database setup.',
+        )
+      }
     } finally {
       setIsCreating(false)
     }
   }
 
-  async function handleConfirmDeleteDriver() {
-    if (!deletingDriver) return
+  async function handleConfirmArchiveDriver() {
+    if (!archivingDriver) return
 
-    setIsDeleting(true)
-    setDeleteError(null)
+    setIsArchiving(true)
+    setArchiveError(null)
 
     try {
-      await driversService.deleteDriver(deletingDriver.id)
-      setDeletingDriver(null)
+      await driversService.archiveDriver(archivingDriver.id)
+      setArchivingDriver(null)
       await loadDrivers()
-      setToastMessage('Worker deleted successfully.')
+      setToastMessage('Worker archived successfully.')
     } catch {
-      setDeleteError('Unable to delete worker. Please try again.')
+      setArchiveError('Unable to archive worker. Please try again.')
     } finally {
-      setIsDeleting(false)
+      setIsArchiving(false)
     }
   }
 
@@ -981,6 +894,9 @@ function DriversPage() {
             isFilterOpen={isFilterOpen}
             onFilterToggle={() => setIsFilterOpen((currentValue) => !currentValue)}
             onAddDriver={openAddDriverModal}
+            canAddWorker={workerAllowance.canAddWorker}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
           />
 
           {statusFilter !== 'All' ? (
@@ -989,23 +905,83 @@ function DriversPage() {
               onClear={clearStatusFilter}
             />
           ) : null}
+
+          {!isLoading && !loadError ? (
+            <WorkersAllowanceNotice allowance={workerAllowance} />
+          ) : null}
         </div>
 
-        {isLoading ? <DriversLoadingSkeleton /> : null}
+        {isLoading ? (
+          viewMode === 'grid' ? (
+            <WorkersCardGridSkeleton />
+          ) : (
+            <WorkersListTableSkeleton />
+          )
+        ) : null}
 
         {!isLoading && loadError ? (
           <DriversErrorState message={loadError} onRetry={loadDrivers} />
         ) : null}
 
-        {!isLoading && !loadError && drivers.length === 0 ? (
-          <DriversEmptyState onAddDriver={openAddDriverModal} />
+        {!isLoading && !loadError && visibleDrivers.length === 0 ? (
+          viewMode === 'grid' &&
+          workerAllowance.allowance != null &&
+          workerAllowance.canAddWorker ? (
+            <WorkersCardGrid
+              items={slotPage.items}
+              page={slotPage.page}
+              totalPages={slotPage.totalPages}
+              slotFrom={slotPage.slotFrom}
+              slotTo={slotPage.slotTo}
+              totalSlots={slotPage.totalSlots}
+              showingWorkersOnly={slotPage.showingWorkersOnly}
+              canAddWorker={workerAllowance.canAddWorker}
+              onPageChange={setGridPage}
+              onAddWorker={openAddDriverModal}
+              onEditWorker={openEditDriverModal}
+              onDeleteWorker={openArchiveDriverModal}
+            />
+          ) : (
+            <DriversEmptyState
+              onAddDriver={openAddDriverModal}
+              canAddWorker={workerAllowance.canAddWorker}
+            />
+          )
         ) : null}
 
-        {!isLoading && !loadError && drivers.length > 0 ? (
-          filteredDrivers.length > 0 ? (
-            <DriversTable
-              drivers={paginatedDrivers}
-              page={tablePage}
+        {!isLoading && !loadError && visibleDrivers.length > 0 ? (
+          hasListConstraints && filteredDrivers.length === 0 ? (
+            <Card className={workersPanelCardClass}>
+              <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
+                <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
+                  No Workers match your search or filters.
+                </p>
+                <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>
+                  {viewMode === 'grid'
+                    ? 'Clear search or filters to restore the full Worker slot grid.'
+                    : 'Clear search or filters to restore the Worker list.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : viewMode === 'grid' ? (
+            <WorkersCardGrid
+              items={slotPage.items}
+              page={slotPage.page}
+              totalPages={slotPage.totalPages}
+              slotFrom={slotPage.slotFrom}
+              slotTo={slotPage.slotTo}
+              totalSlots={slotPage.totalSlots}
+              showingWorkersOnly={slotPage.showingWorkersOnly}
+              canAddWorker={workerAllowance.canAddWorker}
+              onPageChange={setGridPage}
+              onAddWorker={openAddDriverModal}
+              onEditWorker={openEditDriverModal}
+              onDeleteWorker={openArchiveDriverModal}
+            />
+          ) : (
+            <WorkersListTable
+              drivers={listPage.drivers}
+              page={listPage.page}
               pageSize={pageSize}
               totalCount={filteredDrivers.length}
               onPageChange={setTablePage}
@@ -1014,19 +990,8 @@ function DriversPage() {
                 setTablePage(1)
               }}
               onEditDriver={openEditDriverModal}
-              onDeleteDriver={openDeleteDriverModal}
+              onDeleteDriver={openArchiveDriverModal}
             />
-          ) : (
-            <Card className={workersTableCardClass}>
-              <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-                <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
-                  No matching records found.
-                </p>
-                <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>
-                  Try adjusting the search or filters.
-                </p>
-              </CardContent>
-            </Card>
           )
         ) : null}
       </section>
@@ -1069,16 +1034,16 @@ function DriversPage() {
         />
       ) : null}
 
-      {deletingDriver ? (
-        <DeleteDriverModal
-          driver={deletingDriver}
-          errorMessage={deleteError}
-          isDeleting={isDeleting}
+      {archivingDriver ? (
+        <ArchiveDriverModal
+          driver={archivingDriver}
+          errorMessage={archiveError}
+          isArchiving={isArchiving}
           onCancel={() => {
-            if (isDeleting) return
-            setDeletingDriver(null)
+            if (isArchiving) return
+            setArchivingDriver(null)
           }}
-          onConfirm={handleConfirmDeleteDriver}
+          onConfirm={handleConfirmArchiveDriver}
         />
       ) : null}
 

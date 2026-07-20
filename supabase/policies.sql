@@ -440,3 +440,11 @@ grant select, insert, delete on public.notification_reads to authenticated;
 --
 -- Repeat similar company-scoped policies for drivers, vehicles, and
 -- vehicle_availability once a company_id column links records to tenants.
+
+-- -----------------------------------------------------------------------------
+-- Company trial-plan onboarding RPC
+-- Canonical definition: migrations/20260720180000_company_subscription_plan_fields.sql
+-- -----------------------------------------------------------------------------
+revoke all on function public.drevora_create_company_with_trial_plan(text, text) from public;
+revoke all on function public.drevora_create_company_with_trial_plan(text, text) from anon;
+grant execute on function public.drevora_create_company_with_trial_plan(text, text) to authenticated;

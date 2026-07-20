@@ -3,20 +3,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
+import type { TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
+import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import {
   applyViewModeEntryTotals,
   buildTimesheetOvertimeRules,
+  calculateEntryPaidEquivalentHours,
+  calculateWeekendGuaranteedPaidHours,
   canEditTimesheet,
+  entryHasStartAndFinish,
   formatBreak,
   formatDayLabel,
   formatHours,
   formatHoursFromMinutes,
   formatTotalHours,
   formatTimesheetSubmittedAt,
+  getEntryCombinedAdditionalHours,
+  getEntryPaidBreakMinutes,
   getStatusBadgeClass,
   getStatusLabel,
   prepareEntryInputs,
   recalculateEntryInputs,
+  resolveDayOvertimeRules,
   summarizeTimesheetEntries,
 } from '@/lib/timesheetUtils'
 import {
@@ -65,10 +73,10 @@ const dailyCommentInputClassName =
   'h-8 rounded-[10px] border-[#D3E9FC] bg-[#F5FAFF] px-2.5 text-xs font-medium text-[#113C69] shadow-inner shadow-[#D3E9FC]/20 placeholder:text-[#5499BF] focus-visible:border-[#218EE7] focus-visible:ring-2 focus-visible:ring-[#218EE7]/30 dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500'
 
 const tableHeadClassName =
-  'px-2.5 py-3 text-[11px] font-bold uppercase tracking-[0.07em] text-[#0D477F]'
-const tableCellClassName = 'px-2.5 py-2.5 align-middle'
-const dayColumnHeadClassName = `${tableHeadClassName} w-[168px] min-w-[168px] pr-6`
-const dayColumnCellClassName = `${tableCellClassName} w-[168px] min-w-[168px] pr-6 whitespace-nowrap text-[13px] leading-tight font-semibold text-[#113C69] dark:text-slate-100`
+  'px-1.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[#0D477F] sm:px-2'
+const tableCellClassName = 'px-1.5 py-2 align-middle sm:px-2'
+const dayColumnHeadClassName = `${tableHeadClassName} whitespace-nowrap`
+const dayColumnCellClassName = `${tableCellClassName} whitespace-nowrap text-[12px] leading-tight font-semibold text-[#113C69] dark:text-slate-100`
 
 function TimesheetDailyCommentField({
   dailyComment,
@@ -138,6 +146,7 @@ export function TimesheetDrawer({
     settings,
   } = useCompanySettings()
   const [draftEntries, setDraftEntries] = useState<TimesheetEntryInput[]>([])
+  const [localError, setLocalError] = useState<string | null>(null)
 
   const overtimeRules = useMemo(
     () =>
@@ -215,6 +224,8 @@ export function TimesheetDrawer({
     return recalculateEntryInputs(draftEntries, recalcOptions)
   }, [defaultBreakMinutes, draftEntries, isEditable, recalcOptions, timesheet])
 
+  const paidBreaks = recalcOptions.paidBreaks
+
   const summary = useMemo(() => {
     if (!timesheet) {
       return {
@@ -224,6 +235,8 @@ export function TimesheetDrawer({
         breakHours: 0,
         overtimeHours: 0,
         additionalHours: 0,
+        paidBreakMinutes: 0,
+        manualAdditionalHours: 0,
         totalHours: 0,
       }
     }
@@ -238,12 +251,16 @@ export function TimesheetDrawer({
       additionalHours: entry.additionalHours,
     }))
 
-    return summarizeTimesheetEntries(entriesForSummary, { overtimeRules })
-  }, [displayEntries, overtimeRules, timesheet])
+    return summarizeTimesheetEntries(entriesForSummary, {
+      overtimeRules,
+      paidBreaks,
+    })
+  }, [displayEntries, overtimeRules, paidBreaks, timesheet])
 
   if (!timesheet) return null
 
   function updateEntry(dayDate: string, patch: Partial<TimesheetEntryInput>) {
+    setLocalError(null)
     setDraftEntries((current) =>
       recalculateEntryInputs(
         current.map((entry) =>
@@ -254,12 +271,35 @@ export function TimesheetDrawer({
     )
   }
 
+  function validateManualAdditional(entries: TimesheetEntryInput[]): string | null {
+    for (const entry of entries) {
+      if (entry.additionalHours > 0 && !entry.dailyComment.trim()) {
+        return `Add a daily note for ${formatDayLabel(entry.dayDate)} explaining the Additional Hours (for example night-shift allowance).`
+      }
+    }
+    return null
+  }
+
   async function handleSaveDraft() {
-    await onSave?.(recalculateEntryInputs(draftEntries, recalcOptions))
+    const next = recalculateEntryInputs(draftEntries, recalcOptions)
+    const validationError = validateManualAdditional(next)
+    if (validationError) {
+      setLocalError(validationError)
+      return
+    }
+    setLocalError(null)
+    await onSave?.(next)
   }
 
   async function handleSubmit() {
-    await onSubmit?.(recalculateEntryInputs(draftEntries, recalcOptions))
+    const next = recalculateEntryInputs(draftEntries, recalcOptions)
+    const validationError = validateManualAdditional(next)
+    if (validationError) {
+      setLocalError(validationError)
+      return
+    }
+    setLocalError(null)
+    await onSubmit?.(next)
   }
 
   return (
@@ -362,9 +402,9 @@ export function TimesheetDrawer({
           </div>
         </div>
 
-        {saveError ? (
+        {saveError || localError ? (
           <div className="mx-5 mt-3 shrink-0 rounded-[10px] bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60 sm:mx-6">
-            {saveError}
+            {localError ?? saveError}
           </div>
         ) : null}
 
@@ -374,163 +414,54 @@ export function TimesheetDrawer({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pt-4 pb-2 touch-pan-y [-webkit-overflow-scrolling:touch] sm:px-6">
-          <div className="max-w-full overflow-x-auto rounded-2xl border border-[#D3E9FC] bg-white/80 shadow-sm shadow-[#BDDDFB]/30 [scrollbar-color:#89CFF0_#F5FAFF] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-900/70">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-xs">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-4 pb-2 touch-pan-y [-webkit-overflow-scrolling:touch] sm:px-6">
+          {/* Mobile stacked day cards */}
+          <div className="space-y-2.5 md:hidden">
+            {displayEntries.map((entry, index) => (
+              <TimesheetDayCard
+                key={entry.dayDate}
+                entry={entry}
+                index={index}
+                isEditable={isEditable}
+                paidBreaks={paidBreaks}
+                overtimeRules={overtimeRules}
+                timeFormat={timeFormat}
+                formatTime={formatTime}
+                onUpdate={updateEntry}
+              />
+            ))}
+          </div>
+
+          {/* Desktop compact table — no horizontal scroll at normal drawer widths */}
+          <div className="hidden max-w-full rounded-2xl border border-[#D3E9FC] bg-white/80 shadow-sm shadow-[#BDDDFB]/30 dark:border-white/10 dark:bg-slate-900/70 md:block">
+            <table className="w-full table-fixed border-collapse text-left text-xs">
               <thead className="border-b border-[#BDDDFB] bg-[#E8F3FE]">
                 <tr>
-                  <th className={dayColumnHeadClassName}>Day</th>
-                  <th className={tableHeadClassName}>Start</th>
-                  <th className={tableHeadClassName}>Break</th>
-                  <th className={tableHeadClassName}>Finish</th>
-                  <th className={tableHeadClassName}>Worked</th>
-                  <th className={tableHeadClassName}>Overtime</th>
-                  <th className={tableHeadClassName}>Add. hrs</th>
-                  <th className={`${tableHeadClassName} min-w-[180px]`}>
-                    Daily note
+                  <th className={`${dayColumnHeadClassName} w-[16%]`}>Day</th>
+                  <th className={`${tableHeadClassName} w-[18%]`}>Shift</th>
+                  <th className={`${tableHeadClassName} w-[9%]`}>Break</th>
+                  <th className={`${tableHeadClassName} w-[9%]`}>Basic</th>
+                  <th className={`${tableHeadClassName} w-[9%]`}>OT</th>
+                  <th className={`${tableHeadClassName} w-[13%]`}>Add. Hrs</th>
+                  <th className={`${tableHeadClassName} w-[10%]`}>Total</th>
+                  <th className={`${tableHeadClassName} w-[16%] text-center`}>
+                    Notes
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {displayEntries.map((entry, index) => (
-                  <tr
+                  <TimesheetDayRow
                     key={entry.dayDate}
-                    className={`border-b border-[#D3E9FC]/80 transition-colors last:border-b-0 hover:bg-[#E8F3FE]/80 ${
-                      index % 2 === 0 ? 'bg-[#F5FAFF]/80' : 'bg-white/70'
-                    } dark:border-white/10 dark:hover:bg-slate-800/70`}
-                  >
-                      <td className={dayColumnCellClassName}>
-                        {formatDayLabel(entry.dayDate)}
-                      </td>
-                      <td className={tableCellClassName}>
-                        {isEditable ? (
-                          <TimesheetTimeInput
-                            value={entry.startTime}
-                            timeFormat={timeFormat}
-                            onChange={(nextValue) =>
-                              updateEntry(entry.dayDate, { startTime: nextValue })
-                            }
-                            className={inputClassName}
-                            data-entry-index={index}
-                            data-field="start"
-                          />
-                        ) : (
-                          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
-                            {formatTime(entry.startTime)}
-                          </span>
-                        )}
-                      </td>
-                      <td className={tableCellClassName}>
-                        {isEditable ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            step={5}
-                            value={entry.breakMinutes}
-                            onChange={(event) =>
-                              updateEntry(entry.dayDate, {
-                                breakMinutes: Number(event.target.value) || 0,
-                              })
-                            }
-                            className={inputClassName}
-                            data-entry-index={index}
-                            data-field="break"
-                          />
-                        ) : (
-                          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
-                            {formatBreak(entry.breakMinutes)}
-                          </span>
-                        )}
-                      </td>
-                      <td className={tableCellClassName}>
-                        {isEditable ? (
-                          <TimesheetTimeInput
-                            value={entry.finishTime}
-                            timeFormat={timeFormat}
-                            onChange={(nextValue) =>
-                              updateEntry(entry.dayDate, { finishTime: nextValue })
-                            }
-                            className={inputClassName}
-                            data-entry-index={index}
-                            data-field="finish"
-                          />
-                        ) : (
-                          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
-                            {formatTime(entry.finishTime)}
-                          </span>
-                        )}
-                      </td>
-                      <td className={`${tableCellClassName} text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100`}>
-                        {formatHoursFromMinutes(entry.totalMinutes)}
-                      </td>
-                      <td className={tableCellClassName}>
-                        {isEditable ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.25}
-                            value={
-                              entry.overtimeMinutes > 0
-                                ? Math.round((entry.overtimeMinutes / 60) * 100) / 100
-                                : 0
-                            }
-                            onChange={(event) =>
-                              updateEntry(entry.dayDate, {
-                                overtimeMinutes: Math.round(
-                                  (Number(event.target.value) || 0) * 60,
-                                ),
-                              })
-                            }
-                            className={inputClassName}
-                            data-entry-index={index}
-                            data-field="overtime"
-                          />
-                        ) : (
-                          <span className="text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300">
-                            {entry.overtimeMinutes > 0
-                              ? formatHoursFromMinutes(entry.overtimeMinutes)
-                              : '—'}
-                          </span>
-                        )}
-                      </td>
-                      <td className={tableCellClassName}>
-                        {isEditable ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.25}
-                            placeholder="0"
-                            value={entry.additionalHours > 0 ? entry.additionalHours : ''}
-                            onChange={(event) =>
-                              updateEntry(entry.dayDate, {
-                                additionalHours: Math.max(
-                                  0,
-                                  Number.parseFloat(event.target.value) || 0,
-                                ),
-                              })
-                            }
-                            className={inputClassName}
-                            data-entry-index={index}
-                            data-field="additional-hours"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium tabular-nums text-[#0D477F] dark:text-slate-200">
-                            {entry.additionalHours > 0
-                              ? formatHours(entry.additionalHours)
-                              : '—'}
-                          </span>
-                        )}
-                      </td>
-                      <td className={tableCellClassName}>
-                        <TimesheetDailyCommentField
-                          dailyComment={entry.dailyComment}
-                          editable={isEditable}
-                          onDailyCommentChange={(nextValue) =>
-                            updateEntry(entry.dayDate, { dailyComment: nextValue })
-                          }
-                        />
-                      </td>
-                    </tr>
+                    entry={entry}
+                    index={index}
+                    isEditable={isEditable}
+                    paidBreaks={paidBreaks}
+                    overtimeRules={overtimeRules}
+                    timeFormat={timeFormat}
+                    formatTime={formatTime}
+                    onUpdate={updateEntry}
+                  />
                 ))}
               </tbody>
             </table>
@@ -538,13 +469,29 @@ export function TimesheetDrawer({
 
           <div className="mt-5 grid grid-cols-2 gap-2.5 rounded-2xl border border-[#D3E9FC] bg-white/55 p-2.5 text-xs shadow-sm shadow-[#BDDDFB]/25 dark:border-white/10 dark:bg-slate-900/60 sm:grid-cols-3 lg:grid-cols-5">
             <SummaryItem
-              label="Worked Hours"
-              value={summary.workedHours}
+              label="Basic Hours"
               valueMinutes={summary.workedMinutes}
             />
             <SummaryItem label="Break" display={formatBreak(summary.breakMinutes)} />
             <SummaryItem label="Overtime" value={summary.overtimeHours} />
-            <SummaryItem label="Additional Hours" value={summary.additionalHours} />
+            <SummaryItem
+              label="Additional Hours"
+              value={summary.additionalHours}
+              hint={
+                summary.paidBreakMinutes > 0 || summary.manualAdditionalHours > 0
+                  ? [
+                      summary.paidBreakMinutes > 0
+                        ? `Paid break: ${formatHoursFromMinutes(summary.paidBreakMinutes)}`
+                        : null,
+                      summary.manualAdditionalHours > 0
+                        ? `Manual: ${formatHours(summary.manualAdditionalHours)}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : undefined
+              }
+            />
             <SummaryItem
               label="Total Hours"
               display={formatTotalHours(summary.totalHours)}
@@ -619,12 +566,14 @@ function SummaryItem({
   value,
   valueMinutes,
   display,
+  hint,
   emphasized = false,
 }: {
   label: string
   value?: number
   valueMinutes?: number
   display?: string
+  hint?: string
   emphasized?: boolean
 }) {
   const resolvedDisplay =
@@ -651,6 +600,436 @@ function SummaryItem({
       >
         {resolvedDisplay}
       </p>
+      {hint ? (
+        <p className="mt-0.5 text-[10px] font-medium leading-snug text-[#5499BF] dark:text-slate-400">
+          {hint}
+        </p>
+      ) : null}
     </div>
+  )
+}
+
+function getDayPayableHours(
+  entry: TimesheetEntryInput,
+  paidBreaks: boolean,
+  overtimeRules: TimesheetOvertimeRules,
+): number {
+  const combinedAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  if (entry.totalMinutes <= 0 && combinedAdditional <= 0) return 0
+
+  const dayRules = resolveDayOvertimeRules(entry.dayDate, overtimeRules)
+  if (dayRules.guaranteedPaidHours != null) {
+    return calculateWeekendGuaranteedPaidHours(
+      entry.totalMinutes / 60,
+      dayRules.guaranteedPaidHours,
+      dayRules.afterHours,
+      dayRules.multiplier,
+      combinedAdditional,
+    )
+  }
+
+  return calculateEntryPaidEquivalentHours(
+    {
+      totalMinutes: entry.totalMinutes,
+      overtimeMinutes: entry.overtimeMinutes,
+      additionalHours: combinedAdditional,
+    },
+    dayRules.multiplier,
+  )
+}
+
+function AdditionalHoursCell({
+  entry,
+  paidBreaks,
+  isEditable,
+  index,
+  onUpdate,
+  compact = false,
+}: {
+  entry: TimesheetEntryInput
+  paidBreaks: boolean
+  isEditable: boolean
+  index: number
+  onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
+  compact?: boolean
+}) {
+  const paidBreakMinutes = getEntryPaidBreakMinutes(entry, paidBreaks)
+  const combined = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  const breakdownParts = [
+    paidBreakMinutes > 0
+      ? `Paid break: ${formatHoursFromMinutes(paidBreakMinutes)}`
+      : null,
+    entry.additionalHours > 0 ? `Manual: ${formatHours(entry.additionalHours)}` : null,
+  ].filter(Boolean)
+  const title =
+    breakdownParts.length > 0
+      ? `${breakdownParts.join(' · ')} · Add. Hrs total: ${formatHours(combined)}`
+      : undefined
+
+  return (
+    <div className={compact ? 'space-y-1' : 'min-w-0'} title={title}>
+      {isEditable ? (
+        <Input
+          type="number"
+          min={0}
+          step={0.25}
+          placeholder="0"
+          value={entry.additionalHours > 0 ? entry.additionalHours : ''}
+          onChange={(event) =>
+            onUpdate(entry.dayDate, {
+              additionalHours: Math.max(0, Number.parseFloat(event.target.value) || 0),
+            })
+          }
+          className={inputClassName}
+          data-entry-index={index}
+          data-field="additional-hours"
+          aria-label={`Manual Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+        />
+      ) : (
+        <span className="text-sm font-medium tabular-nums text-[#0D477F] dark:text-slate-200">
+          {combined > 0 ? formatHours(combined) : '—'}
+        </span>
+      )}
+      {paidBreakMinutes > 0 ? (
+        <p className="text-[10px] font-medium leading-tight text-[#5499BF] dark:text-slate-400">
+          +{formatHoursFromMinutes(paidBreakMinutes)} paid break
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function NotesIndicator({
+  entry,
+  isEditable,
+  onUpdate,
+}: {
+  entry: TimesheetEntryInput
+  isEditable: boolean
+  onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
+}) {
+  const hasNote = entry.dailyComment.trim().length > 0
+
+  if (isEditable) {
+    return (
+      <TimesheetDailyCommentField
+        dailyComment={entry.dailyComment}
+        editable
+        compact
+        onDailyCommentChange={(nextValue) =>
+          onUpdate(entry.dayDate, { dailyComment: nextValue })
+        }
+      />
+    )
+  }
+
+  if (!hasNote) {
+    return <span className={`text-xs ${adminTextMuted}`}>—</span>
+  }
+
+  return (
+    <span
+      className="inline-flex justify-center text-[#218EE7] dark:text-blue-300"
+      title={entry.dailyComment}
+    >
+      <MessageSquare className="size-3.5" aria-label={`Note: ${entry.dailyComment}`} />
+    </span>
+  )
+}
+
+function TimesheetDayRow({
+  entry,
+  index,
+  isEditable,
+  paidBreaks,
+  overtimeRules,
+  timeFormat,
+  formatTime,
+  onUpdate,
+}: {
+  entry: TimesheetEntryInput
+  index: number
+  isEditable: boolean
+  paidBreaks: boolean
+  overtimeRules: TimesheetOvertimeRules
+  timeFormat: CompanyTimeFormat
+  formatTime: (value: string | null) => string
+  onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
+}) {
+  const dayTotal = getDayPayableHours(entry, paidBreaks, overtimeRules)
+  const hasShift = entryHasStartAndFinish(entry)
+
+  return (
+    <tr
+      className={`border-b border-[#D3E9FC]/80 transition-colors last:border-b-0 hover:bg-[#E8F3FE]/80 ${
+        index % 2 === 0 ? 'bg-[#F5FAFF]/80' : 'bg-white/70'
+      } dark:border-white/10 dark:hover:bg-slate-800/70`}
+    >
+      <td className={dayColumnCellClassName}>{formatDayLabel(entry.dayDate)}</td>
+      <td className={tableCellClassName}>
+        {isEditable ? (
+          <div className="flex min-w-0 flex-col gap-1">
+            <TimesheetTimeInput
+              value={entry.startTime}
+              timeFormat={timeFormat}
+              onChange={(nextValue) => onUpdate(entry.dayDate, { startTime: nextValue })}
+              className={inputClassName}
+              data-entry-index={index}
+              data-field="start"
+            />
+            <TimesheetTimeInput
+              value={entry.finishTime}
+              timeFormat={timeFormat}
+              onChange={(nextValue) => onUpdate(entry.dayDate, { finishTime: nextValue })}
+              className={inputClassName}
+              data-entry-index={index}
+              data-field="finish"
+            />
+          </div>
+        ) : (
+          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
+            {hasShift
+              ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
+              : '—'}
+          </span>
+        )}
+      </td>
+      <td className={tableCellClassName}>
+        {isEditable ? (
+          <Input
+            type="number"
+            min={0}
+            step={5}
+            value={entry.breakMinutes}
+            onChange={(event) =>
+              onUpdate(entry.dayDate, {
+                breakMinutes: Number(event.target.value) || 0,
+              })
+            }
+            className={inputClassName}
+            data-entry-index={index}
+            data-field="break"
+          />
+        ) : (
+          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
+            {hasShift ? formatBreak(entry.breakMinutes) : '—'}
+          </span>
+        )}
+      </td>
+      <td
+        className={`${tableCellClassName} text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100`}
+      >
+        {formatHoursFromMinutes(entry.totalMinutes)}
+      </td>
+      <td className={tableCellClassName}>
+        {isEditable ? (
+          <Input
+            type="number"
+            min={0}
+            step={0.25}
+            value={
+              entry.overtimeMinutes > 0
+                ? Math.round((entry.overtimeMinutes / 60) * 100) / 100
+                : 0
+            }
+            onChange={(event) =>
+              onUpdate(entry.dayDate, {
+                overtimeMinutes: Math.round((Number(event.target.value) || 0) * 60),
+              })
+            }
+            className={inputClassName}
+            data-entry-index={index}
+            data-field="overtime"
+          />
+        ) : (
+          <span className="text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300">
+            {entry.overtimeMinutes > 0
+              ? formatHoursFromMinutes(entry.overtimeMinutes)
+              : '—'}
+          </span>
+        )}
+      </td>
+      <td className={tableCellClassName}>
+        <AdditionalHoursCell
+          entry={entry}
+          paidBreaks={paidBreaks}
+          isEditable={isEditable}
+          index={index}
+          onUpdate={onUpdate}
+        />
+      </td>
+      <td
+        className={`${tableCellClassName} text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300`}
+      >
+        {formatTotalHours(dayTotal)}
+      </td>
+      <td className={`${tableCellClassName} text-center`}>
+        <NotesIndicator entry={entry} isEditable={isEditable} onUpdate={onUpdate} />
+      </td>
+    </tr>
+  )
+}
+
+function TimesheetDayCard({
+  entry,
+  index,
+  isEditable,
+  paidBreaks,
+  overtimeRules,
+  timeFormat,
+  formatTime,
+  onUpdate,
+}: {
+  entry: TimesheetEntryInput
+  index: number
+  isEditable: boolean
+  paidBreaks: boolean
+  overtimeRules: TimesheetOvertimeRules
+  timeFormat: CompanyTimeFormat
+  formatTime: (value: string | null) => string
+  onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
+}) {
+  const hasShift = entryHasStartAndFinish(entry)
+  const paidBreakMinutes = getEntryPaidBreakMinutes(entry, paidBreaks)
+  const combinedAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  const dayTotal = getDayPayableHours(entry, paidBreaks, overtimeRules)
+
+  return (
+    <article className="rounded-2xl border border-[#D3E9FC] bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-[#113C69] dark:text-slate-100">
+          {formatDayLabel(entry.dayDate)}
+        </p>
+        <p className="text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300">
+          {formatTotalHours(dayTotal)}
+        </p>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+        <div className="col-span-2">
+          <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Shift</p>
+          {isEditable ? (
+            <div className="mt-1 grid grid-cols-2 gap-1.5">
+              <TimesheetTimeInput
+                value={entry.startTime}
+                timeFormat={timeFormat}
+                onChange={(nextValue) => onUpdate(entry.dayDate, { startTime: nextValue })}
+                className={inputClassName}
+                data-entry-index={index}
+                data-field="start"
+              />
+              <TimesheetTimeInput
+                value={entry.finishTime}
+                timeFormat={timeFormat}
+                onChange={(nextValue) => onUpdate(entry.dayDate, { finishTime: nextValue })}
+                className={inputClassName}
+                data-entry-index={index}
+                data-field="finish"
+              />
+            </div>
+          ) : (
+            <p className="mt-0.5 tabular-nums font-medium text-[#113C69] dark:text-slate-200">
+              {hasShift
+                ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
+                : '—'}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Break</p>
+          {isEditable ? (
+            <Input
+              type="number"
+              min={0}
+              step={5}
+              value={entry.breakMinutes}
+              onChange={(event) =>
+                onUpdate(entry.dayDate, {
+                  breakMinutes: Number(event.target.value) || 0,
+                })
+              }
+              className={`${inputClassName} mt-1`}
+              data-entry-index={index}
+              data-field="break"
+            />
+          ) : (
+            <p className="mt-0.5 tabular-nums font-medium text-[#113C69]">
+              {hasShift ? formatBreak(entry.breakMinutes) : '—'}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Basic</p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#113C69]">
+            {formatHoursFromMinutes(entry.totalMinutes)}
+          </p>
+        </div>
+
+        <div>
+          <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">OT</p>
+          {isEditable ? (
+            <Input
+              type="number"
+              min={0}
+              step={0.25}
+              value={
+                entry.overtimeMinutes > 0
+                  ? Math.round((entry.overtimeMinutes / 60) * 100) / 100
+                  : 0
+              }
+              onChange={(event) =>
+                onUpdate(entry.dayDate, {
+                  overtimeMinutes: Math.round((Number(event.target.value) || 0) * 60),
+                })
+              }
+              className={`${inputClassName} mt-1`}
+              data-entry-index={index}
+              data-field="overtime"
+            />
+          ) : (
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#0B68BE]">
+              {entry.overtimeMinutes > 0
+                ? formatHoursFromMinutes(entry.overtimeMinutes)
+                : '—'}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Add. Hrs</p>
+          <div className="mt-1">
+            <AdditionalHoursCell
+              entry={entry}
+              paidBreaks={paidBreaks}
+              isEditable={isEditable}
+              index={index}
+              onUpdate={onUpdate}
+              compact
+            />
+          </div>
+          {!isEditable && paidBreakMinutes > 0 && entry.additionalHours > 0 ? (
+            <p className="mt-0.5 text-[10px] text-[#5499BF]">
+              Total {formatHours(combinedAdditional)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-2 border-t border-[#D3E9FC]/70 pt-2 dark:border-white/10">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
+          Notes
+        </p>
+        <TimesheetDailyCommentField
+          dailyComment={entry.dailyComment}
+          editable={isEditable}
+          compact
+          onDailyCommentChange={(nextValue) =>
+            onUpdate(entry.dayDate, { dailyComment: nextValue })
+          }
+        />
+      </div>
+    </article>
   )
 }

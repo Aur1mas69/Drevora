@@ -197,6 +197,14 @@ export function canApproveHolidayRequest(status: HolidayRequestStatus): boolean 
   return status === 'Pending'
 }
 
+/**
+ * Hard-delete is allowed only for Pending requests.
+ * Approved / Declined (Rejected) history is preserved. Cancelled is also not deletable.
+ */
+export function canDeleteHolidayRequest(status: HolidayRequestStatus): boolean {
+  return status === 'Pending'
+}
+
 export function canEditHolidayRequest(_status: HolidayRequestStatus): boolean {
   return true
 }

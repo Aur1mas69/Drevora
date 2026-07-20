@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus('Thank you — we’ll contact you shortly.', 'success')
             form.reset()
         } catch {
-            showStatus('Something went wrong. Please try again or email Admin@drevora.uk.', 'error')
+            showStatus('Something went wrong. Please try again or email admin@drevora.uk.', 'error')
         } finally {
             submitBtn.disabled = false
             submitBtn.textContent = defaultBtnText

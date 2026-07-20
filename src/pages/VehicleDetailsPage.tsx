@@ -7,10 +7,7 @@ import {
   type FormEvent,
 } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import {
-  ArrowLeft,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -705,6 +702,11 @@ function VehicleDetailsPage() {
           vehicle={vehicle}
           assignedWorkerLabel={currentDriverName}
           onEdit={openEditVehicleModal}
+          onDelete={() => {
+            setDeleteError(null)
+            setIsDeleteModalOpen(true)
+          }}
+          isDeleting={isDeleting}
         />
 
         {deleteError ? (
@@ -712,22 +714,6 @@ function VehicleDetailsPage() {
             {deleteError}
           </div>
         ) : null}
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            onClick={() => {
-              setDeleteError(null)
-              setIsDeleteModalOpen(true)
-            }}
-            disabled={isDeleting}
-            variant="ghost"
-            className="h-9 rounded-[12px] px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
-          >
-            <Trash2 className="size-3.5" />
-            Delete vehicle
-          </Button>
-        </div>
 
         <VehicleProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 

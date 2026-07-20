@@ -52,6 +52,8 @@ export type ModuleListToolbarProps = {
   hidePrimaryAction?: boolean
   hideFilter?: boolean
   disabled?: boolean
+  /** Disables only the primary action (e.g. Add Worker at plan limit). */
+  primaryActionDisabled?: boolean
   loading?: boolean
   className?: string
 }
@@ -82,6 +84,7 @@ export function ModuleListToolbar({
   hidePrimaryAction = false,
   hideFilter = false,
   disabled = false,
+  primaryActionDisabled = false,
   loading = false,
   className = '',
 }: ModuleListToolbarProps) {
@@ -98,7 +101,7 @@ export function ModuleListToolbar({
         <Button
           type="button"
           onClick={onPrimaryAction}
-          disabled={controlsDisabled || !onPrimaryAction}
+          disabled={controlsDisabled || primaryActionDisabled || !onPrimaryAction}
           className={`w-full sm:w-auto ${moduleListPrimaryButtonClass}`}
         >
           <PrimaryIcon className="size-4" aria-hidden />

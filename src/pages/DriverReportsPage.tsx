@@ -16,6 +16,11 @@ import { ExportMenu } from '@/components/export/ExportMenu'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
@@ -66,6 +71,8 @@ export default function DriverReportsPage() {
     companyName,
     settings: companySettings,
     membershipRole,
+    weekStarts,
+    timezone,
   } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
@@ -93,6 +100,8 @@ export default function DriverReportsPage() {
   const [vehicleFilter, setVehicleFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
   const [visibilityMode, setVisibilityMode] = useState<CurrentViewMode>('current')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_DRIVER_REPORT_PAGE_SIZE)
@@ -495,6 +504,8 @@ export default function DriverReportsPage() {
             <ExportMenu
               busy={isExporting}
               disabled={isLoading}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'excel',
@@ -502,20 +513,38 @@ export default function DriverReportsPage() {
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
+                      const visibleItems = filterDriverReportsByVisibility(items, visibilityMode)
+                      const exportItems = filterDriverReports(visibleItems, {
+                        search: debouncedSearch || undefined,
+                        kpiFilter,
+                        status: statusFilter,
+                        reportType: typeFilter,
+                        priority: priorityFilter,
+                        workerId: workerFilter,
+                        vehicleId: vehicleFilter,
+                        dateFrom: resolvedRange.dateFrom,
+                        dateTo: resolvedRange.dateTo,
+                      })
                       await exportDriverReportsExcel(
-                        filteredItems,
+                        exportItems,
                         resolveExportMeta({
                           companyName,
                           logoUrl: companySettings?.logoUrl,
                           generatedBy: session?.user.email ?? null,
                           documentTitle: 'Driver Reports',
+                          filterSummary: `Date ${resolvedRange.label}`,
                         }),
                         [
                           statusFilter !== 'all' ? statusFilter : null,
                           typeFilter !== 'all' ? typeFilter : null,
                           priorityFilter !== 'all' ? priorityFilter : null,
-                          dateFrom || null,
-                          dateTo || null,
+                          resolvedRange.dateFrom || null,
+                          resolvedRange.dateTo || null,
                           debouncedSearch || null,
                         ],
                       )

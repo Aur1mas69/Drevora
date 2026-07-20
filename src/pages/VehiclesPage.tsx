@@ -25,8 +25,12 @@ import {
 } from '@/components/vehicles/AvailabilityEventModals'
 import { FleetAvailabilityOverview } from '@/components/vehicles/FleetAvailabilityOverview'
 import { FleetPlanningCalendar } from '@/components/vehicles/FleetPlanningCalendar'
-import { DeleteVehicleModal } from '@/components/vehicles/DeleteVehicleModal'
+import { ArchiveVehicleModal } from '@/components/vehicles/ArchiveVehicleModal'
 import { VehicleEditModal } from '@/components/vehicles/VehicleEditModal'
+import {
+  VehiclesCardGrid,
+  VehiclesCardGridSkeleton,
+} from '@/components/vehicles/VehiclesCardGrid'
 import {
   VehiclesDataTable,
   VehiclesTableSkeleton,
@@ -35,8 +39,18 @@ import {
   VehiclesFilterBar,
   type StatusFilter,
 } from '@/components/vehicles/VehiclesFilterBar'
+import { VehiclesAllowanceNotice } from '@/components/vehicles/VehiclesAllowanceNotice'
 import { VehiclesSummaryCards } from '@/components/vehicles/VehiclesSummaryCards'
 import type { VehicleKpiKey } from '@/components/vehicles/vehicleSummaryKpiStyles'
+import {
+  buildVehicleAllowanceSnapshot,
+  formatVehiclePlanLimitError,
+  isVehiclePlanLimitError,
+} from '@/lib/vehicleAllowance'
+import {
+  buildVehicleSlotPage,
+  isActiveVehicleForPlanSlot,
+} from '@/lib/vehiclePlanSlots'
 import {
   computeFleetSummaryStats,
   exportVehiclesToCsv,
@@ -44,6 +58,15 @@ import {
   vehicleMatchesSearch,
   type DocumentFilter,
 } from '@/lib/vehiclePageUtils'
+import {
+  readVehiclesViewMode,
+  writeVehiclesViewMode,
+  type VehiclesViewMode,
+} from '@/lib/vehiclesViewMode'
+import {
+  fetchCompanyPlan,
+  type CompanyPlanRecord,
+} from '@/services/companyPlanService'
 import {
   getVehicleFormValues,
   initialVehicleForm,
@@ -110,16 +133,21 @@ function VehiclesPage() {
   const [driverFilter, setDriverFilter] = useState('All')
   const [motFilter, setMotFilter] = useState<DocumentFilter>('All')
   const [insuranceFilter, setInsuranceFilter] = useState<DocumentFilter>('All')
+  const [viewMode, setViewMode] = useState<VehiclesViewMode>(() =>
+    readVehiclesViewMode(),
+  )
   const [tablePage, setTablePage] = useState(1)
+  const [gridPage, setGridPage] = useState(1)
+  const [companyPlan, setCompanyPlan] = useState<CompanyPlanRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
-  const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null)
+  const [archivingVehicle, setArchivingVehicle] = useState<Vehicle | null>(null)
   const [form, setForm] = useState<VehicleInput>(initialVehicleForm)
   const [formErrors, setFormErrors] = useState<VehicleFormErrors>({})
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [detailsContext, setDetailsContext] =
     useState<AvailabilityDetailsContext | null>(null)
@@ -199,6 +227,26 @@ function VehiclesPage() {
   }, [companyReady, companyId, loadVehicles])
 
   useEffect(() => {
+    if (!companyReady || !companyId) {
+      setCompanyPlan(null)
+      return
+    }
+
+    let cancelled = false
+    void fetchCompanyPlan(companyId)
+      .then((record) => {
+        if (!cancelled) setCompanyPlan(record)
+      })
+      .catch(() => {
+        if (!cancelled) setCompanyPlan(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyReady, companyId])
+
+  useEffect(() => {
     if (!toastMessage) return
     const timeoutId = window.setTimeout(() => setToastMessage(null), 3000)
     return () => window.clearTimeout(timeoutId)
@@ -206,17 +254,32 @@ function VehiclesPage() {
 
   useEffect(() => {
     setTablePage(1)
+    setGridPage(1)
   }, [searchTerm, statusFilter, driverFilter, motFilter, insuranceFilter])
 
-  const summaryStats = useMemo(
-    () => computeFleetSummaryStats(vehicles),
+  const visibleVehicles = useMemo(
+    () => vehicles.filter((vehicle) => vehicle.archivedAt == null),
     [vehicles],
+  )
+
+  const vehicleAllowance = useMemo(
+    () =>
+      buildVehicleAllowanceSnapshot({
+        vehicles,
+        plan: companyPlan,
+      }),
+    [companyPlan, vehicles],
+  )
+
+  const summaryStats = useMemo(
+    () => computeFleetSummaryStats(visibleVehicles),
+    [visibleVehicles],
   )
 
   const filteredVehicles = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
-    return vehicles.filter((vehicle) => {
+    return visibleVehicles.filter((vehicle) => {
       const currentStatus = getVehicleStatusForDate(vehicle)
 
       const matchesSearch = vehicleMatchesSearch(vehicle, query, drivers)
@@ -253,19 +316,58 @@ function VehiclesPage() {
     motFilter,
     searchTerm,
     statusFilter,
-    vehicles,
+    visibleVehicles,
   ])
 
-  const calendarInitialView = useMemo((): CalendarView | undefined => {
-    return showFullCalendar ? 'Week' : undefined
-  }, [showFullCalendar])
-
-  const hasActiveFilters =
+  const hasListConstraints =
     searchTerm.trim().length > 0 ||
     statusFilter !== 'All' ||
     driverFilter !== 'All' ||
     motFilter !== 'All' ||
     insuranceFilter !== 'All'
+
+  const activeVehiclesForSlots = useMemo(
+    () => vehicles.filter(isActiveVehicleForPlanSlot),
+    [vehicles],
+  )
+
+  const slotVehicles = useMemo(() => {
+    if (hasListConstraints) {
+      return filteredVehicles.filter(isActiveVehicleForPlanSlot)
+    }
+    return activeVehiclesForSlots
+  }, [activeVehiclesForSlots, filteredVehicles, hasListConstraints])
+
+  const slotPage = useMemo(
+    () =>
+      buildVehicleSlotPage({
+        vehicles: slotVehicles,
+        allowance: vehicleAllowance.allowance,
+        page: gridPage,
+        constrainToVehiclesOnly: hasListConstraints,
+      }),
+    [gridPage, hasListConstraints, slotVehicles, vehicleAllowance.allowance],
+  )
+
+  useEffect(() => {
+    if (gridPage !== slotPage.page) {
+      setGridPage(slotPage.page)
+    }
+  }, [gridPage, slotPage.page])
+
+  const calendarInitialView = useMemo((): CalendarView | undefined => {
+    return showFullCalendar ? 'Week' : undefined
+  }, [showFullCalendar])
+
+  const hasActiveFilters = hasListConstraints
+
+  function handleViewModeChange(mode: VehiclesViewMode) {
+    if (mode === viewMode) return
+    setViewMode(mode)
+    writeVehiclesViewMode(mode)
+    setTablePage(1)
+    setGridPage(1)
+  }
 
   function handleStatusFilterChange(value: StatusFilter) {
     setStatusFilter(value)
@@ -355,11 +457,21 @@ function VehiclesPage() {
   }
 
   function openAddVehicleModal() {
+    if (!vehicleAllowance.canAddVehicle) {
+      setToastMessage(vehicleAllowance.title || 'Vehicle allowance reached')
+      return
+    }
+
     setForm(initialVehicleForm)
     setFormErrors({})
     setSaveError(null)
     setEditingVehicle(null)
     setIsModalOpen(true)
+  }
+
+  function openArchiveVehicleModal(vehicle: Vehicle) {
+    setArchiveError(null)
+    setArchivingVehicle(vehicle)
   }
 
   function openEditVehicleModal(vehicle: Vehicle) {
@@ -390,6 +502,14 @@ function VehiclesPage() {
     setSaveError(null)
 
     if (Object.keys(validationErrors).length > 0) return
+
+    if (!editingVehicle && !vehicleAllowance.canAddVehicle) {
+      setSaveError(
+        vehicleAllowance.detail ??
+          'Vehicle allowance reached. Archive an inactive Vehicle or change the company plan to add another Vehicle.',
+      )
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -437,30 +557,34 @@ function VehiclesPage() {
           : 'Vehicle created successfully.',
       )
     } catch (error) {
-      setSaveError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to save vehicle. Please check the details and try again.',
-      )
+      if (isVehiclePlanLimitError(error)) {
+        setSaveError(formatVehiclePlanLimitError(error))
+      } else {
+        setSaveError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to save vehicle. Please check the details and try again.',
+        )
+      }
     } finally {
       setIsSaving(false)
     }
   }
 
-  async function handleConfirmDeleteVehicle() {
-    if (!deletingVehicle) return
+  async function handleConfirmArchiveVehicle() {
+    if (!archivingVehicle) return
 
-    setIsDeleting(true)
-    setDeleteError(null)
+    setIsArchiving(true)
+    setArchiveError(null)
     try {
-      await vehiclesService.deleteVehicle(deletingVehicle.id)
-      setDeletingVehicle(null)
+      await vehiclesService.archiveVehicle(archivingVehicle.id)
+      setArchivingVehicle(null)
       await loadVehicles()
-      setToastMessage('Vehicle deleted successfully.')
+      setToastMessage('Vehicle archived successfully.')
     } catch {
-      setDeleteError('Unable to delete vehicle. Please try again.')
+      setArchiveError('Unable to archive vehicle. Please try again.')
     } finally {
-      setIsDeleting(false)
+      setIsArchiving(false)
     }
   }
 
@@ -565,8 +689,8 @@ function VehiclesPage() {
           onSelect={handleQuickFilterSelect}
         />
 
-        {!isLoading && !loadError && vehicles.length > 0 ? (
-          <>
+        {!isLoading && !loadError ? (
+          <div className="space-y-3">
             <VehiclesFilterBar
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
@@ -582,26 +706,89 @@ function VehiclesPage() {
               onClearFilters={clearAllFilters}
               onExportCsv={() => exportVehiclesToCsv(filteredVehicles, drivers)}
               onAddVehicle={openAddVehicleModal}
+              canAddVehicle={vehicleAllowance.canAddVehicle}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
               hasActiveFilters={hasActiveFilters}
             />
+            <VehiclesAllowanceNotice allowance={vehicleAllowance} />
+          </div>
+        ) : null}
 
-            {filteredVehicles.length > 0 ? (
-              <VehiclesDataTable
-                vehicles={filteredVehicles}
-                drivers={drivers}
-                page={tablePage}
-                onPageChange={setTablePage}
-                onEditVehicle={openEditVehicleModal}
-                onDeleteVehicle={(vehicle) => {
-                  setDeleteError(null)
-                  setDeletingVehicle(vehicle)
-                }}
-                onOpenAvailabilityEvent={openAvailabilityFromNextEvent}
-              />
-            ) : (
+        {isLoading ? (
+          viewMode === 'grid' ? (
+            <VehiclesCardGridSkeleton />
+          ) : (
+            <VehiclesTableSkeleton />
+          )
+        ) : null}
+
+        {!isLoading && loadError ? (
+          <div className={`${adminEmptyState} py-12`}>
+            <p className={`text-lg font-semibold ${adminHeading}`}>
+              Unable to load vehicles
+            </p>
+            <p className={`mt-2 text-sm ${adminTextMuted}`}>{loadError}</p>
+            <Button
+              type="button"
+              onClick={loadVehicles}
+              className="mt-4 rounded-[12px] bg-[#2563EB] text-white"
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
+        {!isLoading && !loadError && visibleVehicles.length === 0 ? (
+          viewMode === 'grid' &&
+          vehicleAllowance.allowance != null &&
+          vehicleAllowance.canAddVehicle ? (
+            <VehiclesCardGrid
+              items={slotPage.items}
+              drivers={drivers}
+              page={slotPage.page}
+              totalPages={slotPage.totalPages}
+              slotFrom={slotPage.slotFrom}
+              slotTo={slotPage.slotTo}
+              totalSlots={slotPage.totalSlots}
+              showingVehiclesOnly={slotPage.showingVehiclesOnly}
+              onPageChange={setGridPage}
+              onAddVehicle={openAddVehicleModal}
+              onEditVehicle={openEditVehicleModal}
+              onArchiveVehicle={openArchiveVehicleModal}
+            />
+          ) : (
+            <div className={`${adminEmptyState} py-14`}>
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#EEF4FF] text-[#2563EB] dark:bg-slate-800/70 dark:text-blue-300">
+                <Truck className="size-6" />
+              </div>
+              <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
+                No vehicles yet
+              </p>
+              <p className={`mt-2 text-sm ${adminTextMuted}`}>
+                {vehicleAllowance.canAddVehicle
+                  ? 'Add your first vehicle to start managing your fleet.'
+                  : 'Vehicle creation is blocked until a valid plan allowance is available.'}
+              </p>
+              <Button
+                type="button"
+                onClick={openAddVehicleModal}
+                disabled={!vehicleAllowance.canAddVehicle}
+                className="mt-5 rounded-[12px] bg-[#2563EB] text-white"
+              >
+                <Plus className="size-4" />
+                Add Vehicle
+              </Button>
+            </div>
+          )
+        ) : null}
+
+        {!isLoading && !loadError && visibleVehicles.length > 0 ? (
+          <>
+            {hasListConstraints && filteredVehicles.length === 0 ? (
               <div className={`${adminEmptyState} py-12`}>
                 <p className={`text-lg font-semibold ${adminHeading}`}>
-                  No vehicles match your filters
+                  No Vehicles match your search or filters.
                 </p>
                 <p className={`mt-2 text-sm ${adminTextMuted}`}>
                   Try adjusting your search or filter criteria.
@@ -615,6 +802,31 @@ function VehiclesPage() {
                   Clear Filters
                 </Button>
               </div>
+            ) : viewMode === 'grid' ? (
+              <VehiclesCardGrid
+                items={slotPage.items}
+                drivers={drivers}
+                page={slotPage.page}
+                totalPages={slotPage.totalPages}
+                slotFrom={slotPage.slotFrom}
+                slotTo={slotPage.slotTo}
+                totalSlots={slotPage.totalSlots}
+                showingVehiclesOnly={slotPage.showingVehiclesOnly}
+                onPageChange={setGridPage}
+                onAddVehicle={openAddVehicleModal}
+                onEditVehicle={openEditVehicleModal}
+                onArchiveVehicle={openArchiveVehicleModal}
+              />
+            ) : (
+              <VehiclesDataTable
+                vehicles={filteredVehicles}
+                drivers={drivers}
+                page={tablePage}
+                onPageChange={setTablePage}
+                onEditVehicle={openEditVehicleModal}
+                onArchiveVehicle={openArchiveVehicleModal}
+                onOpenAvailabilityEvent={openAvailabilityFromNextEvent}
+              />
             )}
 
             <FleetAvailabilityOverview
@@ -634,46 +846,6 @@ function VehiclesPage() {
               </div>
             ) : null}
           </>
-        ) : null}
-
-        {isLoading ? <VehiclesTableSkeleton /> : null}
-
-        {!isLoading && loadError ? (
-          <div className={`${adminEmptyState} py-12`}>
-            <p className={`text-lg font-semibold ${adminHeading}`}>
-              Unable to load vehicles
-            </p>
-            <p className={`mt-2 text-sm ${adminTextMuted}`}>{loadError}</p>
-            <Button
-              type="button"
-              onClick={loadVehicles}
-              className="mt-4 rounded-[12px] bg-[#2563EB] text-white"
-            >
-              Retry
-            </Button>
-          </div>
-        ) : null}
-
-        {!isLoading && !loadError && vehicles.length === 0 ? (
-          <div className={`${adminEmptyState} py-14`}>
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#EEF4FF] text-[#2563EB] dark:bg-slate-800/70 dark:text-blue-300">
-              <Truck className="size-6" />
-            </div>
-            <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
-              No vehicles yet
-            </p>
-            <p className={`mt-2 text-sm ${adminTextMuted}`}>
-              Add your first vehicle to start managing your fleet.
-            </p>
-            <Button
-              type="button"
-              onClick={openAddVehicleModal}
-              className="mt-5 rounded-[12px] bg-[#2563EB] text-white"
-            >
-              <Plus className="size-4" />
-              Add Vehicle
-            </Button>
-          </div>
         ) : null}
       </section>
 
@@ -697,16 +869,16 @@ function VehiclesPage() {
         />
       ) : null}
 
-      {deletingVehicle ? (
-        <DeleteVehicleModal
-          vehicle={deletingVehicle}
-          errorMessage={deleteError}
-          isDeleting={isDeleting}
+      {archivingVehicle ? (
+        <ArchiveVehicleModal
+          vehicle={archivingVehicle}
+          errorMessage={archiveError}
+          isArchiving={isArchiving}
           onCancel={() => {
-            if (isDeleting) return
-            setDeletingVehicle(null)
+            if (isArchiving) return
+            setArchivingVehicle(null)
           }}
-          onConfirm={handleConfirmDeleteVehicle}
+          onConfirm={handleConfirmArchiveVehicle}
         />
       ) : null}
 

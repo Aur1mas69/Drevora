@@ -143,11 +143,11 @@ function NextEventCell({
 function VehicleRowActions({
   vehicle,
   onEdit,
-  onDelete,
+  onArchive,
 }: {
   vehicle: Vehicle
   onEdit: () => void
-  onDelete: () => void
+  onArchive: () => void
 }) {
   const actions: RowAction[] = [
     {
@@ -169,11 +169,11 @@ function VehicleRowActions({
       to: `/vehicles/${vehicle.id}?tab=consumables`,
     },
     {
-      id: 'delete',
-      label: 'Delete',
+      id: 'archive',
+      label: 'Archive',
       icon: Trash2,
       tone: 'danger',
-      onClick: onDelete,
+      onClick: onArchive,
     },
   ]
 
@@ -186,7 +186,7 @@ type VehiclesDataTableProps = {
   page: number
   onPageChange: (page: number) => void
   onEditVehicle: (vehicle: Vehicle) => void
-  onDeleteVehicle: (vehicle: Vehicle) => void
+  onArchiveVehicle: (vehicle: Vehicle) => void
   onOpenAvailabilityEvent: (vehicle: Vehicle, event: PlanningEvent) => void
 }
 
@@ -196,7 +196,7 @@ export function VehiclesDataTable({
   page,
   onPageChange,
   onEditVehicle,
-  onDeleteVehicle,
+  onArchiveVehicle,
   onOpenAvailabilityEvent,
 }: VehiclesDataTableProps) {
   const [pageSize, setPageSize] = useState(VEHICLES_PAGE_SIZE)
@@ -277,7 +277,7 @@ export function VehiclesDataTable({
                   <VehicleRowActions
                     vehicle={vehicle}
                     onEdit={() => onEditVehicle(vehicle)}
-                    onDelete={() => onDeleteVehicle(vehicle)}
+                    onArchive={() => onArchiveVehicle(vehicle)}
                   />
                 </TableActionsCell>
               </tr>

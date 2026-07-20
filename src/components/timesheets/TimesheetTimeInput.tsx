@@ -4,7 +4,8 @@ import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import { parseClockTime } from '@/lib/dateTimeFormat'
 import { useEffect, useRef, useState } from 'react'
 
-const MINUTE_OPTIONS = [0, 15, 30, 45] as const
+/** Timesheet shifts use half-hour increments only. */
+const MINUTE_OPTIONS = [0, 30] as const
 
 type TimesheetTimeInputProps = {
   value: string | null
@@ -14,6 +15,8 @@ type TimesheetTimeInputProps = {
   'data-entry-index'?: number
   'data-field'?: string
 }
+
+type PickerStep = 'hour' | 'minute'
 
 function normalizeClockValue(value: string): string | null {
   const parsed = parseClockTime(value)
@@ -56,63 +59,134 @@ function to24HourParts(value: string | null): { hour: number; minute: number } {
   return { hour: parsed.hours, minute: snapMinute(parsed.minutes) }
 }
 
-type PickerPanelProps = {
-  timeFormat: CompanyTimeFormat
-  value: string | null
-  onSelect: (value: string) => void
+function formatClock(hour24: number, minute: number): string {
+  return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
-function PickerPanel({ timeFormat, value, onSelect }: PickerPanelProps) {
+type PickerPanelProps = {
+  timeFormat: CompanyTimeFormat
+  step: PickerStep
+  pendingHour: number
+  pendingMinute: number
+  pendingPeriod: 'AM' | 'PM'
+  onHourSelect: (hour: number) => void
+  onMinuteSelect: (minute: number) => void
+  onPeriodSelect: (period: 'AM' | 'PM') => void
+  onBackToHour: () => void
+}
+
+function PickerPanel({
+  timeFormat,
+  step,
+  pendingHour,
+  pendingMinute,
+  pendingPeriod,
+  onHourSelect,
+  onMinuteSelect,
+  onPeriodSelect,
+  onBackToHour,
+}: PickerPanelProps) {
   if (timeFormat === '12-hour') {
-    const parts = to12HourParts(value)
     return (
-      <div className="flex gap-2">
-        <PickerColumn
-          label="Hour"
-          options={Array.from({ length: 12 }, (_, index) => index + 1)}
-          selected={parts.hour}
-          onSelect={(hour) => onSelect(from12HourParts(hour, parts.minute, parts.period))}
-          format={(hour) => String(hour)}
+      <div className="space-y-2">
+        <PickerStepHeader
+          step={step}
+          summary={
+            step === 'minute'
+              ? `${pendingHour}:${String(pendingMinute).padStart(2, '0')} ${pendingPeriod}`
+              : null
+          }
+          onBackToHour={onBackToHour}
         />
-        <PickerColumn
-          label="Min"
-          options={[...MINUTE_OPTIONS]}
-          selected={parts.minute}
-          onSelect={(minute) => onSelect(from12HourParts(parts.hour, minute, parts.period))}
-          format={(minute) => String(minute).padStart(2, '0')}
-        />
-        <PickerColumn
-          label="Period"
-          options={['AM', 'PM'] as const}
-          selected={parts.period}
-          onSelect={(period) => onSelect(from12HourParts(parts.hour, parts.minute, period))}
-          format={(period) => period}
-        />
+        {step === 'hour' ? (
+          <PickerColumn
+            label="Hour"
+            options={Array.from({ length: 12 }, (_, index) => index + 1)}
+            selected={pendingHour}
+            onSelect={onHourSelect}
+            format={(hour) => String(hour)}
+            wide
+          />
+        ) : (
+          <div className="flex gap-2.5">
+            <PickerColumn
+              label="Min"
+              options={[...MINUTE_OPTIONS]}
+              selected={pendingMinute}
+              onSelect={onMinuteSelect}
+              format={(minute) => String(minute).padStart(2, '0')}
+            />
+            <PickerColumn
+              label="Period"
+              options={['AM', 'PM'] as const}
+              selected={pendingPeriod}
+              onSelect={onPeriodSelect}
+              format={(period) => period}
+            />
+          </div>
+        )}
       </div>
     )
   }
 
-  const parts = to24HourParts(value)
   return (
-    <div className="flex gap-2">
-      <PickerColumn
-        label="Hour"
-        options={Array.from({ length: 24 }, (_, index) => index)}
-        selected={parts.hour}
-        onSelect={(hour) =>
-          onSelect(`${String(hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`)
+    <div className="space-y-2">
+      <PickerStepHeader
+        step={step}
+        summary={
+          step === 'minute'
+            ? formatClock(pendingHour, pendingMinute)
+            : null
         }
-        format={(hour) => String(hour).padStart(2, '0')}
+        onBackToHour={onBackToHour}
       />
-      <PickerColumn
-        label="Min"
-        options={[...MINUTE_OPTIONS]}
-        selected={parts.minute}
-        onSelect={(minute) =>
-          onSelect(`${String(parts.hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
-        }
-        format={(minute) => String(minute).padStart(2, '0')}
-      />
+      {step === 'hour' ? (
+        <PickerColumn
+          label="Hour"
+          options={Array.from({ length: 24 }, (_, index) => index)}
+          selected={pendingHour}
+          onSelect={onHourSelect}
+          format={(hour) => String(hour).padStart(2, '0')}
+          wide
+        />
+      ) : (
+        <PickerColumn
+          label="Min"
+          options={[...MINUTE_OPTIONS]}
+          selected={pendingMinute}
+          onSelect={onMinuteSelect}
+          format={(minute) => String(minute).padStart(2, '0')}
+          wide
+        />
+      )}
+    </div>
+  )
+}
+
+function PickerStepHeader({
+  step,
+  summary,
+  onBackToHour,
+}: {
+  step: PickerStep
+  summary: string | null
+  onBackToHour: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-0.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+        {step === 'hour' ? 'Select hour' : 'Select minutes'}
+      </p>
+      {step === 'minute' ? (
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onBackToHour}
+          className="text-[10px] font-semibold text-[#2563EB] hover:text-[#1d4ed8]"
+        >
+          {summary ? `Hour ${summary.split(':')[0]}` : 'Hour'}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -123,19 +197,26 @@ function PickerColumn<T extends string | number>({
   selected,
   onSelect,
   format,
+  wide = false,
 }: {
   label: string
   options: readonly T[]
   selected: T
   onSelect: (value: T) => void
   format: (value: T) => string
+  wide?: boolean
 }) {
   return (
-    <div className="min-w-[52px]">
-      <p className="mb-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+    <div className={cn(wide ? 'min-w-[72px]' : 'min-w-[60px]')}>
+      <p className="mb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
         {label}
       </p>
-      <div className="max-h-32 overflow-y-auto rounded-[8px] bg-[#F8FBFF] ring-1 ring-[rgba(75,120,220,0.10)]">
+      <div
+        className={cn(
+          'overflow-y-auto rounded-[10px] bg-[#F8FBFF] ring-1 ring-[rgba(75,120,220,0.10)]',
+          wide ? 'max-h-40' : 'max-h-36',
+        )}
+      >
         {options.map((option) => (
           <button
             key={String(option)}
@@ -143,7 +224,7 @@ function PickerColumn<T extends string | number>({
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onSelect(option)}
             className={cn(
-              'block w-full px-2 py-1 text-center text-xs tabular-nums transition-colors',
+              'block w-full px-2.5 py-1.5 text-center text-sm tabular-nums transition-colors',
               option === selected
                 ? 'bg-[#2563EB] font-semibold text-white'
                 : 'text-slate-700 hover:bg-white',
@@ -168,11 +249,38 @@ export function TimesheetTimeInput({
   const [draft, setDraft] = useState(value ?? '')
   const [isOpen, setIsOpen] = useState(false)
   const [isInvalid, setIsInvalid] = useState(false)
+  const [step, setStep] = useState<PickerStep>('hour')
+  const [pendingHour, setPendingHour] = useState(8)
+  const [pendingMinute, setPendingMinute] = useState(0)
+  const [pendingPeriod, setPendingPeriod] = useState<'AM' | 'PM'>('AM')
 
   useEffect(() => {
     setDraft(value ?? '')
     setIsInvalid(false)
   }, [value])
+
+  function resetPendingFromValue(nextValue: string | null) {
+    if (timeFormat === '12-hour') {
+      const parts = to12HourParts(nextValue)
+      setPendingHour(parts.hour)
+      setPendingMinute(parts.minute)
+      setPendingPeriod(parts.period)
+    } else {
+      const parts = to24HourParts(nextValue)
+      setPendingHour(parts.hour)
+      setPendingMinute(parts.minute)
+    }
+    setStep('hour')
+  }
+
+  function openPicker() {
+    setIsOpen((wasOpen) => {
+      if (!wasOpen) {
+        resetPendingFromValue(draft || value)
+      }
+      return true
+    })
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -180,6 +288,7 @@ export function TimesheetTimeInput({
     function handlePointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setIsOpen(false)
+        setStep('hour')
       }
     }
 
@@ -202,16 +311,48 @@ export function TimesheetTimeInput({
       return
     }
 
-    setDraft(normalized)
-    onChange(normalized)
+    const parsed = parseClockTime(normalized)
+    if (!parsed) {
+      setIsInvalid(true)
+      return
+    }
+
+    const snapped = formatClock(parsed.hours, snapMinute(parsed.minutes))
+    setDraft(snapped)
+    onChange(snapped)
     setIsInvalid(false)
   }
 
-  function handlePickerSelect(nextValue: string) {
+  function handleHourSelect(hour: number) {
+    setPendingHour(hour)
+    setPendingMinute(0)
+    setStep('minute')
+    // Preview hour with :00 in the input only — commit after minute selection.
+    if (timeFormat === '12-hour') {
+      setDraft(from12HourParts(hour, 0, pendingPeriod))
+    } else {
+      setDraft(formatClock(hour, 0))
+    }
+    setIsInvalid(false)
+  }
+
+  function handleMinuteSelect(minute: number) {
+    setPendingMinute(minute)
+    const nextValue =
+      timeFormat === '12-hour'
+        ? from12HourParts(pendingHour, minute, pendingPeriod)
+        : formatClock(pendingHour, minute)
     setDraft(nextValue)
     onChange(nextValue)
     setIsInvalid(false)
     setIsOpen(false)
+    setStep('hour')
+  }
+
+  function handlePeriodSelect(period: 'AM' | 'PM') {
+    setPendingPeriod(period)
+    setDraft(from12HourParts(pendingHour, pendingMinute, period))
+    setIsInvalid(false)
   }
 
   return (
@@ -226,16 +367,18 @@ export function TimesheetTimeInput({
           setDraft(event.target.value)
           setIsInvalid(false)
         }}
-        onFocus={() => setIsOpen(true)}
-        onClick={() => setIsOpen(true)}
+        onFocus={openPicker}
+        onClick={openPicker}
         onBlur={() => commitDraft(draft)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             commitDraft(draft)
             setIsOpen(false)
+            setStep('hour')
           }
           if (event.key === 'Escape') {
             setIsOpen(false)
+            setStep('hour')
           }
         }}
         aria-invalid={isInvalid}
@@ -245,11 +388,17 @@ export function TimesheetTimeInput({
       />
 
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 rounded-[10px] border border-[rgba(75,120,220,0.12)] bg-white p-2 shadow-[0_12px_32px_rgba(15,23,42,0.14)]">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-w-[min(18rem,calc(100vw-1.5rem))] rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white p-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.14)]">
           <PickerPanel
             timeFormat={timeFormat}
-            value={draft || value}
-            onSelect={handlePickerSelect}
+            step={step}
+            pendingHour={pendingHour}
+            pendingMinute={pendingMinute}
+            pendingPeriod={pendingPeriod}
+            onHourSelect={handleHourSelect}
+            onMinuteSelect={handleMinuteSelect}
+            onPeriodSelect={handlePeriodSelect}
+            onBackToHour={() => setStep('hour')}
           />
         </div>
       ) : null}

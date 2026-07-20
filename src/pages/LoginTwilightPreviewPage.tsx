@@ -2,12 +2,19 @@ import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRoleBasedAuthRedirect } from '@/hooks/useRoleBasedAuthRedirect'
+import { capturePendingPlanFromSearch, readPendingPlanCode } from '@/lib/pendingPlan'
+import {
+  getSubscriptionPlan,
+  LANDING_PRICING_URL,
+  type SubscriptionPlanCode,
+} from '@/lib/subscriptionPlans'
 import {
   authService,
   AuthServiceError,
 } from '@/services/authService'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useLocation } from 'react-router-dom'
 
 const previewInputClassName =
   'h-11 w-full rounded-xl border border-sky-200/80 bg-white/75 pl-10 pr-4 text-sm text-[#0F1B35] shadow-sm outline-none placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 lg:h-[60px] lg:rounded-[10px] lg:border-sky-300/85 lg:bg-white/80 lg:pl-12 lg:pr-5 lg:text-base lg:focus:ring-[3px] lg:focus:ring-[#2563EB]/28'
@@ -34,6 +41,7 @@ function OrbitDecoration() {
 
 function LoginTwilightPreviewPage() {
   const { setAuthenticatedSession } = useAuth()
+  const location = useLocation()
   useRoleBasedAuthRedirect()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,6 +49,17 @@ function LoginTwilightPreviewPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [selectedPlanCode, setSelectedPlanCode] =
+    useState<SubscriptionPlanCode | null>(() => readPendingPlanCode())
+
+  useEffect(() => {
+    const captured = capturePendingPlanFromSearch(location.search)
+    setSelectedPlanCode(captured ?? readPendingPlanCode())
+  }, [location.search])
+
+  const selectedPlan = selectedPlanCode
+    ? getSubscriptionPlan(selectedPlanCode)
+    : null
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -132,6 +151,21 @@ function LoginTwilightPreviewPage() {
               <p className="mt-2 max-w-full min-w-0 text-center text-sm leading-relaxed text-[#64748B] lg:mt-4 lg:max-w-full lg:min-w-0 lg:text-[17px] lg:leading-relaxed lg:text-[#5B6B82]">
                 Welcome back! Please enter your details to continue.
               </p>
+
+              {selectedPlan ? (
+                <div className="mt-4 w-full rounded-xl border border-sky-200/80 bg-sky-50/80 px-3.5 py-3 text-left lg:mt-5">
+                  <p className="text-sm font-medium text-[#0F1B35]">
+                    Selected plan:{' '}
+                    <span className="font-semibold">{selectedPlan.displayName}</span>
+                  </p>
+                  <a
+                    href={LANDING_PRICING_URL}
+                    className="mt-1 inline-block text-sm font-medium text-[#2563EB] hover:text-[#1D4ED8]"
+                  >
+                    Change plan
+                  </a>
+                </div>
+              ) : null}
 
               <form
                 className="mt-6 w-full min-w-0 max-w-full space-y-5 lg:mt-10 lg:space-y-7"

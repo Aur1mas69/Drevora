@@ -13,10 +13,14 @@ import { ExportMenu } from '@/components/export/ExportMenu'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import { downloadTimesheetPdf, exportTimesheetsExcel } from '@/lib/export/modules/timesheetsExport'
-import { DEFAULT_TIMESHEET_WEEK_SETTINGS } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
   TimesheetEntryInput,
@@ -28,7 +32,6 @@ import type {
 } from '@/lib/timesheetTypes'
 import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
 import {
-  buildRecentWeekOptions,
   getDefaultWeekStartMonday,
   normalizeWeekStartForCompany,
   type TimesheetRoleFilter,
@@ -49,7 +52,6 @@ import {
   TimesheetsServiceError,
   upsertTimesheetEntries,
 } from '@/services/timesheetsService'
-import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import AdminLayout from '@/layouts/AdminLayout'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -59,9 +61,11 @@ type DrawerState = {
 }
 
 export default function TimesheetsPage() {
-  const { settings, companyName } = useCompanySettings()
+  const { settings, companyName, weekStarts, timezone, formatDate } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<TimesheetSummaryStats>({
@@ -80,7 +84,8 @@ export default function TimesheetsPage() {
   const [statusFilter, setStatusFilter] = useState<TimesheetStatusFilter>('all')
   const [roleFilter, setRoleFilter] = useState<TimesheetRoleFilter>('all')
   const [viewMode, setViewMode] = useState<TimesheetsViewMode>('current')
-  const [weekFilter, setWeekFilter] = useState(getDefaultWeekStartMonday())
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_TIMESHEET_PAGE_SIZE)
   const [sortBy, setSortBy] = useState<TimesheetsSortField>('createdAt')
@@ -102,29 +107,38 @@ export default function TimesheetsPage() {
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
   const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
 
-  const weekSettings = useMemo(
-    () =>
-      settings
-        ? {
-            timesheetWeekStartDay: settings.timesheetWeekStartDay,
-            timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
-            timesheetWeekResetDay: settings.timesheetWeekResetDay,
-          }
-        : DEFAULT_TIMESHEET_WEEK_SETTINGS,
-    [settings],
-  )
-
-  const weekOptions = useMemo(() => buildRecentWeekOptions(12, weekSettings), [weekSettings])
-  const weekDisplay = useMemo(
-    () => formatTimesheetWeekDisplay(weekFilter, weekSettings),
-    [weekFilter, weekSettings],
-  )
+  const dateRangeDisplay = useMemo(() => {
+    if (!dateFrom && !dateTo) {
+      return {
+        weekTitle: 'All timesheets',
+        weekRangeLabel: 'No date filter',
+      }
+    }
+    if (dateFrom && dateTo) {
+      return {
+        weekTitle: 'Date range',
+        weekRangeLabel: `${formatDate(dateFrom)} – ${formatDate(dateTo)}`,
+      }
+    }
+    if (dateFrom) {
+      return {
+        weekTitle: 'From date',
+        weekRangeLabel: `From ${formatDate(dateFrom)}`,
+      }
+    }
+    return {
+      weekTitle: 'To date',
+      weekRangeLabel: `To ${formatDate(dateTo)}`,
+    }
+  }, [dateFrom, dateTo, formatDate])
 
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     statusFilter !== 'all' ||
     roleFilter !== 'all' ||
-    viewMode !== 'current'
+    viewMode !== 'current' ||
+    dateFrom.length > 0 ||
+    dateTo.length > 0
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -138,7 +152,7 @@ export default function TimesheetsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, statusFilter, roleFilter, viewMode, weekFilter, sortBy, sortDir, pageSize])
+  }, [debouncedSearch, statusFilter, roleFilter, viewMode, dateFrom, dateTo, sortBy, sortDir, pageSize])
 
   const loadReferenceData = useCallback(async () => {
     const loadedDrivers = await fetchDrivers()
@@ -154,7 +168,8 @@ export default function TimesheetsPage() {
         search: debouncedSearch,
         status: statusFilter,
         role: roleFilter,
-        weekStart: weekFilter,
+        weekStartFrom: dateFrom || undefined,
+        weekStartTo: dateTo || undefined,
         viewMode,
         page,
         pageSize,
@@ -178,6 +193,8 @@ export default function TimesheetsPage() {
       setIsLoading(false)
     }
   }, [
+    dateFrom,
+    dateTo,
     debouncedSearch,
     page,
     pageSize,
@@ -186,7 +203,6 @@ export default function TimesheetsPage() {
     sortDir,
     statusFilter,
     viewMode,
-    weekFilter,
   ])
 
   useEffect(() => {
@@ -318,9 +334,12 @@ export default function TimesheetsPage() {
 
     setIsCleaningCurrentView(true)
     try {
-      // Scope: all non-cleaned timesheets for the currently displayed week only.
+      // Scope: non-cleaned timesheets for the company week matching From (or current week).
+      const cleanWeekStart = normalizeWeekStartForCompany(
+        dateFrom || getDefaultWeekStartMonday(),
+      )
       const { cleanedCount } = await cleanTimesheetsCurrentView({
-        weekStart: weekFilter,
+        weekStart: cleanWeekStart,
       })
 
       if (cleanedCount === 0) {
@@ -333,6 +352,8 @@ export default function TimesheetsPage() {
       setStatusFilter('all')
       setRoleFilter('all')
       setViewMode('current')
+      setDateFrom('')
+      setDateTo('')
       setSelectedIds(new Set())
       setPage(1)
       setIsCleanCurrentViewOpen(false)
@@ -431,14 +452,16 @@ export default function TimesheetsPage() {
       if (result.created) {
         setIsNewModalOpen(false)
         setCreateError(null)
-        setWeekFilter(result.timesheet.weekStart)
+        setDateFrom(result.timesheet.weekStart)
+        setDateTo(result.timesheet.weekStart)
         showToast('Timesheet created')
         void loadTimesheets()
         setDrawerState({ timesheet: result.timesheet, mode: 'edit' })
         return
       }
 
-      setWeekFilter(result.timesheet.weekStart)
+      setDateFrom(result.timesheet.weekStart)
+      setDateTo(result.timesheet.weekStart)
       void loadTimesheets()
       setIsNewModalOpen(false)
       setCreateError(null)
@@ -475,7 +498,9 @@ export default function TimesheetsPage() {
 
       setIsNewModalOpen(false)
       setCreateError(null)
-      setWeekFilter(normalizeWeekStartForCompany(weekStart))
+      const normalizedWeek = normalizeWeekStartForCompany(weekStart)
+      setDateFrom(normalizedWeek)
+      setDateTo(normalizedWeek)
       if (result.created === 0 && result.skipped > 0) {
         showToast(
           `Skipped ${result.skipped} existing timesheet${result.skipped === 1 ? '' : 's'}.`,
@@ -503,7 +528,7 @@ export default function TimesheetsPage() {
   }
 
   async function handleCreateWeeklyFromEmpty() {
-    await handleCreateBulk('driversByRole', weekFilter)
+    await handleCreateBulk('driversByRole', getDefaultWeekStartMonday())
   }
 
   function toggleSelect(id: string) {
@@ -582,13 +607,26 @@ export default function TimesheetsPage() {
   async function handleExportExcel() {
     setIsToolbarExporting(true)
     try {
+      const resolvedRange = resolveExportDateRange(exportDateRange, {
+        weekStarts,
+        timeZone: timezone,
+        formatDate,
+      })
+      const listDateLabel =
+        dateFrom || dateTo
+          ? dateFrom && dateTo
+            ? `${formatDate(dateFrom)} – ${formatDate(dateTo)}`
+            : dateFrom
+              ? `From ${formatDate(dateFrom)}`
+              : `To ${formatDate(dateTo)}`
+          : resolvedRange.label
       const meta = resolveExportMeta({
         companyName,
         logoUrl: settings?.logoUrl,
         generatedBy: session?.user.email ?? null,
         documentTitle: 'Timesheets',
         filterSummary: [
-          `Week ${weekFilter}`,
+          `Date ${listDateLabel}`,
           statusFilter !== 'all' ? `Status ${statusFilter}` : null,
           roleFilter !== 'all' ? `Role ${roleFilter}` : null,
           debouncedSearch ? `Search ${debouncedSearch}` : null,
@@ -598,7 +636,8 @@ export default function TimesheetsPage() {
       })
       await exportTimesheetsExcel(
         {
-          weekStart: weekFilter,
+          weekStartFrom: dateFrom || resolvedRange.dateFrom,
+          weekStartTo: dateTo || resolvedRange.dateTo,
           search: debouncedSearch || undefined,
           status: statusFilter,
           role: roleFilter,
@@ -646,8 +685,8 @@ export default function TimesheetsPage() {
 
         <TimesheetsSummaryStrip
           stats={stats}
-          weekTitle={weekDisplay.weekTitle}
-          weekRangeLabel={weekDisplay.weekRangeLabel}
+          weekTitle={dateRangeDisplay.weekTitle}
+          weekRangeLabel={dateRangeDisplay.weekRangeLabel}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
         />
@@ -661,9 +700,10 @@ export default function TimesheetsPage() {
           onRoleFilterChange={setRoleFilter}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          weekFilter={weekFilter}
-          onWeekFilterChange={setWeekFilter}
-          weekOptions={weekOptions}
+          dateFrom={dateFrom}
+          onDateFromChange={setDateFrom}
+          dateTo={dateTo}
+          onDateToChange={setDateTo}
           sortBy={sortBy}
           onSortByChange={setSortBy}
           sortDir={sortDir}
@@ -675,6 +715,8 @@ export default function TimesheetsPage() {
             setStatusFilter('all')
             setRoleFilter('all')
             setViewMode('current')
+            setDateFrom('')
+            setDateTo('')
           }}
           onCleanCurrentView={() => setIsCleanCurrentViewOpen(true)}
           onNewTimesheet={() => {
@@ -685,6 +727,8 @@ export default function TimesheetsPage() {
             <ExportMenu
               busy={isToolbarExporting}
               disabled={isLoading || isExporting}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'excel',
@@ -723,8 +767,8 @@ export default function TimesheetsPage() {
           </div>
         ) : showWeekEmptyState ? (
           <TimesheetsEmptyState
-            weekTitle={weekDisplay.weekTitle}
-            weekRangeLabel={weekDisplay.weekRangeLabel}
+            weekTitle={dateRangeDisplay.weekTitle}
+            weekRangeLabel={dateRangeDisplay.weekRangeLabel}
             onCreateWeekly={() => void handleCreateWeeklyFromEmpty()}
             onCreateSingle={() => setIsNewModalOpen(true)}
             isCreating={isSaving}
@@ -733,7 +777,7 @@ export default function TimesheetsPage() {
           <div className="rounded-[14px] border border-[rgba(75,120,220,0.10)] bg-white px-6 py-10 text-center dark:border-white/10 dark:bg-slate-900/70">
             <p className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">No matching timesheets</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Adjust filters or search to find records for {weekDisplay.weekTitle}.
+              Adjust filters or search to find matching timesheets.
             </p>
           </div>
         ) : (

@@ -22,6 +22,11 @@ import AdminLayout from '@/layouts/AdminLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
@@ -70,12 +75,15 @@ const vehicleUnavailableStatuses: VehicleStatus[] = [
 ]
 
 export default function VehicleChecksPage() {
-  const { companyName, settings, formatDate } = useCompanySettings()
+  const { companyName, settings, formatDate, weekStarts, timezone } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [moduleTab, setModuleTab] = useState<VehicleChecksModuleTab>('vehicle-checks')
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
+  const [exportRecordCount, setExportRecordCount] = useState(0)
   const [stats, setStats] = useState<VehicleCheckSummaryStats>({
     totalChecks: 0,
     checksToday: 0,
@@ -131,6 +139,16 @@ export default function VehicleChecksPage() {
     window.setTimeout(() => setToastMessage(null), 2800)
   }, [])
 
+  const resolvedExportDateRange = useMemo(
+    () =>
+      resolveExportDateRange(exportDateRange, {
+        weekStarts,
+        timeZone: timezone,
+        formatDate,
+      }),
+    [exportDateRange, formatDate, timezone, weekStarts],
+  )
+
   const exportQuery = useMemo(
     () => ({
       search: debouncedSearch || undefined,
@@ -139,8 +157,8 @@ export default function VehicleChecksPage() {
       reviewStatus: reviewStatusFilter,
       vehicleId: vehicleFilter,
       workerId: workerFilter,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
+      dateFrom: resolvedExportDateRange.dateFrom,
+      dateTo: resolvedExportDateRange.dateTo,
     }),
     [
       debouncedSearch,
@@ -149,8 +167,8 @@ export default function VehicleChecksPage() {
       reviewStatusFilter,
       vehicleFilter,
       workerFilter,
-      dateFrom,
-      dateTo,
+      resolvedExportDateRange.dateFrom,
+      resolvedExportDateRange.dateTo,
     ],
   )
 
@@ -161,8 +179,9 @@ export default function VehicleChecksPage() {
         logoUrl: settings?.logoUrl,
         generatedBy: session?.user.email ?? null,
         documentTitle: 'Vehicle Checks',
+        filterSummary: `Date ${resolvedExportDateRange.label}`,
       }),
-    [companyName, session?.user.email, settings?.logoUrl],
+    [companyName, resolvedExportDateRange.label, session?.user.email, settings?.logoUrl],
   )
 
   const exportConfirmFields = useMemo(() => {
@@ -180,26 +199,16 @@ export default function VehicleChecksPage() {
           : 'Selected worker'
     const resultLabel =
       resultFilter === 'all' ? 'All results' : formatVehicleCheckResultLabel(resultFilter)
-    const dateRangeLabel =
-      dateFrom && dateTo
-        ? `${formatDate(dateFrom)} – ${formatDate(dateTo)}`
-        : dateFrom
-          ? `From ${formatDate(dateFrom)}`
-          : dateTo
-            ? `Until ${formatDate(dateTo)}`
-            : 'All dates'
 
     return [
-      { label: 'Date range', value: dateRangeLabel },
+      { label: 'Date range', value: resolvedExportDateRange.label },
       { label: 'Vehicle', value: vehicleLabel },
       { label: 'Worker', value: workerLabel },
       { label: 'Result', value: resultLabel },
     ]
   }, [
-    dateFrom,
-    dateTo,
     drivers,
-    formatDate,
+    resolvedExportDateRange.label,
     resultFilter,
     vehicleFilter,
     vehicles,
@@ -224,6 +233,27 @@ export default function VehicleChecksPage() {
     vehicleFilter,
     workerFilter,
   ])
+
+  useEffect(() => {
+    if (!isExportDialogOpen || !companyReady) return
+
+    let cancelled = false
+    void fetchVehicleChecks({
+      ...exportQuery,
+      page: 1,
+      pageSize: 1,
+    })
+      .then((result) => {
+        if (!cancelled) setExportRecordCount(result.totalCount)
+      })
+      .catch(() => {
+        if (!cancelled) setExportRecordCount(0)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyReady, exportQuery, isExportDialogOpen])
 
   const loadReferenceData = useCallback(async () => {
     const [loadedVehicles, loadedDrivers] = await Promise.all([
@@ -616,6 +646,8 @@ export default function VehicleChecksPage() {
             <ExportMenu
               busy={isExporting}
               disabled={isLoading}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'open-export',
@@ -703,7 +735,7 @@ export default function VehicleChecksPage() {
         open={isExportDialogOpen}
         title="Export Vehicle Checks"
         fields={exportConfirmFields}
-        recordCount={totalCount}
+        recordCount={exportRecordCount}
         busy={isExporting}
         onClose={() => {
           if (isExporting) return
@@ -724,9 +756,9 @@ export default function VehicleChecksPage() {
           void exportVehicleChecksFilteredPdfs(exportQuery, exportMeta)
             .then(() => {
               showToast(
-                totalCount === 1
+                exportRecordCount === 1
                   ? 'Exported vehicle check to PDF'
-                  : `Exported ${totalCount} vehicle checks to PDF`,
+                  : `Exported ${exportRecordCount} vehicle checks to PDF`,
               )
               setIsExportDialogOpen(false)
             })

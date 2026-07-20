@@ -10,8 +10,19 @@ import { DocumentsPagination } from '@/components/documents/DocumentsPagination'
 import { DocumentsSummaryCards } from '@/components/documents/DocumentsSummaryCards'
 import { DocumentsToolbar } from '@/components/documents/DocumentsToolbar'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  rowMatchesExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
+import { toExportUserMessage } from '@/lib/export/exportErrors'
+import { resolveExportMeta } from '@/lib/export/exportMeta'
+import { exportDocumentsExcel } from '@/lib/export/modules/documentsExport'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   Document,
@@ -70,7 +81,14 @@ function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
 
 export default function DocumentsPage() {
   const navigate = useNavigate()
-  const { formatDate, settings: companySettings } = useCompanySettings()
+  const {
+    formatDate,
+    settings: companySettings,
+    companyName,
+    weekStarts,
+    timezone,
+  } = useCompanySettings()
+  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -94,6 +112,8 @@ export default function DocumentsPage() {
   const [vehicleFilter, setVehicleFilter] = useState(
     () => searchParams.get('vehicleId') ?? 'all',
   )
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_DOCUMENT_PAGE_SIZE)
 
@@ -104,6 +124,7 @@ export default function DocumentsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const hasActiveFilters =
@@ -418,6 +439,55 @@ export default function DocumentsPage() {
           vehicles={vehicles}
           onClearFilters={clearFilters}
           onAddDocument={openCreateModal}
+          secondaryActions={
+            <ExportMenu
+              busy={isExporting}
+              disabled={isLoading}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
+              actions={[
+                {
+                  id: 'excel',
+                  label: 'Export filtered results to Excel',
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
+                      // Primary list date is Expiry (DocumentsDataTable column).
+                      const exportItems = filteredItems.filter((document) =>
+                        rowMatchesExportDateRange(document.expiryDate, resolvedRange),
+                      )
+                      await exportDocumentsExcel(
+                        exportItems,
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: companySettings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Documents',
+                          filterSummary: `Date ${resolvedRange.label}`,
+                        }),
+                        [
+                          activeTab !== 'all' ? activeTab : null,
+                          resolvedRange.dateFrom || null,
+                          resolvedRange.dateTo || null,
+                          debouncedSearch || null,
+                        ],
+                      )
+                      showToast('Exported documents to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+              ]}
+            />
+          }
         />
 
         {loadError ? (

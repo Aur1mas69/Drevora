@@ -11,6 +11,12 @@ import {
   workerNeedsWorkerCode,
 } from '@/lib/workerCodeUtils'
 import { normalizeLicenceCategories, isEmploymentType } from '@/lib/workerProfileUtils'
+import {
+  formatWorkerPlanLimitError,
+  isWorkerPlanLimitError,
+  WORKER_PLAN_ALLOWANCE_UNAVAILABLE,
+  WORKER_PLAN_LIMIT_REACHED,
+} from '@/lib/workerAllowance'
 
 export type DriverStatus = 'Working' | 'Off Duty' | 'Holiday' | 'Suspended'
 export type LicenceCategory =
@@ -90,6 +96,8 @@ export type Driver = {
   postcode: string | null
   country: string | null
   avatarUrl: string | null
+  /** Null/undefined = active plan seat. Set when archived (former Worker). */
+  archivedAt: string | null
 }
 
 export type CreateDriverInput = {
@@ -206,6 +214,7 @@ type DriverRow = {
   postcode?: string | null
   country?: string | null
   avatar_url: string | null
+  archived_at?: string | null
 }
 
 const basicDriverSelectMinimal =
@@ -218,10 +227,10 @@ const basicDriverSelectWithAssignmentLegacy =
   'id, created_at, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
 
 const workerCoreSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -414,8 +423,22 @@ function isUniqueViolationError(error: SupabaseWriteError): boolean {
 }
 
 function formatWriteErrorMessage(error: SupabaseWriteError): string {
-  const parts = [error.message, error.details, error.hint].filter(Boolean)
-  return parts.join(' — ') || 'Unable to save worker.'
+  const combined = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' — ')
+  if (isWorkerPlanLimitError({ message: combined, code: error.code ?? null })) {
+    return formatWorkerPlanLimitError({ message: combined, code: error.code ?? null })
+  }
+  return combined || 'Unable to save worker.'
+}
+
+function planLimitErrorCodeFromMessage(message: string): string | null {
+  const upper = message.toUpperCase()
+  if (upper.includes(WORKER_PLAN_LIMIT_REACHED)) return WORKER_PLAN_LIMIT_REACHED
+  if (upper.includes(WORKER_PLAN_ALLOWANCE_UNAVAILABLE)) {
+    return WORKER_PLAN_ALLOWANCE_UNAVAILABLE
+  }
+  return null
 }
 
 function buildFullWritePayload(input: CreateDriverInput): Record<string, unknown> {
@@ -723,10 +746,17 @@ async function writeDriverPayloadWithFallback(
     break
   }
 
-  throw new DriversServiceError(
-    formatWriteErrorMessage(lastError ?? { message: 'Unable to save worker.' }),
-    lastError?.code ?? null,
-  )
+  {
+    const fallbackError = lastError ?? { message: 'Unable to save worker.' }
+    const combined = [fallbackError.message, fallbackError.details, fallbackError.hint]
+      .filter(Boolean)
+      .join(' — ')
+    const planCode = planLimitErrorCodeFromMessage(combined)
+    throw new DriversServiceError(
+      formatWriteErrorMessage(fallbackError),
+      planCode ?? lastError?.code ?? null,
+    )
+  }
 }
 
 async function persistEmploymentType(
@@ -940,6 +970,7 @@ function mapDriverRow(row: DriverRow): Driver {
     postcode: row.postcode?.trim() || null,
     country: row.country?.trim() || null,
     avatarUrl: row.avatar_url,
+    archivedAt: row.archived_at?.trim() || null,
   }
 }
 
@@ -1222,14 +1253,32 @@ export async function fetchDriverByEmail(email: string): Promise<Driver | null> 
 export async function createDriver(input: CreateDriverInput): Promise<Driver> {
   const companyId = requireVerifiedCompanyId()
   const companyName = getVerifiedCompanyName()
-  const insertedId = await createDriverRecord(input, companyId, companyName)
-  const driver = await fetchDriverRowById(insertedId, companyId)
+  try {
+    const insertedId = await createDriverRecord(input, companyId, companyName)
+    const driver = await fetchDriverRowById(insertedId, companyId)
 
-  if (!driver) {
-    throw new DriversServiceError('Worker was created but could not be loaded.')
+    if (!driver) {
+      throw new DriversServiceError('Worker was created but could not be loaded.')
+    }
+
+    return persistWorkerCodeIfNeeded(driver)
+  } catch (error) {
+    if (error instanceof DriversServiceError && isWorkerPlanLimitError(error)) {
+      throw new DriversServiceError(
+        formatWorkerPlanLimitError(error),
+        planLimitErrorCodeFromMessage(error.message) ?? error.code,
+      )
+    }
+    if (isWorkerPlanLimitError(error)) {
+      throw new DriversServiceError(
+        formatWorkerPlanLimitError(error),
+        planLimitErrorCodeFromMessage(
+          error instanceof Error ? error.message : '',
+        ),
+      )
+    }
+    throw error
   }
-
-  return persistWorkerCodeIfNeeded(driver)
 }
 
 export async function updateDriver(
@@ -1337,6 +1386,83 @@ export async function deleteDriver(id: string): Promise<void> {
   }
 }
 
+/**
+ * Soft-archive a Worker. Frees an active plan seat without deleting history.
+ */
+export async function archiveDriver(id: string): Promise<Driver> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .is('archived_at', null)
+    .select('id')
+
+  if (error) {
+    if (isMissingColumnWriteError(error)) {
+      throw new DriversServiceError(
+        'Worker archiving is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    throw new DriversServiceError(formatWriteErrorMessage(error), error.code ?? null)
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new DriversServiceError(
+      'Worker could not be archived for your company. Refresh and try again.',
+    )
+  }
+
+  const driver = await fetchDriverRowById(id, companyId)
+  if (!driver) {
+    throw new DriversServiceError('Worker was archived but could not be loaded.')
+  }
+
+  return persistWorkerCodeIfNeeded(driver)
+}
+
+/**
+ * Reactivate an archived Worker when a plan seat is available.
+ * Server trigger rejects with WORKER_PLAN_LIMIT_REACHED when full.
+ */
+export async function reactivateDriver(id: string): Promise<Driver> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .update({ archived_at: null })
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .not('archived_at', 'is', null)
+    .select('id')
+
+  if (error) {
+    if (isMissingColumnWriteError(error)) {
+      throw new DriversServiceError(
+        'Worker reactivation is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    const formatted = formatWriteErrorMessage(error)
+    throw new DriversServiceError(
+      formatted,
+      planLimitErrorCodeFromMessage(formatted) ?? error.code ?? null,
+    )
+  }
+
+  if ((data ?? []).length === 0) {
+    throw new DriversServiceError(
+      'Worker could not be reactivated for your company. Refresh and try again.',
+    )
+  }
+
+  const driver = await fetchDriverRowById(id, companyId)
+  if (!driver) {
+    throw new DriversServiceError('Worker was reactivated but could not be loaded.')
+  }
+
+  return persistWorkerCodeIfNeeded(driver)
+}
+
 export const driversService = {
   fetchDrivers,
   fetchDriversWithCompliance,
@@ -1347,5 +1473,7 @@ export const driversService = {
   updateWorkerHolidayEntitlement,
   updateWorkerAvatarUrl,
   deleteDriver,
+  archiveDriver,
+  reactivateDriver,
   getDriverFormValues,
 }

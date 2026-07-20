@@ -99,8 +99,27 @@ alter table public.drivers
   add column if not exists postcode text,
   add column if not exists country text default 'United Kingdom';
 
+alter table public.drivers
+  add column if not exists company_id uuid references public.companies (id) on delete restrict;
+
+alter table public.drivers
+  add column if not exists archived_at timestamptz;
+
+comment on column public.drivers.archived_at is
+  'When set, the Worker is archived/former and does not occupy an active plan seat. Duty status is unrelated.';
+
 create index if not exists drivers_default_vehicle_id_idx
   on public.drivers (default_vehicle_id);
+
+create index if not exists drivers_company_id_idx
+  on public.drivers (company_id);
+
+create index if not exists drivers_company_id_archived_at_idx
+  on public.drivers (company_id, archived_at);
+
+create index if not exists drivers_company_id_active_idx
+  on public.drivers (company_id)
+  where archived_at is null;
 
 create or replace function public.generate_worker_code()
 returns text
@@ -240,6 +259,25 @@ alter table public.vehicles
   add column if not exists off_road_return date,
   add column if not exists off_road_notes text;
 
+alter table public.vehicles
+  add column if not exists company_id uuid references public.companies (id) on delete restrict;
+
+alter table public.vehicles
+  add column if not exists trailer_number text;
+
+alter table public.vehicles
+  add column if not exists archived_at timestamptz;
+
+comment on column public.vehicles.archived_at is
+  'When set, the Vehicle is archived/former and does not occupy an active plan seat. Operational status is unrelated.';
+
+create index if not exists vehicles_company_id_idx on public.vehicles (company_id);
+create index if not exists vehicles_company_id_archived_at_idx
+  on public.vehicles (company_id, archived_at);
+create index if not exists vehicles_company_id_active_idx
+  on public.vehicles (company_id)
+  where archived_at is null;
+
 create index if not exists vehicles_registration_idx on public.vehicles (registration);
 create index if not exists vehicles_status_idx on public.vehicles (status);
 create index if not exists vehicles_availability_status_idx on public.vehicles (availability_status);
@@ -354,7 +392,19 @@ create table if not exists public.companies (
     "Other": { "paidHolidayEnabled": true, "annualPaidHolidayDays": 0, "bankHolidayEntitlementDays": 0, "unpaidLeaveAllowed": true }
   }'::jsonb,
   consumable_default_prices jsonb not null default '{}'::jsonb,
+  plan_code text,
+  plan_selected_at timestamptz,
+  trial_started_at timestamptz,
+  subscription_status text,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
+  constraint companies_plan_code_check check (
+    plan_code is null
+    or plan_code in ('starter', 'growing', 'pro', 'custom')
+  ),
+  constraint companies_subscription_status_check check (
+    subscription_status is null
+    or subscription_status in ('trial')
+  ),
   constraint companies_date_format_check check (date_format in ('DMY', 'MDY', 'YMD')),
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
   constraint companies_theme_check check (theme in ('light', 'dark', 'system')),
@@ -1366,6 +1416,318 @@ create index if not exists notification_reads_user_id_idx
   on public.notification_reads (user_id);
 create index if not exists notification_reads_notification_id_idx
   on public.notification_reads (notification_id);
+
+
+-- -----------------------------------------------------------------------------
+-- Company subscription plan helpers (trial preparation — no Stripe)
+-- Canonical definition: migrations/20260720180000_company_subscription_plan_fields.sql
+-- -----------------------------------------------------------------------------
+
+create or replace function public.drevora_protect_company_plan_columns()
+returns trigger
+language plpgsql
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if current_setting('drevora.allow_plan_write', true) is distinct from 'on' then
+      new.plan_code := old.plan_code;
+      new.plan_selected_at := old.plan_selected_at;
+      new.trial_started_at := old.trial_started_at;
+      new.subscription_status := old.subscription_status;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists companies_protect_plan_columns on public.companies;
+create trigger companies_protect_plan_columns
+  before update on public.companies
+  for each row
+  execute function public.drevora_protect_company_plan_columns();
+
+create or replace function public.drevora_create_company_with_trial_plan(
+  p_company_name text,
+  p_plan_code text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_company_id uuid;
+  v_name text := nullif(trim(coalesce(p_company_name, '')), '');
+  v_plan_code text := lower(trim(coalesce(p_plan_code, '')));
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if v_name is null or char_length(v_name) < 2 then
+    raise exception 'Company name is required';
+  end if;
+
+  if char_length(v_name) > 120 then
+    raise exception 'Company name is too long';
+  end if;
+
+  if v_plan_code not in ('starter', 'growing', 'pro') then
+    raise exception 'Invalid plan code';
+  end if;
+
+  if exists (
+    select 1
+    from public.company_members cm
+    where cm.user_id = v_user_id
+      and cm.is_active = true
+  ) then
+    raise exception 'User already belongs to a company';
+  end if;
+
+  perform set_config('drevora.allow_plan_write', 'on', true);
+
+  insert into public.companies (
+    name,
+    plan_code,
+    plan_selected_at,
+    trial_started_at,
+    subscription_status
+  )
+  values (
+    v_name,
+    v_plan_code,
+    now(),
+    now(),
+    'trial'
+  )
+  returning id into v_company_id;
+
+  insert into public.company_members (
+    user_id,
+    company_id,
+    role,
+    is_active
+  )
+  values (
+    v_user_id,
+    v_company_id,
+    'Admin',
+    true
+  );
+
+  return v_company_id;
+end;
+$$;
+
+revoke all on function public.drevora_create_company_with_trial_plan(text, text) from public;
+revoke all on function public.drevora_create_company_with_trial_plan(text, text) from anon;
+grant execute on function public.drevora_create_company_with_trial_plan(text, text) to authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- Worker plan allowance enforcement (no Stripe)
+-- Canonical definition: migrations/20260720190000_worker_plan_allowance_enforcement.sql
+-- -----------------------------------------------------------------------------
+
+create or replace function public.drevora_active_worker_limit_for_plan(p_plan_code text)
+returns integer
+language sql
+immutable
+as $$
+  select case lower(trim(coalesce(p_plan_code, '')))
+    when 'starter' then 20
+    when 'growing' then 50
+    when 'pro' then 100
+    else null
+  end;
+$$;
+
+create or replace function public.drevora_enforce_worker_plan_allowance()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_company_id uuid;
+  v_plan_code text;
+  v_limit integer;
+  v_active_count integer;
+  v_becoming_active boolean := false;
+begin
+  if tg_op = 'INSERT' then
+    v_becoming_active := (new.archived_at is null);
+  elsif tg_op = 'UPDATE' then
+    v_becoming_active :=
+      (old.archived_at is not null and new.archived_at is null)
+      or (
+        new.archived_at is null
+        and old.company_id is distinct from new.company_id
+      );
+  end if;
+
+  if not v_becoming_active then
+    return new;
+  end if;
+
+  v_company_id := new.company_id;
+  if v_company_id is null then
+    raise exception 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Worker company_id is required for plan allowance checks.';
+  end if;
+
+  select c.plan_code
+  into v_plan_code
+  from public.companies c
+  where c.id = v_company_id
+  for update;
+
+  if not found then
+    raise exception 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Company not found for Worker plan allowance check.';
+  end if;
+
+  v_limit := public.drevora_active_worker_limit_for_plan(v_plan_code);
+
+  if v_limit is null then
+    raise exception 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Assign a valid starter/growing/pro plan, or configure a trusted Custom Fleet limit.';
+  end if;
+
+  select count(*)::integer
+  into v_active_count
+  from public.drivers d
+  where d.company_id = v_company_id
+    and d.archived_at is null
+    and (tg_op = 'INSERT' or d.id is distinct from new.id);
+
+  if v_active_count >= v_limit then
+    raise exception 'WORKER_PLAN_LIMIT_REACHED'
+      using errcode = 'P0001',
+            hint = format(
+              'Active Workers %s / %s. Archive an inactive Worker or change the company plan.',
+              v_active_count,
+              v_limit
+            );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists drivers_enforce_worker_plan_allowance on public.drivers;
+create trigger drivers_enforce_worker_plan_allowance
+  before insert or update of archived_at, company_id
+  on public.drivers
+  for each row
+  execute function public.drevora_enforce_worker_plan_allowance();
+
+
+-- -----------------------------------------------------------------------------
+-- Vehicle plan allowance enforcement (no Stripe)
+-- Canonical definition: migrations/20260720200000_vehicle_plan_allowance_enforcement.sql
+-- -----------------------------------------------------------------------------
+
+create or replace function public.drevora_active_vehicle_limit_for_plan(p_plan_code text)
+returns integer
+language sql
+immutable
+as $$
+  select case lower(trim(coalesce(p_plan_code, '')))
+    when 'starter' then 10
+    when 'growing' then 25
+    when 'pro' then 50
+    else null
+  end;
+$$;
+
+create or replace function public.drevora_enforce_vehicle_plan_allowance()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_company_id uuid;
+  v_plan_code text;
+  v_limit integer;
+  v_active_count integer;
+  v_becoming_active boolean := false;
+begin
+  if tg_op = 'INSERT' then
+    v_becoming_active := (new.archived_at is null);
+  elsif tg_op = 'UPDATE' then
+    v_becoming_active :=
+      (old.archived_at is not null and new.archived_at is null)
+      or (
+        new.archived_at is null
+        and old.company_id is distinct from new.company_id
+      );
+  end if;
+
+  if not v_becoming_active then
+    return new;
+  end if;
+
+  v_company_id := new.company_id;
+  if v_company_id is null then
+    raise exception 'VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Vehicle company_id is required for plan allowance checks.';
+  end if;
+
+  select c.plan_code
+  into v_plan_code
+  from public.companies c
+  where c.id = v_company_id
+  for update;
+
+  if not found then
+    raise exception 'VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Company not found for Vehicle plan allowance check.';
+  end if;
+
+  v_limit := public.drevora_active_vehicle_limit_for_plan(v_plan_code);
+
+  if v_limit is null then
+    raise exception 'VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE'
+      using errcode = 'P0001',
+            hint = 'Assign a valid starter/growing/pro plan, or configure a trusted Custom Fleet Vehicle limit.';
+  end if;
+
+  select count(*)::integer
+  into v_active_count
+  from public.vehicles v
+  where v.company_id = v_company_id
+    and v.archived_at is null
+    and (tg_op = 'INSERT' or v.id is distinct from new.id);
+
+  if v_active_count >= v_limit then
+    raise exception 'VEHICLE_PLAN_LIMIT_REACHED'
+      using errcode = 'P0001',
+            hint = format(
+              'Active Vehicles %s / %s. Archive an inactive Vehicle or change the company plan.',
+              v_active_count,
+              v_limit
+            );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists vehicles_enforce_vehicle_plan_allowance on public.vehicles;
+create trigger vehicles_enforce_vehicle_plan_allowance
+  before insert or update of archived_at, company_id
+  on public.vehicles
+  for each row
+  execute function public.drevora_enforce_vehicle_plan_allowance();
 
 
 -- -----------------------------------------------------------------------------

@@ -17,6 +17,11 @@ import { DeleteConsumableModal } from '@/components/consumables/DeleteConsumable
 import { ExportMenu } from '@/components/export/ExportMenu'
 import AdminLayout from '@/layouts/AdminLayout'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  DEFAULT_EXPORT_DATE_RANGE,
+  resolveExportDateRange,
+  type ExportDateRangeSelection,
+} from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
@@ -60,7 +65,13 @@ function filtersAreDefault(filters: ConsumablesFilterValues): boolean {
 
 export default function ConsumablesPage() {
   const [searchParams] = useSearchParams()
-  const { companyName, settings: companySettings } = useCompanySettings()
+  const {
+    companyName,
+    settings: companySettings,
+    weekStarts,
+    timezone,
+    formatDate,
+  } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<Consumable[]>([])
@@ -72,6 +83,8 @@ export default function ConsumablesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<ConsumablesFilterValues>(DEFAULT_CONSUMABLES_FILTERS)
+  const [exportDateRange, setExportDateRange] =
+    useState<ExportDateRangeSelection>(DEFAULT_EXPORT_DATE_RANGE)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_CONSUMABLE_PAGE_SIZE)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -395,6 +408,8 @@ export default function ConsumablesPage() {
             <ExportMenu
               busy={isExporting}
               disabled={isLoading}
+              dateRange={exportDateRange}
+              onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'excel',
@@ -402,13 +417,18 @@ export default function ConsumablesPage() {
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
                       await exportConsumablesExcel(
                         {
                           search: debouncedSearch || undefined,
                           type: 'all',
                           vehicleId: filters.vehicleId,
-                          dateFrom: listDateRange.dateFrom,
-                          dateTo: listDateRange.dateTo,
+                          dateFrom: resolvedRange.dateFrom,
+                          dateTo: resolvedRange.dateTo,
                           viewMode: filters.viewMode,
                         },
                         resolveExportMeta({
@@ -416,6 +436,7 @@ export default function ConsumablesPage() {
                           logoUrl: companySettings?.logoUrl,
                           generatedBy: session?.user.email ?? null,
                           documentTitle: 'Consumables',
+                          filterSummary: `Date ${resolvedRange.label}`,
                         }),
                       )
                       showToast('Exported consumables to Excel')
@@ -432,13 +453,18 @@ export default function ConsumablesPage() {
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
                       await exportConsumablesPdfSummary(
                         {
                           search: debouncedSearch || undefined,
                           type: 'all',
                           vehicleId: filters.vehicleId,
-                          dateFrom: listDateRange.dateFrom,
-                          dateTo: listDateRange.dateTo,
+                          dateFrom: resolvedRange.dateFrom,
+                          dateTo: resolvedRange.dateTo,
                           viewMode: filters.viewMode,
                         },
                         resolveExportMeta({
@@ -447,7 +473,7 @@ export default function ConsumablesPage() {
                           generatedBy: session?.user.email ?? null,
                           documentTitle: 'Consumables Summary',
                           filterSummary: [
-                            filters.period !== 'all_time' ? `Period ${filters.period}` : null,
+                            `Date ${resolvedRange.label}`,
                             filters.vehicleId !== 'all' ? 'Vehicle filter' : null,
                             filters.viewMode !== 'current' ? `View ${filters.viewMode}` : null,
                             debouncedSearch ? `Search ${debouncedSearch}` : null,

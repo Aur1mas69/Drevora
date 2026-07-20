@@ -421,6 +421,7 @@ function buildDashboardVehicle(
     availabilityRecords: availabilityRecords.filter(
       (record) => record.vehicleId === row.id,
     ),
+    archivedAt: null,
   }
 }
 

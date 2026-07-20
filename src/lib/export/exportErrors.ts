@@ -1,4 +1,4 @@
-export const EXPORT_ERROR_EMPTY = 'No records match the current filters.'
+export const EXPORT_ERROR_EMPTY = 'No records found for this date range'
 export const EXPORT_ERROR_GENERIC = 'The export could not be generated. Please try again.'
 export const EXPORT_ERROR_TOO_LARGE =
   'The selected export is too large. Narrow the filters and try again.'
