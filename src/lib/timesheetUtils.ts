@@ -125,19 +125,165 @@ export function roundHoursTwoDecimals(value: number): number {
 }
 
 /**
- * Weekend guaranteed paid hours:
- * totalPaid = guaranteedPaidHours + max(actualWorked - overtimeStartsAfter, 0) * multiplier
- * Actual worked hours are NOT added on top of the guarantee.
+ * Decimal-hour duration between start and finish (supports overnight).
+ * Payroll logic stays in decimal hours — clock minutes are only parsed from HH:mm.
  */
-export function calculateWeekendGuaranteedPaidHours(
-  actualWorkedHours: number,
+export function calculateGrossShiftHours(
+  startTime: string | null,
+  finishTime: string | null,
+): number {
+  const start = parseTimeToMinutes(startTime)
+  const finish = parseTimeToMinutes(finishTime)
+  if (start === null || finish === null) return 0
+
+  const spanMinutes = calculateShiftSpanMinutes(start, finish)
+  return spanMinutes / 60
+}
+
+export type WeekendPayableBreakdown = {
+  /** Displayed / payable Basic Hours. */
+  basicHours: number
+  /** Gross hours after the overtime threshold (before multiplier). */
+  overtimeWorkedHours: number
+  /** Paid overtime hours after multiplier. */
+  overtimePaidHours: number
+  /** basicHours + overtimePaidHours (before manual Additional Hours). */
+  basePayableHours: number
+  /** True when gross shift hours reached the overtime threshold. */
+  guaranteeApplied: boolean
+}
+
+/**
+ * Weekend guaranteed-hours rule (decimal hours throughout):
+ *
+ * grossShiftHours = duration start→finish (break is ignored for threshold/OT)
+ *
+ * if gross < startsAfter:
+ *   basic = gross, OT paid = 0
+ * else:
+ *   basic = guaranteedPaidHours
+ *   OT paid = (gross − startsAfter) × multiplier
+ */
+export function calculateWeekendPayableBreakdown(
+  grossShiftHours: number,
   guaranteedPaidHours: number,
   overtimeStartsAfter: number,
   multiplier: number,
-  additionalHours = 0,
+): WeekendPayableBreakdown {
+  const gross = Math.max(0, grossShiftHours)
+  if (gross <= 0) {
+    return {
+      basicHours: 0,
+      overtimeWorkedHours: 0,
+      overtimePaidHours: 0,
+      basePayableHours: 0,
+      guaranteeApplied: false,
+    }
+  }
+
+  if (gross < overtimeStartsAfter) {
+    return {
+      basicHours: gross,
+      overtimeWorkedHours: 0,
+      overtimePaidHours: 0,
+      basePayableHours: gross,
+      guaranteeApplied: false,
+    }
+  }
+
+  const overtimeWorkedHours = gross - overtimeStartsAfter
+  const overtimePaidHours = overtimeWorkedHours * multiplier
+  return {
+    basicHours: guaranteedPaidHours,
+    overtimeWorkedHours,
+    overtimePaidHours,
+    basePayableHours: guaranteedPaidHours + overtimePaidHours,
+    guaranteeApplied: true,
+  }
+}
+
+/**
+ * Weekend payable total in decimal hours.
+ * Only explicitly entered manual Additional Hours are added (not paid break).
+ */
+export function calculateWeekendGuaranteedPaidHours(
+  grossShiftHours: number,
+  guaranteedPaidHours: number,
+  overtimeStartsAfter: number,
+  multiplier: number,
+  manualAdditionalHours = 0,
 ): number {
-  const overtimeHours = Math.max(actualWorkedHours - overtimeStartsAfter, 0)
-  return guaranteedPaidHours + overtimeHours * multiplier + additionalHours
+  const breakdown = calculateWeekendPayableBreakdown(
+    grossShiftHours,
+    guaranteedPaidHours,
+    overtimeStartsAfter,
+    multiplier,
+  )
+  return (
+    breakdown.basePayableHours + Math.max(0, manualAdditionalHours)
+  )
+}
+
+/** Shared day display/payable result for Basic, OT and Total. */
+export function getEntryPayableDisplayResult(
+  entry: {
+    dayDate: string
+    startTime: string | null
+    finishTime: string | null
+    totalMinutes: number
+    overtimeMinutes: number
+    additionalHours: number
+    breakMinutes: number
+  },
+  options: {
+    overtimeRules?: Partial<TimesheetOvertimeRules>
+    paidBreaks?: boolean
+  } = {},
+): {
+  basicHours: number
+  overtimeDisplayHours: number
+  /** Payable Additional Hours for this day (manual only on weekend guarantee days). */
+  additionalHours: number
+  totalPaidHours: number
+  weekendGuaranteeDay: boolean
+} {
+  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
+  const paidBreaks = options.paidBreaks ?? false
+  const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+  const manualAdditional = Math.max(0, entry.additionalHours ?? 0)
+
+  if (dayRules.guaranteedPaidHours != null) {
+    const gross = calculateGrossShiftHours(entry.startTime, entry.finishTime)
+    const breakdown = calculateWeekendPayableBreakdown(
+      gross,
+      dayRules.guaranteedPaidHours,
+      dayRules.afterHours,
+      dayRules.multiplier,
+    )
+    return {
+      basicHours: breakdown.basicHours,
+      overtimeDisplayHours: breakdown.overtimePaidHours,
+      additionalHours: manualAdditional,
+      totalPaidHours: breakdown.basePayableHours + manualAdditional,
+      weekendGuaranteeDay: true,
+    }
+  }
+
+  const weekdayAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  return {
+    basicHours: entry.totalMinutes / 60,
+    overtimeDisplayHours: (entry.overtimeMinutes ?? 0) / 60,
+    additionalHours: weekdayAdditional,
+    totalPaidHours: calculateEntryPaidEquivalentHours(
+      {
+        totalMinutes: entry.totalMinutes,
+        overtimeMinutes: entry.overtimeMinutes,
+        additionalHours: weekdayAdditional,
+      },
+      dayRules.multiplier,
+    ),
+    weekendGuaranteeDay: false,
+  }
 }
 
 export function calculateEntryPaidEquivalentHours(
@@ -214,69 +360,60 @@ export function summarizeTimesheetEntries(
   manualAdditionalHours: number
   totalHours: number
 } {
-  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
   const paidBreaks = options.paidBreaks ?? false
 
-  let workedMinutes = 0
+  let basicHoursTotal = 0
   let breakMinutes = 0
-  let overtimeMinutes = 0
+  let overtimeDisplayHours = 0
   let paidBreakMinutesTotal = 0
   let manualAdditionalHoursTotal = 0
   let additionalHoursTotal = 0
   let totalPayableHours = 0
 
   for (const entry of entries) {
-    workedMinutes += entry.totalMinutes
-    overtimeMinutes += entry.overtimeMinutes ?? 0
-
     const manualAdditional = entry.additionalHours ?? 0
     const paidBreakMinutes = getEntryPaidBreakMinutes(entry, paidBreaks)
-    const combinedAdditional = manualAdditional + paidBreakMinutes / 60
-
     manualAdditionalHoursTotal += manualAdditional
-    paidBreakMinutesTotal += paidBreakMinutes
-    additionalHoursTotal += combinedAdditional
 
     if (entryHasStartAndFinish(entry)) {
       breakMinutes += entry.breakMinutes
     }
 
-    const hasPayableHours =
-      entry.totalMinutes > 0 || combinedAdditional > 0
+    const display = getEntryPayableDisplayResult(entry, {
+      overtimeRules: options.overtimeRules,
+      paidBreaks,
+    })
 
-    if (hasPayableHours) {
-      const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
-      if (dayRules.guaranteedPaidHours != null) {
-        totalPayableHours += calculateWeekendGuaranteedPaidHours(
-          entry.totalMinutes / 60,
-          dayRules.guaranteedPaidHours,
-          dayRules.afterHours,
-          dayRules.multiplier,
-          combinedAdditional,
-        )
-      } else {
-        totalPayableHours += calculateEntryPaidEquivalentHours(
-          {
-            totalMinutes: entry.totalMinutes,
-            overtimeMinutes: entry.overtimeMinutes,
-            additionalHours: combinedAdditional,
-          },
-          dayRules.multiplier,
-        )
-      }
+    const hasPayableHours =
+      display.basicHours > 0 ||
+      display.overtimeDisplayHours > 0 ||
+      display.additionalHours > 0 ||
+      entry.totalMinutes > 0
+
+    if (!hasPayableHours) continue
+
+    basicHoursTotal += display.basicHours
+    overtimeDisplayHours += display.overtimeDisplayHours
+    additionalHoursTotal += display.additionalHours
+    totalPayableHours += display.totalPaidHours
+
+    // Paid-break minutes are tracked for weekday Additional breakdown only.
+    if (!display.weekendGuaranteeDay) {
+      paidBreakMinutesTotal += paidBreakMinutes
     }
   }
 
   return {
-    workedMinutes,
-    workedHours: Math.round((workedMinutes / 60) * 100) / 100,
+    // workedMinutes kept for existing UI formatters; sourced from decimal Basic Hours.
+    workedMinutes: Math.round(basicHoursTotal * 60),
+    workedHours: roundHoursTwoDecimals(basicHoursTotal),
     breakMinutes,
-    breakHours: roundHoursOneDecimal(breakMinutes / 60),
-    overtimeHours: roundHoursOneDecimal(overtimeMinutes / 60),
-    additionalHours: roundHoursOneDecimal(additionalHoursTotal),
+    breakHours: roundHoursTwoDecimals(breakMinutes / 60),
+    overtimeHours: roundHoursTwoDecimals(overtimeDisplayHours),
+    additionalHours: roundHoursTwoDecimals(additionalHoursTotal),
     paidBreakMinutes: paidBreakMinutesTotal,
-    manualAdditionalHours: roundHoursOneDecimal(manualAdditionalHoursTotal),
-    // Payable Total Hours — kept at two dp internally; display via formatTotalHours → h/m.
+    manualAdditionalHours: roundHoursTwoDecimals(manualAdditionalHoursTotal),
+    // Payable Total Hours — decimal throughout; display via formatTotalHours → 2 dp.
     totalHours: roundHoursTwoDecimals(totalPayableHours),
   }
 }
@@ -325,6 +462,11 @@ export function calculateEntryTotalHours(
 }
 
 
+/**
+ * @deprecated Legacy aggregator without per-day start/finish.
+ * Cannot apply weekend guaranteed-hours rules. Prefer summarizeTimesheetEntries
+ * / getEntryPayableDisplayResult for all payroll display paths.
+ */
 export function summarizeTimesheetEntriesFromTotals(
   totals: {
     workedMinutes: number
@@ -500,20 +642,24 @@ export function formatSubmittedAtDisplay(
   return formatTimesheetSubmittedAt(iso) ?? '—'
 }
 
+/**
+ * Payroll decimal-hours display (Basic, OT, Additional, Total).
+ * Always two decimal places — never converts to "Xh Ym".
+ */
 export function formatHours(value: number): string {
   if (value <= 0) return '—'
-  return formatHoursFromMinutes(Math.round(value * 60))
+  return Number(value).toFixed(2)
 }
 
 /**
- * Payable Total Hours display as hours-and-minutes.
- * Converts via whole minutes so 13.75h → 13h 45m (never 13h 75m).
+ * Payable Total Hours display as decimal hours (same payroll formatter).
  */
 export function formatTotalHours(value: number): string {
   if (value <= 0) return '—'
-  return formatHoursFromMinutes(Math.round(roundHoursTwoDecimals(value) * 60))
+  return Number(roundHoursTwoDecimals(value)).toFixed(2)
 }
 
+/** Duration formatter for break minutes and similar non-payroll time spans. */
 export function formatHoursFromMinutes(minutes: number): string {
   if (minutes <= 0) return '—'
 
@@ -740,10 +886,24 @@ export function recalculateEntryInputs(
   return entries.map((entry) => {
     const totalMinutes = calculateEntryTotalMinutes(entry, { paidBreaks })
     const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
-    const overtimeMinutes =
-      overtimeMode === 'Automatic'
-        ? calculateAutomaticOvertimeMinutes(totalMinutes, dayRules.afterHours)
-        : entry.overtimeMinutes
+
+    let overtimeMinutes = entry.overtimeMinutes
+    if (overtimeMode === 'Automatic') {
+      if (dayRules.guaranteedPaidHours != null) {
+        // Weekend OT worked hours from gross shift (decimal), stored as minutes only.
+        const grossHours = calculateGrossShiftHours(entry.startTime, entry.finishTime)
+        const overtimeWorkedHours =
+          grossHours >= dayRules.afterHours
+            ? grossHours - dayRules.afterHours
+            : 0
+        overtimeMinutes = Math.round(overtimeWorkedHours * 60)
+      } else {
+        overtimeMinutes = calculateAutomaticOvertimeMinutes(
+          totalMinutes,
+          dayRules.afterHours,
+        )
+      }
+    }
 
     return {
       ...entry,

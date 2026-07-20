@@ -5,7 +5,7 @@ import { formatDateFromIso, getWeekdayLabels } from '@/lib/dateTimeFormat'
 import { normalizeHolidayIsoDate, toLocalIsoDate } from '@/lib/holidayRequestUtils'
 import { cn } from '@/lib/utils'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 /** Holiday date pickers always use Monday-first weeks. */
 const HOLIDAY_WEEK_STARTS = 'monday' as const
@@ -23,6 +23,8 @@ type HolidayDateInputProps = {
   clearable?: boolean
   /** Full-width popover for use inside modals. */
   layout?: 'default' | 'modal'
+  /** Horizontal alignment of the calendar popover relative to the input. */
+  popoverAlign?: 'start' | 'end'
 }
 
 type CalendarDay = {
@@ -91,7 +93,7 @@ function DatePickerPanel({
   }
 
   return (
-    <div className={cn('min-w-0', layout === 'modal' ? 'w-full' : 'w-[17rem] max-w-full')}>
+    <div className={cn('min-w-0', layout === 'modal' ? 'w-full' : 'w-full')}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <button
           type="button"
@@ -114,13 +116,14 @@ function DatePickerPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+      {/* Fixed 7-column grid — parent must be wide enough for 3-letter weekday labels. */}
+      <div className="grid w-full grid-cols-7 gap-1">
         {weekdayLabels.map((label) => (
           <div
             key={label}
-            className="py-1 text-center text-[10px] font-bold uppercase tracking-[0.04em] text-[#5499BF]"
+            className="flex h-7 min-w-0 items-center justify-center text-[10px] font-semibold uppercase leading-none tracking-wide text-[#5499BF]"
           >
-            {label}
+            <span className="block w-full truncate text-center">{label}</span>
           </div>
         ))}
         {days.map((day) => {
@@ -166,13 +169,16 @@ export function HolidayDateInput({
   blurOnSelect = false,
   clearable = false,
   layout = 'default',
+  popoverAlign = 'start',
 }: HolidayDateInputProps) {
   const { dateFormat } = useCompanySettings()
   const group = useHolidayDatePickerGroup()
   const pickerId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
   const [localOpen, setLocalOpen] = useState(false)
+  const [popoverOffset, setPopoverOffset] = useState({ x: 0, y: 0 })
   const selectedDate = parseIsoDate(value)
   const [viewDate, setViewDate] = useState(() => selectedDate ?? new Date())
 
@@ -193,7 +199,10 @@ export function HolidayDateInput({
   }, [value])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      setPopoverOffset({ x: 0, y: 0 })
+      return
+    }
 
     function handlePointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -214,6 +223,42 @@ export function HolidayDateInput({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen])
+
+  // Keep the calendar fully inside the viewport without shrinking weekday columns.
+  useLayoutEffect(() => {
+    if (!isOpen || layout === 'modal') {
+      setPopoverOffset({ x: 0, y: 0 })
+      return
+    }
+
+    const popover = popoverRef.current
+    if (!popover) return
+
+    // Measure the untransformed box so month navigation does not compound shifts.
+    const previousTransform = popover.style.transform
+    popover.style.transform = 'none'
+    const rect = popover.getBoundingClientRect()
+    popover.style.transform = previousTransform
+
+    const pad = 8
+    let shiftX = 0
+    let shiftY = 0
+
+    if (rect.right > window.innerWidth - pad) {
+      shiftX = window.innerWidth - pad - rect.right
+    }
+    if (rect.left + shiftX < pad) {
+      shiftX += pad - (rect.left + shiftX)
+    }
+    if (rect.bottom > window.innerHeight - pad) {
+      shiftY = window.innerHeight - pad - rect.bottom
+    }
+    if (rect.top + shiftY < pad) {
+      shiftY += pad - (rect.top + shiftY)
+    }
+
+    setPopoverOffset({ x: shiftX, y: shiftY })
+  }, [isOpen, layout, viewDate, popoverAlign])
 
   function handleSelect(iso: string) {
     onChange(iso)
@@ -284,12 +329,22 @@ export function HolidayDateInput({
 
       {isOpen ? (
         <div
+          ref={popoverRef}
           className={cn(
             'absolute z-[130] rounded-[12px] border border-[#D3E9FC] bg-white p-2.5 shadow-[0_12px_32px_rgba(11,38,70,0.14)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 sm:p-3',
             layout === 'modal'
               ? 'left-0 right-0 top-[calc(100%+4px)] w-full max-w-full'
-              : 'left-0 top-[calc(100%+4px)] w-[min(100%,17rem)]',
+              : cn(
+                  // Fixed calendar width so 7 weekday labels never compress inside narrow filter columns.
+                  'top-[calc(100%+4px)] w-[min(17.5rem,calc(100vw-1.5rem))]',
+                  popoverAlign === 'end' ? 'right-0 left-auto' : 'left-0',
+                ),
           )}
+          style={
+            layout === 'modal' || (popoverOffset.x === 0 && popoverOffset.y === 0)
+              ? undefined
+              : { transform: `translate(${popoverOffset.x}px, ${popoverOffset.y}px)` }
+          }
         >
           <DatePickerPanel
             viewDate={viewDate}

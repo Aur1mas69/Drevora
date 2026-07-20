@@ -11,13 +11,9 @@ import {
   CURRENCY_OPTIONS,
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
-  WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS,
-  WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   formatOvertimeAfterHoursLabel,
   formatOvertimeMultiplierLabel,
-  formatWeekendGuaranteedPaidHoursLabel,
-  formatWeekendOvertimeAfterHoursLabel,
   formatWeekendOvertimeMultiplierLabel,
   type CompanyCurrency,
   type CompanySettingsInput,
@@ -26,6 +22,15 @@ import {
   type OvertimeMultiplier,
   type RoundTimeMinutes,
 } from '@/lib/companySettingsTypes'
+
+/** Parse decimal hours from a number input. Empty/invalid keeps previous; 0 is valid. */
+function parseWeekendDecimalHoursInput(raw: string, previous: number): number {
+  const trimmed = raw.trim()
+  if (trimmed === '') return previous
+  const next = Number(raw)
+  if (!Number.isFinite(next) || next < 0) return previous
+  return next
+}
 import {
   getDaysInMonth,
   MONTH_OPTIONS,
@@ -227,35 +232,39 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         {form.saturdayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <SettingsField label="Guaranteed paid hours">
-              <select
+              <input
+                type="number"
+                min={0}
+                step={0.25}
                 value={form.saturdayGuaranteedPaidHours}
                 onChange={(event) =>
-                  onChange({ saturdayGuaranteedPaidHours: Number(event.target.value) })
+                  onChange({
+                    saturdayGuaranteedPaidHours: parseWeekendDecimalHoursInput(
+                      event.target.value,
+                      form.saturdayGuaranteedPaidHours,
+                    ),
+                  })
                 }
                 className={settingsSelectClassName}
-              >
-                {WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS.map((hours) => (
-                  <option key={`sat-guarantee-${hours.toFixed(1)}`} value={hours}>
-                    {formatWeekendGuaranteedPaidHoursLabel(hours)}
-                  </option>
-                ))}
-              </select>
+              />
             </SettingsField>
 
             <SettingsField label="Starts after">
-              <select
+              <input
+                type="number"
+                min={0}
+                step={0.25}
                 value={form.saturdayOvertimeAfterHours}
                 onChange={(event) =>
-                  onChange({ saturdayOvertimeAfterHours: Number(event.target.value) })
+                  onChange({
+                    saturdayOvertimeAfterHours: parseWeekendDecimalHoursInput(
+                      event.target.value,
+                      form.saturdayOvertimeAfterHours,
+                    ),
+                  })
                 }
                 className={settingsSelectClassName}
-              >
-                {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                  <option key={`sat-${hours.toFixed(1)}`} value={hours}>
-                    {formatWeekendOvertimeAfterHoursLabel(hours)}
-                  </option>
-                ))}
-              </select>
+              />
             </SettingsField>
 
             <SettingsField label="Multiplier">
@@ -285,35 +294,39 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         {form.sundayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <SettingsField label="Guaranteed paid hours">
-              <select
+              <input
+                type="number"
+                min={0}
+                step={0.25}
                 value={form.sundayGuaranteedPaidHours}
                 onChange={(event) =>
-                  onChange({ sundayGuaranteedPaidHours: Number(event.target.value) })
+                  onChange({
+                    sundayGuaranteedPaidHours: parseWeekendDecimalHoursInput(
+                      event.target.value,
+                      form.sundayGuaranteedPaidHours,
+                    ),
+                  })
                 }
                 className={settingsSelectClassName}
-              >
-                {WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS.map((hours) => (
-                  <option key={`sun-guarantee-${hours.toFixed(1)}`} value={hours}>
-                    {formatWeekendGuaranteedPaidHoursLabel(hours)}
-                  </option>
-                ))}
-              </select>
+              />
             </SettingsField>
 
             <SettingsField label="Starts after">
-              <select
+              <input
+                type="number"
+                min={0}
+                step={0.25}
                 value={form.sundayOvertimeAfterHours}
                 onChange={(event) =>
-                  onChange({ sundayOvertimeAfterHours: Number(event.target.value) })
+                  onChange({
+                    sundayOvertimeAfterHours: parseWeekendDecimalHoursInput(
+                      event.target.value,
+                      form.sundayOvertimeAfterHours,
+                    ),
+                  })
                 }
                 className={settingsSelectClassName}
-              >
-                {WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                  <option key={`sun-${hours.toFixed(1)}`} value={hours}>
-                    {formatWeekendOvertimeAfterHoursLabel(hours)}
-                  </option>
-                ))}
-              </select>
+              />
             </SettingsField>
 
             <SettingsField label="Multiplier">

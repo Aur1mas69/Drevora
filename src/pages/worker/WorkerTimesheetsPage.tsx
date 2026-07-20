@@ -12,8 +12,7 @@ import {
   formatLocalDateString,
   formatTotalHours,
   getDefaultWeekStartMonday,
-  getEntryCombinedAdditionalHours,
-  getEntryPaidBreakMinutes,
+  getEntryPayableDisplayResult,
   getStatusBadgeClass,
   getStatusLabel,
   normalizeWeekStartForCompany,
@@ -503,7 +502,13 @@ export default function WorkerTimesheetsPage() {
       ) : null}
 
       <section className="space-y-3">
-        {entries.map((entry) => (
+        {entries.map((entry) => {
+          const payable = getEntryPayableDisplayResult(entry, {
+            overtimeRules,
+            paidBreaks,
+          })
+
+          return (
           <article
             key={entry.dayDate}
             className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50"
@@ -513,7 +518,7 @@ export default function WorkerTimesheetsPage() {
                 {formatDayLabel(entry.dayDate)}
               </h2>
               <p className="text-xs font-medium text-slate-400">
-                {formatHoursFromMinutes(entry.totalMinutes)}
+                {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
               </p>
             </div>
 
@@ -617,15 +622,15 @@ export default function WorkerTimesheetsPage() {
                 />
               ) : (
                 <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
-                  {getEntryCombinedAdditionalHours(entry, paidBreaks) > 0
-                    ? formatHours(getEntryCombinedAdditionalHours(entry, paidBreaks))
+                  {payable.additionalHours > 0
+                    ? formatHours(payable.additionalHours)
                     : '—'}
                 </p>
               )}
-              {getEntryPaidBreakMinutes(entry, paidBreaks) > 0 ? (
+              {!payable.weekendGuaranteeDay &&
+              payable.additionalHours > entry.additionalHours ? (
                 <p className="text-xs font-medium text-slate-500">
-                  +{formatHoursFromMinutes(getEntryPaidBreakMinutes(entry, paidBreaks))}{' '}
-                  paid break included automatically
+                  Includes automatic paid break where enabled
                 </p>
               ) : null}
             </label>
@@ -663,7 +668,7 @@ export default function WorkerTimesheetsPage() {
                   Basic
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatHoursFromMinutes(entry.totalMinutes)}
+                  {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
                 </p>
               </div>
               <div>
@@ -671,7 +676,9 @@ export default function WorkerTimesheetsPage() {
                   Overtime
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatHoursFromMinutes(entry.overtimeMinutes)}
+                  {payable.overtimeDisplayHours > 0
+                    ? formatHours(payable.overtimeDisplayHours)
+                    : '—'}
                 </p>
               </div>
               <div>
@@ -679,17 +686,13 @@ export default function WorkerTimesheetsPage() {
                   Total
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatTotalHours(
-                    summarizeTimesheetEntries([entry], {
-                      overtimeRules,
-                      paidBreaks,
-                    }).totalHours,
-                  )}
+                  {formatTotalHours(payable.totalPaidHours)}
                 </p>
               </div>
             </div>
           </article>
-        ))}
+          )
+        })}
       </section>
 
       <section className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
@@ -697,11 +700,11 @@ export default function WorkerTimesheetsPage() {
           Weekly summary
         </h2>
         <div className="mt-3 grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
-          <SummaryStat label="Basic Hours" value={formatHoursFromMinutes(summary.workedMinutes)} />
+          <SummaryStat label="Basic Hours" value={formatHours(summary.workedHours)} />
           <SummaryStat label="Break" value={formatHoursFromMinutes(summary.breakMinutes)} />
           <SummaryStat
             label="Overtime"
-            value={formatHoursFromMinutes(Math.round(summary.overtimeHours * 60))}
+            value={formatHours(summary.overtimeHours)}
           />
           <SummaryStat
             label="Additional Hours"

@@ -58,7 +58,7 @@ const TIP_ITEMS = [
   'Use filters to find workers, weeks or statuses.',
   'Click a row to view full details.',
   'Approved timesheets are locked unless company settings allow editing.',
-  'Totals are shown using the verified hours and minutes format.',
+  'Paid hours (Basic, OT, Additional, Total) are shown as decimal hours.',
 ] as const
 
 /**

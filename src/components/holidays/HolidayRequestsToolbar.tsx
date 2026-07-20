@@ -26,7 +26,7 @@ type HolidayRequestsToolbarProps = {
 }
 
 const filterPanelClass =
-  'absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 w-full overflow-hidden rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60 sm:left-auto sm:right-0 sm:w-[min(100vw-2rem,22rem)]'
+  'absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 w-full overflow-visible rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60 sm:left-auto sm:right-0 sm:w-[min(100vw-2rem,24rem)]'
 
 const filterFieldLabelClass = 'text-xs font-semibold text-[#5499BF]'
 
@@ -175,6 +175,7 @@ export function HolidayRequestsToolbar({
                       value={dateFrom}
                       onChange={onDateFromChange}
                       clearable
+                      popoverAlign="start"
                       className={`${holidaySelectClass} w-full min-w-0 px-2`}
                       aria-label="Start date"
                     />
@@ -185,6 +186,7 @@ export function HolidayRequestsToolbar({
                       value={dateTo}
                       onChange={onDateToChange}
                       clearable
+                      popoverAlign="end"
                       min={dateFrom || undefined}
                       className={`${holidaySelectClass} w-full min-w-0 px-2`}
                       aria-label="End date"

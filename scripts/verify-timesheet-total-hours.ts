@@ -78,11 +78,12 @@ for (const testCase of cases) {
     `${testCase.name}: decimal display`,
   )
 
-  // Must not use Xh Ym for Total Hours.
-  const hms = formatHours(paidHours)
-  if (formatTotalHours(paidHours) === hms) {
-    throw new Error(`${testCase.name}: formatTotalHours must not match formatHours (${hms})`)
-  }
+  // Payroll formatters must show decimal hours, never Xh Ym.
+  assertEqual(
+    formatHours(paidHours),
+    testCase.expectedDisplay,
+    `${testCase.name}: formatHours decimal display`,
+  )
   if (testCase.expectedDisplay.includes('h') || testCase.expectedDisplay.includes('m')) {
     throw new Error(`${testCase.name}: expected display must be decimal, not Xh Ym`)
   }

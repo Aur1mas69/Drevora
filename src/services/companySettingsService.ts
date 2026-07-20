@@ -37,8 +37,6 @@ import {
   OVERTIME_AFTER_HOURS_MIN,
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
-  WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS,
-  WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
   CURRENCY_OPTIONS,
   DEFAULT_HOLIDAY_WORKING_DAYS,
@@ -284,7 +282,8 @@ function coerceNumericHours(value: unknown): number {
   return Number.parseFloat(String(value))
 }
 
-function normalizeWeekendOvertimeAfterHours(
+/** Decimal hours for weekend Starts after / Guaranteed paid hours. Accepts 0. */
+function normalizeWeekendDecimalHours(
   value: number | string | null | undefined,
   fallback: number,
 ): number {
@@ -293,9 +292,16 @@ function normalizeWeekendOvertimeAfterHours(
   const parsed = Number.parseFloat(String(value))
   if (Number.isNaN(parsed)) return fallback
 
-  const snapped = Math.round(parsed * 2) / 2
-  const clamped = Math.min(15.5, Math.max(0, snapped))
-  return snapToNearestOption(clamped, WEEKEND_OVERTIME_AFTER_HOURS_OPTIONS, fallback)
+  // Nullish-safe: 0 is valid and must not fall back to defaults.
+  const clamped = Math.min(168, Math.max(0, parsed))
+  return Math.round(clamped * 100) / 100
+}
+
+function normalizeWeekendOvertimeAfterHours(
+  value: number | string | null | undefined,
+  fallback: number,
+): number {
+  return normalizeWeekendDecimalHours(value, fallback)
 }
 
 function normalizeWeekendOvertimeMultiplier(
@@ -316,14 +322,7 @@ function normalizeWeekendGuaranteedPaidHours(
   value: number | string | null | undefined,
   fallback: number,
 ): number {
-  if (value == null || value === '') return fallback
-
-  const parsed = Number.parseFloat(String(value))
-  if (Number.isNaN(parsed)) return fallback
-
-  const snapped = Math.round(parsed * 2) / 2
-  const clamped = Math.min(15, Math.max(5, snapped))
-  return snapToNearestOption(clamped, WEEKEND_GUARANTEED_PAID_HOURS_OPTIONS, fallback)
+  return normalizeWeekendDecimalHours(value, fallback)
 }
 
 function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {

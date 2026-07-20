@@ -8,11 +8,10 @@ import {
   entryHasStartAndFinish,
   formatBreak,
   formatHours,
-  formatHoursFromMinutes,
   formatSubmittedAtDisplay,
   formatTimeDisplay,
   formatTotalHours,
-  getEntryCombinedAdditionalHours,
+  getEntryPayableDisplayResult,
   getStatusLabel,
   parseLocalDate,
   prepareEntryInputs,
@@ -147,7 +146,7 @@ function buildSummary(timesheet: Timesheet): SummaryTotals {
 function formatPdfDailyRow(entry: TimesheetEntryInput, paidBreaks: boolean): string[] {
   const day = formatPdfDayName(entry.dayDate)
   const date = formatPdfDate(entry.dayDate)
-  const combinedAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  const payable = getEntryPayableDisplayResult(entry, { paidBreaks })
 
   if (!entryHasStartAndFinish(entry)) {
     return [day, date, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
@@ -158,9 +157,9 @@ function formatPdfDailyRow(entry: TimesheetEntryInput, paidBreaks: boolean): str
     date,
     `${formatTimeDisplay(entry.startTime)}–${formatTimeDisplay(entry.finishTime)}`,
     formatBreak(entry.breakMinutes),
-    formatHoursFromMinutes(entry.totalMinutes),
-    formatHoursFromMinutes(entry.overtimeMinutes),
-    combinedAdditional > 0 ? formatHours(combinedAdditional) : EMPTY,
+    payable.basicHours > 0 ? formatHours(payable.basicHours) : EMPTY,
+    payable.overtimeDisplayHours > 0 ? formatHours(payable.overtimeDisplayHours) : EMPTY,
+    payable.additionalHours > 0 ? formatHours(payable.additionalHours) : EMPTY,
     entry.dailyComment.trim() || EMPTY,
   ]
 }

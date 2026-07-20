@@ -1,5 +1,6 @@
 import {
   getGlobalPaidBreaks,
+  getGlobalTimesheetOvertimeRules,
   getSetting,
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
@@ -11,7 +12,6 @@ import {
   normalizeWeekStartForCompany,
   sortTimesheetListItems,
   summarizeTimesheetEntries,
-  summarizeTimesheetEntriesFromTotals,
 } from '@/lib/timesheetUtils'
 import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type {
@@ -82,13 +82,18 @@ type TimesheetRow = {
   timesheet_entries?: TimesheetEntryRow[]
 }
 
-type EntryTotalsRow = {
+type EntryPayableRow = {
   timesheet_id: string
+  day_date: string
+  start_time: string | null
+  finish_time: string | null
   total_minutes: number | null
   break_minutes: number | null
   overtime_minutes: number | null
   additional_hours?: number | null
 }
+
+type TimesheetPayableSummary = ReturnType<typeof summarizeTimesheetEntries>
 
 const timesheetEntrySelectCore = `
     id,
@@ -302,14 +307,30 @@ function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
   }
 }
 
+function emptyPayableSummary(): Pick<
+  TimesheetPayableSummary,
+  | 'workedHours'
+  | 'breakHours'
+  | 'overtimeHours'
+  | 'additionalHours'
+  | 'totalHours'
+  | 'paidBreakMinutes'
+  | 'manualAdditionalHours'
+> {
+  return {
+    workedHours: 0,
+    breakHours: 0,
+    overtimeHours: 0,
+    additionalHours: 0,
+    totalHours: 0,
+    paidBreakMinutes: 0,
+    manualAdditionalHours: 0,
+  }
+}
+
 function mapListRow(
   row: TimesheetRow,
-  totals?: {
-    workedMinutes: number
-    breakMinutes: number
-    overtimeMinutes: number
-    additionalHours: number
-  },
+  summary: Partial<TimesheetPayableSummary> = emptyPayableSummary(),
 ): TimesheetListItem {
   const driver = normalizeJoinRow(row.drivers)
   const vehicle = normalizeJoinRow(row.vehicles)
@@ -317,22 +338,15 @@ function mapListRow(
     ? `${driver.first_name} ${driver.last_name}`.trim()
     : 'Unknown worker'
 
-  const summary = totals
-    ? summarizeTimesheetEntriesFromTotals(totals, {
-        paidBreaks: getGlobalPaidBreaks(),
-      })
-    : {
-        workedHours: 0,
-        breakHours: 0,
-        overtimeHours: 0,
-        additionalHours: 0,
-        totalHours: 0,
-      }
-
   const weekDisplay = formatTimesheetWeekDisplay(
     row.week_start,
     getTimesheetWeekSettings(),
   )
+
+  const payable = {
+    ...emptyPayableSummary(),
+    ...summary,
+  }
 
   return {
     id: row.id,
@@ -356,7 +370,11 @@ function mapListRow(
     driverRole: normalizeDriverRole(driver?.role ?? null),
     fleetNo: vehicle?.fleet_number?.trim() || '—',
     vehicleRegistration: vehicle?.registration?.trim() || '—',
-    ...summary,
+    workedHours: payable.workedHours,
+    breakHours: payable.breakHours,
+    overtimeHours: payable.overtimeHours,
+    additionalHours: payable.additionalHours,
+    totalHours: payable.totalHours,
   }
 }
 
@@ -459,50 +477,41 @@ async function restoreSoftDeletedTimesheetEntries(
     .eq('deleted_at', deletedAt)
 }
 
-async function fetchEntryTotalsByTimesheetIds(
+/**
+ * Load per-day entry fields and summarize with the same shared payable helper
+ * used by the Timesheet drawer / PDF (weekend guarantee, decimal OT, etc.).
+ */
+async function fetchPayableSummariesByTimesheetIds(
   timesheetIds: string[],
-): Promise<
-  Map<
-    string,
-    {
-      workedMinutes: number
-      breakMinutes: number
-      overtimeMinutes: number
-      additionalHours: number
-    }
-  >
-> {
-  const totals = new Map<
-    string,
-    {
-      workedMinutes: number
-      breakMinutes: number
-      overtimeMinutes: number
-      additionalHours: number
-    }
-  >()
-  if (timesheetIds.length === 0) return totals
+): Promise<Map<string, TimesheetPayableSummary>> {
+  const summaries = new Map<string, TimesheetPayableSummary>()
+  if (timesheetIds.length === 0) return summaries
+
+  const selectWithAdditional =
+    'timesheet_id, day_date, start_time, finish_time, total_minutes, break_minutes, overtime_minutes, additional_hours'
+  const selectFallback =
+    'timesheet_id, day_date, start_time, finish_time, total_minutes, break_minutes, overtime_minutes'
 
   const initialResponse = await requireSupabase()
     .from('timesheet_entries')
-    .select('timesheet_id, total_minutes, break_minutes, overtime_minutes, additional_hours')
+    .select(selectWithAdditional)
     .in('timesheet_id', timesheetIds)
     .is('deleted_at', null)
-  let data = initialResponse.data as EntryTotalsRow[] | null
+  let data = initialResponse.data as EntryPayableRow[] | null
   let error = initialResponse.error
 
   if (isMissingTimesheetEntryColumnError(error)) {
     const fallbackResponse = await requireSupabase()
       .from('timesheet_entries')
-      .select('timesheet_id, total_minutes, break_minutes, overtime_minutes')
+      .select(selectFallback)
       .in('timesheet_id', timesheetIds)
       .is('deleted_at', null)
-    data = fallbackResponse.data as EntryTotalsRow[] | null
+    data = fallbackResponse.data as EntryPayableRow[] | null
     error = fallbackResponse.error
   }
 
   logSupabaseQuery({
-    service: 'timesheetsService.fetchEntryTotalsByTimesheetIds',
+    service: 'timesheetsService.fetchPayableSummariesByTimesheetIds',
     table: 'timesheet_entries',
     data,
     error,
@@ -512,48 +521,68 @@ async function fetchEntryTotalsByTimesheetIds(
     throw new TimesheetsServiceError(error.message)
   }
 
-  for (const row of (data ?? []) as EntryTotalsRow[]) {
-    const current = totals.get(row.timesheet_id) ?? {
-      workedMinutes: 0,
-      breakMinutes: 0,
-      overtimeMinutes: 0,
-      additionalHours: 0,
-    }
-    const totalMinutes = row.total_minutes ?? 0
-    const overtimeMinutes = row.overtime_minutes ?? 0
-    current.workedMinutes += totalMinutes
-    // Only count break on days with Basic Hours (avoids empty-day default breaks).
-    if (totalMinutes > 0) {
-      current.breakMinutes += row.break_minutes ?? 0
-    }
-    current.overtimeMinutes += overtimeMinutes
-    current.additionalHours += Number(row.additional_hours ?? 0)
-    totals.set(row.timesheet_id, current)
+  const entriesByTimesheet = new Map<
+    string,
+    Array<{
+      dayDate: string
+      startTime: string | null
+      finishTime: string | null
+      totalMinutes: number
+      breakMinutes: number
+      overtimeMinutes: number
+      additionalHours: number
+    }>
+  >()
+
+  for (const row of (data ?? []) as EntryPayableRow[]) {
+    const list = entriesByTimesheet.get(row.timesheet_id) ?? []
+    list.push({
+      dayDate: row.day_date,
+      startTime: normalizeTime(row.start_time),
+      finishTime: normalizeTime(row.finish_time),
+      totalMinutes: row.total_minutes ?? 0,
+      breakMinutes: row.break_minutes ?? 0,
+      overtimeMinutes: row.overtime_minutes ?? 0,
+      additionalHours: normalizeAdditionalHours(row.additional_hours),
+    })
+    entriesByTimesheet.set(row.timesheet_id, list)
   }
 
-  return totals
+  const overtimeRules = getGlobalTimesheetOvertimeRules()
+  const paidBreaks = getGlobalPaidBreaks()
+
+  for (const [timesheetId, entries] of entriesByTimesheet) {
+    summaries.set(
+      timesheetId,
+      summarizeTimesheetEntries(entries, {
+        overtimeRules,
+        paidBreaks,
+      }),
+    )
+  }
+
+  return summaries
 }
 
 function applyListTotals(
   items: TimesheetListItem[],
-  totalsMap: Map<
-    string,
-    {
-      workedMinutes: number
-      breakMinutes: number
-      overtimeMinutes: number
-      additionalHours: number
-    }
-  >,
+  summariesMap: Map<string, TimesheetPayableSummary>,
 ): TimesheetListItem[] {
   return items.map((item) => {
-    const totals = totalsMap.get(item.id)
-    if (!totals) return item
+    const summary = summariesMap.get(item.id)
+    if (!summary) return item
 
-    const summary = summarizeTimesheetEntriesFromTotals(totals, {
-      paidBreaks: getGlobalPaidBreaks(),
-    })
-    return { ...item, ...summary }
+    return {
+      ...item,
+      workedHours: summary.workedHours,
+      breakHours: summary.breakHours,
+      overtimeHours: summary.overtimeHours,
+      additionalHours: summary.additionalHours,
+      totalHours: summary.totalHours,
+      // Extra payable breakdown fields for Excel / consumers that read them.
+      paidBreakMinutes: summary.paidBreakMinutes,
+      manualAdditionalHours: summary.manualAdditionalHours,
+    } as TimesheetListItem
   })
 }
 
@@ -707,8 +736,10 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
 
   const rows = (data ?? []) as unknown as TimesheetRow[]
   let items = rows.map((row) => mapListRow(row))
-  const totalsMap = await fetchEntryTotalsByTimesheetIds(items.map((item) => item.id))
-  items = applyListTotals(items, totalsMap)
+  const summariesMap = await fetchPayableSummariesByTimesheetIds(
+    items.map((item) => item.id),
+  )
+  items = applyListTotals(items, summariesMap)
 
   if (sortBy === 'workedHours' || sortBy === 'createdAt' || sortBy === 'weekStart') {
     items = sortTimesheetListItems(items, sortBy, sortDir)
@@ -1464,8 +1495,10 @@ export async function fetchTimesheetsByDriverId(
 
   const rows = (data ?? []) as unknown as TimesheetRow[]
   let items = rows.map((row) => mapListRow(row))
-  const totalsMap = await fetchEntryTotalsByTimesheetIds(items.map((item) => item.id))
-  items = applyListTotals(items, totalsMap)
+  const summariesMap = await fetchPayableSummariesByTimesheetIds(
+    items.map((item) => item.id),
+  )
+  items = applyListTotals(items, summariesMap)
 
   return {
     items,
