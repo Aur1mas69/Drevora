@@ -279,14 +279,16 @@ function logVehicleSaveError(payload: unknown, error: unknown) {
     hint?: string
   } | null
 
-  console.group('Vehicle Save Error')
-  console.log('Payload:', payload)
-  console.log('Supabase Error:', error)
-  console.log('Code:', supabaseError?.code)
-  console.log('Message:', supabaseError?.message)
-  console.log('Details:', supabaseError?.details)
-  console.log('Hint:', supabaseError?.hint)
-  console.groupEnd()
+  console.error('[vehiclesService] Vehicle save failed:', {
+    code: supabaseError?.code,
+    message: supabaseError?.message,
+    details: supabaseError?.details,
+    hint: supabaseError?.hint,
+  })
+
+  if (import.meta.env.DEV) {
+    console.error('[vehiclesService] Vehicle save payload:', payload)
+  }
 }
 
 function isVehicleStatus(value: string | null): value is VehicleStatus {

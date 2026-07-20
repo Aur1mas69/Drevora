@@ -443,14 +443,10 @@ create table if not exists public.companies (
     and (sunday_overtime_multiplier * 10) = floor(sunday_overtime_multiplier * 10)
   ),
   constraint companies_saturday_guaranteed_paid_hours_check check (
-    saturday_guaranteed_paid_hours >= 5.0
-    and saturday_guaranteed_paid_hours <= 15.0
-    and (saturday_guaranteed_paid_hours * 2) = floor(saturday_guaranteed_paid_hours * 2)
+    saturday_guaranteed_paid_hours >= 0
   ),
   constraint companies_sunday_guaranteed_paid_hours_check check (
-    sunday_guaranteed_paid_hours >= 5.0
-    and sunday_guaranteed_paid_hours <= 15.0
-    and (sunday_guaranteed_paid_hours * 2) = floor(sunday_guaranteed_paid_hours * 2)
+    sunday_guaranteed_paid_hours >= 0
   ),
   constraint companies_timesheet_week_start_day_check check (
     timesheet_week_start_day in ('monday', 'sunday')
@@ -1376,7 +1372,9 @@ grant select, insert, update, delete on public.contacts to anon, authenticated;
 
 
 -- -----------------------------------------------------------------------------
--- Admin notifications (see 20260718020000_create_admin_notifications.sql)
+-- Admin notifications
+-- Canonical: 20260718020000_create_admin_notifications.sql
+-- Ensure/repair: 20260720230000_ensure_admin_notifications.sql
 -- -----------------------------------------------------------------------------
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -1393,6 +1391,16 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now(),
   constraint notifications_severity_check check (
     severity in ('info', 'warning', 'critical')
+  ),
+  constraint notifications_type_check check (
+    notification_type in (
+      'timesheet_submitted',
+      'holiday_request_created',
+      'vehicle_check_attention',
+      'tyre_check_critical',
+      'driver_report_created',
+      'document_expiry'
+    )
   ),
   constraint notifications_company_dedupe_unique unique (company_id, dedupe_key)
 );
@@ -1412,6 +1420,8 @@ create index if not exists notifications_severity_idx
   on public.notifications (severity);
 create index if not exists notifications_type_idx
   on public.notifications (notification_type);
+create index if not exists notifications_company_created_idx
+  on public.notifications (company_id, created_at desc);
 create index if not exists notification_reads_user_id_idx
   on public.notification_reads (user_id);
 create index if not exists notification_reads_notification_id_idx

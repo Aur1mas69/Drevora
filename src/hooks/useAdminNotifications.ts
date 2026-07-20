@@ -22,6 +22,17 @@ type UseAdminNotificationsResult = {
   markAllRead: () => Promise<void>
 }
 
+/** Backend missing / schema-cache errors should not auto-retry on every focus. */
+function isNotificationsBackendUnavailable(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('could not find the table') ||
+    normalized.includes('schema cache') ||
+    (normalized.includes('relation') && normalized.includes('does not exist')) ||
+    normalized.includes("public.notifications")
+  )
+}
+
 export function useAdminNotifications(): UseAdminNotificationsResult {
   const { companyId, companyReady, membershipRole } = useCompanySettings()
   const [notifications, setNotifications] = useState<AdminNotificationWithReadState[]>(
@@ -30,65 +41,94 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
+  const backendUnavailableRef = useRef(false)
+  const lastLoggedErrorRef = useRef<string | null>(null)
+  const inFlightRef = useRef(false)
 
   const canLoad =
     companyReady && Boolean(companyId) && isOfficeMembershipRole(membershipRole)
 
-  const refresh = useCallback(async () => {
-    if (!canLoad) {
-      setNotifications([])
-      setError(null)
-      return
-    }
+  const load = useCallback(
+    async (force: boolean) => {
+      if (!canLoad) {
+        setNotifications([])
+        setError(null)
+        backendUnavailableRef.current = false
+        lastLoggedErrorRef.current = null
+        return
+      }
 
-    setIsLoading(true)
-    try {
-      await maybeGenerateExpiryNotifications()
-      const rows = await fetchAdminNotifications()
-      if (!mountedRef.current) return
-      setNotifications(rows)
-      setError(null)
-    } catch (err) {
-      if (!mountedRef.current) return
-      const message =
-        err instanceof AdminNotificationsServiceError
-          ? err.message
-          : err instanceof Error
+      if (!force && backendUnavailableRef.current) {
+        return
+      }
+
+      if (inFlightRef.current) {
+        return
+      }
+
+      inFlightRef.current = true
+      setIsLoading(true)
+      try {
+        await maybeGenerateExpiryNotifications()
+        const rows = await fetchAdminNotifications()
+        if (!mountedRef.current) return
+        setNotifications(rows)
+        setError(null)
+        backendUnavailableRef.current = false
+        lastLoggedErrorRef.current = null
+      } catch (err) {
+        if (!mountedRef.current) return
+        const message =
+          err instanceof AdminNotificationsServiceError
             ? err.message
-            : 'Unable to load notifications.'
-      setError(message)
-      if (import.meta.env.DEV) {
-        console.error('[admin-notifications] load failed:', err)
+            : err instanceof Error
+              ? err.message
+              : 'Unable to load notifications.'
+        setError(message)
+        if (isNotificationsBackendUnavailable(message)) {
+          backendUnavailableRef.current = true
+        }
+        if (import.meta.env.DEV && lastLoggedErrorRef.current !== message) {
+          lastLoggedErrorRef.current = message
+          console.error('[admin-notifications] load failed:', err)
+        }
+      } finally {
+        inFlightRef.current = false
+        if (mountedRef.current) {
+          setIsLoading(false)
+        }
       }
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false)
-      }
-    }
-  }, [canLoad])
+    },
+    [canLoad],
+  )
+
+  const refresh = useCallback(async () => {
+    backendUnavailableRef.current = false
+    await load(true)
+  }, [load])
 
   useEffect(() => {
     mountedRef.current = true
-    void refresh()
+    void load(true)
     return () => {
       mountedRef.current = false
     }
-  }, [refresh])
+  }, [load])
 
   useEffect(() => {
     if (!canLoad || !companyId) return
 
     const unsubscribe = subscribeToAdminNotifications(companyId, () => {
-      void refresh()
+      void load(false)
     })
 
     function handleFocus() {
-      void refresh()
+      void load(false)
     }
 
     function handleVisibility() {
       if (document.visibilityState === 'visible') {
-        void refresh()
+        void load(false)
       }
     }
 
@@ -100,7 +140,7 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [canLoad, companyId, refresh])
+  }, [canLoad, companyId, load])
 
   const markOneRead = useCallback(
     async (notificationId: string) => {
