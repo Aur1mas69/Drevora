@@ -14,6 +14,7 @@ import { normalizeLicenceCategories, isEmploymentType } from '@/lib/workerProfil
 import {
   formatWorkerPlanLimitError,
   isWorkerPlanLimitError,
+  SUBSCRIPTION_PLAN_EXPIRED,
   WORKER_PLAN_ALLOWANCE_UNAVAILABLE,
   WORKER_PLAN_LIMIT_REACHED,
 } from '@/lib/workerAllowance'
@@ -434,6 +435,7 @@ function formatWriteErrorMessage(error: SupabaseWriteError): string {
 
 function planLimitErrorCodeFromMessage(message: string): string | null {
   const upper = message.toUpperCase()
+  if (upper.includes(SUBSCRIPTION_PLAN_EXPIRED)) return SUBSCRIPTION_PLAN_EXPIRED
   if (upper.includes(WORKER_PLAN_LIMIT_REACHED)) return WORKER_PLAN_LIMIT_REACHED
   if (upper.includes(WORKER_PLAN_ALLOWANCE_UNAVAILABLE)) {
     return WORKER_PLAN_ALLOWANCE_UNAVAILABLE

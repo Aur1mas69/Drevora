@@ -106,7 +106,7 @@ alter table public.drivers
   add column if not exists archived_at timestamptz;
 
 comment on column public.drivers.archived_at is
-  'When set, the Worker is archived/former and does not occupy an active plan seat. Duty status is unrelated.';
+  'Timestamp when the Worker was archived. NULL means active.';
 
 create index if not exists drivers_default_vehicle_id_idx
   on public.drivers (default_vehicle_id);
@@ -269,7 +269,7 @@ alter table public.vehicles
   add column if not exists archived_at timestamptz;
 
 comment on column public.vehicles.archived_at is
-  'When set, the Vehicle is archived/former and does not occupy an active plan seat. Operational status is unrelated.';
+  'Timestamp when the Vehicle was archived. NULL means active.';
 
 create index if not exists vehicles_company_id_idx on public.vehicles (company_id);
 create index if not exists vehicles_company_id_archived_at_idx
@@ -365,10 +365,12 @@ create table if not exists public.companies (
   saturday_overtime_after_hours numeric not null default 6.0,
   saturday_overtime_multiplier numeric not null default 1.5,
   saturday_guaranteed_paid_hours numeric not null default 10.0,
+  saturday_use_company_default_break boolean not null default true,
   sunday_overtime_enabled boolean not null default false,
   sunday_overtime_after_hours numeric not null default 0.0,
   sunday_overtime_multiplier numeric not null default 2.0,
   sunday_guaranteed_paid_hours numeric not null default 10.0,
+  sunday_use_company_default_break boolean not null default true,
   timesheet_week_start_day text not null default 'monday',
   timesheet_week_reset_month integer not null default 4,
   timesheet_week_reset_day integer not null default 5,
@@ -396,6 +398,7 @@ create table if not exists public.companies (
   plan_selected_at timestamptz,
   trial_started_at timestamptz,
   subscription_status text,
+  subscription_valid_until timestamptz,
   constraint companies_time_format_check check (time_format in ('24-hour', '12-hour')),
   constraint companies_plan_code_check check (
     plan_code is null
@@ -1444,6 +1447,7 @@ begin
       new.plan_selected_at := old.plan_selected_at;
       new.trial_started_at := old.trial_started_at;
       new.subscription_status := old.subscription_status;
+      new.subscription_valid_until := old.subscription_valid_until;
     end if;
   end if;
   return new;
@@ -1503,14 +1507,16 @@ begin
     plan_code,
     plan_selected_at,
     trial_started_at,
-    subscription_status
+    subscription_status,
+    subscription_valid_until
   )
   values (
     v_name,
     v_plan_code,
     now(),
     now(),
-    'trial'
+    'trial',
+    now() + interval '30 days'
   )
   returning id into v_company_id;
 
@@ -1563,6 +1569,7 @@ as $$
 declare
   v_company_id uuid;
   v_plan_code text;
+  v_valid_until timestamptz;
   v_limit integer;
   v_active_count integer;
   v_becoming_active boolean := false;
@@ -1589,8 +1596,8 @@ begin
             hint = 'Worker company_id is required for plan allowance checks.';
   end if;
 
-  select c.plan_code
-  into v_plan_code
+  select c.plan_code, c.subscription_valid_until
+  into v_plan_code, v_valid_until
   from public.companies c
   where c.id = v_company_id
   for update;
@@ -1599,6 +1606,15 @@ begin
     raise exception 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE'
       using errcode = 'P0001',
             hint = 'Company not found for Worker plan allowance check.';
+  end if;
+
+  if v_valid_until is not null and now() >= v_valid_until then
+    raise exception 'SUBSCRIPTION_PLAN_EXPIRED'
+      using errcode = 'P0001',
+            hint = format(
+              'Your trial expired on %s. Existing records remain available. Contact DREVORA to renew your plan.',
+              to_char(v_valid_until at time zone 'UTC', 'DD Mon YYYY')
+            );
   end if;
 
   v_limit := public.drevora_active_worker_limit_for_plan(v_plan_code);
@@ -1665,6 +1681,7 @@ as $$
 declare
   v_company_id uuid;
   v_plan_code text;
+  v_valid_until timestamptz;
   v_limit integer;
   v_active_count integer;
   v_becoming_active boolean := false;
@@ -1691,8 +1708,8 @@ begin
             hint = 'Vehicle company_id is required for plan allowance checks.';
   end if;
 
-  select c.plan_code
-  into v_plan_code
+  select c.plan_code, c.subscription_valid_until
+  into v_plan_code, v_valid_until
   from public.companies c
   where c.id = v_company_id
   for update;
@@ -1701,6 +1718,15 @@ begin
     raise exception 'VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE'
       using errcode = 'P0001',
             hint = 'Company not found for Vehicle plan allowance check.';
+  end if;
+
+  if v_valid_until is not null and now() >= v_valid_until then
+    raise exception 'SUBSCRIPTION_PLAN_EXPIRED'
+      using errcode = 'P0001',
+            hint = format(
+              'Your trial expired on %s. Existing records remain available. Contact DREVORA to renew your plan.',
+              to_char(v_valid_until at time zone 'UTC', 'DD Mon YYYY')
+            );
   end if;
 
   v_limit := public.drevora_active_vehicle_limit_for_plan(v_plan_code);

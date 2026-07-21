@@ -18,6 +18,8 @@ export type CompanyPlanRecord = {
   planSelectedAt: string | null
   trialStartedAt: string | null
   subscriptionStatus: SubscriptionStatus | null
+  /** ISO timestamptz; null means no expiry stored (not expired). */
+  subscriptionValidUntil: string | null
   definition: SubscriptionPlanDefinition | null
 }
 
@@ -33,6 +35,7 @@ type CompanyPlanRow = {
   plan_selected_at: string | null
   trial_started_at: string | null
   subscription_status: string | null
+  subscription_valid_until?: string | null
 }
 
 function mapCompanyPlanRow(row: CompanyPlanRow): CompanyPlanRecord {
@@ -47,6 +50,7 @@ function mapCompanyPlanRow(row: CompanyPlanRow): CompanyPlanRecord {
     trialStartedAt: row.trial_started_at,
     subscriptionStatus:
       row.subscription_status === 'trial' ? 'trial' : null,
+    subscriptionValidUntil: row.subscription_valid_until ?? null,
     definition:
       planCode && isSubscriptionPlanCode(planCode)
         ? getSubscriptionPlan(planCode)
@@ -54,21 +58,47 @@ function mapCompanyPlanRow(row: CompanyPlanRow): CompanyPlanRecord {
   }
 }
 
-function isMissingPlanColumnError(error: { message?: string; code?: string }): boolean {
+function isMissingPlanColumnError(error: {
+  message?: string
+  code?: string
+  details?: string
+}): boolean {
   const message = (error.message ?? '').toLowerCase()
+  const details = (error.details ?? '').toLowerCase()
   return (
     error.code === '42703' ||
+    error.code === 'PGRST204' ||
     message.includes('plan_code') ||
     message.includes('subscription_status') ||
     message.includes('trial_started_at') ||
     message.includes('plan_selected_at') ||
-    message.includes('schema cache')
+    message.includes('subscription_valid_until') ||
+    message.includes('schema cache') ||
+    (message.includes('column') &&
+      (message.includes('does not exist') ||
+        message.includes('not found') ||
+        message.includes('could not find'))) ||
+    details.includes('plan_code') ||
+    details.includes('subscription_valid_until')
+  )
+}
+
+function isMissingValidUntilColumnError(error: {
+  message?: string
+  code?: string
+  details?: string
+}): boolean {
+  const message = (error.message ?? '').toLowerCase()
+  const details = (error.details ?? '').toLowerCase()
+  return (
+    message.includes('subscription_valid_until') ||
+    details.includes('subscription_valid_until')
   )
 }
 
 /**
  * Read plan fields for a company. Returns null when columns are not migrated yet
- * or the company has no plan. Never writes.
+ * or the company row is missing. Never writes.
  */
 export async function fetchCompanyPlan(
   companyId: string,
@@ -82,11 +112,25 @@ export async function fetchCompanyPlan(
     return null
   }
 
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase()
+  const fullSelect =
+    'plan_code, plan_selected_at, trial_started_at, subscription_status, subscription_valid_until'
+  const baseSelect =
+    'plan_code, plan_selected_at, trial_started_at, subscription_status'
+
+  let { data, error } = await client
     .from('companies')
-    .select('plan_code, plan_selected_at, trial_started_at, subscription_status')
+    .select(fullSelect)
     .eq('id', normalizedId)
     .maybeSingle()
+
+  if (error && isMissingValidUntilColumnError(error)) {
+    ;({ data, error } = await client
+      .from('companies')
+      .select(baseSelect)
+      .eq('id', normalizedId)
+      .maybeSingle())
+  }
 
   if (error) {
     if (isMissingPlanColumnError(error)) {

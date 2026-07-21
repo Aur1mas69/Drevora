@@ -204,47 +204,172 @@ export async function maybeGenerateExpiryNotifications(): Promise<void> {
   }
 }
 
+type SharedAdminNotificationsSubscription = {
+  companyId: string
+  userId: string
+  channel: RealtimeChannel
+  listeners: Set<() => void>
+  failed: boolean
+  removed: boolean
+}
+
+/** One live realtime channel per office user/company — shared across bell mounts. */
+let sharedAdminNotificationsSubscription: SharedAdminNotificationsSubscription | null = null
+let adminNotificationsChannelSeq = 0
+let lastRealtimeWarningKey: string | null = null
+
+function warnRealtimeOnce(key: string, ...args: unknown[]) {
+  if (!import.meta.env.DEV) return
+  if (lastRealtimeWarningKey === key) return
+  lastRealtimeWarningKey = key
+  console.warn('[admin-notifications]', ...args)
+}
+
+function notifyAdminNotificationListeners(
+  shared: SharedAdminNotificationsSubscription,
+) {
+  for (const listener of shared.listeners) {
+    try {
+      listener()
+    } catch {
+      // Listener errors must not tear down the shared channel.
+    }
+  }
+}
+
+function teardownSharedAdminNotificationsSubscription(
+  shared: SharedAdminNotificationsSubscription,
+) {
+  if (shared.removed) return
+  shared.removed = true
+  shared.listeners.clear()
+  if (sharedAdminNotificationsSubscription === shared) {
+    sharedAdminNotificationsSubscription = null
+  }
+  void requireSupabase().removeChannel(shared.channel)
+}
+
+/**
+ * Subscribe to admin notification inbox changes for one company/user.
+ * Multiple React mounts (e.g. mobile + desktop bells) share one channel.
+ * All postgres_changes handlers are registered before subscribe().
+ */
 export function subscribeToAdminNotifications(
   companyId: string,
+  userId: string,
   onChange: () => void,
 ): () => void {
-  if (!isSupabaseConfigured || !companyId) {
+  if (!isSupabaseConfigured || !companyId || !userId) {
     return () => undefined
   }
 
-  let channel: RealtimeChannel | null = null
+  const active = sharedAdminNotificationsSubscription
+  if (
+    active &&
+    !active.removed &&
+    !active.failed &&
+    active.companyId === companyId &&
+    active.userId === userId
+  ) {
+    active.listeners.add(onChange)
+    let cleaned = false
+    return () => {
+      if (cleaned) return
+      cleaned = true
+      if (!sharedAdminNotificationsSubscription || sharedAdminNotificationsSubscription.removed) {
+        return
+      }
+      sharedAdminNotificationsSubscription.listeners.delete(onChange)
+      if (sharedAdminNotificationsSubscription.listeners.size === 0) {
+        teardownSharedAdminNotificationsSubscription(sharedAdminNotificationsSubscription)
+      }
+    }
+  }
+
+  if (active && !active.removed) {
+    teardownSharedAdminNotificationsSubscription(active)
+  }
+
+  const client = requireSupabase()
+  // Unique topic per create avoids reusing a still-joining channel after async remove.
+  const channelName = `admin-notifications:${companyId}:${userId}:${++adminNotificationsChannelSeq}`
 
   try {
-    channel = requireSupabase()
-      .channel(`admin-notifications:${companyId}`)
+    const channel = client.channel(channelName)
+
+    const shared: SharedAdminNotificationsSubscription = {
+      companyId,
+      userId,
+      channel,
+      listeners: new Set([onChange]),
+      failed: false,
+      removed: false,
+    }
+
+    // Register every postgres_changes handler before subscribe().
+    channel
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `company_id=eq.${companyId}`,
         },
         () => {
-          onChange()
+          if (!shared.removed && !shared.failed) {
+            notifyAdminNotificationListeners(shared)
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notification_reads',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          if (!shared.removed && !shared.failed) {
+            notifyAdminNotificationListeners(shared)
+          }
         },
       )
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' && import.meta.env.DEV) {
-          console.warn('[admin-notifications] Realtime channel error — Admin continues without live push.')
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          shared.failed = true
+          warnRealtimeOnce(
+            `${channelName}:${status}`,
+            'Realtime subscribe failed:',
+            status,
+            '— Admin continues without live push.',
+          )
         }
       })
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn('[admin-notifications] Realtime subscribe failed:', error)
-    }
-    return () => undefined
-  }
 
-  return () => {
-    if (channel) {
-      void requireSupabase().removeChannel(channel)
+    sharedAdminNotificationsSubscription = shared
+
+    let cleaned = false
+    return () => {
+      if (cleaned) return
+      cleaned = true
+      if (
+        !sharedAdminNotificationsSubscription ||
+        sharedAdminNotificationsSubscription !== shared ||
+        shared.removed
+      ) {
+        return
+      }
+      shared.listeners.delete(onChange)
+      if (shared.listeners.size === 0) {
+        teardownSharedAdminNotificationsSubscription(shared)
+      }
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    warnRealtimeOnce(message, 'Realtime subscribe failed:', error)
+    return () => undefined
   }
 }
 

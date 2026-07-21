@@ -118,9 +118,18 @@ function formatVehicleLabel(timesheet: Timesheet): string {
 
 function buildViewModeEntries(timesheet: Timesheet) {
   const defaultBreakMinutes = getSetting('defaultBreakMinutes') ?? 30
+  const breakOptions = {
+    saturdayUseCompanyDefaultBreak: getSetting('saturdayUseCompanyDefaultBreak') ?? true,
+    sundayUseCompanyDefaultBreak: getSetting('sundayUseCompanyDefaultBreak') ?? true,
+  }
 
   return applyViewModeEntryTotals(
-    prepareEntryInputs(timesheet.weekStart, timesheet.entries, defaultBreakMinutes),
+    prepareEntryInputs(
+      timesheet.weekStart,
+      timesheet.entries,
+      defaultBreakMinutes,
+      breakOptions,
+    ),
     { paidBreaks: getGlobalPaidBreaks() },
   )
 }

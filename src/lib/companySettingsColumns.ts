@@ -39,9 +39,11 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'saturday_overtime_enabled',
   'saturday_overtime_after_hours',
   'saturday_overtime_multiplier',
+  'saturday_use_company_default_break',
   'sunday_overtime_enabled',
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
+  'sunday_use_company_default_break',
   'timesheet_week_start_day',
   'timesheet_week_reset_month',
   'timesheet_week_reset_day',
@@ -95,10 +97,12 @@ export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
   'saturday_overtime_after_hours',
   'saturday_overtime_multiplier',
   'saturday_guaranteed_paid_hours',
+  'saturday_use_company_default_break',
   'sunday_overtime_enabled',
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
   'sunday_guaranteed_paid_hours',
+  'sunday_use_company_default_break',
 ] as const
 
 /** Timesheet week numbering columns — optional until migration is applied. */
@@ -161,10 +165,12 @@ export const companySettingsWeekendSelect = `
   saturday_overtime_after_hours,
   saturday_overtime_multiplier,
   saturday_guaranteed_paid_hours,
+  saturday_use_company_default_break,
   sunday_overtime_enabled,
   sunday_overtime_after_hours,
   sunday_overtime_multiplier,
-  sunday_guaranteed_paid_hours
+  sunday_guaranteed_paid_hours,
+  sunday_use_company_default_break
 ` as const
 
 export const companySettingsWeekNumberingSelect = `
@@ -187,7 +193,12 @@ export const companySettingsConsumablePricesSelect = `
   consumable_default_prices
 ` as const
 
-/** Full select including weekend overtime (requires latest migration). */
+/**
+ * Full Company Settings select.
+ * Newer optional columns (weekend default-break toggles, consumable prices) are
+ * merged via dedicated optional selects so a missing column does not 400 this query.
+ * Subscription plan columns are loaded separately by companyPlanService.
+ */
 export const companySettingsSelect = `
   id,
   created_at,

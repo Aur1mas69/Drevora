@@ -96,10 +96,12 @@ type CompanyRow = {
   saturday_overtime_after_hours: number | null
   saturday_overtime_multiplier: number | null
   saturday_guaranteed_paid_hours: number | null
+  saturday_use_company_default_break?: boolean | null
   sunday_overtime_enabled: boolean | null
   sunday_overtime_after_hours: number | null
   sunday_overtime_multiplier: number | null
   sunday_guaranteed_paid_hours: number | null
+  sunday_use_company_default_break?: boolean | null
   timesheet_week_start_day: string | null
   timesheet_week_reset_month: number | null
   timesheet_week_reset_day: number | null
@@ -444,6 +446,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       row.saturday_guaranteed_paid_hours,
       DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
     ),
+    saturdayUseCompanyDefaultBreak: row.saturday_use_company_default_break ?? true,
     sundayOvertimeEnabled: row.sunday_overtime_enabled ?? false,
     sundayOvertimeAfterHours: normalizeWeekendOvertimeAfterHours(
       row.sunday_overtime_after_hours,
@@ -457,6 +460,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       row.sunday_guaranteed_paid_hours,
       DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
     ),
+    sundayUseCompanyDefaultBreak: row.sunday_use_company_default_break ?? true,
     timesheetWeekStartDay: normalizeTimesheetWeekStartDay(row.timesheet_week_start_day),
     timesheetWeekResetMonth: normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
     timesheetWeekResetDay: normalizeTimesheetWeekResetDay(
@@ -513,10 +517,12 @@ export function companySettingsToFormValues(
     saturdayOvertimeAfterHours: settings.saturdayOvertimeAfterHours,
     saturdayOvertimeMultiplier: settings.saturdayOvertimeMultiplier,
     saturdayGuaranteedPaidHours: settings.saturdayGuaranteedPaidHours,
+    saturdayUseCompanyDefaultBreak: settings.saturdayUseCompanyDefaultBreak,
     sundayOvertimeEnabled: settings.sundayOvertimeEnabled,
     sundayOvertimeAfterHours: settings.sundayOvertimeAfterHours,
     sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
     sundayGuaranteedPaidHours: settings.sundayGuaranteedPaidHours,
+    sundayUseCompanyDefaultBreak: settings.sundayUseCompanyDefaultBreak,
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
@@ -627,6 +633,9 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
       DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
     )
   }
+  if (input.saturdayUseCompanyDefaultBreak !== undefined) {
+    payload.saturday_use_company_default_break = input.saturdayUseCompanyDefaultBreak
+  }
   if (input.sundayOvertimeEnabled !== undefined) {
     payload.sunday_overtime_enabled = input.sundayOvertimeEnabled
   }
@@ -647,6 +656,9 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
       coerceNumericHours(input.sundayGuaranteedPaidHours),
       DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
     )
+  }
+  if (input.sundayUseCompanyDefaultBreak !== undefined) {
+    payload.sunday_use_company_default_break = input.sundayUseCompanyDefaultBreak
   }
   if (input.timesheetWeekStartDay !== undefined) {
     payload.timesheet_week_start_day = normalizeTimesheetWeekStartDay(input.timesheetWeekStartDay)
@@ -794,7 +806,20 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
   })
 
   if (!error && data) {
-    return mergeOptionalConsumableDefaultPrices(companyId, data as unknown as CompanyRow)
+    // Full select succeeded — still merge newer optional weekend columns
+    // (e.g. use_company_default_break) when those migrations are present.
+    let merged = { ...(data as unknown as Record<string, unknown>) }
+    const { data: weekendData, error: weekendError } = await queryCompanyRow(
+      companyId,
+      companySettingsWeekendSelect,
+    )
+    if (!weekendError && weekendData) {
+      merged = { ...merged, ...(weekendData as unknown as Record<string, unknown>) }
+    }
+    return mergeOptionalConsumableDefaultPrices(
+      companyId,
+      merged as unknown as CompanyRow,
+    )
   }
 
   if (error && !isMissingColumnError(error)) {

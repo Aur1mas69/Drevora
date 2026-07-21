@@ -4,6 +4,7 @@ import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
   formatVehiclePlanLimitError,
   isVehiclePlanLimitError,
+  SUBSCRIPTION_PLAN_EXPIRED,
   VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE,
   VEHICLE_PLAN_LIMIT_REACHED,
 } from '@/lib/vehicleAllowance'
@@ -212,6 +213,7 @@ export class VehiclesServiceError extends Error {
 
 function planLimitErrorCodeFromMessage(message: string): string | null {
   const upper = message.toUpperCase()
+  if (upper.includes(SUBSCRIPTION_PLAN_EXPIRED)) return SUBSCRIPTION_PLAN_EXPIRED
   if (upper.includes(VEHICLE_PLAN_LIMIT_REACHED)) return VEHICLE_PLAN_LIMIT_REACHED
   if (upper.includes(VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE)) {
     return VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE

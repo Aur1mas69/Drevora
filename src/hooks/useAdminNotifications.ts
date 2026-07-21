@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AdminNotificationWithReadState } from '@/lib/adminNotificationTypes'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { isOfficeMembershipRole } from '@/lib/membershipRoles'
 import {
@@ -34,7 +35,9 @@ function isNotificationsBackendUnavailable(message: string): boolean {
 }
 
 export function useAdminNotifications(): UseAdminNotificationsResult {
+  const { session } = useAuth()
   const { companyId, companyReady, membershipRole } = useCompanySettings()
+  const userId = session?.user.id ?? null
   const [notifications, setNotifications] = useState<AdminNotificationWithReadState[]>(
     [],
   )
@@ -44,9 +47,13 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
   const backendUnavailableRef = useRef(false)
   const lastLoggedErrorRef = useRef<string | null>(null)
   const inFlightRef = useRef(false)
+  const loadRef = useRef<(force: boolean) => Promise<void>>(async () => undefined)
 
   const canLoad =
-    companyReady && Boolean(companyId) && isOfficeMembershipRole(membershipRole)
+    companyReady &&
+    Boolean(companyId) &&
+    Boolean(userId) &&
+    isOfficeMembershipRole(membershipRole)
 
   const load = useCallback(
     async (force: boolean) => {
@@ -107,6 +114,8 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
     await load(true)
   }, [load])
 
+  loadRef.current = load
+
   useEffect(() => {
     mountedRef.current = true
     void load(true)
@@ -116,19 +125,20 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
   }, [load])
 
   useEffect(() => {
-    if (!canLoad || !companyId) return
+    if (!canLoad || !companyId || !userId) return
 
-    const unsubscribe = subscribeToAdminNotifications(companyId, () => {
-      void load(false)
+    // Stable deps only — onChange uses loadRef so load identity changes do not resubscribe.
+    const unsubscribe = subscribeToAdminNotifications(companyId, userId, () => {
+      void loadRef.current(false)
     })
 
     function handleFocus() {
-      void load(false)
+      void loadRef.current(false)
     }
 
     function handleVisibility() {
       if (document.visibilityState === 'visible') {
-        void load(false)
+        void loadRef.current(false)
       }
     }
 
@@ -140,7 +150,7 @@ export function useAdminNotifications(): UseAdminNotificationsResult {
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [canLoad, companyId, load])
+  }, [canLoad, companyId, userId])
 
   const markOneRead = useCallback(
     async (notificationId: string) => {

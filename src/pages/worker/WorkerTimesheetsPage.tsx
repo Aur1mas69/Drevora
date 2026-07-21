@@ -133,12 +133,24 @@ export default function WorkerTimesheetsPage() {
     return null
   }
 
+  const breakOptions = useMemo(
+    () => ({
+      saturdayUseCompanyDefaultBreak: settings?.saturdayUseCompanyDefaultBreak ?? true,
+      sundayUseCompanyDefaultBreak: settings?.sundayUseCompanyDefaultBreak ?? true,
+    }),
+    [
+      settings?.saturdayUseCompanyDefaultBreak,
+      settings?.sundayUseCompanyDefaultBreak,
+    ],
+  )
+
   const applyLoadedTimesheet = useCallback(
     (loaded: Timesheet) => {
       const prepared = prepareEntryInputs(
         loaded.weekStart,
         loaded.entries,
         defaultBreakMinutes,
+        breakOptions,
       )
       const nextEntries = canWorkerEditTimesheet(loaded.status)
         ? recalculateEntryInputs(prepared, {
@@ -153,7 +165,7 @@ export default function WorkerTimesheetsPage() {
       setSavedSnapshot(entriesSnapshot(nextEntries))
       setWeekStart(loaded.weekStart)
     },
-    [defaultBreakMinutes, overtimeMode, overtimeRules, paidBreaks],
+    [breakOptions, defaultBreakMinutes, overtimeMode, overtimeRules, paidBreaks],
   )
 
   const loadWeek = useCallback(

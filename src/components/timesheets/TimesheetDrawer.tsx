@@ -162,6 +162,17 @@ export function TimesheetDrawer({
     [overtimeAfterHours, overtimeMultiplier, settings],
   )
 
+  const breakOptions = useMemo(
+    () => ({
+      saturdayUseCompanyDefaultBreak: settings?.saturdayUseCompanyDefaultBreak ?? true,
+      sundayUseCompanyDefaultBreak: settings?.sundayUseCompanyDefaultBreak ?? true,
+    }),
+    [
+      settings?.saturdayUseCompanyDefaultBreak,
+      settings?.sundayUseCompanyDefaultBreak,
+    ],
+  )
+
   const recalcOptions = useMemo(
     () => ({
       overtimeMode,
@@ -174,7 +185,12 @@ export function TimesheetDrawer({
   useEffect(() => {
     if (!timesheet) return
     setDraftEntries(
-      prepareEntryInputs(timesheet.weekStart, timesheet.entries, defaultBreakMinutes),
+      prepareEntryInputs(
+        timesheet.weekStart,
+        timesheet.entries,
+        defaultBreakMinutes,
+        breakOptions,
+      ),
     )
   }, [timesheet?.id])
 
@@ -213,13 +229,18 @@ export function TimesheetDrawer({
 
     if (!isEditable) {
       return applyViewModeEntryTotals(
-        prepareEntryInputs(timesheet.weekStart, timesheet.entries, defaultBreakMinutes),
+        prepareEntryInputs(
+          timesheet.weekStart,
+          timesheet.entries,
+          defaultBreakMinutes,
+          breakOptions,
+        ),
         { paidBreaks: recalcOptions.paidBreaks },
       )
     }
 
     return recalculateEntryInputs(draftEntries, recalcOptions)
-  }, [defaultBreakMinutes, draftEntries, isEditable, recalcOptions, timesheet])
+  }, [breakOptions, defaultBreakMinutes, draftEntries, isEditable, recalcOptions, timesheet])
 
   const paidBreaks = recalcOptions.paidBreaks
 

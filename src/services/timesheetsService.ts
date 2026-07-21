@@ -10,6 +10,7 @@ import {
   calculateEntryTotalMinutes,
   computeTimesheetSummaryStats,
   normalizeWeekStartForCompany,
+  resolveDefaultBreakMinutesForDay,
   sortTimesheetListItems,
   summarizeTimesheetEntries,
 } from '@/lib/timesheetUtils'
@@ -918,8 +919,16 @@ async function insertTimesheetWithEntries(
 
   const weekDates = buildWeekDates(weekStart)
   const defaultBreakMinutes = getSetting('defaultBreakMinutes') ?? 30
+  const breakOptions = {
+    saturdayUseCompanyDefaultBreak: getSetting('saturdayUseCompanyDefaultBreak') ?? true,
+    sundayUseCompanyDefaultBreak: getSetting('sundayUseCompanyDefaultBreak') ?? true,
+  }
   const entryRows = weekDates.map((dayDate) =>
-    buildEmptyTimesheetEntryDbRow(created.id, dayDate, defaultBreakMinutes),
+    buildEmptyTimesheetEntryDbRow(
+      created.id,
+      dayDate,
+      resolveDefaultBreakMinutesForDay(dayDate, defaultBreakMinutes, breakOptions),
+    ),
   )
 
   await assertTimesheetInCompany(created.id, companyId)

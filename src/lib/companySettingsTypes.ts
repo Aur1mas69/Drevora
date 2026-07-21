@@ -304,10 +304,12 @@ export type CompanySettings = {
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
   saturdayGuaranteedPaidHours: number
+  saturdayUseCompanyDefaultBreak: boolean
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
+  sundayUseCompanyDefaultBreak: boolean
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -353,10 +355,12 @@ export type CompanySettingsInput = {
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
   saturdayGuaranteedPaidHours: number
+  saturdayUseCompanyDefaultBreak: boolean
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
+  sundayUseCompanyDefaultBreak: boolean
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -401,10 +405,12 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
   saturdayGuaranteedPaidHours: DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
+  saturdayUseCompanyDefaultBreak: true,
   sundayOvertimeEnabled: false,
   sundayOvertimeAfterHours: DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
   sundayGuaranteedPaidHours: DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
+  sundayUseCompanyDefaultBreak: true,
   ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
 }
 

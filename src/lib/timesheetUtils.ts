@@ -832,10 +832,33 @@ export function formatTimeDisplay(
   return formatClockTime(value, { timeFormat })
 }
 
+export type PrepareEntryBreakOptions = {
+  /** When false, new Saturday rows start with Break = 0. Default true. */
+  saturdayUseCompanyDefaultBreak?: boolean
+  /** When false, new Sunday rows start with Break = 0. Default true. */
+  sundayUseCompanyDefaultBreak?: boolean
+}
+
+/** Resolve auto-applied break for a newly created day entry (does not alter existing rows). */
+export function resolveDefaultBreakMinutesForDay(
+  dayDate: string,
+  defaultBreakMinutes: number,
+  options: PrepareEntryBreakOptions = {},
+): number {
+  const day = parseLocalDate(dayDate).getDay()
+  const saturdayUse = options.saturdayUseCompanyDefaultBreak ?? true
+  const sundayUse = options.sundayUseCompanyDefaultBreak ?? true
+
+  if (day === 6 && !saturdayUse) return 0
+  if (day === 0 && !sundayUse) return 0
+  return defaultBreakMinutes
+}
+
 export function prepareEntryInputs(
   weekStart: string,
   entries: TimesheetEntry[],
   defaultBreakMinutes = 30,
+  breakOptions: PrepareEntryBreakOptions = {},
 ): TimesheetEntryInput[] {
   const weekDates = buildWeekDates(weekStart)
   const byDate = new Map(entries.map((entry) => [entry.dayDate, entry]))
@@ -859,7 +882,11 @@ export function prepareEntryInputs(
     return {
       dayDate,
       startTime: null,
-      breakMinutes: defaultBreakMinutes,
+      breakMinutes: resolveDefaultBreakMinutesForDay(
+        dayDate,
+        defaultBreakMinutes,
+        breakOptions,
+      ),
       finishTime: null,
       totalMinutes: 0,
       overtimeMinutes: 0,

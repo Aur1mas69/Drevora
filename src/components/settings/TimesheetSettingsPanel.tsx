@@ -22,24 +22,78 @@ import {
   type OvertimeMultiplier,
   type RoundTimeMinutes,
 } from '@/lib/companySettingsTypes'
-
-/** Parse decimal hours from a number input. Empty/invalid keeps previous; 0 is valid. */
-function parseWeekendDecimalHoursInput(raw: string, previous: number): number {
-  const trimmed = raw.trim()
-  if (trimmed === '') return previous
-  const next = Number(raw)
-  if (!Number.isFinite(next) || next < 0) return previous
-  return next
-}
 import {
   getDaysInMonth,
   MONTH_OPTIONS,
   TIMESHEET_WEEK_START_DAY_OPTIONS,
 } from '@/lib/timesheetWeekNumber'
+import { useEffect, useState } from 'react'
 
 type TimesheetSettingsPanelProps = {
   form: CompanySettingsInput
   onChange: (patch: Partial<CompanySettingsInput>) => void
+}
+
+/**
+ * Weekend decimal-hours input that allows clearing while typing (including to enter 0).
+ * Keeps a string draft while focused; commits parseable non-negative numbers immediately
+ * (nullish-safe so 0 is preserved). Empty/invalid draft restores the last committed value on blur.
+ */
+function WeekendDecimalHoursInput({
+  value,
+  onCommit,
+}: {
+  value: number
+  onCommit: (next: number) => void
+}) {
+  const [draft, setDraft] = useState(() => String(value))
+  const [focused, setFocused] = useState(false)
+
+  useEffect(() => {
+    if (!focused) {
+      setDraft(String(value))
+    }
+  }, [focused, value])
+
+  function tryParseNonNegative(raw: string): number | null {
+    const trimmed = raw.trim()
+    if (trimmed === '') return null
+    const parsed = Number(trimmed)
+    if (!Number.isFinite(parsed) || parsed < 0) return null
+    return parsed
+  }
+
+  return (
+    <input
+      type="number"
+      min={0}
+      step={0.25}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        const raw = event.target.value
+        setDraft(raw)
+        const parsed = tryParseNonNegative(raw)
+        // Commit only when parseable; empty stays local so Backspace → type 0 works.
+        // Use nullish check so 0 is committed (never treated as falsy fallback).
+        if (parsed != null) {
+          onCommit(parsed)
+        }
+      }}
+      onBlur={() => {
+        setFocused(false)
+        const parsed = tryParseNonNegative(draft)
+        if (parsed != null) {
+          onCommit(parsed)
+          setDraft(String(parsed))
+          return
+        }
+        // Empty or invalid: restore previous committed value.
+        setDraft(String(value))
+      }}
+      className={settingsSelectClassName}
+    />
+  )
 }
 
 export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPanelProps) {
@@ -232,38 +286,16 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         {form.saturdayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <SettingsField label="Guaranteed paid hours">
-              <input
-                type="number"
-                min={0}
-                step={0.25}
+              <WeekendDecimalHoursInput
                 value={form.saturdayGuaranteedPaidHours}
-                onChange={(event) =>
-                  onChange({
-                    saturdayGuaranteedPaidHours: parseWeekendDecimalHoursInput(
-                      event.target.value,
-                      form.saturdayGuaranteedPaidHours,
-                    ),
-                  })
-                }
-                className={settingsSelectClassName}
+                onCommit={(next) => onChange({ saturdayGuaranteedPaidHours: next })}
               />
             </SettingsField>
 
             <SettingsField label="Starts after">
-              <input
-                type="number"
-                min={0}
-                step={0.25}
+              <WeekendDecimalHoursInput
                 value={form.saturdayOvertimeAfterHours}
-                onChange={(event) =>
-                  onChange({
-                    saturdayOvertimeAfterHours: parseWeekendDecimalHoursInput(
-                      event.target.value,
-                      form.saturdayOvertimeAfterHours,
-                    ),
-                  })
-                }
-                className={settingsSelectClassName}
+                onCommit={(next) => onChange({ saturdayOvertimeAfterHours: next })}
               />
             </SettingsField>
 
@@ -286,6 +318,13 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         ) : null}
 
         <SettingsToggle
+          label="Use company default break"
+          description="When enabled, new Saturday timesheet entries use the company default break. When disabled, they start with Break = 0 (still editable)."
+          checked={form.saturdayUseCompanyDefaultBreak}
+          onChange={(checked) => onChange({ saturdayUseCompanyDefaultBreak: checked })}
+        />
+
+        <SettingsToggle
           label="Sunday overtime"
           checked={form.sundayOvertimeEnabled}
           onChange={(checked) => onChange({ sundayOvertimeEnabled: checked })}
@@ -294,38 +333,16 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         {form.sundayOvertimeEnabled ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <SettingsField label="Guaranteed paid hours">
-              <input
-                type="number"
-                min={0}
-                step={0.25}
+              <WeekendDecimalHoursInput
                 value={form.sundayGuaranteedPaidHours}
-                onChange={(event) =>
-                  onChange({
-                    sundayGuaranteedPaidHours: parseWeekendDecimalHoursInput(
-                      event.target.value,
-                      form.sundayGuaranteedPaidHours,
-                    ),
-                  })
-                }
-                className={settingsSelectClassName}
+                onCommit={(next) => onChange({ sundayGuaranteedPaidHours: next })}
               />
             </SettingsField>
 
             <SettingsField label="Starts after">
-              <input
-                type="number"
-                min={0}
-                step={0.25}
+              <WeekendDecimalHoursInput
                 value={form.sundayOvertimeAfterHours}
-                onChange={(event) =>
-                  onChange({
-                    sundayOvertimeAfterHours: parseWeekendDecimalHoursInput(
-                      event.target.value,
-                      form.sundayOvertimeAfterHours,
-                    ),
-                  })
-                }
-                className={settingsSelectClassName}
+                onCommit={(next) => onChange({ sundayOvertimeAfterHours: next })}
               />
             </SettingsField>
 
@@ -346,6 +363,13 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
             </SettingsField>
           </div>
         ) : null}
+
+        <SettingsToggle
+          label="Use company default break"
+          description="When enabled, new Sunday timesheet entries use the company default break. When disabled, they start with Break = 0 (still editable)."
+          checked={form.sundayUseCompanyDefaultBreak}
+          onChange={(checked) => onChange({ sundayUseCompanyDefaultBreak: checked })}
+        />
       </SettingsCard>
     </div>
   )
