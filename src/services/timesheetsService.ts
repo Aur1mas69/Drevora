@@ -257,15 +257,22 @@ function normalizeDailyComment(value: string | null | undefined): string {
 
 /** Maps React entry input (dailyComment) to timesheet_entries row (daily_comment). */
 function buildTimesheetEntryDbRow(timesheetId: string, entry: TimesheetEntryInput) {
+  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
+  // Manual: total_minutes is authoritative Basic hours (as minutes). Automatic: clock-derived.
+  const totalMinutes =
+    overtimeMode === 'Manual'
+      ? Math.max(0, entry.totalMinutes ?? 0)
+      : calculateEntryTotalMinutes(entry, {
+          paidBreaks: getGlobalPaidBreaks(),
+        })
+
   return {
     timesheet_id: timesheetId,
     day_date: entry.dayDate,
     start_time: mapInsertTime(entry.startTime),
     break_minutes: entry.breakMinutes,
     finish_time: mapInsertTime(entry.finishTime),
-    total_minutes: calculateEntryTotalMinutes(entry, {
-      paidBreaks: getGlobalPaidBreaks(),
-    }),
+    total_minutes: totalMinutes,
     overtime_minutes: entry.overtimeMinutes ?? 0,
     additional_hours: normalizeAdditionalHours(entry.additionalHours),
     daily_comment: normalizeDailyComment(entry.dailyComment) || null,
@@ -387,6 +394,8 @@ function mapTimesheetRow(row: TimesheetRow): Timesheet {
   const listItem = mapListRow(row)
   const totals = summarizeTimesheetEntries(entries, {
     paidBreaks: getGlobalPaidBreaks(),
+    overtimeRules: getGlobalTimesheetOvertimeRules(),
+    overtimeMode: getSetting('overtimeMode') ?? 'Manual',
   })
 
   return {
@@ -551,6 +560,7 @@ async function fetchPayableSummariesByTimesheetIds(
 
   const overtimeRules = getGlobalTimesheetOvertimeRules()
   const paidBreaks = getGlobalPaidBreaks()
+  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
 
   for (const [timesheetId, entries] of entriesByTimesheet) {
     summaries.set(
@@ -558,6 +568,7 @@ async function fetchPayableSummariesByTimesheetIds(
       summarizeTimesheetEntries(entries, {
         overtimeRules,
         paidBreaks,
+        overtimeMode,
       }),
     )
   }

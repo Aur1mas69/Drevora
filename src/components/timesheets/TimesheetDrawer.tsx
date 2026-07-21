@@ -1,14 +1,16 @@
+import { TimesheetDecimalHoursInput } from '@/components/timesheets/TimesheetDecimalHoursInput'
 import { TimesheetTimeInput } from '@/components/timesheets/TimesheetTimeInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
-import type { TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
+import type { OvertimeMode, TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import {
   applyViewModeEntryTotals,
   buildTimesheetOvertimeRules,
   canEditTimesheet,
+  decimalHoursToMinutes,
   entryHasStartAndFinish,
   formatBreak,
   formatDayLabel,
@@ -20,6 +22,7 @@ import {
   getEntryPayableDisplayResult,
   getStatusBadgeClass,
   getStatusLabel,
+  minutesToDecimalHours,
   prepareEntryInputs,
   recalculateEntryInputs,
   summarizeTimesheetEntries,
@@ -235,7 +238,10 @@ export function TimesheetDrawer({
           defaultBreakMinutes,
           breakOptions,
         ),
-        { paidBreaks: recalcOptions.paidBreaks },
+        {
+          paidBreaks: recalcOptions.paidBreaks,
+          overtimeMode: recalcOptions.overtimeMode,
+        },
       )
     }
 
@@ -272,8 +278,9 @@ export function TimesheetDrawer({
     return summarizeTimesheetEntries(entriesForSummary, {
       overtimeRules,
       paidBreaks,
+      overtimeMode,
     })
-  }, [displayEntries, overtimeRules, paidBreaks, timesheet])
+  }, [displayEntries, overtimeMode, overtimeRules, paidBreaks, timesheet])
 
   if (!timesheet) return null
 
@@ -442,6 +449,7 @@ export function TimesheetDrawer({
                 index={index}
                 isEditable={isEditable}
                 paidBreaks={paidBreaks}
+                overtimeMode={overtimeMode}
                 overtimeRules={overtimeRules}
                 timeFormat={timeFormat}
                 formatTime={formatTime}
@@ -475,6 +483,7 @@ export function TimesheetDrawer({
                     index={index}
                     isEditable={isEditable}
                     paidBreaks={paidBreaks}
+                    overtimeMode={overtimeMode}
                     overtimeRules={overtimeRules}
                     timeFormat={timeFormat}
                     formatTime={formatTime}
@@ -630,6 +639,7 @@ function SummaryItem({
 function AdditionalHoursCell({
   entry,
   paidBreaks,
+  overtimeMode,
   overtimeRules,
   isEditable,
   index,
@@ -638,6 +648,7 @@ function AdditionalHoursCell({
 }: {
   entry: TimesheetEntryInput
   paidBreaks: boolean
+  overtimeMode: OvertimeMode
   overtimeRules: TimesheetOvertimeRules
   isEditable: boolean
   index: number
@@ -646,11 +657,13 @@ function AdditionalHoursCell({
 }) {
   const payable = getEntryPayableDisplayResult(entry, {
     paidBreaks,
+    overtimeMode,
     overtimeRules,
   })
-  const paidBreakMinutes = payable.weekendGuaranteeDay
-    ? 0
-    : getEntryPaidBreakMinutes(entry, paidBreaks)
+  const paidBreakMinutes =
+    overtimeMode === 'Manual' || payable.weekendGuaranteeDay
+      ? 0
+      : getEntryPaidBreakMinutes(entry, paidBreaks)
   const displayAdditional = payable.additionalHours
   const breakdownParts = [
     paidBreakMinutes > 0
@@ -666,21 +679,17 @@ function AdditionalHoursCell({
   return (
     <div className={compact ? 'space-y-1' : 'min-w-0'} title={title}>
       {isEditable ? (
-        <Input
-          type="number"
-          min={0}
-          step={0.25}
-          placeholder="0"
-          value={entry.additionalHours > 0 ? entry.additionalHours : ''}
-          onChange={(event) =>
+        <TimesheetDecimalHoursInput
+          value={entry.additionalHours}
+          onChange={(hours) =>
             onUpdate(entry.dayDate, {
-              additionalHours: Math.max(0, Number.parseFloat(event.target.value) || 0),
+              additionalHours: hours,
             })
           }
           className={inputClassName}
           data-entry-index={index}
           data-field="additional-hours"
-          aria-label={`Manual Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+          aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
         />
       ) : (
         <span className="text-sm font-medium tabular-nums text-[#0D477F] dark:text-slate-200">
@@ -739,6 +748,7 @@ function TimesheetDayRow({
   index,
   isEditable,
   paidBreaks,
+  overtimeMode,
   overtimeRules,
   timeFormat,
   formatTime,
@@ -748,17 +758,22 @@ function TimesheetDayRow({
   index: number
   isEditable: boolean
   paidBreaks: boolean
+  overtimeMode: OvertimeMode
   overtimeRules: TimesheetOvertimeRules
   timeFormat: CompanyTimeFormat
   formatTime: (value: string | null) => string
   onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
 }) {
+  const isManualMode = overtimeMode === 'Manual'
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules,
     paidBreaks,
+    overtimeMode,
   })
   const dayTotal = payable.totalPaidHours
   const hasShift = entryHasStartAndFinish(entry)
+  const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
+  const canEditBasic = isEditable && isManualMode
 
   return (
     <tr
@@ -817,30 +832,39 @@ function TimesheetDayRow({
           </span>
         )}
       </td>
-      <td
-        className={`${tableCellClassName} text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100`}
-      >
-        {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+      <td className={tableCellClassName}>
+        {canEditBasic ? (
+          <TimesheetDecimalHoursInput
+            value={minutesToDecimalHours(entry.totalMinutes)}
+            onChange={(hours) =>
+              onUpdate(entry.dayDate, {
+                totalMinutes: decimalHoursToMinutes(hours),
+              })
+            }
+            className={inputClassName}
+            data-entry-index={index}
+            data-field="basic"
+            aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+          />
+        ) : (
+          <span className="text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
+            {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+          </span>
+        )}
       </td>
       <td className={tableCellClassName}>
-        {isEditable && !payable.weekendGuaranteeDay ? (
-          <Input
-            type="number"
-            min={0}
-            step={0.25}
-            value={
-              entry.overtimeMinutes > 0
-                ? Math.round((entry.overtimeMinutes / 60) * 100) / 100
-                : 0
-            }
-            onChange={(event) =>
+        {canEditOt ? (
+          <TimesheetDecimalHoursInput
+            value={minutesToDecimalHours(entry.overtimeMinutes)}
+            onChange={(hours) =>
               onUpdate(entry.dayDate, {
-                overtimeMinutes: Math.round((Number(event.target.value) || 0) * 60),
+                overtimeMinutes: decimalHoursToMinutes(hours),
               })
             }
             className={inputClassName}
             data-entry-index={index}
             data-field="overtime"
+            aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
           />
         ) : (
           <span className="text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300">
@@ -854,6 +878,7 @@ function TimesheetDayRow({
         <AdditionalHoursCell
           entry={entry}
           paidBreaks={paidBreaks}
+          overtimeMode={overtimeMode}
           overtimeRules={overtimeRules}
           isEditable={isEditable}
           index={index}
@@ -877,6 +902,7 @@ function TimesheetDayCard({
   index,
   isEditable,
   paidBreaks,
+  overtimeMode,
   overtimeRules,
   timeFormat,
   formatTime,
@@ -886,21 +912,27 @@ function TimesheetDayCard({
   index: number
   isEditable: boolean
   paidBreaks: boolean
+  overtimeMode: OvertimeMode
   overtimeRules: TimesheetOvertimeRules
   timeFormat: CompanyTimeFormat
   formatTime: (value: string | null) => string
   onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
 }) {
+  const isManualMode = overtimeMode === 'Manual'
   const hasShift = entryHasStartAndFinish(entry)
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules,
     paidBreaks,
+    overtimeMode,
   })
-  const paidBreakMinutes = payable.weekendGuaranteeDay
-    ? 0
-    : getEntryPaidBreakMinutes(entry, paidBreaks)
+  const paidBreakMinutes =
+    isManualMode || payable.weekendGuaranteeDay
+      ? 0
+      : getEntryPaidBreakMinutes(entry, paidBreaks)
   const combinedAdditional = payable.additionalHours
   const dayTotal = payable.totalPaidHours
+  const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
+  const canEditBasic = isEditable && isManualMode
 
   return (
     <article className="rounded-2xl border border-[#D3E9FC] bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
@@ -970,31 +1002,40 @@ function TimesheetDayCard({
 
         <div>
           <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Basic</p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#113C69]">
-            {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
-          </p>
+          {canEditBasic ? (
+            <TimesheetDecimalHoursInput
+              value={minutesToDecimalHours(entry.totalMinutes)}
+              onChange={(hours) =>
+                onUpdate(entry.dayDate, {
+                  totalMinutes: decimalHoursToMinutes(hours),
+                })
+              }
+              className={`${inputClassName} mt-1`}
+              data-entry-index={index}
+              data-field="basic"
+              aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+            />
+          ) : (
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#113C69]">
+              {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+            </p>
+          )}
         </div>
 
         <div>
           <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">OT</p>
-          {isEditable && !payable.weekendGuaranteeDay ? (
-            <Input
-              type="number"
-              min={0}
-              step={0.25}
-              value={
-                entry.overtimeMinutes > 0
-                  ? Math.round((entry.overtimeMinutes / 60) * 100) / 100
-                  : 0
-              }
-              onChange={(event) =>
+          {canEditOt ? (
+            <TimesheetDecimalHoursInput
+              value={minutesToDecimalHours(entry.overtimeMinutes)}
+              onChange={(hours) =>
                 onUpdate(entry.dayDate, {
-                  overtimeMinutes: Math.round((Number(event.target.value) || 0) * 60),
+                  overtimeMinutes: decimalHoursToMinutes(hours),
                 })
               }
               className={`${inputClassName} mt-1`}
               data-entry-index={index}
               data-field="overtime"
+              aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
             />
           ) : (
             <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#0B68BE]">
@@ -1011,6 +1052,7 @@ function TimesheetDayCard({
             <AdditionalHoursCell
               entry={entry}
               paidBreaks={paidBreaks}
+              overtimeMode={overtimeMode}
               overtimeRules={overtimeRules}
               isEditable={isEditable}
               index={index}

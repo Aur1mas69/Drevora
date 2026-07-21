@@ -1,3 +1,4 @@
+import { TimesheetDecimalHoursInput } from '@/components/timesheets/TimesheetDecimalHoursInput'
 import { TimesheetTimeInput } from '@/components/timesheets/TimesheetTimeInput'
 import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -6,6 +7,7 @@ import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import type { Timesheet, TimesheetEntryInput, TimesheetStatus } from '@/lib/timesheetTypes'
 import {
   buildTimesheetOvertimeRules,
+  decimalHoursToMinutes,
   formatDayLabel,
   formatHours,
   formatHoursFromMinutes,
@@ -15,6 +17,7 @@ import {
   getEntryPayableDisplayResult,
   getStatusBadgeClass,
   getStatusLabel,
+  minutesToDecimalHours,
   normalizeWeekStartForCompany,
   parseLocalDate,
   prepareEntryInputs,
@@ -52,12 +55,16 @@ function entriesSnapshot(entries: TimesheetEntryInput[]): string {
       startTime: entry.startTime,
       finishTime: entry.finishTime,
       breakMinutes: entry.breakMinutes,
+      totalMinutes: entry.totalMinutes,
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
       dailyComment: entry.dailyComment,
     })),
   )
 }
+
+const workerFieldClass =
+  'h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20 disabled:opacity-60'
 
 export default function WorkerTimesheetsPage() {
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
@@ -115,13 +122,16 @@ export default function WorkerTimesheetsPage() {
   const editable = timesheet ? canWorkerEditTimesheet(timesheet.status) : false
   const isDirty = editable && entriesSnapshot(entries) !== savedSnapshot
 
+  const isManualMode = overtimeMode === 'Manual'
+
   const summary = useMemo(
     () =>
       summarizeTimesheetEntries(entries, {
         overtimeRules,
         paidBreaks,
+        overtimeMode,
       }),
-    [entries, overtimeRules, paidBreaks],
+    [entries, overtimeMode, overtimeRules, paidBreaks],
   )
 
   function validateManualAdditional(nextEntries: TimesheetEntryInput[]): string | null {
@@ -286,6 +296,8 @@ export default function WorkerTimesheetsPage() {
         | 'breakMinutes'
         | 'dailyComment'
         | 'additionalHours'
+        | 'totalMinutes'
+        | 'overtimeMinutes'
       >
     >,
   ) {
@@ -518,6 +530,7 @@ export default function WorkerTimesheetsPage() {
           const payable = getEntryPayableDisplayResult(entry, {
             overtimeRules,
             paidBreaks,
+            overtimeMode,
           })
 
           return (
@@ -529,8 +542,8 @@ export default function WorkerTimesheetsPage() {
               <h2 className="text-base font-semibold text-slate-950">
                 {formatDayLabel(entry.dayDate)}
               </h2>
-              <p className="text-xs font-medium text-slate-400">
-                {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+              <p className="text-xs font-medium tabular-nums text-slate-400">
+                {formatTotalHours(payable.totalPaidHours)}
               </p>
             </div>
 
@@ -546,7 +559,7 @@ export default function WorkerTimesheetsPage() {
                       updateEntry(entry.dayDate, { startTime: value })
                     }
                     timeFormat="24-hour"
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums"
+                    className={workerFieldClass}
                   />
                 ) : (
                   <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
@@ -566,7 +579,7 @@ export default function WorkerTimesheetsPage() {
                       updateEntry(entry.dayDate, { finishTime: value })
                     }
                     timeFormat="24-hour"
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums"
+                    className={workerFieldClass}
                   />
                 ) : (
                   <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
@@ -588,58 +601,96 @@ export default function WorkerTimesheetsPage() {
                       breakMinutes: Number(event.target.value),
                     })
                   }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold text-slate-950"
+                  className={workerFieldClass}
                 >
                   {BREAK_OPTIONS.map((minutes) => (
                     <option key={minutes} value={minutes}>
-                      {minutes} minutes
+                      {minutes === 0 ? '0m' : `${minutes}m`}
                     </option>
                   ))}
                   {!BREAK_OPTIONS.includes(
                     entry.breakMinutes as (typeof BREAK_OPTIONS)[number],
                   ) ? (
                     <option value={entry.breakMinutes}>
-                      {entry.breakMinutes} minutes
+                      {entry.breakMinutes}m
                     </option>
                   ) : null}
                 </select>
               ) : (
                 <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
-                  {entry.breakMinutes} minutes
+                  {entry.breakMinutes}m
                 </p>
               )}
             </label>
+
+            {isManualMode ? (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    Basic Hours
+                  </span>
+                  {editable ? (
+                    <TimesheetDecimalHoursInput
+                      value={minutesToDecimalHours(entry.totalMinutes)}
+                      onChange={(hours) =>
+                        updateEntry(entry.dayDate, {
+                          totalMinutes: decimalHoursToMinutes(hours),
+                        })
+                      }
+                      className={workerFieldClass}
+                      aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+                    />
+                  ) : (
+                    <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+                      {formatHours(payable.basicHours)}
+                    </p>
+                  )}
+                </label>
+
+                <label className="space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    Overtime
+                  </span>
+                  {editable ? (
+                    <TimesheetDecimalHoursInput
+                      value={minutesToDecimalHours(entry.overtimeMinutes)}
+                      onChange={(hours) =>
+                        updateEntry(entry.dayDate, {
+                          overtimeMinutes: decimalHoursToMinutes(hours),
+                        })
+                      }
+                      className={workerFieldClass}
+                      aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
+                    />
+                  ) : (
+                    <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+                      {formatHours(payable.overtimeDisplayHours)}
+                    </p>
+                  )}
+                </label>
+              </div>
+            ) : null}
 
             <label className="mt-3 block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                 Additional Hours
               </span>
               {editable ? (
-                <input
-                  type="number"
-                  min={0}
-                  step={0.25}
-                  value={entry.additionalHours > 0 ? entry.additionalHours : ''}
-                  onChange={(event) =>
-                    updateEntry(entry.dayDate, {
-                      additionalHours: Math.max(
-                        0,
-                        Number.parseFloat(event.target.value) || 0,
-                      ),
-                    })
+                <TimesheetDecimalHoursInput
+                  value={entry.additionalHours}
+                  onChange={(hours) =>
+                    updateEntry(entry.dayDate, { additionalHours: hours })
                   }
-                  placeholder="0"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
-                  aria-label={`Manual Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+                  className={workerFieldClass}
+                  aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
                 />
               ) : (
                 <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
-                  {payable.additionalHours > 0
-                    ? formatHours(payable.additionalHours)
-                    : '—'}
+                  {formatHours(payable.additionalHours)}
                 </p>
               )}
-              {!payable.weekendGuaranteeDay &&
+              {!isManualMode &&
+              !payable.weekendGuaranteeDay &&
               payable.additionalHours > entry.additionalHours ? (
                 <p className="text-xs font-medium text-slate-500">
                   Includes automatic paid break where enabled
@@ -649,7 +700,7 @@ export default function WorkerTimesheetsPage() {
 
             <label className="mt-3 block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                Daily comment
+                Daily note
               </span>
               {editable ? (
                 <input
@@ -674,33 +725,52 @@ export default function WorkerTimesheetsPage() {
               )}
             </label>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Basic
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Overtime
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {payable.overtimeDisplayHours > 0
-                    ? formatHours(payable.overtimeDisplayHours)
-                    : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Total
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatTotalHours(payable.totalPaidHours)}
-                </p>
-              </div>
+            <div
+              className={cn(
+                'mt-3 grid gap-2 rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center',
+                isManualMode ? 'grid-cols-1' : 'grid-cols-3',
+              )}
+            >
+              {isManualMode ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    Total Hours
+                  </p>
+                  <p className="mt-1 text-base font-bold tabular-nums text-slate-950">
+                    {formatTotalHours(payable.totalPaidHours)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Read-only · Basic + OT + Additional
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Basic
+                    </p>
+                    <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+                      {formatHours(payable.basicHours)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Overtime
+                    </p>
+                    <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+                      {formatHours(payable.overtimeDisplayHours)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Total
+                    </p>
+                    <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+                      {formatTotalHours(payable.totalPaidHours)}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </article>
           )

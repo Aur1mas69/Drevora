@@ -238,6 +238,7 @@ export function getEntryPayableDisplayResult(
   options: {
     overtimeRules?: Partial<TimesheetOvertimeRules>
     paidBreaks?: boolean
+    overtimeMode?: OvertimeMode
   } = {},
 ): {
   basicHours: number
@@ -247,10 +248,27 @@ export function getEntryPayableDisplayResult(
   totalPaidHours: number
   weekendGuaranteeDay: boolean
 } {
+  const overtimeMode =
+    options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
+  const manualAdditional = Math.max(0, entry.additionalHours ?? 0)
+
+  // Manual mode: entered Basic / OT / Additional are authoritative. Total is their sum.
+  // total_minutes stores Basic hours as minutes; no OT multiplier; no weekend overwrite.
+  if (overtimeMode === 'Manual') {
+    const basicHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
+    const overtimeDisplayHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
+    return {
+      basicHours,
+      overtimeDisplayHours,
+      additionalHours: manualAdditional,
+      totalPaidHours: basicHours + overtimeDisplayHours + manualAdditional,
+      weekendGuaranteeDay: false,
+    }
+  }
+
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
   const paidBreaks = options.paidBreaks ?? false
   const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
-  const manualAdditional = Math.max(0, entry.additionalHours ?? 0)
 
   if (dayRules.guaranteedPaidHours != null) {
     const gross = calculateGrossShiftHours(entry.startTime, entry.finishTime)
@@ -335,6 +353,7 @@ export function getEntryCombinedAdditionalHours(
 export type SummarizeTimesheetEntriesOptions = {
   overtimeRules?: Partial<TimesheetOvertimeRules>
   paidBreaks?: boolean
+  overtimeMode?: OvertimeMode
 }
 
 export function summarizeTimesheetEntries(
@@ -361,6 +380,8 @@ export function summarizeTimesheetEntries(
   totalHours: number
 } {
   const paidBreaks = options.paidBreaks ?? false
+  const overtimeMode =
+    options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
 
   let basicHoursTotal = 0
   let breakMinutes = 0
@@ -382,6 +403,7 @@ export function summarizeTimesheetEntries(
     const display = getEntryPayableDisplayResult(entry, {
       overtimeRules: options.overtimeRules,
       paidBreaks,
+      overtimeMode,
     })
 
     const hasPayableHours =
@@ -906,30 +928,40 @@ export function recalculateEntryInputs(
   entries: TimesheetEntryInput[],
   options: RecalculateEntryOptions = {},
 ): TimesheetEntryInput[] {
-  const overtimeMode = options.overtimeMode ?? 'Manual'
+  const overtimeMode =
+    options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
   const paidBreaks = options.paidBreaks ?? false
 
   return entries.map((entry) => {
+    // Manual: preserve entered Basic (total_minutes) and OT; do not overwrite from clocks/rules.
+    if (overtimeMode === 'Manual') {
+      return {
+        ...entry,
+        totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+        overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+        additionalHours: Math.max(0, entry.additionalHours ?? 0),
+        breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
+      }
+    }
+
     const totalMinutes = calculateEntryTotalMinutes(entry, { paidBreaks })
     const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
 
     let overtimeMinutes = entry.overtimeMinutes
-    if (overtimeMode === 'Automatic') {
-      if (dayRules.guaranteedPaidHours != null) {
-        // Weekend OT worked hours from gross shift (decimal), stored as minutes only.
-        const grossHours = calculateGrossShiftHours(entry.startTime, entry.finishTime)
-        const overtimeWorkedHours =
-          grossHours >= dayRules.afterHours
-            ? grossHours - dayRules.afterHours
-            : 0
-        overtimeMinutes = Math.round(overtimeWorkedHours * 60)
-      } else {
-        overtimeMinutes = calculateAutomaticOvertimeMinutes(
-          totalMinutes,
-          dayRules.afterHours,
-        )
-      }
+    if (dayRules.guaranteedPaidHours != null) {
+      // Weekend OT worked hours from gross shift (decimal), stored as minutes only.
+      const grossHours = calculateGrossShiftHours(entry.startTime, entry.finishTime)
+      const overtimeWorkedHours =
+        grossHours >= dayRules.afterHours
+          ? grossHours - dayRules.afterHours
+          : 0
+      overtimeMinutes = Math.round(overtimeWorkedHours * 60)
+    } else {
+      overtimeMinutes = calculateAutomaticOvertimeMinutes(
+        totalMinutes,
+        dayRules.afterHours,
+      )
     }
 
     return {
@@ -940,17 +972,43 @@ export function recalculateEntryInputs(
   })
 }
 
-/** View mode: recalculate worked minutes only; keep overtime_minutes from DB. */
+/**
+ * View mode totals.
+ * Automatic: recompute Basic minutes from clocks.
+ * Manual: keep saved Basic (total_minutes) — never overwrite from clocks.
+ */
 export function applyViewModeEntryTotals(
   entries: TimesheetEntryInput[],
-  options: Pick<RecalculateEntryOptions, 'paidBreaks'> = {},
+  options: Pick<RecalculateEntryOptions, 'paidBreaks' | 'overtimeMode'> = {},
 ): TimesheetEntryInput[] {
   const paidBreaks = options.paidBreaks ?? false
+  const overtimeMode =
+    options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
+
+  if (overtimeMode === 'Manual') {
+    return entries.map((entry) => ({
+      ...entry,
+      totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+      overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+    }))
+  }
 
   return entries.map((entry) => ({
     ...entry,
     totalMinutes: calculateEntryTotalMinutes(entry, { paidBreaks }),
   }))
+}
+
+/** Convert decimal payroll hours to whole minutes for total_minutes / overtime_minutes. */
+export function decimalHoursToMinutes(hours: number): number {
+  if (!Number.isFinite(hours) || hours <= 0) return 0
+  return Math.round(hours * 60)
+}
+
+/** Convert stored minutes to decimal payroll hours. */
+export function minutesToDecimalHours(minutes: number): number {
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0
+  return Math.round((minutes / 60) * 100) / 100
 }
 
 export function canEditTimesheet(status: TimesheetStatus): boolean {

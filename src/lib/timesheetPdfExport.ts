@@ -123,6 +123,8 @@ function buildViewModeEntries(timesheet: Timesheet) {
     sundayUseCompanyDefaultBreak: getSetting('sundayUseCompanyDefaultBreak') ?? true,
   }
 
+  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
+
   return applyViewModeEntryTotals(
     prepareEntryInputs(
       timesheet.weekStart,
@@ -130,13 +132,14 @@ function buildViewModeEntries(timesheet: Timesheet) {
       defaultBreakMinutes,
       breakOptions,
     ),
-    { paidBreaks: getGlobalPaidBreaks() },
+    { paidBreaks: getGlobalPaidBreaks(), overtimeMode },
   )
 }
 
 function buildSummary(timesheet: Timesheet): SummaryTotals {
   const entries = buildViewModeEntries(timesheet)
   const paidBreaks = getGlobalPaidBreaks()
+  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
 
   return summarizeTimesheetEntries(
     entries.map((entry) => ({
@@ -148,24 +151,35 @@ function buildSummary(timesheet: Timesheet): SummaryTotals {
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
     })),
-    { paidBreaks },
+    { paidBreaks, overtimeMode },
   )
 }
 
 function formatPdfDailyRow(entry: TimesheetEntryInput, paidBreaks: boolean): string[] {
   const day = formatPdfDayName(entry.dayDate)
   const date = formatPdfDate(entry.dayDate)
-  const payable = getEntryPayableDisplayResult(entry, { paidBreaks })
+  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
+  const payable = getEntryPayableDisplayResult(entry, { paidBreaks, overtimeMode })
+  const hasPayable =
+    payable.basicHours > 0 ||
+    payable.overtimeDisplayHours > 0 ||
+    payable.additionalHours > 0
 
-  if (!entryHasStartAndFinish(entry)) {
+  if (!entryHasStartAndFinish(entry) && !hasPayable) {
     return [day, date, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
   }
+
+  const shiftLabel = entryHasStartAndFinish(entry)
+    ? `${formatTimeDisplay(entry.startTime)}–${formatTimeDisplay(entry.finishTime)}`
+    : EMPTY
 
   return [
     day,
     date,
-    `${formatTimeDisplay(entry.startTime)}–${formatTimeDisplay(entry.finishTime)}`,
-    formatBreak(entry.breakMinutes),
+    shiftLabel,
+    entryHasStartAndFinish(entry) || entry.breakMinutes > 0
+      ? formatBreak(entry.breakMinutes)
+      : EMPTY,
     payable.basicHours > 0 ? formatHours(payable.basicHours) : EMPTY,
     payable.overtimeDisplayHours > 0 ? formatHours(payable.overtimeDisplayHours) : EMPTY,
     payable.additionalHours > 0 ? formatHours(payable.additionalHours) : EMPTY,
