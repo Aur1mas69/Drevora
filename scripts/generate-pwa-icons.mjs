@@ -3,11 +3,14 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-/** Standalone coloured D mark (transparent PNG) — not the full wordmark. */
-const markPath = path.join(__dirname, '../src/assets/drevora-mark.png')
+/**
+ * Best existing D mark with a real alpha channel (not baked-in checkerboard).
+ * Do not use src/assets/drevora-mark.png — that file has opaque checkerboard pixels.
+ */
+const markPath = path.join(__dirname, '../landing/images/drevora-mark.png')
 const publicDir = path.join(__dirname, '../public')
 
-/** Solid white install-icon canvas. */
+/** Solid white install-icon canvas (fully opaque). */
 const BACKGROUND = { r: 255, g: 255, b: 255, alpha: 1 }
 
 /**
@@ -17,8 +20,15 @@ const BACKGROUND = { r: 255, g: 255, b: 255, alpha: 1 }
  */
 async function createIcon(size, filename, markRatio) {
   const markBox = Math.round(size * markRatio)
+
+  // Trim transparent padding, then fit inside the mark box (keeps aspect ratio).
   const markBuffer = await sharp(markPath)
-    .resize(markBox, markBox, { fit: 'inside', withoutEnlargement: false })
+    .trim()
+    .resize(markBox, markBox, {
+      fit: 'inside',
+      withoutEnlargement: false,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
     .png()
     .toBuffer()
 
@@ -31,15 +41,18 @@ async function createIcon(size, filename, markRatio) {
     },
   })
     .composite([{ input: markBuffer, gravity: 'center' }])
-    .png()
+    // Flatten + drop alpha so home-screen icons stay solid white (no transparency artefacts).
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .removeAlpha()
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toFile(path.join(publicDir, filename))
 }
 
-// Regular icons: D mark ~75% of canvas (within 72–78%).
-await createIcon(192, 'pwa-192x192.png', 0.75)
-await createIcon(512, 'pwa-512x512.png', 0.75)
-// Maskable: more safe padding — D mark ~62% (within 58–65%).
-await createIcon(512, 'pwa-512x512-maskable.png', 0.62)
-await createIcon(180, 'apple-touch-icon.png', 0.75)
+// Regular icons: D mark ~72% of canvas — clear presence with safe padding.
+await createIcon(192, 'pwa-192x192.png', 0.72)
+await createIcon(512, 'pwa-512x512.png', 0.72)
+// Maskable: more safe padding — D mark ~60% (safe zone for Android masks).
+await createIcon(512, 'pwa-512x512-maskable.png', 0.6)
+await createIcon(180, 'apple-touch-icon.png', 0.72)
 
-console.log('Generated PWA icons in public/ from src/assets/drevora-mark.png')
+console.log('Generated PWA icons in public/ from landing/images/drevora-mark.png')
