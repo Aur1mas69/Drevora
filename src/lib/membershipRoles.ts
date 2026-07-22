@@ -21,6 +21,9 @@ export type WorkerMembershipRole = typeof WORKER_MEMBERSHIP_ROLE
 /** Existing Worker shell landing route (Worker DashboardPage + MainLayout). */
 export const WORKER_HOME_PATH = '/dashboard'
 
+/** Current Worker login route (not Admin /login, not obsolete /driver-login). */
+export const WORKER_LOGIN_PATH = '/worker-login'
+
 /** Existing Office shell landing route. */
 export const OFFICE_HOME_PATH = '/admin'
 

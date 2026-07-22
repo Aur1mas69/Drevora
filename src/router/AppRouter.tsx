@@ -13,7 +13,12 @@ import {
 } from '@/components/auth/MembershipAccessGate'
 import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
 import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
-import { OFFICE_HOME_PATH, WORKER_HOME_PATH } from '@/lib/membershipRoles'
+import {
+  OFFICE_HOME_PATH,
+  WORKER_HOME_PATH,
+  WORKER_LOGIN_PATH,
+} from '@/lib/membershipRoles'
+import WorkerLoginPage from '@/pages/WorkerLoginPage'
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout'))
 const AdminDashboardPage = lazy(loadAdminDashboardPage)
@@ -30,8 +35,6 @@ const WorkerComplianceProfilePage = lazy(
 )
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const DriverDetailsPage = lazy(() => import('@/pages/DriverDetailsPage'))
-const DriverLoginPage = lazy(() => import('@/pages/DriverLoginPage'))
-const WorkerLoginPage = lazy(() => import('@/pages/WorkerLoginPage'))
 const LoginTwilightPreviewPage = lazy(
   () => import('@/pages/LoginTwilightPreviewPage'),
 )
@@ -135,7 +138,7 @@ function RequireWorkerAccess() {
   }
 
   if (access.status === 'unauthenticated') {
-    return <Navigate to="/driver-login" replace />
+    return <Navigate to={WORKER_LOGIN_PATH} replace />
   }
 
   if (access.status === 'office') {
@@ -170,8 +173,11 @@ function AppRouter() {
         <Route path="/login" element={<LoginTwilightPreviewPage />} />
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
         <Route path="/admin-login" element={<Navigate to="/login" replace />} />
-        <Route path="/driver-login" element={<DriverLoginPage />} />
-        <Route path="/worker-login" element={<WorkerLoginPage />} />
+        <Route
+          path="/driver-login"
+          element={<Navigate to={WORKER_LOGIN_PATH} replace />}
+        />
+        <Route path={WORKER_LOGIN_PATH} element={<WorkerLoginPage />} />
         <Route path="/onboarding" element={<CompanyOnboardingPage />} />
         <Route
           path="/login-design-preview"
