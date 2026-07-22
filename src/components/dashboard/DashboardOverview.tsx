@@ -7,17 +7,13 @@ import {
   RecentActivitySkeleton,
 } from '@/components/dashboard/DashboardOverviewSkeletons'
 import { DriverReportsOverviewCard } from '@/components/dashboard/DriverReportsOverviewCard'
+import { FleetComplianceAlertsCard } from '@/components/dashboard/FleetComplianceAlertsCard'
 import { FleetStatusOverviewCard } from '@/components/dashboard/FleetStatusOverviewCard'
 import { HolidayRequestsOverviewCard } from '@/components/dashboard/HolidayRequestsOverviewCard'
 import { NotesPlansCard } from '@/components/dashboard/NotesPlansCard'
 import { TimesheetOverviewCard } from '@/components/dashboard/TimesheetOverviewCard'
 import { TyreChecksOverviewCard } from '@/components/dashboard/TyreChecksOverviewCard'
-import {
-  dashboardOverviewCardStaticClass,
-  dashboardOverviewCardSubtitleClass,
-  dashboardOverviewCardTitleClass,
-  dashboardOverviewDividerClass,
-} from '@/components/dashboard/dashboardOverviewCardStyles'
+import { dashboardOverviewCardStaticClass } from '@/components/dashboard/dashboardOverviewCardStyles'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { DashboardLoadingState } from '@/hooks/useDashboardStats'
@@ -42,9 +38,13 @@ import { Link, useNavigate } from 'react-router-dom'
 
 type ActivityAccent = {
   label: string
-  boxClass: string
+  /** Soft tinted card surface */
+  surfaceClass: string
+  /** Soft left accent glow */
+  accentBarClass: string
+  /** Refined type pill */
   pillClass: string
-  stripeClass: string
+  /** Soft hover lift / glow */
   hoverClass: string
 }
 
@@ -65,137 +65,125 @@ function getActivityAccent(activity: DashboardRecentActivity): ActivityAccent {
     case 'worker':
       return {
         label: 'Worker',
-        stripeClass: 'border-l-[#3B82F6] dark:border-l-blue-400',
-        boxClass:
-          'border-[#CFE3F5]/80 bg-[#F8FBFF]/95 dark:border-blue-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#3B82F6]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(248,251,255,0.98)_0%,rgba(220,238,255,0.55)_100%)] shadow-[0_2px_10px_rgba(59,130,246,0.07)]',
         hoverClass:
-          'hover:border-[#CFE3F5] hover:bg-[#F8FBFF] hover:shadow-md hover:shadow-[rgba(22,58,99,0.06)] dark:hover:border-blue-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#DCEEFF] text-[#3B82F6] ring-1 ring-[#CFE3F5]/50 dark:bg-blue-950/55 dark:text-blue-300 dark:ring-blue-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(59,130,246,0.14)]',
+        pillClass: 'bg-[#DCEEFF]/90 text-[#2563EB]',
       }
     case 'vehicle':
       return {
         label: 'Vehicle',
-        stripeClass: 'border-l-[#2BB8D4] dark:border-l-cyan-400',
-        boxClass:
-          'border-[#B8EBF5]/80 bg-[#F2FCFE]/95 dark:border-cyan-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#06B6D4]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(242,252,254,0.98)_0%,rgba(186,230,253,0.45)_100%)] shadow-[0_2px_10px_rgba(6,182,212,0.08)]',
         hoverClass:
-          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10 dark:hover:border-cyan-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50 dark:bg-cyan-950/55 dark:text-cyan-300 dark:ring-cyan-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(6,182,212,0.16)]',
+        pillClass: 'bg-[#E0F7FA]/95 text-[#0E7490]',
       }
     case 'availability':
       if (isAvailabilityWarningStatus(activity.title)) {
         return {
           label: 'Fleet',
-          stripeClass: 'border-l-[#E8843A] dark:border-l-orange-400',
-          boxClass:
-            'border-[#FFDCC8]/80 bg-[#FFF8F3]/95 dark:border-orange-500/25 dark:bg-slate-800/75',
+          accentBarClass: 'bg-[#F97316]',
+          surfaceClass:
+            'bg-[linear-gradient(135deg,rgba(255,248,243,0.98)_0%,rgba(255,237,213,0.55)_100%)] shadow-[0_2px_10px_rgba(249,115,22,0.08)]',
           hoverClass:
-            'hover:border-[#FFCFAF] hover:bg-[#FFF3EB] hover:shadow-md hover:shadow-[#E8843A]/10 dark:hover:border-orange-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-          pillClass:
-            'bg-[#FFEDE3] text-[#C65A12] ring-1 ring-[#FFDCC8]/60 dark:bg-orange-950/55 dark:text-orange-300 dark:ring-orange-500/30',
+            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(249,115,22,0.14)]',
+          pillClass: 'bg-[#FFEDD5]/95 text-[#C2410C]',
         }
       }
       return {
         label: 'Vehicle',
-        stripeClass: 'border-l-[#2BB8D4] dark:border-l-cyan-400',
-        boxClass:
-          'border-[#B8EBF5]/80 bg-[#F2FCFE]/95 dark:border-cyan-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#06B6D4]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(242,252,254,0.98)_0%,rgba(186,230,253,0.45)_100%)] shadow-[0_2px_10px_rgba(6,182,212,0.08)]',
         hoverClass:
-          'hover:border-[#9FE0EF] hover:bg-[#EAF9FC] hover:shadow-md hover:shadow-[#2BB8D4]/10 dark:hover:border-cyan-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#E6F9FC] text-[#0E8FA8] ring-1 ring-[#B8EBF5]/50 dark:bg-cyan-950/55 dark:text-cyan-300 dark:ring-cyan-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(6,182,212,0.16)]',
+        pillClass: 'bg-[#E0F7FA]/95 text-[#0E7490]',
       }
     case 'holiday_request':
       return {
         label: 'Holiday',
-        stripeClass: 'border-l-[#A855C8] dark:border-l-violet-400',
-        boxClass:
-          'border-[#E9D5FF]/80 bg-[#FAF5FF]/95 dark:border-violet-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#A855F7]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(250,245,255,0.98)_0%,rgba(243,232,255,0.55)_100%)] shadow-[0_2px_10px_rgba(168,85,247,0.08)]',
         hoverClass:
-          'hover:border-[#DCC4F5] hover:bg-[#F5EDFF] hover:shadow-md hover:shadow-[#A855C8]/10 dark:hover:border-violet-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#F3E8FF] text-[#7E3FA8] ring-1 ring-[#E9D5FF]/60 dark:bg-violet-950/55 dark:text-violet-300 dark:ring-violet-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(168,85,247,0.14)]',
+        pillClass: 'bg-[#F3E8FF]/95 text-[#7E22CE]',
       }
     case 'timesheet':
       return {
         label: 'Timesheet',
-        stripeClass: 'border-l-[#22A861] dark:border-l-emerald-400',
-        boxClass:
-          'border-[#BBEAD0]/80 bg-[#F3FBF6]/95 dark:border-emerald-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#22C55E]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(243,251,246,0.98)_0%,rgba(220,252,231,0.5)_100%)] shadow-[0_2px_10px_rgba(34,197,94,0.08)]',
         hoverClass:
-          'hover:border-[#A3DFC0] hover:bg-[#EBF8F0] hover:shadow-md hover:shadow-[#22A861]/10 dark:hover:border-emerald-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#E3F6EA] text-[#1A7A45] ring-1 ring-[#BBEAD0]/60 dark:bg-emerald-950/55 dark:text-emerald-300 dark:ring-emerald-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(34,197,94,0.14)]',
+        pillClass: 'bg-[#DCFCE7]/95 text-[#15803D]',
       }
     case 'vehicle_check':
       if (activity.severity === 'danger') {
         return {
           label: 'Check Failed',
-          stripeClass: 'border-l-[#DC2626] dark:border-l-rose-400',
-          boxClass:
-            'border-[#FECACA]/80 bg-[#FFF1F2]/95 dark:border-rose-500/25 dark:bg-slate-800/75',
+          accentBarClass: 'bg-[#EF4444]',
+          surfaceClass:
+            'bg-[linear-gradient(135deg,rgba(255,241,242,0.98)_0%,rgba(254,226,226,0.55)_100%)] shadow-[0_2px_10px_rgba(239,68,68,0.08)]',
           hoverClass:
-            'hover:border-[#FCA5A5] hover:bg-[#FFE4E6] hover:shadow-md hover:shadow-[#DC2626]/10 dark:hover:border-rose-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-          pillClass:
-            'bg-[#FFE4E6] text-[#BE123C] ring-1 ring-[#FECACA]/60 dark:bg-rose-950/55 dark:text-rose-300 dark:ring-rose-500/30',
+            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(239,68,68,0.14)]',
+          pillClass: 'bg-[#FFE4E6]/95 text-[#BE123C]',
         }
       }
       if (activity.severity === 'warning') {
         return {
           label: 'Check Issue',
-          stripeClass: 'border-l-[#EA580C] dark:border-l-orange-400',
-          boxClass:
-            'border-[#FED7AA]/80 bg-[#FFF7ED]/95 dark:border-orange-500/25 dark:bg-slate-800/75',
+          accentBarClass: 'bg-[#F97316]',
+          surfaceClass:
+            'bg-[linear-gradient(135deg,rgba(255,247,237,0.98)_0%,rgba(255,237,213,0.55)_100%)] shadow-[0_2px_10px_rgba(249,115,22,0.08)]',
           hoverClass:
-            'hover:border-[#FDBA74] hover:bg-[#FFEDD5] hover:shadow-md hover:shadow-[#EA580C]/10 dark:hover:border-orange-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-          pillClass:
-            'bg-[#FFEDD5] text-[#C2410C] ring-1 ring-[#FED7AA]/60 dark:bg-orange-950/55 dark:text-orange-300 dark:ring-orange-500/30',
+            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(249,115,22,0.14)]',
+          pillClass: 'bg-[#FFEDD5]/95 text-[#C2410C]',
         }
       }
       return {
         label: 'Vehicle Check',
-        stripeClass: 'border-l-[#14A89E] dark:border-l-teal-400',
-        boxClass:
-          'border-[#B8EBE8]/80 bg-[#F0FAFA]/95 dark:border-teal-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#14B8A6]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(240,250,250,0.98)_0%,rgba(204,251,241,0.5)_100%)] shadow-[0_2px_10px_rgba(20,184,166,0.08)]',
         hoverClass:
-          'hover:border-[#9FE0DC] hover:bg-[#E8F7F6] hover:shadow-md hover:shadow-[#14A89E]/10 dark:hover:border-teal-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#E0F5F3] text-[#0F7A72] ring-1 ring-[#B8EBE8]/60 dark:bg-teal-950/55 dark:text-teal-300 dark:ring-teal-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(20,184,166,0.14)]',
+        pillClass: 'bg-[#CCFBF1]/95 text-[#0F766E]',
       }
     case 'driver_report':
       return {
         label: 'Driver Report',
-        stripeClass: 'border-l-[#F08A24] dark:border-l-amber-400',
-        boxClass:
-          'border-[#FFDDB8]/80 bg-[#FFF9F3]/95 dark:border-amber-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#F59E0B]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(255,249,243,0.98)_0%,rgba(254,243,199,0.5)_100%)] shadow-[0_2px_10px_rgba(245,158,11,0.08)]',
         hoverClass:
-          'hover:border-[#FFD0A0] hover:bg-[#FFF4EA] hover:shadow-md hover:shadow-[#F08A24]/10 dark:hover:border-amber-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#FFEDD5] text-[#C45F08] ring-1 ring-[#FFDDB8]/60 dark:bg-amber-950/55 dark:text-amber-300 dark:ring-amber-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(245,158,11,0.14)]',
+        pillClass: 'bg-[#FEF3C7]/95 text-[#B45309]',
       }
     case 'document':
       return {
         label: 'Document',
-        stripeClass: 'border-l-[#64748B] dark:border-l-slate-400',
-        boxClass:
-          'border-[#D5DEE8]/80 bg-[#F8FAFC]/95 dark:border-slate-500/30 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#64748B]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.7)_100%)] shadow-[0_2px_10px_rgba(100,116,139,0.07)]',
         hoverClass:
-          'hover:border-[#C4D0DC] hover:bg-[#F1F5F9] hover:shadow-md hover:shadow-slate-400/10 dark:hover:border-slate-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#EEF2F6] text-[#475569] ring-1 ring-[#D5DEE8]/60 dark:bg-slate-700/70 dark:text-slate-300 dark:ring-slate-500/35',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(100,116,139,0.12)]',
+        pillClass: 'bg-[#F1F5F9]/95 text-[#475569]',
       }
     case 'consumable':
       return {
         label: 'Consumables',
-        stripeClass: 'border-l-[#D4A017] dark:border-l-yellow-400',
-        boxClass:
-          'border-[#F5E6B8]/80 bg-[#FFFBF0]/95 dark:border-yellow-500/25 dark:bg-slate-800/75',
+        accentBarClass: 'bg-[#D97706]',
+        surfaceClass:
+          'bg-[linear-gradient(135deg,rgba(255,251,240,0.98)_0%,rgba(254,243,199,0.5)_100%)] shadow-[0_2px_10px_rgba(217,119,6,0.08)]',
         hoverClass:
-          'hover:border-[#EFD996] hover:bg-[#FFF8E8] hover:shadow-md hover:shadow-[#D4A017]/10 dark:hover:border-yellow-400/35 dark:hover:bg-slate-700/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.28)]',
-        pillClass:
-          'bg-[#FEF3D6] text-[#9A7209] ring-1 ring-[#F5E6B8]/60 dark:bg-yellow-950/50 dark:text-yellow-300 dark:ring-yellow-500/30',
+          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(217,119,6,0.14)]',
+        pillClass: 'bg-[#FEF3C7]/95 text-[#B45309]',
       }
   }
 }
@@ -262,25 +250,32 @@ function RecentActivityItem({
   const isClickable = Boolean(route)
 
   const itemClassName = [
-    'relative z-[1] h-full w-full rounded-xl border border-l-[3px] px-3.5 py-2.5 text-left shadow-sm transition-all duration-200 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
-    accent.stripeClass,
-    accent.boxClass,
+    'group relative w-full overflow-hidden rounded-2xl px-3.5 py-2.5 text-left transition-all duration-200 ease-out motion-reduce:transition-none',
+    accent.surfaceClass,
     isClickable
-      ? `cursor-pointer select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/50 focus-visible:ring-offset-1 ${accent.hoverClass}`
+      ? `cursor-pointer select-none active:translate-y-0 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/40 focus-visible:ring-offset-1 ${accent.hoverClass}`
       : '',
   ].join(' ')
 
   const content = (
     <>
       <span
-        className={`mb-1.5 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${accent.pillClass}`}
-      >
-        {accent.label}
-      </span>
-      <p className="text-sm font-bold leading-snug text-[#163A63] dark:text-slate-100">{getTimelineTitle(item)}</p>
-      <p className="mt-1 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
-        {formatRelativeDateTime(item.createdAt)}
-      </p>
+        className={`pointer-events-none absolute inset-y-2.5 left-0 w-[3px] rounded-full ${accent.accentBarClass} opacity-80 shadow-[0_0_8px_rgba(56,189,248,0.25)]`}
+        aria-hidden="true"
+      />
+      <div className="pl-2.5">
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${accent.pillClass}`}
+        >
+          {accent.label}
+        </span>
+        <p className="mt-1.5 truncate text-[13px] font-semibold leading-snug tracking-[-0.01em] text-[#163A63] dark:text-slate-100">
+          {getTimelineTitle(item)}
+        </p>
+        <p className="mt-1 text-[11px] font-medium leading-none text-[#7A97B5] dark:text-slate-400">
+          {formatRelativeDateTime(item.createdAt)}
+        </p>
+      </div>
     </>
   )
 
@@ -291,12 +286,8 @@ function RecentActivityItem({
 
   if (isClickable) {
     return (
-      <li className="relative z-[1] list-none">
-        <button
-          type="button"
-          className={itemClassName}
-          onClick={openActivityRoute}
-        >
+      <li className="list-none">
+        <button type="button" className={itemClassName} onClick={openActivityRoute}>
           {content}
         </button>
       </li>
@@ -320,35 +311,60 @@ function RecentActivityPanel({
   }
 
   return (
-    <section
-      className={`${dashboardOverviewCardStaticClass} flex min-w-0 flex-col transition-shadow duration-[200ms] ease-out md:hover:shadow-[0_12px_28px_rgba(30,64,175,0.12)]`}
-    >
-      <div className={`shrink-0 border-b ${dashboardOverviewDividerClass} pb-4`}>
-        <h3 className={dashboardOverviewCardTitleClass}>Recent Activity</h3>
-        <p className={dashboardOverviewCardSubtitleClass}>
-          Latest changes across your operation
+    <section className="relative flex h-full min-w-0 flex-col overflow-hidden rounded-[24px] border border-[#8EC8F0]/55 bg-[linear-gradient(165deg,#D7EDFF_0%,#E8F4FF_28%,#F2F8FF_62%,#DEEEFF_100%)] p-4 shadow-[0_14px_36px_rgba(37,99,235,0.16),0_4px_12px_rgba(56,189,248,0.1),inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-sm sm:p-5 dark:border-sky-700/40 dark:bg-[linear-gradient(165deg,#0B1F36_0%,#12263F_48%,#0F1D30_100%)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]">
+      {/* Frosted glass overlay — keeps the panel tinted, not flat white */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.28)_0%,rgba(255,255,255,0.06)_42%,rgba(186,230,253,0.18)_100%)] dark:bg-[linear-gradient(180deg,rgba(56,189,248,0.08)_0%,transparent_50%)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-[#38BDF8]/35 blur-3xl dark:bg-sky-400/15"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -bottom-16 -left-10 size-44 rounded-full bg-[#60A5FA]/30 blur-3xl dark:bg-blue-500/12"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-sky-300/25"
+        aria-hidden="true"
+      />
+
+      <div className="relative mb-4 border-b border-[#A8D4F5]/55 pb-3.5 dark:border-sky-800/50">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-[15px] font-semibold tracking-[-0.03em] text-[#0F2F54] dark:text-slate-50 sm:text-base">
+            Recent Activity
+          </h3>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.09em] text-emerald-700 shadow-[0_1px_4px_rgba(16,185,129,0.12)] ring-1 ring-emerald-200/70 backdrop-blur-sm dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-700/50">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Live
+          </span>
+        </div>
+        <p className="mt-1 text-xs leading-5 text-[#4A7399] dark:text-slate-400 sm:text-[13px]">
+          Live operations feed
         </p>
       </div>
 
-      <div className="relative z-[1] mt-4 max-h-[22rem] min-h-0 overflow-y-auto overscroll-contain pr-1 sm:max-h-[26rem] xl:max-h-[28rem]">
-        {activity.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-[#D2E5F5] bg-[#F8FBFF]/70 px-4 py-10 text-center dark:border-white/10 dark:bg-slate-800/40">
-            <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">
-              No recent activity yet.
-            </p>
-          </div>
-        ) : (
-          <ul className="relative z-[1] grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {activity.map((item) => (
-              <RecentActivityItem
-                key={`${item.type}-${item.id}`}
-                item={item}
-                formatRelativeDateTime={formatRelativeDateTime}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+      {activity.length === 0 ? (
+        <div className="relative mt-auto rounded-2xl bg-white/45 px-3 py-6 text-center shadow-[inset_0_0_0_1px_rgba(142,200,240,0.45)] backdrop-blur-sm dark:bg-slate-900/40 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+          <p className="text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
+            No recent activity yet.
+          </p>
+        </div>
+      ) : (
+        <ul className="relative min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain pr-0.5 xl:min-h-0">
+          {activity.map((item) => (
+            <RecentActivityItem
+              key={`${item.type}-${item.id}`}
+              item={item}
+              formatRelativeDateTime={formatRelativeDateTime}
+            />
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
@@ -510,6 +526,10 @@ export function DashboardOverview({
         )}
       </div>
 
+      {/*
+        Desktop right column: Notes on top, Recent Activity immediately below
+        (spans the full height of fleet + consumables/tyre rows).
+      */}
       <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {loading.timesheet ? (
           <DashboardOverviewCardSkeleton />
@@ -526,33 +546,45 @@ export function DashboardOverview({
         ) : (
           <DriverReportsOverviewCard summary={stats.driverReports} />
         )}
-        <NotesPlansCard />
-      </div>
-
-      <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        <div className="flex min-w-0 flex-col gap-3 sm:col-span-2 xl:col-span-1 xl:row-span-3">
+          <NotesPlansCard />
+          <div className="min-h-0 min-w-0 flex-1 [&_>_*]:h-full">
+            <RecentActivityPanel
+              activity={stats.recentActivity}
+              isLoading={loading.recentActivity}
+            />
+          </div>
+        </div>
         {loading.fleetStatus ? (
           <DashboardOverviewCardSkeleton />
         ) : (
           <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
+        )}
+        {loading.fleetStatus ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <FleetComplianceAlertsCard summary={stats.fleetComplianceAlerts} />
         )}
         {loading.vehicleChecks ? (
           <DashboardOverviewCardSkeleton />
         ) : (
           <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
         )}
-        {loading.tyreChecks ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <TyreChecksOverviewCard stats={stats.dailyTyreChecksStats} />
-        )}
-        {loading.consumables ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <ConsumablesOverviewCard overview={stats.consumablesOverview} />
-        )}
+        <div className="min-w-0 xl:col-span-2 [&_>_*]:h-full">
+          {loading.consumables ? (
+            <DashboardOverviewCardSkeleton />
+          ) : (
+            <ConsumablesOverviewCard overview={stats.consumablesOverview} />
+          )}
+        </div>
+        <div className="min-w-0 [&_>_*]:h-full">
+          {loading.tyreChecks ? (
+            <DashboardOverviewCardSkeleton />
+          ) : (
+            <TyreChecksOverviewCard stats={stats.dailyTyreChecksStats} />
+          )}
+        </div>
       </div>
-
-      <RecentActivityPanel activity={stats.recentActivity} isLoading={loading.recentActivity} />
     </div>
   )
 }

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-const PREVIEW_OPEN_LIMIT = 2
+const PREVIEW_OPEN_LIMIT = 1
 
 function getNotesErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof DashboardNotesTableMissingError) {
@@ -131,7 +131,7 @@ function CompactNotePreview({
             onOpen(note)
           }
         }}
-        className="group/note relative flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-[#FECDD3]/80 border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2]/90 px-2.5 py-2 text-left shadow-[0_2px_8px_rgba(244,63,94,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185]/70 hover:bg-[#FFE4E6]/90 hover:shadow-[0_8px_18px_rgba(244,63,94,0.10)] dark:border-white/10 dark:border-l-rose-500 dark:bg-slate-800/60 dark:hover:bg-slate-800/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
+        className="group/note relative flex w-full cursor-pointer items-center gap-2 rounded-xl border border-[#FECDD3]/80 border-l-[3px] border-l-[#F43F5E] bg-[#FFF1F2]/90 px-2 py-1.5 text-left shadow-[0_2px_8px_rgba(244,63,94,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FB7185]/70 hover:bg-[#FFE4E6]/90 hover:shadow-[0_8px_18px_rgba(244,63,94,0.10)] dark:border-white/10 dark:border-l-rose-500 dark:bg-slate-800/60 dark:hover:bg-slate-800/80 dark:hover:shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
       >
         <button
           type="button"
@@ -142,14 +142,14 @@ function CompactNotePreview({
             onToggleDone(note)
           }}
           className={[
-            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-[#FDA4AF]/80 bg-white text-transparent transition-colors hover:border-[#F43F5E] group-hover/note:text-[#E11D48] dark:border-white/10 dark:bg-slate-900/70 dark:group-hover/note:text-rose-400',
+            'flex size-5 shrink-0 items-center justify-center rounded-md border border-[#FDA4AF]/80 bg-white text-transparent transition-colors hover:border-[#F43F5E] group-hover/note:text-[#E11D48] dark:border-white/10 dark:bg-slate-900/70 dark:group-hover/note:text-rose-400',
             isBusy ? 'cursor-not-allowed opacity-60' : '',
           ].join(' ')}
         >
           <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
         </button>
 
-        <p className="min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug text-[#163A63] dark:text-slate-100">
+        <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug text-[#163A63] dark:text-slate-100">
           {note.note}
         </p>
 
@@ -755,7 +755,7 @@ export function NotesPlansCard() {
 
   return (
     <>
-      <section className={`${notesPlansCardClass} h-full`}>
+      <section className={`${notesPlansCardClass} w-full self-start`}>
         {openCount > 0 ? (
           <span
             className="notes-alert-badge pointer-events-none absolute top-0 right-5 z-20 inline-flex min-w-[26px] -translate-y-1/2 items-center justify-center gap-0.5 rounded-full bg-[#E11D48] px-1.5 py-1 text-[10px] font-bold leading-none text-white shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
@@ -867,8 +867,8 @@ export function NotesPlansCard() {
                 ))}
               </div>
             ) : openCount === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#FDA4AF]/60 bg-[#FFF1F2]/70 px-3 py-4 text-center dark:border-white/10 dark:bg-slate-800/40">
-                <p className="text-[12px] font-medium text-[#5D7C9D] dark:text-slate-400">No open notes</p>
+              <div className="rounded-lg border border-dashed border-[#FDA4AF]/60 bg-[#FFF1F2]/70 px-2.5 py-2 text-center dark:border-white/10 dark:bg-slate-800/40">
+                <p className="text-[11px] font-medium text-[#5D7C9D] dark:text-slate-400">No open notes</p>
               </div>
             ) : (
               <ul className="space-y-2">

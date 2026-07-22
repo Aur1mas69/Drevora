@@ -1,5 +1,10 @@
 import type { DashboardDriverReportsSummary } from '@/services/dashboardService'
-import { dashboardOverviewCardClass } from '@/components/dashboard/dashboardOverviewCardStyles'
+import {
+  dashboardOverviewCardClass,
+  dashboardOverviewInnerRowClass,
+  dashboardOverviewPrimaryValueClass,
+  dashboardOverviewRowHelperClass,
+} from '@/components/dashboard/dashboardOverviewCardStyles'
 import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import { FileText } from 'lucide-react'
 
@@ -14,17 +19,17 @@ function buildStatusRows(summary: DashboardDriverReportsSummary): StatusRow[] {
     {
       label: 'New Reports',
       value: summary.open,
-      valueClassName: 'text-[#3B82F6]',
+      valueClassName: 'text-[#3B82F6] dark:text-blue-300',
     },
     {
       label: 'In Progress',
       value: summary.inProgress,
-      valueClassName: 'text-amber-500',
+      valueClassName: 'text-amber-500 dark:text-amber-400',
     },
     {
       label: 'Closed',
       value: summary.closed,
-      valueClassName: 'text-emerald-500',
+      valueClassName: 'text-emerald-600 dark:text-emerald-400',
     },
   ]
 }
@@ -32,11 +37,11 @@ function buildStatusRows(summary: DashboardDriverReportsSummary): StatusRow[] {
 function ReportIllustration() {
   return (
     <div
-      className="relative mx-auto flex size-28 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DCEEFF] to-[#F8FBFF] ring-1 ring-[#CFE3F5]/70 dark:from-slate-800 dark:to-slate-900 dark:ring-white/10 sm:mx-0"
+      className="relative mx-auto flex size-[6.5rem] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DCEEFF] to-[#F4F9FF] shadow-[0_4px_14px_rgba(59,130,246,0.12)] ring-1 ring-[#CFE3F5]/80 dark:from-slate-800 dark:to-slate-900 dark:ring-white/10 sm:mx-0 sm:size-28"
       aria-hidden="true"
     >
-      <div className="absolute inset-3 rounded-xl bg-white/45 dark:bg-slate-700/45" />
-      <FileText className="relative size-11 text-[#3B82F6]/70 dark:text-blue-300/70" strokeWidth={1.6} />
+      <div className="absolute inset-3 rounded-xl bg-white/50 dark:bg-slate-700/45" />
+      <FileText className="relative size-10 text-[#3B82F6]/75 dark:text-blue-300/70 sm:size-11" strokeWidth={1.6} />
       <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 flex-col gap-1">
         <span className="block h-0.5 w-9 rounded-full bg-[#CFE3F5]" />
         <span className="block h-0.5 w-7 rounded-full bg-[#CFE3F5]" />
@@ -65,19 +70,24 @@ export function DriverReportsOverviewCard({
         actionTo="/admin/driver-reports"
       />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <ul className="flex w-full min-w-0 flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-4">
+        <ul className="flex w-full min-w-0 flex-1 flex-col justify-center gap-2">
           {statusRows.map((row) => (
-            <li key={row.label} className="flex items-center justify-between gap-4">
-              <span className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">{row.label}</span>
-              <span className={`text-2xl font-bold leading-none tabular-nums ${row.valueClassName}`}>
+            <li
+              key={row.label}
+              className={`flex items-center justify-between gap-3 ${dashboardOverviewInnerRowClass}`}
+            >
+              <span className={dashboardOverviewRowHelperClass}>{row.label}</span>
+              <span className={`${dashboardOverviewPrimaryValueClass} ${row.valueClassName}`}>
                 {row.value}
               </span>
             </li>
           ))}
         </ul>
 
-        <ReportIllustration />
+        <div className="flex shrink-0 items-center justify-center sm:pl-1">
+          <ReportIllustration />
+        </div>
       </div>
     </section>
   )

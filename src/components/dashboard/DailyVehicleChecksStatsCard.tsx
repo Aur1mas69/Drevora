@@ -1,6 +1,9 @@
 import {
   dashboardOverviewCardClass,
   dashboardOverviewInnerRowClass,
+  dashboardOverviewPrimaryValueClass,
+  dashboardOverviewRowHelperClass,
+  dashboardOverviewRowLabelClass,
 } from '@/components/dashboard/dashboardOverviewCardStyles'
 import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import type { DashboardDailyVehicleChecksStats } from '@/services/dashboardService'
@@ -28,8 +31,8 @@ function buildDailyChecksStatRows(
       helper: 'Checks passed today',
       value: stats.completedOk,
       icon: ShieldCheck,
-      iconWrapClass: 'bg-emerald-50 ring-emerald-100',
-      iconClass: 'text-emerald-600',
+      iconWrapClass: 'bg-emerald-50 ring-emerald-100 dark:bg-emerald-950/40 dark:ring-emerald-800/50',
+      iconClass: 'text-emerald-600 dark:text-emerald-400',
       barClass: 'bg-gradient-to-r from-[#14A89E] to-[#22C55E]',
     },
     {
@@ -38,8 +41,8 @@ function buildDailyChecksStatRows(
       helper: 'Needs attention',
       value: stats.issuesFailed,
       icon: AlertTriangle,
-      iconWrapClass: 'bg-red-50 ring-red-100',
-      iconClass: 'text-red-600',
+      iconWrapClass: 'bg-red-50 ring-red-100 dark:bg-red-950/40 dark:ring-red-800/50',
+      iconClass: 'text-red-600 dark:text-red-400',
       barClass: 'bg-gradient-to-r from-[#EF4444] to-[#F87171]',
     },
     {
@@ -48,8 +51,8 @@ function buildDailyChecksStatRows(
       helper: 'Still waiting',
       value: stats.notChecked,
       icon: Clock,
-      iconWrapClass: 'bg-amber-50 ring-amber-100',
-      iconClass: 'text-amber-600',
+      iconWrapClass: 'bg-amber-50 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-800/50',
+      iconClass: 'text-amber-600 dark:text-amber-400',
       barClass: 'bg-gradient-to-r from-[#F59E0B] to-[#FB923C]',
     },
   ]
@@ -78,16 +81,14 @@ function DailyChecksStatRowItem({
             <Icon className={`size-4 ${row.iconClass}`} strokeWidth={2.1} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#163A63] dark:text-slate-100">{row.label}</p>
-            <p className="text-xs text-[#5D7C9D] dark:text-slate-400">{row.helper}</p>
+            <p className={dashboardOverviewRowLabelClass}>{row.label}</p>
+            <p className={dashboardOverviewRowHelperClass}>{row.helper}</p>
           </div>
         </div>
-        <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63] dark:text-slate-100">
-          {row.value}
-        </span>
+        <span className={dashboardOverviewPrimaryValueClass}>{row.value}</span>
       </div>
       <div
-        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#D2E5F5]/80 dark:bg-slate-700 dark:ring-white/10"
+        className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#D0E4F6]/80 dark:bg-slate-700 dark:ring-white/10"
         role="presentation"
         aria-hidden="true"
       >
@@ -112,17 +113,17 @@ export function DailyVehicleChecksStatsCard({
     <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
       <DashboardOverviewCardHeader
         title="Daily Vehicle Checks Stats"
-        subtitle="Today&apos;s vehicle check overview"
+        subtitle="Today's vehicle check overview"
         actionTo="/admin/vehicle-checks"
       />
 
       {totalVehicles === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#D2E5F5] bg-[#F8FBFF]/80 px-4 py-6 text-center dark:border-white/10 dark:bg-slate-800/40">
-          <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">No active vehicles found.</p>
+        <div className="rounded-xl border border-dashed border-[#D0E4F6] bg-[rgba(248,251,255,0.85)] px-4 py-6 text-center dark:border-white/10 dark:bg-slate-800/40">
+          <p className="text-sm font-medium text-[#6B8AAB] dark:text-slate-400">No active vehicles found.</p>
         </div>
       ) : (
         <>
-          <ul className="mt-auto space-y-2.5">
+          <ul className="mt-auto space-y-2">
             {rows.map((row) => (
               <DailyChecksStatRowItem
                 key={row.key}
@@ -132,9 +133,9 @@ export function DailyVehicleChecksStatsCard({
             ))}
           </ul>
 
-          <p className="mt-3 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
+          <p className="mt-3 text-xs font-medium text-[#6B8AAB] dark:text-slate-400">
             Total vehicles{' '}
-            <span className="font-bold tabular-nums text-[#163A63] dark:text-slate-100">{totalVehicles}</span>
+            <span className="font-bold tabular-nums text-[#123A63] dark:text-slate-100">{totalVehicles}</span>
           </p>
         </>
       )}

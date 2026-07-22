@@ -13,6 +13,11 @@ import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import { fetchConsumablesMonthlySummary } from '@/services/consumablesService'
 import { fetchCompanySettings } from '@/services/companySettingsService'
 import {
+  buildFleetComplianceAlertsSummary,
+  emptyFleetComplianceAlertsSummary,
+  type FleetComplianceAlertsSummary,
+} from '@/lib/fleetComplianceAlerts'
+import {
   getAvailabilityRecordForDate,
   todayString,
 } from '@/lib/vehicleAvailability'
@@ -203,11 +208,14 @@ export type DashboardStats = {
   availabilityAlerts: DashboardAvailabilityAlerts
   timesheetOverview: DashboardTimesheetOverview
   fleetStatus: DashboardFleetStatus
+  fleetComplianceAlerts: FleetComplianceAlertsSummary
   holidayRequests: DashboardHolidaySummary
   driverReports: DashboardDriverReportsSummary
   consumablesOverview: DashboardConsumablesOverview
   recentActivity: DashboardRecentActivity[]
 }
+
+export type { FleetComplianceAlertsSummary }
 
 type DriverComplianceRow = {
   role: string | null
@@ -292,6 +300,7 @@ export const emptyDashboardStats: DashboardStats = {
     offRoad: 0,
     maintenanceDue: 0,
   },
+  fleetComplianceAlerts: emptyFleetComplianceAlertsSummary,
   holidayRequests: {
     pending: 0,
     approved: 0,
@@ -1835,7 +1844,12 @@ export async function loadDashboardStatsProgressively(
     const dashboardVehicles = await vehiclesPromise
     if (isAborted(signal)) return
 
+    const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
     const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
+    const fleetComplianceAlerts = buildFleetComplianceAlertsSummary(
+      dashboardVehicles,
+      companyToday,
+    )
     const vehicleDocumentRowsPromise = fetchVehicleDocumentRows(companyScope.companyId)
     const driverComplianceRowsPromise = fetchDriverComplianceRows(companyScope.companyId)
 
@@ -1848,6 +1862,7 @@ export async function loadDashboardStatsProgressively(
         offRoad: vehicleStatusCounts.offRoadToday + vehicleStatusCounts.outOfServiceToday,
         maintenanceDue: vehicleStatusCounts.maintenanceToday,
       },
+      fleetComplianceAlerts,
       availabilityAlerts: {
         offRoadToday: vehicleStatusCounts.offRoadToday,
         maintenanceToday: vehicleStatusCounts.maintenanceToday,
@@ -1876,7 +1891,6 @@ export async function loadDashboardStatsProgressively(
       },
     )
 
-    const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
     const vehicleChecksPromise = fetchTodayVehicleCheckRows(
       companyToday,
       companyScope.companyId,
@@ -1988,6 +2002,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     const recentActivity = await fetchAllRecentActivity(vehicleRegistrations, companyScope)
 
     const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
+    const fleetComplianceAlerts = buildFleetComplianceAlertsSummary(
+      dashboardVehicles,
+      companyToday,
+    )
     const complianceAlerts =
       countDriverComplianceAlerts(driverComplianceRows) +
       countVehicleComplianceAlerts(vehicleDocumentRows)
@@ -2017,6 +2035,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
         offRoad: vehicleStatusCounts.offRoadToday + vehicleStatusCounts.outOfServiceToday,
         maintenanceDue: vehicleStatusCounts.maintenanceToday,
       },
+      fleetComplianceAlerts,
       holidayRequests,
       driverReports,
       consumablesOverview,

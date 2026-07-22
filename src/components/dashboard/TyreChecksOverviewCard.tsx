@@ -1,6 +1,9 @@
 import {
   dashboardOverviewCardClass,
   dashboardOverviewInnerRowClass,
+  dashboardOverviewPrimaryValueClass,
+  dashboardOverviewRowHelperClass,
+  dashboardOverviewRowLabelClass,
 } from '@/components/dashboard/dashboardOverviewCardStyles'
 import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import type { DashboardDailyTyreChecksStats } from '@/services/dashboardService'
@@ -77,16 +80,14 @@ function TyreChecksStatRowItem({
             <Icon className={`size-4 ${row.iconClass}`} strokeWidth={2.1} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#163A63] dark:text-slate-100">{row.label}</p>
-            <p className="text-xs text-[#5D7C9D] dark:text-slate-400">{row.helper}</p>
+            <p className={dashboardOverviewRowLabelClass}>{row.label}</p>
+            <p className={dashboardOverviewRowHelperClass}>{row.helper}</p>
           </div>
         </div>
-        <span className="shrink-0 text-2xl font-bold leading-none tabular-nums text-[#163A63] dark:text-slate-100">
-          {row.value}
-        </span>
+        <span className={dashboardOverviewPrimaryValueClass}>{row.value}</span>
       </div>
       <div
-        className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#E8E0F5] ring-1 ring-[#D8CEF0]/80 dark:bg-slate-700 dark:ring-white/10"
+        className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#DCEEFF] ring-1 ring-[#D0E4F6]/80 dark:bg-slate-700 dark:ring-white/10"
         role="presentation"
         aria-hidden="true"
       >
@@ -115,29 +116,29 @@ export function TyreChecksOverviewCard({
         actionTo="/admin/vehicle-checks"
         actionLabel="View"
         leading={
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#D8CEF0] bg-[#EEE7FA] text-[#7C3AED] dark:border-white/10 dark:bg-violet-950/50 dark:text-violet-300">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#D0E4F6] bg-[#E8F3FE] text-[#3B82F6] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300">
             <CircleDot className="size-4" strokeWidth={1.9} aria-hidden="true" />
           </div>
         }
       />
 
       {totalVehicles === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#D8CEF0] bg-[#F8F5FF]/80 px-4 py-6 text-center dark:border-white/10 dark:bg-slate-800/40">
-          <p className="text-sm font-medium text-[#5D7C9D] dark:text-slate-400">
+        <div className="rounded-xl border border-dashed border-[#D0E4F6] bg-[rgba(248,251,255,0.85)] px-4 py-6 text-center dark:border-white/10 dark:bg-slate-800/40">
+          <p className="text-sm font-medium text-[#6B8AAB] dark:text-slate-400">
             No active vehicles found.
           </p>
         </div>
       ) : (
         <>
-          <ul className="mt-auto space-y-2.5" aria-label="Tyre check status today">
+          <ul className="mt-auto space-y-2" aria-label="Tyre check status today">
             {rows.map((row) => (
               <TyreChecksStatRowItem key={row.key} row={row} totalVehicles={totalVehicles} />
             ))}
           </ul>
 
-          <p className="mt-3 text-xs font-medium text-[#5D7C9D] dark:text-slate-400">
+          <p className="mt-3 text-xs font-medium text-[#6B8AAB] dark:text-slate-400">
             Total vehicles{' '}
-            <span className="font-bold tabular-nums text-[#163A63] dark:text-slate-100">
+            <span className="font-bold tabular-nums text-[#123A63] dark:text-slate-100">
               {totalVehicles}
             </span>
           </p>
