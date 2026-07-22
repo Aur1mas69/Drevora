@@ -20,12 +20,16 @@ import {
   formatTimesheetSubmittedAt,
   getEntryPaidBreakMinutes,
   getEntryPayableDisplayResult,
+  getMissingTimePairField,
   getStatusBadgeClass,
   getStatusLabel,
+  isIncompleteTimePair,
   minutesToDecimalHours,
   prepareEntryInputs,
   recalculateEntryInputs,
   summarizeTimesheetEntries,
+  TIMESHEET_TIME_PAIR_MESSAGE,
+  validateTimesheetTimePairs,
 } from '@/lib/timesheetUtils'
 import {
   adminText,
@@ -305,9 +309,13 @@ export function TimesheetDrawer({
     return null
   }
 
+  function validateEntriesForSave(entries: TimesheetEntryInput[]): string | null {
+    return validateTimesheetTimePairs(entries) ?? validateManualAdditional(entries)
+  }
+
   async function handleSaveDraft() {
     const next = recalculateEntryInputs(draftEntries, recalcOptions)
-    const validationError = validateManualAdditional(next)
+    const validationError = validateEntriesForSave(next)
     if (validationError) {
       setLocalError(validationError)
       return
@@ -318,7 +326,7 @@ export function TimesheetDrawer({
 
   async function handleSubmit() {
     const next = recalculateEntryInputs(draftEntries, recalcOptions)
-    const validationError = validateManualAdditional(next)
+    const validationError = validateEntriesForSave(next)
     if (validationError) {
       setLocalError(validationError)
       return
@@ -770,7 +778,9 @@ function TimesheetDayRow({
     paidBreaks,
     overtimeMode,
   })
-  const dayTotal = payable.totalPaidHours
+  const incompletePair = isIncompleteTimePair(entry)
+  const missingField = getMissingTimePairField(entry)
+  const dayTotal = incompletePair ? 0 : payable.totalPaidHours
   const hasShift = entryHasStartAndFinish(entry)
   const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
   const canEditBasic = isEditable && isManualMode
@@ -790,6 +800,7 @@ function TimesheetDayRow({
               timeFormat={timeFormat}
               onChange={(nextValue) => onUpdate(entry.dayDate, { startTime: nextValue })}
               className={inputClassName}
+              invalid={missingField === 'start'}
               data-entry-index={index}
               data-field="start"
             />
@@ -798,9 +809,15 @@ function TimesheetDayRow({
               timeFormat={timeFormat}
               onChange={(nextValue) => onUpdate(entry.dayDate, { finishTime: nextValue })}
               className={inputClassName}
+              invalid={missingField === 'finish'}
               data-entry-index={index}
               data-field="finish"
             />
+            {incompletePair ? (
+              <p className="text-[11px] font-medium text-rose-600">
+                {TIMESHEET_TIME_PAIR_MESSAGE}
+              </p>
+            ) : null}
           </div>
         ) : (
           <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
@@ -888,7 +905,7 @@ function TimesheetDayRow({
       <td
         className={`${tableCellClassName} text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300`}
       >
-        {formatTotalHours(dayTotal)}
+        {incompletePair ? '—' : formatTotalHours(dayTotal)}
       </td>
       <td className={`${tableCellClassName} text-center`}>
         <NotesIndicator entry={entry} isEditable={isEditable} onUpdate={onUpdate} />
@@ -925,12 +942,14 @@ function TimesheetDayCard({
     paidBreaks,
     overtimeMode,
   })
+  const incompletePair = isIncompleteTimePair(entry)
+  const missingField = getMissingTimePairField(entry)
   const paidBreakMinutes =
     isManualMode || payable.weekendGuaranteeDay
       ? 0
       : getEntryPaidBreakMinutes(entry, paidBreaks)
   const combinedAdditional = payable.additionalHours
-  const dayTotal = payable.totalPaidHours
+  const dayTotal = incompletePair ? 0 : payable.totalPaidHours
   const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
   const canEditBasic = isEditable && isManualMode
 
@@ -941,7 +960,7 @@ function TimesheetDayCard({
           {formatDayLabel(entry.dayDate)}
         </p>
         <p className="text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300">
-          {formatTotalHours(dayTotal)}
+          {incompletePair ? '—' : formatTotalHours(dayTotal)}
         </p>
       </div>
 
@@ -955,6 +974,7 @@ function TimesheetDayCard({
                 timeFormat={timeFormat}
                 onChange={(nextValue) => onUpdate(entry.dayDate, { startTime: nextValue })}
                 className={inputClassName}
+                invalid={missingField === 'start'}
                 data-entry-index={index}
                 data-field="start"
               />
@@ -963,9 +983,15 @@ function TimesheetDayCard({
                 timeFormat={timeFormat}
                 onChange={(nextValue) => onUpdate(entry.dayDate, { finishTime: nextValue })}
                 className={inputClassName}
+                invalid={missingField === 'finish'}
                 data-entry-index={index}
                 data-field="finish"
               />
+              {incompletePair ? (
+                <p className="col-span-2 text-[11px] font-medium text-rose-600">
+                  {TIMESHEET_TIME_PAIR_MESSAGE}
+                </p>
+              ) : null}
             </div>
           ) : (
             <p className="mt-0.5 tabular-nums font-medium text-[#113C69] dark:text-slate-200">

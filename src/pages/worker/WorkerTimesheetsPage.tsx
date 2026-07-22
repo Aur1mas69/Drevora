@@ -17,14 +17,18 @@ import {
   formatTotalHours,
   getDefaultWeekStartMonday,
   getEntryPayableDisplayResult,
+  getMissingTimePairField,
   getStatusBadgeClass,
   getStatusLabel,
+  isIncompleteTimePair,
   minutesToDecimalHours,
   normalizeWeekStartForCompany,
   parseLocalDate,
   prepareEntryInputs,
   recalculateEntryInputs,
   summarizeTimesheetEntries,
+  TIMESHEET_TIME_PAIR_MESSAGE,
+  validateTimesheetTimePairs,
 } from '@/lib/timesheetUtils'
 import { cn } from '@/lib/utils'
 import {
@@ -185,6 +189,9 @@ function WorkerDayForm({
     paidBreaks,
     overtimeMode,
   })
+  const incompletePair = isIncompleteTimePair(entry)
+  const missingField = getMissingTimePairField(entry)
+  const showPayableTotal = !incompletePair && payable.totalPaidHours > 0
 
   return (
     <article className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50">
@@ -193,7 +200,7 @@ function WorkerDayForm({
           {formatDayLabel(entry.dayDate)}
         </h2>
         <p className="text-xs font-medium tabular-nums text-slate-400">
-          {formatTotalHours(payable.totalPaidHours)}
+          {showPayableTotal ? formatTotalHours(payable.totalPaidHours) : '—'}
         </p>
       </div>
 
@@ -212,6 +219,7 @@ function WorkerDayForm({
                 onChange={(value) => onUpdate(entry.dayDate, { startTime: value })}
                 timeFormat="24-hour"
                 className={workerFieldClass}
+                invalid={missingField === 'start'}
               />
             ) : (
               <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
@@ -230,6 +238,7 @@ function WorkerDayForm({
                 onChange={(value) => onUpdate(entry.dayDate, { finishTime: value })}
                 timeFormat="24-hour"
                 className={workerFieldClass}
+                invalid={missingField === 'finish'}
               />
             ) : (
               <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
@@ -238,6 +247,11 @@ function WorkerDayForm({
             )}
           </label>
         </div>
+        {incompletePair ? (
+          <p className="mt-2 text-xs font-medium text-rose-600">
+            {TIMESHEET_TIME_PAIR_MESSAGE}
+          </p>
+        ) : null}
 
         <label className="mt-3 block space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -374,11 +388,15 @@ function WorkerDayForm({
             Total Hours
           </p>
           <p className="mt-1 text-base font-bold tabular-nums text-slate-950">
-            {formatTotalHours(payable.totalPaidHours)}
+            {incompletePair ? '—' : formatTotalHours(payable.totalPaidHours)}
           </p>
-          {isManualMode ? (
+          {incompletePair ? (
+            <p className="mt-0.5 text-[11px] text-rose-600">
+              {TIMESHEET_TIME_PAIR_MESSAGE}
+            </p>
+          ) : isManualMode ? (
             <p className="mt-0.5 text-[11px] text-slate-500">
-              Read-only · Basic + OT + Additional
+              Read-only · Basic + OT × multiplier + Additional
             </p>
           ) : null}
         </div>
@@ -498,6 +516,12 @@ export default function WorkerTimesheetsPage() {
       }
     }
     return null
+  }
+
+  function validateEntriesForSave(nextEntries: TimesheetEntryInput[]): string | null {
+    return (
+      validateTimesheetTimePairs(nextEntries) ?? validateManualAdditional(nextEntries)
+    )
   }
 
   const breakOptions = useMemo(
@@ -693,7 +717,7 @@ export default function WorkerTimesheetsPage() {
       overtimeRules,
       paidBreaks,
     })
-    const validationError = validateManualAdditional(recalculated)
+    const validationError = validateEntriesForSave(recalculated)
     if (validationError) {
       setActionError(validationError)
       return false
@@ -739,14 +763,10 @@ export default function WorkerTimesheetsPage() {
         paidBreaks,
       })
 
-      if (
-        recalculatedDay.additionalHours > 0 &&
-        !recalculatedDay.dailyComment.trim()
-      ) {
+      const dayValidationError = validateEntriesForSave([recalculatedDay])
+      if (dayValidationError) {
         setDaySaveState('error')
-        setActionError(
-          `Add a daily comment for ${formatDayLabel(recalculatedDay.dayDate)} explaining the Additional Hours (for example night-shift allowance).`,
-        )
+        setActionError(dayValidationError)
         return
       }
 
@@ -837,7 +857,7 @@ export default function WorkerTimesheetsPage() {
       overtimeRules,
       paidBreaks,
     })
-    const validationError = validateManualAdditional(recalculated)
+    const validationError = validateEntriesForSave(recalculated)
     if (validationError) {
       setActionError(validationError)
       setSubmitConfirmOpen(false)
@@ -877,7 +897,7 @@ export default function WorkerTimesheetsPage() {
         overtimeRules,
         paidBreaks,
       })
-      const validationError = validateManualAdditional(recalculated)
+      const validationError = validateEntriesForSave(recalculated)
       if (validationError) {
         setActionError(validationError)
         setSubmitConfirmOpen(false)

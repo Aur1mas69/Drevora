@@ -94,14 +94,65 @@ export function resolveDayOvertimeRules(
   }
 }
 
+/** True when the value is a valid HH:MM clock time (not empty, not midnight-by-default). */
+export function hasValidTimeValue(value: string | null | undefined): boolean {
+  return parseTimeToMinutes(value ?? null) !== null
+}
+
 export function entryHasStartAndFinish(entry: {
   startTime: string | null
   finishTime: string | null
 }): boolean {
-  const start = parseTimeToMinutes(entry.startTime)
-  const finish = parseTimeToMinutes(entry.finishTime)
-  return start !== null && finish !== null
+  return hasValidTimeValue(entry.startTime) && hasValidTimeValue(entry.finishTime)
 }
+
+/** Exactly one of Start / Finish is filled — incomplete worked day. */
+export function isIncompleteTimePair(entry: {
+  startTime: string | null
+  finishTime: string | null
+}): boolean {
+  const hasStart = hasValidTimeValue(entry.startTime)
+  const hasFinish = hasValidTimeValue(entry.finishTime)
+  return hasStart !== hasFinish
+}
+
+/** Which clock field is missing when the pair is incomplete. */
+export function getMissingTimePairField(entry: {
+  startTime: string | null
+  finishTime: string | null
+}): 'start' | 'finish' | null {
+  const hasStart = hasValidTimeValue(entry.startTime)
+  const hasFinish = hasValidTimeValue(entry.finishTime)
+  if (hasStart && !hasFinish) return 'finish'
+  if (!hasStart && hasFinish) return 'start'
+  return null
+}
+
+export const TIMESHEET_TIME_PAIR_MESSAGE = 'Enter both start and finish times.'
+
+/** Week/day validation: block saves when any day has only one clock time. */
+export function validateTimesheetTimePairs(
+  entries: Array<{
+    dayDate: string
+    startTime: string | null
+    finishTime: string | null
+  }>,
+): string | null {
+  for (const entry of entries) {
+    if (isIncompleteTimePair(entry)) {
+      return `${TIMESHEET_TIME_PAIR_MESSAGE} (${formatDayLabel(entry.dayDate)})`
+    }
+  }
+  return null
+}
+
+const EMPTY_PAYABLE_DISPLAY = {
+  basicHours: 0,
+  overtimeDisplayHours: 0,
+  additionalHours: 0,
+  totalPaidHours: 0,
+  weekendGuaranteeDay: false,
+} as const
 
 function calculateShiftSpanMinutes(startMinutes: number, finishMinutes: number): number {
   if (finishMinutes < startMinutes) {
@@ -154,15 +205,43 @@ export type WeekendPayableBreakdown = {
 }
 
 /**
+ * Payable OT hours after multiplier. Never display or persist as OT worked.
+ */
+export function calculateOtPayableHours(
+  otWorkedHours: number,
+  overtimeMultiplier: number,
+): number {
+  return Math.max(0, otWorkedHours) * overtimeMultiplier
+}
+
+/**
+ * Shared Total payable formula for Manual and Automatic modes:
+ * Basic + Additional + (OT worked × multiplier)
+ */
+export function calculateTotalPayableHours(
+  basicHours: number,
+  additionalHours: number,
+  otWorkedHours: number,
+  overtimeMultiplier: number,
+): number {
+  return (
+    Math.max(0, basicHours) +
+    Math.max(0, additionalHours) +
+    calculateOtPayableHours(otWorkedHours, overtimeMultiplier)
+  )
+}
+
+/**
  * Weekend guaranteed-hours rule (decimal hours throughout):
  *
  * grossShiftHours = duration start→finish (break is ignored for threshold/OT)
  *
  * if gross < startsAfter:
- *   basic = gross, OT paid = 0
+ *   basic = gross, OT worked = 0
  * else:
  *   basic = guaranteedPaidHours
- *   OT paid = (gross − startsAfter) × multiplier
+ *   OT worked = gross − startsAfter
+ *   OT payable = OT worked × multiplier
  */
 export function calculateWeekendPayableBreakdown(
   grossShiftHours: number,
@@ -192,12 +271,17 @@ export function calculateWeekendPayableBreakdown(
   }
 
   const overtimeWorkedHours = gross - overtimeStartsAfter
-  const overtimePaidHours = overtimeWorkedHours * multiplier
+  const overtimePaidHours = calculateOtPayableHours(overtimeWorkedHours, multiplier)
   return {
     basicHours: guaranteedPaidHours,
     overtimeWorkedHours,
     overtimePaidHours,
-    basePayableHours: guaranteedPaidHours + overtimePaidHours,
+    basePayableHours: calculateTotalPayableHours(
+      guaranteedPaidHours,
+      0,
+      overtimeWorkedHours,
+      multiplier,
+    ),
     guaranteeApplied: true,
   }
 }
@@ -219,8 +303,11 @@ export function calculateWeekendGuaranteedPaidHours(
     overtimeStartsAfter,
     multiplier,
   )
-  return (
-    breakdown.basePayableHours + Math.max(0, manualAdditionalHours)
+  return calculateTotalPayableHours(
+    breakdown.basicHours,
+    manualAdditionalHours,
+    breakdown.overtimeWorkedHours,
+    multiplier,
   )
 }
 
@@ -242,6 +329,7 @@ export function getEntryPayableDisplayResult(
   } = {},
 ): {
   basicHours: number
+  /** Actual OT worked hours (never multiplied). */
   overtimeDisplayHours: number
   /** Payable Additional Hours for this day (manual only on weekend guarantee days). */
   additionalHours: number
@@ -250,25 +338,64 @@ export function getEntryPayableDisplayResult(
 } {
   const overtimeMode =
     options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
+  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
+  const paidBreaks = options.paidBreaks ?? false
+  const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
   const manualAdditional = Math.max(0, entry.additionalHours ?? 0)
 
-  // Manual mode: entered Basic / OT / Additional are authoritative. Total is their sum.
-  // total_minutes stores Basic hours as minutes; no OT multiplier; no weekend overwrite.
+  // Incomplete Start/Finish pair: never invent midnight or payable hours.
+  if (isIncompleteTimePair(entry)) {
+    return { ...EMPTY_PAYABLE_DISPLAY }
+  }
+
+  const hasCompletePair = entryHasStartAndFinish(entry)
+
+  // Manual mode: entered Basic / OT worked / Additional are authoritative.
+  // total_minutes stores Basic only; OT field stores worked hours (not multiplied).
+  // Total uses the shared formula with the same day multiplier as Automatic.
+  // Both clocks empty is allowed as an unworked draft day (Manual hours may still be entered).
   if (overtimeMode === 'Manual') {
+    if (!hasCompletePair) {
+      // Both empty: no clock-derived payable. Keep Manual hours only when explicitly entered.
+      const basicHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
+      const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
+      if (basicHours <= 0 && otWorkedHours <= 0 && manualAdditional <= 0) {
+        return { ...EMPTY_PAYABLE_DISPLAY }
+      }
+      return {
+        basicHours,
+        overtimeDisplayHours: otWorkedHours,
+        additionalHours: manualAdditional,
+        totalPaidHours: calculateTotalPayableHours(
+          basicHours,
+          manualAdditional,
+          otWorkedHours,
+          dayRules.multiplier,
+        ),
+        weekendGuaranteeDay: false,
+      }
+    }
+
     const basicHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
-    const overtimeDisplayHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
+    const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
     return {
       basicHours,
-      overtimeDisplayHours,
+      overtimeDisplayHours: otWorkedHours,
       additionalHours: manualAdditional,
-      totalPaidHours: basicHours + overtimeDisplayHours + manualAdditional,
+      totalPaidHours: calculateTotalPayableHours(
+        basicHours,
+        manualAdditional,
+        otWorkedHours,
+        dayRules.multiplier,
+      ),
       weekendGuaranteeDay: false,
     }
   }
 
-  const rules = buildTimesheetOvertimeRules(options.overtimeRules)
-  const paidBreaks = options.paidBreaks ?? false
-  const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+  // Automatic: both Start and Finish required before any payable calculation.
+  if (!hasCompletePair) {
+    return { ...EMPTY_PAYABLE_DISPLAY }
+  }
 
   if (dayRules.guaranteedPaidHours != null) {
     const gross = calculateGrossShiftHours(entry.startTime, entry.finishTime)
@@ -280,30 +407,42 @@ export function getEntryPayableDisplayResult(
     )
     return {
       basicHours: breakdown.basicHours,
-      overtimeDisplayHours: breakdown.overtimePaidHours,
+      overtimeDisplayHours: breakdown.overtimeWorkedHours,
       additionalHours: manualAdditional,
-      totalPaidHours: breakdown.basePayableHours + manualAdditional,
+      totalPaidHours: calculateTotalPayableHours(
+        breakdown.basicHours,
+        manualAdditional,
+        breakdown.overtimeWorkedHours,
+        dayRules.multiplier,
+      ),
       weekendGuaranteeDay: true,
     }
   }
 
+  // Automatic weekday: total_minutes is gross worked (includes OT portion).
+  // Basic display is ordinary hours only; OT display is worked hours only.
   const weekdayAdditional = getEntryCombinedAdditionalHours(entry, paidBreaks)
+  const grossWorkedHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
+  const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
+  const basicHours = Math.max(0, grossWorkedHours - otWorkedHours)
   return {
-    basicHours: entry.totalMinutes / 60,
-    overtimeDisplayHours: (entry.overtimeMinutes ?? 0) / 60,
+    basicHours,
+    overtimeDisplayHours: otWorkedHours,
     additionalHours: weekdayAdditional,
-    totalPaidHours: calculateEntryPaidEquivalentHours(
-      {
-        totalMinutes: entry.totalMinutes,
-        overtimeMinutes: entry.overtimeMinutes,
-        additionalHours: weekdayAdditional,
-      },
+    totalPaidHours: calculateTotalPayableHours(
+      basicHours,
+      weekdayAdditional,
+      otWorkedHours,
       dayRules.multiplier,
     ),
     weekendGuaranteeDay: false,
   }
 }
 
+/**
+ * Payable total when totalMinutes stores gross worked hours that include OT.
+ * Derives basic = gross − OT worked, then uses the shared Total formula.
+ */
 export function calculateEntryPaidEquivalentHours(
   input: {
     totalMinutes: number
@@ -312,11 +451,16 @@ export function calculateEntryPaidEquivalentHours(
   },
   overtimeMultiplier: number = getGlobalOvertimeMultiplier(),
 ): number {
-  const workedHours = input.totalMinutes / 60
+  const grossWorkedHours = input.totalMinutes / 60
   const overtimeHours = (input.overtimeMinutes ?? 0) / 60
   const additionalHours = input.additionalHours ?? 0
-  const normalHours = Math.max(workedHours - overtimeHours, 0)
-  return normalHours + overtimeHours * overtimeMultiplier + additionalHours
+  const basicHours = Math.max(0, grossWorkedHours - overtimeHours)
+  return calculateTotalPayableHours(
+    basicHours,
+    additionalHours,
+    overtimeHours,
+    overtimeMultiplier,
+  )
 }
 
 /**
@@ -441,13 +585,25 @@ export function summarizeTimesheetEntries(
 }
 
 export function parseTimeToMinutes(value: string | null): number | null {
-  if (!value?.trim()) return null
-  const normalized = value.trim().slice(0, 5)
+  if (value == null) return null
+  const trimmed = value.trim()
+  // Empty must never be treated as midnight / 00:00.
+  if (!trimmed) return null
+  const normalized = trimmed.slice(0, 5)
   const match = /^(\d{1,2}):(\d{2})$/.exec(normalized)
   if (!match) return null
   const hours = Number(match[1])
   const minutes = Number(match[2])
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null
+  }
   return hours * 60 + minutes
 }
 
@@ -942,6 +1098,15 @@ export function recalculateEntryInputs(
         overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
         additionalHours: Math.max(0, entry.additionalHours ?? 0),
         breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
+      }
+    }
+
+    // Incomplete or empty clock pair: never derive hours from a single Finish/Start.
+    if (!entryHasStartAndFinish(entry)) {
+      return {
+        ...entry,
+        totalMinutes: 0,
+        overtimeMinutes: 0,
       }
     }
 

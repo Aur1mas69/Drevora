@@ -31,6 +31,9 @@ type WeekendCase = {
   overtimeStartsAfter: number
   multiplier: number
   expectedBasic: number
+  /** Actual OT worked hours (shown in OT column). */
+  expectedOtWorked: number
+  /** OT worked × multiplier (used in Total only). */
   expectedOtPaid: number
   expectedTotal: number
 }
@@ -44,6 +47,7 @@ const saturdayCases: WeekendCase[] = [
     overtimeStartsAfter: 6.5,
     multiplier: 1.5,
     expectedBasic: 5,
+    expectedOtWorked: 0,
     expectedOtPaid: 0,
     expectedTotal: 5,
   },
@@ -55,6 +59,7 @@ const saturdayCases: WeekendCase[] = [
     overtimeStartsAfter: 6.5,
     multiplier: 1.5,
     expectedBasic: 10,
+    expectedOtWorked: 0,
     expectedOtPaid: 0,
     expectedTotal: 10,
   },
@@ -66,6 +71,7 @@ const saturdayCases: WeekendCase[] = [
     overtimeStartsAfter: 6.5,
     multiplier: 1.5,
     expectedBasic: 10,
+    expectedOtWorked: 1,
     expectedOtPaid: 1.5,
     expectedTotal: 11.5,
   },
@@ -77,6 +83,7 @@ const saturdayCases: WeekendCase[] = [
     overtimeStartsAfter: 6.5,
     multiplier: 1.5,
     expectedBasic: 10,
+    expectedOtWorked: 2.5,
     expectedOtPaid: 3.75,
     expectedTotal: 13.75,
   },
@@ -90,6 +97,7 @@ const sundayCase: WeekendCase = {
   overtimeStartsAfter: 0,
   multiplier: 2,
   expectedBasic: 8,
+  expectedOtWorked: 8,
   expectedOtPaid: 16,
   expectedTotal: 24,
 }
@@ -109,6 +117,11 @@ for (const testCase of [...saturdayCases, sundayCase]) {
   )
 
   assertEqual(breakdown.basicHours, testCase.expectedBasic, `${testCase.name}: basicHours`)
+  assertEqual(
+    breakdown.overtimeWorkedHours,
+    testCase.expectedOtWorked,
+    `${testCase.name}: overtimeWorkedHours`,
+  )
   assertEqual(
     breakdown.overtimePaidHours,
     testCase.expectedOtPaid,
@@ -142,6 +155,7 @@ for (const testCase of [...saturdayCases, sundayCase]) {
       },
     ],
     {
+      overtimeMode: 'Automatic',
       overtimeRules: {
         saturdayOvertimeEnabled: isSaturday,
         saturdayOvertimeAfterHours: testCase.overtimeStartsAfter,
@@ -163,8 +177,8 @@ for (const testCase of [...saturdayCases, sundayCase]) {
   )
   assertEqual(
     summary.overtimeHours,
-    roundHoursTwoDecimals(testCase.expectedOtPaid),
-    `${testCase.name}: summarize OT paid hours`,
+    roundHoursTwoDecimals(testCase.expectedOtWorked),
+    `${testCase.name}: summarize OT worked hours`,
   )
   assertEqual(
     summary.additionalHours,
@@ -209,6 +223,7 @@ for (const testCase of [...saturdayCases, sundayCase]) {
       breakMinutes: 45,
     },
     {
+      overtimeMode: 'Automatic',
       paidBreaks: true,
       overtimeRules: {
         saturdayOvertimeEnabled: true,
@@ -220,7 +235,7 @@ for (const testCase of [...saturdayCases, sundayCase]) {
   )
 
   assertEqual(payable.basicHours, 10, `${name}: display basic`)
-  assertEqual(payable.overtimeDisplayHours, 3.75, `${name}: display OT`)
+  assertEqual(payable.overtimeDisplayHours, 2.5, `${name}: display OT worked`)
   assertEqual(payable.additionalHours, 0, `${name}: display Add. Hrs`)
   assertEqual(payable.totalPaidHours, 13.75, `${name}: display Total`)
 
@@ -248,6 +263,7 @@ for (const testCase of [...saturdayCases, sundayCase]) {
       },
     ],
     {
+      overtimeMode: 'Automatic',
       overtimeRules: {
         overtimeAfterHours: 8,
         overtimeMultiplier: multiplier,
@@ -274,6 +290,7 @@ for (const testCase of [...saturdayCases, sundayCase]) {
       },
     ],
     {
+      overtimeMode: 'Automatic',
       overtimeRules: {
         overtimeAfterHours: 8,
         overtimeMultiplier: multiplier,
