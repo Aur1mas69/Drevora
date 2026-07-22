@@ -1,4 +1,3 @@
-import { WorkerTimesheetSettingsForm } from '@/components/worker/WorkerTimesheetSettingsForm'
 import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,9 +13,11 @@ import {
   readWorkerAppearancePreference,
   writeWorkerAppearancePreference,
 } from '@/lib/workerAppearance'
+import { formatWorkerTimesheetSettingsSummary } from '@/lib/workerTimesheetSettingsSummary'
 import { cn } from '@/lib/utils'
+import { ChevronRight, Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const APPEARANCE_OPTIONS: { value: CompanyTheme; label: string; hint: string }[] =
   [
@@ -38,8 +39,6 @@ export default function WorkerSettingsPage() {
   const {
     effective,
     isLoading: settingsLoading,
-    error: settingsError,
-    refresh,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
 
   const [appearance, setAppearance] = useState<CompanyTheme>('light')
@@ -94,6 +93,10 @@ export default function WorkerSettingsPage() {
   const hasPersonalAppearance = Boolean(
     userId && readWorkerAppearancePreference(userId),
   )
+  const timesheetSummary =
+    !settingsLoading && effective
+      ? formatWorkerTimesheetSettingsSummary(effective)
+      : 'Loading…'
 
   return (
     <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
@@ -102,7 +105,7 @@ export default function WorkerSettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Your Worker profile and Timesheet rules.
+          Your Worker profile and preferences.
         </p>
       </header>
 
@@ -139,35 +142,27 @@ export default function WorkerSettingsPage() {
         />
       </section>
 
-      <section className="space-y-3">
-        <div className="px-1">
-          <h2 className="text-lg font-semibold text-slate-950">Timesheet Settings</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Configure your own payroll and overtime rules. Company settings are the
-            starting defaults.
-          </p>
-        </div>
-        {settingsLoading || !effective ? (
-          <div
-            className="min-h-40 rounded-[1.75rem] bg-white/60"
-            aria-label="Loading Timesheet settings"
-            role="status"
+      <section className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Link
+          to="/worker/settings/timesheet"
+          className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#2F80ED] dark:bg-[#12365C]">
+            <Clock className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block text-sm font-semibold text-slate-950 dark:text-white">
+              Timesheet settings
+            </span>
+            <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
+              {timesheetSummary}
+            </span>
+          </span>
+          <ChevronRight
+            className="size-5 shrink-0 text-slate-400"
+            aria-hidden
           />
-        ) : (
-          <>
-            {settingsError ? (
-              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                {settingsError} Showing company defaults until your personal settings
-                can be loaded.
-              </p>
-            ) : null}
-            <WorkerTimesheetSettingsForm
-              driverId={worker.id}
-              initialEffective={effective}
-              onSaved={refresh}
-            />
-          </>
-        )}
+        </Link>
       </section>
 
       <section className="rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
