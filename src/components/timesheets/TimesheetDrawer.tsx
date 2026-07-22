@@ -3,9 +3,12 @@ import { TimesheetTimeInput } from '@/components/timesheets/TimesheetTimeInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { resolveEffectiveTimesheetSettings } from '@/lib/resolveEffectiveTimesheetSettings'
 import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
 import type { OvertimeMode, TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
+import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
+import { fetchDriverTimesheetSettingsByDriverIds } from '@/services/workerTimesheetSettingsService'
 import {
   applyViewModeEntryTotals,
   buildTimesheetOvertimeRules,
@@ -143,30 +146,50 @@ export function TimesheetDrawer({
   const {
     formatTime,
     timeFormat,
-    overtimeAfterHours,
-    overtimeMode,
-    overtimeMultiplier,
-    defaultBreakMinutes,
     settings,
   } = useCompanySettings()
   const [draftEntries, setDraftEntries] = useState<TimesheetEntryInput[]>([])
   const [localError, setLocalError] = useState<string | null>(null)
+  const [effective, setEffective] = useState<EffectiveTimesheetSettings | null>(
+    null,
+  )
 
+  useEffect(() => {
+    if (!timesheet?.driverId) {
+      setEffective(resolveEffectiveTimesheetSettings(settings, null))
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const map = await fetchDriverTimesheetSettingsByDriverIds([
+          timesheet.driverId,
+        ])
+        if (cancelled) return
+        setEffective(
+          resolveEffectiveTimesheetSettings(
+            settings,
+            map.get(timesheet.driverId) ?? null,
+          ),
+        )
+      } catch {
+        if (!cancelled) {
+          setEffective(resolveEffectiveTimesheetSettings(settings, null))
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [settings, timesheet?.driverId])
+
+  const overtimeMode = effective?.overtimeMode ?? 'Manual'
+  const defaultBreakMinutes = effective?.defaultBreakMinutes ?? 30
   const overtimeRules = useMemo(
-    () =>
-      buildTimesheetOvertimeRules({
-        overtimeAfterHours,
-        overtimeMultiplier,
-        saturdayOvertimeEnabled: settings?.saturdayOvertimeEnabled ?? false,
-        saturdayOvertimeAfterHours: settings?.saturdayOvertimeAfterHours ?? 6,
-        saturdayOvertimeMultiplier: settings?.saturdayOvertimeMultiplier ?? 1.5,
-        saturdayGuaranteedPaidHours: settings?.saturdayGuaranteedPaidHours ?? 10,
-        sundayOvertimeEnabled: settings?.sundayOvertimeEnabled ?? false,
-        sundayOvertimeAfterHours: settings?.sundayOvertimeAfterHours ?? 0,
-        sundayOvertimeMultiplier: settings?.sundayOvertimeMultiplier ?? 2,
-        sundayGuaranteedPaidHours: settings?.sundayGuaranteedPaidHours ?? 10,
-      }),
-    [overtimeAfterHours, overtimeMultiplier, settings],
+    () => buildTimesheetOvertimeRules(effective?.overtimeRules ?? {}),
+    [effective?.overtimeRules],
   )
 
   const breakOptions = useMemo(
@@ -184,13 +207,13 @@ export function TimesheetDrawer({
     () => ({
       overtimeMode,
       overtimeRules,
-      paidBreaks: settings?.paidBreaks ?? false,
+      paidBreaks: effective?.paidBreaks ?? false,
     }),
-    [overtimeMode, overtimeRules, settings?.paidBreaks],
+    [effective?.paidBreaks, overtimeMode, overtimeRules],
   )
 
   useEffect(() => {
-    if (!timesheet) return
+    if (!timesheet || !effective) return
     setDraftEntries(
       prepareEntryInputs(
         timesheet.weekStart,
@@ -199,7 +222,7 @@ export function TimesheetDrawer({
         breakOptions,
       ),
     )
-  }, [timesheet?.id])
+  }, [breakOptions, defaultBreakMinutes, effective, timesheet?.id])
 
   const canEdit = timesheet ? canEditTimesheet(timesheet.status) : false
   const isEditable = mode === 'edit' && canEdit

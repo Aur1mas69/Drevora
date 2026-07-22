@@ -24,7 +24,7 @@ function runScenario(paidBreaks: boolean) {
   const minutes = calculateEntryTotalMinutes(sampleEntry, { paidBreaks })
   const recalculated = recalculateEntryInputs(
     [{ ...sampleEntry, totalMinutes: 0 }],
-    { paidBreaks },
+    { paidBreaks, overtimeMode: 'Automatic' },
   )[0]
   const summary = summarizeTimesheetEntries(
     [
@@ -33,7 +33,7 @@ function runScenario(paidBreaks: boolean) {
         totalMinutes: minutes,
       },
     ],
-    { paidBreaks },
+    { paidBreaks, overtimeMode: 'Automatic' },
   )
   const listSummary = summarizeTimesheetEntriesFromTotals(
     {

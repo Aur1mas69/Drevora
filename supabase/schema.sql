@@ -480,6 +480,89 @@ create index if not exists companies_created_at_idx on public.companies (created
 
 
 -- -----------------------------------------------------------------------------
+-- Worker Timesheet settings overrides
+-- Row presence = personal override. Missing row = company defaults.
+-- Canonical migration: 20260722190000_create_driver_timesheet_settings.sql
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.driver_timesheet_settings (
+  driver_id uuid primary key references public.drivers (id) on delete cascade,
+  company_id uuid not null references public.companies (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  overtime_mode text null,
+  overtime_calculation_method text null,
+  overtime_after_hours numeric null,
+  weekly_overtime_after_hours numeric null,
+  overtime_multiplier numeric null,
+  default_break_minutes integer null,
+  paid_breaks boolean null,
+  round_time_minutes integer null,
+  currency text null,
+  timesheet_week_start_day text null,
+  saturday_overtime_enabled boolean null,
+  saturday_overtime_after_hours numeric null,
+  saturday_overtime_multiplier numeric null,
+  saturday_guaranteed_paid_hours numeric null,
+  sunday_overtime_enabled boolean null,
+  sunday_overtime_after_hours numeric null,
+  sunday_overtime_multiplier numeric null,
+  sunday_guaranteed_paid_hours numeric null,
+  constraint driver_timesheet_settings_overtime_mode_check
+    check (overtime_mode is null or overtime_mode in ('Manual', 'Automatic')),
+  constraint driver_timesheet_settings_ot_method_check
+    check (
+      overtime_calculation_method is null
+      or overtime_calculation_method in ('daily', 'weekly', 'none')
+    ),
+  constraint driver_timesheet_settings_currency_check
+    check (currency is null or currency in ('GBP', 'EUR', 'USD', 'RUB')),
+  constraint driver_timesheet_settings_week_start_check
+    check (
+      timesheet_week_start_day is null
+      or timesheet_week_start_day in ('monday', 'sunday')
+    ),
+  constraint driver_timesheet_settings_break_check
+    check (
+      default_break_minutes is null
+      or default_break_minutes in (0, 15, 30, 45, 60)
+    ),
+  constraint driver_timesheet_settings_round_check
+    check (
+      round_time_minutes is null
+      or round_time_minutes in (0, 5, 15)
+    ),
+  constraint driver_timesheet_settings_daily_ot_check
+    check (
+      overtime_after_hours is null
+      or (
+        overtime_after_hours >= 0
+        and overtime_after_hours <= 24
+      )
+    ),
+  constraint driver_timesheet_settings_weekly_ot_check
+    check (
+      weekly_overtime_after_hours is null
+      or (
+        weekly_overtime_after_hours >= 0
+        and weekly_overtime_after_hours <= 168
+      )
+    ),
+  constraint driver_timesheet_settings_multiplier_check
+    check (
+      overtime_multiplier is null
+      or (
+        overtime_multiplier >= 1.0
+        and overtime_multiplier <= 3.0
+      )
+    )
+);
+
+create index if not exists driver_timesheet_settings_company_id_idx
+  on public.driver_timesheet_settings (company_id);
+
+
+-- -----------------------------------------------------------------------------
 -- Timesheets
 -- Driver weekly hours with daily entries (Mon–Sun)
 -- -----------------------------------------------------------------------------

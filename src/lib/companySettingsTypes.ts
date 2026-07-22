@@ -214,9 +214,14 @@ export function formatWeekendGuaranteedPaidHoursLabel(hours: number): string {
   return `${hours.toFixed(1)} hours`
 }
 
+export type OvertimeCalculationMethod = 'daily' | 'weekly' | 'none'
+
 export type TimesheetOvertimeRules = {
   overtimeAfterHours: number
   overtimeMultiplier: number
+  /** Automatic OT allocation. Ignored when overtime mode is Manual. */
+  overtimeCalculationMethod: OvertimeCalculationMethod
+  weeklyOvertimeAfterHours: number
   saturdayOvertimeEnabled: boolean
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
@@ -230,6 +235,8 @@ export type TimesheetOvertimeRules = {
 export const DEFAULT_TIMESHEET_OVERTIME_RULES: TimesheetOvertimeRules = {
   overtimeAfterHours: DEFAULT_OVERTIME_AFTER_HOURS,
   overtimeMultiplier: DEFAULT_OVERTIME_MULTIPLIER,
+  overtimeCalculationMethod: 'daily',
+  weeklyOvertimeAfterHours: 45,
   saturdayOvertimeEnabled: false,
   saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,

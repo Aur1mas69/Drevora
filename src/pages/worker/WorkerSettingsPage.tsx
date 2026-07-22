@@ -1,17 +1,13 @@
+import { WorkerTimesheetSettingsForm } from '@/components/worker/WorkerTimesheetSettingsForm'
 import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import {
-  CURRENCY_OPTIONS,
-  formatOvertimeAfterHoursLabel,
-  formatOvertimeMultiplierLabel,
   type CompanyTheme,
-  type OvertimeAfterHours,
-  type OvertimeMultiplier,
 } from '@/lib/companySettingsTypes'
-import { TIMESHEET_WEEK_START_DAY_OPTIONS } from '@/lib/timesheetWeekNumber'
 import {
   applyResolvedWorkerAppearance,
   readWorkerAppearancePreference,
@@ -36,17 +32,14 @@ export default function WorkerSettingsPage() {
   const navigate = useNavigate()
   const { signOut, session } = useAuth()
   const { worker, isLoading, error } = useCurrentWorker()
-  const {
-    companyName,
-    theme: companyTheme,
-    companyLoading,
-    overtimeMode,
-    overtimeAfterHours,
-    overtimeMultiplier,
-    defaultBreakMinutes,
-    settings,
-  } = useCompanySettings()
+  const { companyName, theme: companyTheme, companyLoading } = useCompanySettings()
   const userId = session?.user.id ?? null
+  const {
+    effective,
+    isLoading: settingsLoading,
+    error: settingsError,
+    refresh,
+  } = useWorkerEffectiveTimesheetSettings(worker?.id)
 
   const [appearance, setAppearance] = useState<CompanyTheme>('light')
 
@@ -101,20 +94,6 @@ export default function WorkerSettingsPage() {
     userId && readWorkerAppearancePreference(userId),
   )
 
-  const weekStartsLabel =
-    TIMESHEET_WEEK_START_DAY_OPTIONS.find(
-      (option) => option.value === settings?.timesheetWeekStartDay,
-    )?.label ?? 'Monday'
-  const currencyLabel =
-    CURRENCY_OPTIONS.find((option) => option.value === settings?.currency)?.label ??
-    settings?.currency ??
-    'GBP'
-  const roundMinutes = settings?.roundTimeMinutes ?? 0
-  const roundingLabel =
-    roundMinutes === 0 ? 'None' : `${roundMinutes} min`
-  const paidBreaksLabel = settings?.paidBreaks ? 'Enabled' : 'Disabled'
-  const isAutomatic = overtimeMode === 'Automatic'
-
   return (
     <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
       <header>
@@ -122,7 +101,7 @@ export default function WorkerSettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Your Worker profile and account options.
+          Your Worker profile and Timesheet rules.
         </p>
       </header>
 
@@ -159,46 +138,35 @@ export default function WorkerSettingsPage() {
         />
       </section>
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800">
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">
-            Timesheet information
-          </h2>
+      <section className="space-y-3">
+        <div className="px-1">
+          <h2 className="text-lg font-semibold text-slate-950">Timesheet Settings</h2>
           <p className="mt-1 text-sm text-slate-500">
-            These Timesheet rules are managed by your company.
+            Configure your own payroll and overtime rules. Company settings are the
+            starting defaults.
           </p>
         </div>
-        <SettingsRow label="Assigned mode" value={overtimeMode} />
-        <SettingsRow label="Week starts on" value={weekStartsLabel} />
-        <SettingsRow label="Default break" value={`${defaultBreakMinutes} min`} />
-        <SettingsRow label="Paid breaks" value={paidBreaksLabel} />
-        <SettingsRow label="Time rounding" value={roundingLabel} />
-        <SettingsRow label="Currency" value={currencyLabel} isLast={!isAutomatic} />
-        {isAutomatic ? (
+        {settingsLoading || !effective ? (
+          <div
+            className="min-h-40 rounded-[1.75rem] bg-white/60"
+            aria-label="Loading Timesheet settings"
+            role="status"
+          />
+        ) : (
           <>
-            <SettingsRow
-              label="Overtime after"
-              value={formatOvertimeAfterHoursLabel(
-                overtimeAfterHours as OvertimeAfterHours,
-              )}
-            />
-            <SettingsRow
-              label="Overtime multiplier"
-              value={formatOvertimeMultiplierLabel(
-                overtimeMultiplier as OvertimeMultiplier,
-              )}
-            />
-            <SettingsRow
-              label="Saturday overtime"
-              value={settings?.saturdayOvertimeEnabled ? 'Enabled' : 'Disabled'}
-            />
-            <SettingsRow
-              label="Sunday overtime"
-              value={settings?.sundayOvertimeEnabled ? 'Enabled' : 'Disabled'}
-              isLast
+            {settingsError ? (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {settingsError} Showing company defaults until your personal settings
+                can be loaded.
+              </p>
+            ) : null}
+            <WorkerTimesheetSettingsForm
+              driverId={worker.id}
+              initialEffective={effective}
+              onSaved={refresh}
             />
           </>
-        ) : null}
+        )}
       </section>
 
       <section className="rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

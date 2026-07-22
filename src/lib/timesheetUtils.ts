@@ -910,17 +910,27 @@ export function buildWeekOptions(timesheets: Timesheet[]): { value: string; labe
   ]
 }
 
-export function normalizeWeekStartForCompany(dateValue: string): string {
+export function normalizeWeekStartForCompany(
+  dateValue: string,
+  weekSettings?: Partial<TimesheetWeekSettings>,
+): string {
   const date = parseLocalDate(dateValue)
   const day = date.getDay()
-  const startDay = getTimesheetWeekSettings().timesheetWeekStartDay
+  const startDay =
+    weekSettings?.timesheetWeekStartDay ??
+    getTimesheetWeekSettings().timesheetWeekStartDay
   const diff = startDay === 'sunday' ? -day : day === 0 ? -6 : 1 - day
   date.setDate(date.getDate() + diff)
   return formatLocalDateString(date)
 }
 
-export function getDefaultWeekStartMonday(): string {
-  return normalizeWeekStartForCompany(formatLocalDateString(new Date()))
+export function getDefaultWeekStartMonday(
+  weekSettings?: Partial<TimesheetWeekSettings>,
+): string {
+  return normalizeWeekStartForCompany(
+    formatLocalDateString(new Date()),
+    weekSettings,
+  )
 }
 
 export function parseLocalDate(dateValue: string): Date {
@@ -1088,20 +1098,25 @@ export function recalculateEntryInputs(
     options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
   const paidBreaks = options.paidBreaks ?? false
+  const method = rules.overtimeCalculationMethod ?? 'daily'
+  const weeklyThresholdMinutes = Math.max(
+    0,
+    Math.round((rules.weeklyOvertimeAfterHours ?? 45) * 60),
+  )
 
-  return entries.map((entry) => {
-    // Manual: preserve entered Basic (total_minutes) and OT; do not overwrite from clocks/rules.
-    if (overtimeMode === 'Manual') {
-      return {
-        ...entry,
-        totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
-        overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
-        additionalHours: Math.max(0, entry.additionalHours ?? 0),
-        breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
-      }
-    }
+  // Manual: preserve entered Basic (total_minutes) and OT; do not overwrite from clocks/rules.
+  if (overtimeMode === 'Manual') {
+    return entries.map((entry) => ({
+      ...entry,
+      totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+      overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+      additionalHours: Math.max(0, entry.additionalHours ?? 0),
+      breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
+    }))
+  }
 
-    // Incomplete or empty clock pair: never derive hours from a single Finish/Start.
+  // First pass: clock totals + weekend-guarantee OT. Weekday OT filled below.
+  const prepared = entries.map((entry) => {
     if (!entryHasStartAndFinish(entry)) {
       return {
         ...entry,
@@ -1113,28 +1128,66 @@ export function recalculateEntryInputs(
     const totalMinutes = calculateEntryTotalMinutes(entry, { paidBreaks })
     const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
 
-    let overtimeMinutes = entry.overtimeMinutes
     if (dayRules.guaranteedPaidHours != null) {
-      // Weekend OT worked hours from gross shift (decimal), stored as minutes only.
       const grossHours = calculateGrossShiftHours(entry.startTime, entry.finishTime)
       const overtimeWorkedHours =
-        grossHours >= dayRules.afterHours
-          ? grossHours - dayRules.afterHours
-          : 0
-      overtimeMinutes = Math.round(overtimeWorkedHours * 60)
-    } else {
-      overtimeMinutes = calculateAutomaticOvertimeMinutes(
+        grossHours >= dayRules.afterHours ? grossHours - dayRules.afterHours : 0
+      return {
+        ...entry,
         totalMinutes,
-        dayRules.afterHours,
-      )
+        overtimeMinutes: Math.round(overtimeWorkedHours * 60),
+      }
     }
 
     return {
       ...entry,
       totalMinutes,
-      overtimeMinutes,
+      overtimeMinutes: 0,
     }
   })
+
+  if (method === 'none') {
+    return prepared
+  }
+
+  if (method === 'daily') {
+    return prepared.map((entry) => {
+      if (!entryHasStartAndFinish(entry)) return entry
+      const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+      if (dayRules.guaranteedPaidHours != null) return entry
+      return {
+        ...entry,
+        overtimeMinutes: calculateAutomaticOvertimeMinutes(
+          entry.totalMinutes,
+          dayRules.afterHours,
+        ),
+      }
+    })
+  }
+
+  // Weekly OT: accumulate ordinary hours across non-guarantee days in date order.
+  let weekBasicAccum = 0
+  const orderedIndexes = prepared
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => a.entry.dayDate.localeCompare(b.entry.dayDate))
+
+  const next = [...prepared]
+  for (const { entry, index } of orderedIndexes) {
+    if (!entryHasStartAndFinish(entry)) continue
+    const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+    if (dayRules.guaranteedPaidHours != null) continue
+
+    const remainingBasic = Math.max(0, weeklyThresholdMinutes - weekBasicAccum)
+    const basicForDay = Math.min(entry.totalMinutes, remainingBasic)
+    const overtimeMinutes = Math.max(0, entry.totalMinutes - basicForDay)
+    weekBasicAccum += basicForDay
+    next[index] = {
+      ...entry,
+      overtimeMinutes,
+    }
+  }
+
+  return next
 }
 
 /**

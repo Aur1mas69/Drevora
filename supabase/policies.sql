@@ -400,6 +400,84 @@ create policy vehicle_check_template_items_company_delete
 
 
 -- -----------------------------------------------------------------------------
+-- Worker Timesheet settings — RLS ALWAYS ENABLED
+-- Applied by 20260722190000_create_driver_timesheet_settings.sql
+-- Worker self-select/insert/update/delete own row; office SELECT for company.
+-- -----------------------------------------------------------------------------
+alter table public.driver_timesheet_settings enable row level security;
+
+revoke all on public.driver_timesheet_settings from public;
+revoke all on public.driver_timesheet_settings from anon;
+revoke all on public.driver_timesheet_settings from authenticated;
+
+grant select, insert, update, delete on public.driver_timesheet_settings to authenticated;
+
+drop policy if exists driver_timesheet_settings_office_select on public.driver_timesheet_settings;
+create policy driver_timesheet_settings_office_select
+  on public.driver_timesheet_settings
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+  );
+
+drop policy if exists driver_timesheet_settings_worker_select_own on public.driver_timesheet_settings;
+create policy driver_timesheet_settings_worker_select_own
+  on public.driver_timesheet_settings
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and driver_id = public.drevora_auth_user_driver_id()
+  );
+
+drop policy if exists driver_timesheet_settings_worker_insert_own on public.driver_timesheet_settings;
+create policy driver_timesheet_settings_worker_insert_own
+  on public.driver_timesheet_settings
+  for insert
+  to authenticated
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and driver_id = public.drevora_auth_user_driver_id()
+    and exists (
+      select 1
+      from public.drivers d
+      where d.id = driver_id
+        and d.company_id = company_id
+    )
+  );
+
+drop policy if exists driver_timesheet_settings_worker_update_own on public.driver_timesheet_settings;
+create policy driver_timesheet_settings_worker_update_own
+  on public.driver_timesheet_settings
+  for update
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and driver_id = public.drevora_auth_user_driver_id()
+  )
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and driver_id = public.drevora_auth_user_driver_id()
+  );
+
+drop policy if exists driver_timesheet_settings_worker_delete_own on public.driver_timesheet_settings;
+create policy driver_timesheet_settings_worker_delete_own
+  on public.driver_timesheet_settings
+  for delete
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and driver_id = public.drevora_auth_user_driver_id()
+  );
+
+-- -----------------------------------------------------------------------------
 -- Admin notifications — RLS ALWAYS ENABLED (not MVP-open)
 -- Applied by 20260718020000_create_admin_notifications.sql
 -- Repair/upsert UPDATE: 20260720230000_ensure_admin_notifications.sql

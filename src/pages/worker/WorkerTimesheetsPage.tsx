@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
 import type { Timesheet, TimesheetEntryInput, TimesheetStatus } from '@/lib/timesheetTypes'
 import {
@@ -47,10 +48,14 @@ function canWorkerEditTimesheet(status: TimesheetStatus): boolean {
   return status === 'Draft' || status === 'Rejected'
 }
 
-function shiftWeekStart(weekStart: string, deltaWeeks: number): string {
+function shiftWeekStart(
+  weekStart: string,
+  deltaWeeks: number,
+  weekSettings?: { timesheetWeekStartDay: 'monday' | 'sunday' },
+): string {
   const date = parseLocalDate(weekStart)
   date.setDate(date.getDate() + deltaWeeks * 7)
-  return normalizeWeekStartForCompany(formatLocalDateString(date))
+  return normalizeWeekStartForCompany(formatLocalDateString(date), weekSettings)
 }
 
 type EntrySnapshotRow = {
@@ -428,13 +433,26 @@ function WorkerDayForm({
 export default function WorkerTimesheetsPage() {
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
+  const { settings } = useCompanySettings()
   const {
-    defaultBreakMinutes,
-    overtimeMode,
-    overtimeAfterHours,
-    overtimeMultiplier,
-    settings,
-  } = useCompanySettings()
+    effective,
+    isLoading: effectiveSettingsLoading,
+  } = useWorkerEffectiveTimesheetSettings(worker?.id)
+
+  const defaultBreakMinutes = effective?.defaultBreakMinutes ?? 30
+  const overtimeMode = effective?.overtimeMode ?? 'Manual'
+  const paidBreaks = effective?.paidBreaks ?? false
+  const overtimeRules = useMemo(
+    () =>
+      buildTimesheetOvertimeRules(effective?.overtimeRules ?? {}),
+    [effective?.overtimeRules],
+  )
+  const weekSettings = useMemo(
+    () => ({
+      timesheetWeekStartDay: effective?.timesheetWeekStartDay ?? 'monday',
+    }),
+    [effective?.timesheetWeekStartDay],
+  )
 
   const [weekStart, setWeekStart] = useState(() => getDefaultWeekStartMonday())
   const [timesheet, setTimesheet] = useState<Timesheet | null>(null)
@@ -453,35 +471,6 @@ export default function WorkerTimesheetsPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const loadGenerationRef = useRef(0)
   const submitLockRef = useRef(false)
-
-  const paidBreaks = settings?.paidBreaks ?? false
-  const overtimeRules = useMemo(
-    () =>
-      buildTimesheetOvertimeRules({
-        overtimeAfterHours,
-        overtimeMultiplier,
-        saturdayOvertimeEnabled: settings?.saturdayOvertimeEnabled,
-        saturdayOvertimeAfterHours: settings?.saturdayOvertimeAfterHours,
-        saturdayOvertimeMultiplier: settings?.saturdayOvertimeMultiplier,
-        saturdayGuaranteedPaidHours: settings?.saturdayGuaranteedPaidHours,
-        sundayOvertimeEnabled: settings?.sundayOvertimeEnabled,
-        sundayOvertimeAfterHours: settings?.sundayOvertimeAfterHours,
-        sundayOvertimeMultiplier: settings?.sundayOvertimeMultiplier,
-        sundayGuaranteedPaidHours: settings?.sundayGuaranteedPaidHours,
-      }),
-    [
-      overtimeAfterHours,
-      overtimeMultiplier,
-      settings?.saturdayGuaranteedPaidHours,
-      settings?.saturdayOvertimeAfterHours,
-      settings?.saturdayOvertimeEnabled,
-      settings?.saturdayOvertimeMultiplier,
-      settings?.sundayGuaranteedPaidHours,
-      settings?.sundayOvertimeAfterHours,
-      settings?.sundayOvertimeEnabled,
-      settings?.sundayOvertimeMultiplier,
-    ],
-  )
 
   const editable = timesheet ? canWorkerEditTimesheet(timesheet.status) : false
   const isDirty = editable && entriesSnapshot(entries) !== savedSnapshot
@@ -582,7 +571,10 @@ export default function WorkerTimesheetsPage() {
       }
 
       try {
-        const normalizedWeek = normalizeWeekStartForCompany(targetWeekStart)
+        const normalizedWeek = normalizeWeekStartForCompany(
+          targetWeekStart,
+          weekSettings,
+        )
         const result = await createTimesheet({
           driverId: worker.id,
           weekStart: normalizedWeek,
@@ -619,14 +611,27 @@ export default function WorkerTimesheetsPage() {
       applyLoadedTimesheet,
       companyReady,
       membershipError,
+      weekSettings,
       worker,
       workerError,
     ],
   )
 
   useEffect(() => {
-    if (workerLoading || companyLoading || !companyReady || !worker) {
-      if (!workerLoading && !companyLoading && (!companyReady || !worker)) {
+    if (
+      workerLoading ||
+      companyLoading ||
+      effectiveSettingsLoading ||
+      !companyReady ||
+      !worker ||
+      !effective
+    ) {
+      if (
+        !workerLoading &&
+        !companyLoading &&
+        !effectiveSettingsLoading &&
+        (!companyReady || !worker)
+      ) {
         setIsLoading(false)
         setLoadError(
           membershipError ??
@@ -641,6 +646,8 @@ export default function WorkerTimesheetsPage() {
   }, [
     companyLoading,
     companyReady,
+    effective,
+    effectiveSettingsLoading,
     membershipError,
     weekStart,
     worker,
@@ -947,7 +954,7 @@ export default function WorkerTimesheetsPage() {
 
   function handleWeekChange(deltaWeeks: number) {
     if (!confirmDiscardIfDirty()) return
-    setWeekStart((current) => shiftWeekStart(current, deltaWeeks))
+    setWeekStart((current) => shiftWeekStart(current, deltaWeeks, weekSettings))
   }
 
   if (workerLoading || companyLoading || (isLoading && !timesheet && !loadError)) {

@@ -12,6 +12,7 @@
     "verify:paid-breaks": "npx tsx scripts/verify-paid-breaks.ts",
     "verify:timesheet-total-hours": "npx tsx scripts/verify-timesheet-total-hours.ts",
     "verify:weekend-guaranteed-hours": "npx tsx scripts/verify-weekend-guaranteed-hours.ts",
+    "verify:worker-timesheet-settings": "npx tsx scripts/verify-worker-timesheet-settings.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },

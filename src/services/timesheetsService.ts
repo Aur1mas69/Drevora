@@ -1,10 +1,12 @@
 import {
-  getGlobalPaidBreaks,
-  getGlobalTimesheetOvertimeRules,
+  getGlobalCompanySettings,
   getSetting,
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
+import { resolveEffectiveTimesheetSettings } from '@/lib/resolveEffectiveTimesheetSettings'
+import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
+import { fetchDriverTimesheetSettingsByDriverIds } from '@/services/workerTimesheetSettingsService'
 import {
   buildWeekDates,
   calculateEntryTotalMinutes,
@@ -256,15 +258,24 @@ function normalizeDailyComment(value: string | null | undefined): string {
 }
 
 /** Maps React entry input (dailyComment) to timesheet_entries row (daily_comment). */
-function buildTimesheetEntryDbRow(timesheetId: string, entry: TimesheetEntryInput) {
-  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
-  // Manual: total_minutes is authoritative Basic hours (as minutes). Automatic: clock-derived.
+function buildTimesheetEntryDbRow(
+  timesheetId: string,
+  entry: TimesheetEntryInput,
+  effective: EffectiveTimesheetSettings,
+) {
+  const overtimeMode = effective.overtimeMode
+  // Manual: total_minutes is authoritative Basic hours (as minutes).
+  // Automatic: prefer client-recalculated minutes; fall back to clock-derived.
   const totalMinutes =
     overtimeMode === 'Manual'
       ? Math.max(0, entry.totalMinutes ?? 0)
-      : calculateEntryTotalMinutes(entry, {
-          paidBreaks: getGlobalPaidBreaks(),
-        })
+      : Math.max(
+          0,
+          entry.totalMinutes ??
+            calculateEntryTotalMinutes(entry, {
+              paidBreaks: effective.paidBreaks,
+            }),
+        )
 
   return {
     timesheet_id: timesheetId,
@@ -277,6 +288,38 @@ function buildTimesheetEntryDbRow(timesheetId: string, entry: TimesheetEntryInpu
     additional_hours: normalizeAdditionalHours(entry.additionalHours),
     daily_comment: normalizeDailyComment(entry.dailyComment) || null,
   }
+}
+
+async function resolveEffectiveForDriver(
+  driverId: string,
+): Promise<EffectiveTimesheetSettings> {
+  const company = getGlobalCompanySettings()
+  try {
+    const map = await fetchDriverTimesheetSettingsByDriverIds([driverId])
+    return resolveEffectiveTimesheetSettings(company, map.get(driverId) ?? null)
+  } catch {
+    return resolveEffectiveTimesheetSettings(company, null)
+  }
+}
+
+async function resolveEffectiveByDriverIds(
+  driverIds: string[],
+): Promise<Map<string, EffectiveTimesheetSettings>> {
+  const company = getGlobalCompanySettings()
+  const result = new Map<string, EffectiveTimesheetSettings>()
+  let overrides: Awaited<ReturnType<typeof fetchDriverTimesheetSettingsByDriverIds>>
+  try {
+    overrides = await fetchDriverTimesheetSettingsByDriverIds(driverIds)
+  } catch {
+    overrides = new Map()
+  }
+  for (const driverId of new Set(driverIds.filter(Boolean))) {
+    result.set(
+      driverId,
+      resolveEffectiveTimesheetSettings(company, overrides.get(driverId) ?? null),
+    )
+  }
+  return result
 }
 
 function buildEmptyTimesheetEntryDbRow(
@@ -386,16 +429,22 @@ function mapListRow(
   }
 }
 
-function mapTimesheetRow(row: TimesheetRow): Timesheet {
+function mapTimesheetRow(
+  row: TimesheetRow,
+  effective?: EffectiveTimesheetSettings,
+): Timesheet {
   const entries = (row.timesheet_entries ?? [])
     .map(mapEntryRow)
     .sort((a, b) => a.dayDate.localeCompare(b.dayDate))
 
   const listItem = mapListRow(row)
+  const resolved =
+    effective ??
+    resolveEffectiveTimesheetSettings(getGlobalCompanySettings(), null)
   const totals = summarizeTimesheetEntries(entries, {
-    paidBreaks: getGlobalPaidBreaks(),
-    overtimeRules: getGlobalTimesheetOvertimeRules(),
-    overtimeMode: getSetting('overtimeMode') ?? 'Manual',
+    paidBreaks: resolved.paidBreaks,
+    overtimeRules: resolved.overtimeRules,
+    overtimeMode: resolved.overtimeMode,
   })
 
   return {
@@ -492,8 +541,9 @@ async function restoreSoftDeletedTimesheetEntries(
  * used by the Timesheet drawer / PDF (weekend guarantee, decimal OT, etc.).
  */
 async function fetchPayableSummariesByTimesheetIds(
-  timesheetIds: string[],
+  timesheets: Array<{ id: string; driverId: string }>,
 ): Promise<Map<string, TimesheetPayableSummary>> {
+  const timesheetIds = timesheets.map((item) => item.id)
   const summaries = new Map<string, TimesheetPayableSummary>()
   if (timesheetIds.length === 0) return summaries
 
@@ -558,17 +608,27 @@ async function fetchPayableSummariesByTimesheetIds(
     entriesByTimesheet.set(row.timesheet_id, list)
   }
 
-  const overtimeRules = getGlobalTimesheetOvertimeRules()
-  const paidBreaks = getGlobalPaidBreaks()
-  const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
+  const driverByTimesheetId = new Map(
+    timesheets.map((item) => [item.id, item.driverId] as const),
+  )
+  const effectiveByDriver = await resolveEffectiveByDriverIds(
+    timesheets.map((item) => item.driverId),
+  )
+  const companyFallback = resolveEffectiveTimesheetSettings(
+    getGlobalCompanySettings(),
+    null,
+  )
 
   for (const [timesheetId, entries] of entriesByTimesheet) {
+    const driverId = driverByTimesheetId.get(timesheetId)
+    const effective =
+      (driverId ? effectiveByDriver.get(driverId) : null) ?? companyFallback
     summaries.set(
       timesheetId,
       summarizeTimesheetEntries(entries, {
-        overtimeRules,
-        paidBreaks,
-        overtimeMode,
+        overtimeRules: effective.overtimeRules,
+        paidBreaks: effective.paidBreaks,
+        overtimeMode: effective.overtimeMode,
       }),
     )
   }
@@ -655,7 +715,9 @@ async function fetchTimesheetRowById(id: string, companyId: string): Promise<Tim
     throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  return mapTimesheetRow(data as unknown as TimesheetRow)
+  const row = data as unknown as TimesheetRow
+  const effective = await resolveEffectiveForDriver(row.driver_id)
+  return mapTimesheetRow(row, effective)
 }
 
 export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<TimesheetsPageResult> {
@@ -749,7 +811,7 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
   const rows = (data ?? []) as unknown as TimesheetRow[]
   let items = rows.map((row) => mapListRow(row))
   const summariesMap = await fetchPayableSummariesByTimesheetIds(
-    items.map((item) => item.id),
+    items.map((item) => ({ id: item.id, driverId: item.driverId })),
   )
   items = applyListTotals(items, summariesMap)
 
@@ -893,7 +955,13 @@ export async function fetchTimesheets(): Promise<Timesheet[]> {
     throw new TimesheetsServiceError(error.message)
   }
 
-  return ((data ?? []) as unknown as TimesheetRow[]).map(mapTimesheetRow)
+  const rows = (data ?? []) as unknown as TimesheetRow[]
+  const effectiveByDriver = await resolveEffectiveByDriverIds(
+    rows.map((row) => row.driver_id),
+  )
+  return rows.map((row) =>
+    mapTimesheetRow(row, effectiveByDriver.get(row.driver_id)),
+  )
 }
 
 export async function fetchTimesheetById(id: string): Promise<Timesheet> {
@@ -929,7 +997,8 @@ async function insertTimesheetWithEntries(
   }
 
   const weekDates = buildWeekDates(weekStart)
-  const defaultBreakMinutes = getSetting('defaultBreakMinutes') ?? 30
+  const effective = await resolveEffectiveForDriver(driverId)
+  const defaultBreakMinutes = effective.defaultBreakMinutes
   const breakOptions = {
     saturdayUseCompanyDefaultBreak: getSetting('saturdayUseCompanyDefaultBreak') ?? true,
     sundayUseCompanyDefaultBreak: getSetting('sundayUseCompanyDefaultBreak') ?? true,
@@ -1246,8 +1315,22 @@ export async function upsertTimesheetEntries(
   const supabase = requireSupabase()
   await assertTimesheetInCompany(timesheetId, companyId)
 
+  const { data: ownerRow, error: ownerError } = await supabase
+    .from('timesheets')
+    .select('driver_id')
+    .eq('id', timesheetId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (ownerError || !ownerRow?.driver_id) {
+    throw new TimesheetsServiceError(ownerError?.message ?? 'Timesheet not found')
+  }
+
+  const effective = await resolveEffectiveForDriver(ownerRow.driver_id as string)
+
   for (const entry of entries) {
-    const row = buildTimesheetEntryDbRow(timesheetId, entry)
+    const row = buildTimesheetEntryDbRow(timesheetId, entry, effective)
 
     if (entry.id) {
       const { data, error } = await supabase
@@ -1516,7 +1599,7 @@ export async function fetchTimesheetsByDriverId(
   const rows = (data ?? []) as unknown as TimesheetRow[]
   let items = rows.map((row) => mapListRow(row))
   const summariesMap = await fetchPayableSummariesByTimesheetIds(
-    items.map((item) => item.id),
+    items.map((item) => ({ id: item.id, driverId: item.driverId })),
   )
   items = applyListTotals(items, summariesMap)
 
