@@ -25,12 +25,12 @@ type WorkerComplianceRecordRow = {
   issue_date: string | null
   expiry_date: string | null
   status: string
-  reference_number: string | null
   notes: string | null
   file_url: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
 }
 
+/** Live production table has no reference_number column — do not select or write it. */
 const workerComplianceSelect = `
   id,
   created_at,
@@ -41,7 +41,6 @@ const workerComplianceSelect = `
   issue_date,
   expiry_date,
   status,
-  reference_number,
   notes,
   file_url,
   drivers ( first_name, last_name, role )
@@ -87,7 +86,7 @@ function mapRow(row: WorkerComplianceRecordRow): WorkerComplianceRecord {
     documentName: row.document_name,
     issueDate: row.issue_date,
     expiryDate: row.expiry_date,
-    referenceNumber: row.reference_number,
+    referenceNumber: null,
     status: normalizeStatus(row.status),
     notes: row.notes,
     fileUrl: row.file_url,
@@ -166,7 +165,6 @@ export async function createWorkerComplianceRecord(
       document_name: input.documentName?.trim() || null,
       issue_date: input.issueDate || null,
       expiry_date: input.expiryDate || null,
-      reference_number: input.referenceNumber?.trim() || null,
       status,
       notes: input.notes?.trim() || null,
       file_url: input.fileUrl?.trim() || null,
@@ -196,9 +194,6 @@ export async function updateWorkerComplianceRecord(
   if (input.documentName !== undefined) patch.document_name = input.documentName?.trim() || null
   if (input.issueDate !== undefined) patch.issue_date = input.issueDate || null
   if (input.expiryDate !== undefined) patch.expiry_date = input.expiryDate || null
-  if (input.referenceNumber !== undefined) {
-    patch.reference_number = input.referenceNumber?.trim() || null
-  }
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null
   if (input.fileUrl !== undefined) patch.file_url = input.fileUrl?.trim() || null
   if (input.expiryDate !== undefined) patch.status = computeComplianceStatus(input.expiryDate)

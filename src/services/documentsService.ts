@@ -45,7 +45,6 @@ type WorkerComplianceSourceRow = {
   worker_id: string
   document_type: string
   document_name: string | null
-  reference_number: string | null
   issue_date: string | null
   expiry_date: string | null
   file_url: string | null
@@ -178,7 +177,8 @@ function mapWorkerComplianceToDocument(
     workerName,
     vehicleId: null,
     vehicleLabel: null,
-    referenceNumber: row.reference_number,
+    // Live worker_compliance_records has no reference_number column.
+    referenceNumber: null,
     issueDate: row.issue_date,
     expiryDate,
     fileUrl: row.file_url,
@@ -334,10 +334,11 @@ async function fetchWorkerComplianceRowsForWorkers(
 ): Promise<WorkerComplianceSourceRow[]> {
   if (workerIds.length === 0) return []
 
+  // Do not select reference_number — production table does not have that column.
   const { data, error } = await requireSupabase()
     .from('worker_compliance_records')
     .select(
-      'id, worker_id, document_type, document_name, reference_number, issue_date, expiry_date, file_url, notes, created_at, updated_at',
+      'id, worker_id, document_type, document_name, issue_date, expiry_date, file_url, notes, created_at, updated_at',
     )
     .in('worker_id', workerIds)
     .order('expiry_date', { ascending: true, nullsFirst: false })
@@ -412,12 +413,20 @@ function sortDocuments(documents: Document[]): Document[] {
  * 1) public.documents (company-scoped)
  * 2) public.worker_compliance_records for company workers (Worker profile source of truth)
  * 3) legacy expiry columns on public.drivers when no matching compliance/document row exists
+ *
+ * When query.workerId is set, compliance + legacy merges are limited to that Worker only.
  */
 export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Document[]> {
   const companyId = requireVerifiedCompanyId()
   const company = resolveCompanyDisplayName()
   const companyDrivers = await fetchCompanyDrivers()
   const companyDriverIds = companyDrivers.map((driver) => driver.id)
+  const selectedWorkerId =
+    query.workerId && query.workerId !== 'all' ? query.workerId.trim() : null
+  const scopedDrivers = selectedWorkerId
+    ? companyDrivers.filter((driver) => driver.id === selectedWorkerId)
+    : companyDrivers
+  const scopedDriverIds = scopedDrivers.map((driver) => driver.id)
   const driverNameById = new Map(
     companyDrivers.map((driver) => [
       driver.id,
@@ -438,8 +447,8 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
     request = request.eq('document_type', query.type)
   }
 
-  if (query.workerId && query.workerId !== 'all') {
-    request = request.eq('worker_id', query.workerId)
+  if (selectedWorkerId) {
+    request = request.eq('worker_id', selectedWorkerId)
   }
 
   if (query.vehicleId && query.vehicleId !== 'all') {
@@ -468,8 +477,9 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
 
   const documentRows = (data ?? []) as unknown as DocumentRow[]
 
+  // Company-wide orphan merge only — never expand a selected-Worker query.
   let orphanWorkerDocs: DocumentRow[] = []
-  if (companyDriverIds.length > 0) {
+  if (!selectedWorkerId && companyDriverIds.length > 0) {
     const { data: workerScopedData, error: workerScopedError } = await requireSupabase()
       .from('documents')
       .select(documentSelect)
@@ -498,7 +508,7 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
   const mappedDocuments = await mapDocumentRows([...mergedRowsById.values()])
   const byId = new Map(mappedDocuments.map((doc) => [doc.id, doc]))
 
-  const complianceRows = await fetchWorkerComplianceRowsForWorkers(companyDriverIds)
+  const complianceRows = await fetchWorkerComplianceRowsForWorkers(scopedDriverIds)
   for (const row of complianceRows) {
     const workerName = driverNameById.get(row.worker_id) ?? 'Unknown worker'
     byId.set(row.id, mapWorkerComplianceToDocument(row, workerName, company))
@@ -512,7 +522,7 @@ export async function fetchDocuments(query: DocumentsQuery = {}): Promise<Docume
     typesByWorker.set(doc.workerId, set)
   }
 
-  for (const driver of companyDrivers) {
+  for (const driver of scopedDrivers) {
     const existingTypes = typesByWorker.get(driver.id) ?? new Set<string>()
     for (const item of LEGACY_WORKER_EXPIRY_FIELDS) {
       const expiry = driver[item.field]
@@ -538,8 +548,15 @@ export async function fetchDocumentById(id: string): Promise<Document | null> {
   return all.find((doc) => doc.id === id) ?? null
 }
 
+/**
+ * Worker Profile Documents tab — selected Worker only.
+ * Filters at query level by worker_id; never falls back to all company documents.
+ */
 export async function fetchDocumentsByWorkerId(workerId: string): Promise<Document[]> {
-  return fetchDocuments({ workerId, appliesTo: 'worker' })
+  const trimmedWorkerId = workerId.trim()
+  if (!trimmedWorkerId) return []
+
+  return fetchDocuments({ workerId: trimmedWorkerId, appliesTo: 'worker' })
 }
 
 /**

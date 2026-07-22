@@ -751,6 +751,7 @@ function WorkerProfileDocumentsTab({ worker }: { worker: Driver }) {
     let cancelled = false
     setIsLoading(true)
     setErrorMessage(null)
+    setItems([])
 
     void fetchDocumentsByWorkerId(worker.id)
       .then((records) => {
@@ -769,9 +770,11 @@ function WorkerProfileDocumentsTab({ worker }: { worker: Driver }) {
     return () => {
       cancelled = true
     }
-  }, [worker])
+  }, [worker.id])
 
-  const visibleItems = items
+  const visibleItems = items.filter(
+    (item) => item.appliesTo === 'worker' && item.workerId === worker.id,
+  )
 
   return (
     <WorkerProfileTabShell
