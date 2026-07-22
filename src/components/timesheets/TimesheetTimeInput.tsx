@@ -1,4 +1,3 @@
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import { parseClockTime } from '@/lib/dateTimeFormat'
@@ -18,20 +17,19 @@ function formatClock(hour24: number, minute: number): string {
   return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
-function normalizeClockValue(value: string): string | null {
-  const parsed = parseClockTime(value)
-  if (!parsed) return null
-  return formatClock(parsed.hours, parsed.minutes)
-}
-
-function clampDigits(raw: string, maxLength: number): string {
+function digitsOnly(raw: string, maxLength: number): string {
   return raw.replace(/\D/g, '').slice(0, maxLength)
 }
 
-function parseHourDraft(raw: string): number | null {
+function parseHourDraft(raw: string, timeFormat: CompanyTimeFormat): number | null {
   if (!raw.trim()) return null
   const value = Number(raw)
-  if (!Number.isInteger(value) || value < 0 || value > 23) return null
+  if (!Number.isInteger(value)) return null
+  if (timeFormat === '12-hour') {
+    if (value < 1 || value > 12) return null
+    return value
+  }
+  if (value < 0 || value > 23) return null
   return value
 }
 
@@ -55,9 +53,46 @@ function from12HourParts(hour12: number, period: 'AM' | 'PM'): number {
   return hours
 }
 
+function splitValue(
+  value: string | null,
+  timeFormat: CompanyTimeFormat,
+): { hourText: string; minuteText: string; period: 'AM' | 'PM' } {
+  const parsed = value ? parseClockTime(value) : null
+  if (!parsed) {
+    return { hourText: '', minuteText: '', period: 'AM' }
+  }
+
+  if (timeFormat === '12-hour') {
+    const parts = to12HourParts(parsed.hours)
+    return {
+      hourText: String(parts.hour).padStart(2, '0'),
+      minuteText: String(parsed.minutes).padStart(2, '0'),
+      period: parts.period,
+    }
+  }
+
+  return {
+    hourText: String(parsed.hours).padStart(2, '0'),
+    minuteText: String(parsed.minutes).padStart(2, '0'),
+    period: 'AM',
+  }
+}
+
+function formatDisplayValue(
+  value: string | null,
+  timeFormat: CompanyTimeFormat,
+): string {
+  const parts = splitValue(value, timeFormat)
+  if (!parts.hourText || !parts.minuteText) return ''
+  if (timeFormat === '12-hour') {
+    return `${parts.hourText}:${parts.minuteText} ${parts.period}`
+  }
+  return `${parts.hourText}:${parts.minuteText}`
+}
+
 /**
- * Compact 24-hour timesheet clock control.
- * HH and MM stay visible together — no long scroll lists, minutes 00–59.
+ * Mobile-first timesheet clock: compact trigger + viewport-safe editor panel.
+ * HH/MM are separate numeric fields; ":" is visual only.
  */
 export function TimesheetTimeInput({
   value,
@@ -68,60 +103,65 @@ export function TimesheetTimeInput({
   ...dataAttrs
 }: TimesheetTimeInputProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const hourRef = useRef<HTMLInputElement>(null)
-  const panelId = useId()
-  const [draft, setDraft] = useState(value ?? '')
-  const [isOpen, setIsOpen] = useState(false)
-  const [isInvalid, setIsInvalid] = useState(false)
+  const minuteRef = useRef<HTMLInputElement>(null)
+  const fieldId = useId()
   const [hourText, setHourText] = useState('')
   const [minuteText, setMinuteText] = useState('')
   const [period, setPeriod] = useState<'AM' | 'PM'>('AM')
-  const [panelError, setPanelError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+  /** Distance from viewport bottom so the panel stays above the software keyboard. */
+  const [panelBottom, setPanelBottom] = useState(12)
 
   useEffect(() => {
-    setDraft(value ?? '')
-    setIsInvalid(false)
-  }, [value])
+    if (isEditing) return
+    const parts = splitValue(value, timeFormat)
+    setHourText(parts.hourText)
+    setMinuteText(parts.minuteText)
+    setPeriod(parts.period)
+    setLocalError(null)
+  }, [value, timeFormat, isEditing])
 
-  function syncPanelFromValue(nextValue: string | null) {
-    const parsed = nextValue ? parseClockTime(nextValue) : null
-    if (!parsed) {
-      setHourText('')
-      setMinuteText('')
-      setPeriod('AM')
-      setPanelError(null)
-      return
-    }
+  useEffect(() => {
+    if (!isEditing) return
 
-    if (timeFormat === '12-hour') {
-      const parts = to12HourParts(parsed.hours)
-      setHourText(String(parts.hour))
-      setPeriod(parts.period)
-    } else {
-      setHourText(String(parsed.hours).padStart(2, '0'))
-    }
-    setMinuteText(String(parsed.minutes).padStart(2, '0'))
-    setPanelError(null)
-  }
-
-  function openPicker() {
-    setIsOpen((wasOpen) => {
-      if (!wasOpen) {
-        syncPanelFromValue(draft || value)
-        window.setTimeout(() => hourRef.current?.focus(), 0)
+    function updatePanelPosition() {
+      const vv = window.visualViewport
+      if (!vv) {
+        setPanelBottom(12)
+        return
       }
-      return true
-    })
-  }
+      // Keep panel inside the visible viewport when the keyboard is open.
+      const obscured = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height))
+      setPanelBottom(Math.max(12, obscured + 12))
+    }
+
+    updatePanelPosition()
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', updatePanelPosition)
+    vv?.addEventListener('scroll', updatePanelPosition)
+    window.addEventListener('resize', updatePanelPosition)
+
+    window.setTimeout(() => hourRef.current?.focus(), 0)
+
+    return () => {
+      vv?.removeEventListener('resize', updatePanelPosition)
+      vv?.removeEventListener('scroll', updatePanelPosition)
+      window.removeEventListener('resize', updatePanelPosition)
+    }
+  }, [isEditing])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isEditing) return
 
     function handlePointerDown(event: MouseEvent | TouchEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false)
-        setPanelError(null)
+      const target = event.target as Node
+      if (panelRef.current?.contains(target) || rootRef.current?.contains(target)) {
+        return
       }
+      discardDraft()
     }
 
     window.addEventListener('mousedown', handlePointerDown)
@@ -130,35 +170,81 @@ export function TimesheetTimeInput({
       window.removeEventListener('mousedown', handlePointerDown)
       window.removeEventListener('touchstart', handlePointerDown)
     }
-  }, [isOpen])
+  }, [isEditing, value, timeFormat])
 
-  function commitDraft(raw: string) {
-    const trimmed = raw.trim()
-    if (!trimmed) {
-      onChange(null)
-      setDraft('')
-      setIsInvalid(false)
-      return
-    }
-
-    const normalized = normalizeClockValue(trimmed)
-    if (!normalized) {
-      setIsInvalid(true)
-      return
-    }
-
-    setDraft(normalized)
-    onChange(normalized)
-    setIsInvalid(false)
-  }
+  const hourValue = parseHourDraft(hourText, timeFormat)
+  const minuteValue = parseMinuteDraft(minuteText)
+  const canConfirm = hourValue !== null && minuteValue !== null
+  const displayValue = formatDisplayValue(value, timeFormat)
 
   function resolveHour24(): number | null {
+    if (hourValue === null) return null
     if (timeFormat === '12-hour') {
-      const hour12 = Number(hourText)
-      if (!Number.isInteger(hour12) || hour12 < 1 || hour12 > 12) return null
-      return from12HourParts(hour12, period)
+      return from12HourParts(hourValue, period)
     }
-    return parseHourDraft(hourText)
+    return hourValue
+  }
+
+  function beginEditing() {
+    if (isEditing) return
+    const parts = splitValue(value, timeFormat)
+    setHourText(parts.hourText)
+    setMinuteText(parts.minuteText)
+    setPeriod(parts.period)
+    setLocalError(null)
+    setIsEditing(true)
+  }
+
+  function discardDraft() {
+    const parts = splitValue(value, timeFormat)
+    setHourText(parts.hourText)
+    setMinuteText(parts.minuteText)
+    setPeriod(parts.period)
+    setLocalError(null)
+    setIsEditing(false)
+  }
+
+  function handleHourChange(raw: string) {
+    const digits = digitsOnly(raw, 2)
+
+    if (digits.length === 2) {
+      const parsed = parseHourDraft(digits, timeFormat)
+      if (parsed === null) {
+        setLocalError(
+          timeFormat === '12-hour'
+            ? 'Hours must be 01–12.'
+            : 'Hours must be 00–23.',
+        )
+        setHourText(digits.slice(0, 1))
+        return
+      }
+      setHourText(String(parsed).padStart(2, '0'))
+      setLocalError(null)
+      window.setTimeout(() => minuteRef.current?.focus(), 0)
+      return
+    }
+
+    setHourText(digits)
+    setLocalError(null)
+  }
+
+  function handleMinuteChange(raw: string) {
+    const digits = digitsOnly(raw, 2)
+
+    if (digits.length === 2) {
+      const parsed = parseMinuteDraft(digits)
+      if (parsed === null) {
+        setLocalError('Minutes must be 00–59.')
+        setMinuteText(digits.slice(0, 1))
+        return
+      }
+      setMinuteText(String(parsed).padStart(2, '0'))
+      setLocalError(null)
+      return
+    }
+
+    setMinuteText(digits)
+    setLocalError(null)
   }
 
   function handleConfirm() {
@@ -166,133 +252,147 @@ export function TimesheetTimeInput({
     const minute = parseMinuteDraft(minuteText)
 
     if (hour24 === null || minute === null) {
-      setPanelError('Enter a valid time (HH 00–23, MM 00–59).')
-      setIsInvalid(true)
+      setLocalError('Enter both hours and minutes.')
       return
     }
 
     const nextValue = formatClock(hour24, minute)
-    setDraft(nextValue)
+    const parts = splitValue(nextValue, timeFormat)
+    setHourText(parts.hourText)
+    setMinuteText(parts.minuteText)
+    setPeriod(parts.period)
     onChange(nextValue)
-    setIsInvalid(false)
-    setPanelError(null)
-    setIsOpen(false)
+    setLocalError(null)
+    setIsEditing(false)
   }
 
   function handleClear() {
     setHourText('')
     setMinuteText('')
     setPeriod('AM')
-    setDraft('')
+    setLocalError(null)
     onChange(null)
-    setIsInvalid(false)
-    setPanelError(null)
-    setIsOpen(false)
+    setIsEditing(false)
   }
 
-  const showInvalid = invalid || isInvalid
+  const panelInputClass =
+    'h-12 w-full min-w-0 rounded-[12px] border border-slate-200 bg-[#F8FBFF] px-1 text-center text-lg font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-300 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/25'
 
   return (
-    <div ref={rootRef} className="relative min-w-[72px]">
-      <Input
-        type="text"
-        inputMode="numeric"
-        placeholder="HH:mm"
-        autoComplete="off"
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value)
-          setIsInvalid(false)
-        }}
-        onFocus={openPicker}
-        onClick={openPicker}
-        onBlur={() => {
-          // Commit typed HH:mm only when the panel is closed.
-          if (!isOpen) commitDraft(draft)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            if (isOpen) {
-              handleConfirm()
-            } else {
-              commitDraft(draft)
-            }
-          }
-          if (event.key === 'Escape') {
-            setIsOpen(false)
-            setPanelError(null)
-            setDraft(value ?? '')
-          }
-        }}
-        aria-invalid={showInvalid}
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        className={cn(className, showInvalid && 'ring-2 ring-rose-200')}
-        {...dataAttrs}
-      />
+    <div ref={rootRef} className="min-w-0 w-full max-w-full" {...dataAttrs}>
+      <button
+        type="button"
+        onClick={beginEditing}
+        aria-invalid={invalid}
+        aria-expanded={isEditing}
+        className={cn(
+          'flex h-12 w-full min-w-0 max-w-full items-center justify-center truncate rounded-2xl border border-slate-200 bg-[#F8FBFF] px-2 text-sm font-semibold tabular-nums text-slate-950 outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20',
+          !displayValue && 'text-slate-400',
+          invalid && 'ring-2 ring-rose-200',
+          className,
+        )}
+      >
+        {displayValue || 'HH:MM'}
+      </button>
 
-      {isOpen ? (
+      {isEditing ? (
         <div
-          id={panelId}
-          className="absolute left-0 top-[calc(100%+4px)] z-50 w-[min(18.5rem,calc(100vw-1.5rem))] rounded-[14px] border border-[rgba(75,120,220,0.14)] bg-white p-3 shadow-[0_12px_32px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-slate-900"
+          className="fixed inset-0 z-[80] bg-slate-950/25"
+          aria-hidden="true"
+          onMouseDown={(event) => {
+            event.preventDefault()
+            discardDraft()
+          }}
+        />
+      ) : null}
+
+      {isEditing ? (
+        <div
+          ref={panelRef}
           role="dialog"
           aria-label="Enter time"
+          className="fixed z-[90] w-auto max-w-[calc(100vw-24px)] rounded-[16px] border border-[rgba(75,120,220,0.16)] bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-900"
+          style={{
+            left: 12,
+            right: 12,
+            bottom: panelBottom,
+            maxHeight: 'min(320px, calc(100dvh - 24px))',
+          }}
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             Enter time
           </p>
 
-          <div className="mt-2.5 flex items-end gap-2">
-            <label className="min-w-0 flex-1 space-y-1">
-              <span className="block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <div className="mt-2 flex w-full min-w-0 items-center gap-1.5">
+            <label className="min-w-0 flex-1 basis-0">
+              <span className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 HH
               </span>
               <input
                 ref={hourRef}
+                id={`${fieldId}-hh`}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                autoComplete="off"
                 maxLength={2}
-                placeholder={timeFormat === '12-hour' ? '08' : '06'}
+                placeholder="00"
                 value={hourText}
-                onChange={(event) => {
-                  setHourText(clampDigits(event.target.value, 2))
-                  setPanelError(null)
-                  setIsInvalid(false)
+                onChange={(event) => handleHourChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    if (canConfirm) handleConfirm()
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    discardDraft()
+                  }
                 }}
-                className="h-12 w-full rounded-[12px] border border-slate-200 bg-[#F8FBFF] text-center text-lg font-semibold tabular-nums text-slate-950 outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/25"
-                aria-label="Hours"
+                aria-invalid={invalid || Boolean(localError)}
+                className={panelInputClass}
               />
             </label>
 
-            <span className="pb-2.5 text-xl font-bold text-slate-400" aria-hidden>
+            <span
+              className="mt-5 shrink-0 select-none text-xl font-bold text-slate-400"
+              aria-hidden="true"
+            >
               :
             </span>
 
-            <label className="min-w-0 flex-1 space-y-1">
-              <span className="block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            <label className="min-w-0 flex-1 basis-0">
+              <span className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 MM
               </span>
               <input
+                ref={minuteRef}
+                id={`${fieldId}-mm`}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                autoComplete="off"
                 maxLength={2}
-                placeholder="05"
+                placeholder="00"
                 value={minuteText}
-                onChange={(event) => {
-                  setMinuteText(clampDigits(event.target.value, 2))
-                  setPanelError(null)
-                  setIsInvalid(false)
+                onChange={(event) => handleMinuteChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    if (canConfirm) handleConfirm()
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    discardDraft()
+                  }
                 }}
-                className="h-12 w-full rounded-[12px] border border-slate-200 bg-[#F8FBFF] text-center text-lg font-semibold tabular-nums text-slate-950 outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/25"
-                aria-label="Minutes"
+                aria-invalid={invalid || Boolean(localError)}
+                className={panelInputClass}
               />
             </label>
 
             {timeFormat === '12-hour' ? (
-              <div className="flex shrink-0 flex-col gap-1 pb-0.5">
+              <div className="mt-5 flex shrink-0 flex-col gap-1">
                 {(['AM', 'PM'] as const).map((option) => (
                   <button
                     key={option}
@@ -300,7 +400,7 @@ export function TimesheetTimeInput({
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                       setPeriod(option)
-                      setPanelError(null)
+                      setLocalError(null)
                     }}
                     className={cn(
                       'h-6 rounded-md px-2 text-[11px] font-semibold',
@@ -316,20 +416,20 @@ export function TimesheetTimeInput({
             ) : null}
           </div>
 
-          {panelError ? (
-            <p className="mt-2 text-xs font-medium text-rose-600">{panelError}</p>
+          {localError ? (
+            <p className="mt-2 text-xs font-medium text-rose-600">{localError}</p>
           ) : (
             <p className="mt-2 text-[11px] text-slate-400">
               Hours 00–23 · Minutes 00–59
             </p>
           )}
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-2.5 grid w-full min-w-0 grid-cols-2 gap-2">
             <button
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={handleClear}
-              className="h-10 rounded-[12px] border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              className="h-10 min-w-0 rounded-[12px] border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
               Clear
             </button>
@@ -337,7 +437,13 @@ export function TimesheetTimeInput({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={handleConfirm}
-              className="h-10 rounded-[12px] bg-[#2563EB] text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+              disabled={!canConfirm}
+              className={cn(
+                'h-10 min-w-0 rounded-[12px] text-sm font-semibold text-white',
+                canConfirm
+                  ? 'bg-[#2563EB] hover:bg-[#1d4ed8]'
+                  : 'cursor-not-allowed bg-slate-300',
+              )}
             >
               Done
             </button>
