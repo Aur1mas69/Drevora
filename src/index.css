@@ -176,13 +176,19 @@ body {
 }
 
 .worker-mobile-layout main,
-.worker-mobile-layout img,
+.worker-mobile-layout img:not(.drevora-brand-logo),
 .worker-mobile-layout svg {
   max-width: 100%;
 }
 
 .worker-mobile-layout main {
   min-width: 0;
+}
+
+/* Brand mark — keep a stable mobile size; do not inherit overflow shrink rules. */
+img.drevora-brand-logo {
+  max-width: none;
+  flex-shrink: 0;
 }
 
 /* DREVORA premium application shell — static layered baby blue background */

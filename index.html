@@ -39,11 +39,15 @@
         min-width: 0;
         overflow-x: clip;
       }
-      img,
+      img:not(.drevora-brand-logo),
       svg,
       video,
       canvas {
         max-width: 100%;
+      }
+      img.drevora-brand-logo {
+        max-width: none;
+        flex-shrink: 0;
       }
     </style>
     <link rel="icon" type="image/png" href="/favicon.png" />

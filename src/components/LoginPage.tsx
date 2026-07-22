@@ -79,11 +79,16 @@ function LoginPage({
         )}
 
         <div className="flex flex-col items-center">
-          <img
-            src="/drevora-logo.png"
-            alt="DREVORA"
-            className="h-[250px] w-[450px] max-w-full object-contain bg-transparent mix-blend-lighten"
-          />
+          <div className="flex h-[192px] w-full shrink-0 items-center justify-center overflow-x-clip sm:h-[250px]">
+            <img
+              src="/drevora-logo.png"
+              alt="DREVORA"
+              width={375}
+              height={250}
+              draggable={false}
+              className="drevora-brand-logo h-[192px] w-[288px] shrink-0 object-contain bg-transparent mix-blend-lighten sm:h-[250px] sm:w-[375px]"
+            />
+          </div>
 
           <div className="mt-8 w-full space-y-1 text-center">
             {title !== 'DREVORA' ? (
