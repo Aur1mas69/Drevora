@@ -1,5 +1,5 @@
 import { TimesheetDecimalHoursInput } from '@/components/timesheets/TimesheetDecimalHoursInput'
-import { TimesheetTimeInput } from '@/components/timesheets/TimesheetTimeInput'
+import { WorkerTimesheetShiftTimes } from '@/components/timesheets/WorkerTimesheetShiftTimes'
 import { WorkerSubmitTimesheetDialog } from '@/components/timesheets/WorkerSubmitTimesheetDialog'
 import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -208,45 +208,38 @@ function WorkerDayForm({
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
           Shift
         </p>
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Start
-            </span>
-            {editable ? (
-              <TimesheetTimeInput
-                value={entry.startTime}
-                onChange={(value) => onUpdate(entry.dayDate, { startTime: value })}
-                timeFormat="24-hour"
-                className={workerFieldClass}
-                invalid={missingField === 'start'}
-              />
-            ) : (
+        {editable ? (
+          <div className="mt-2">
+            <WorkerTimesheetShiftTimes
+              startValue={entry.startTime}
+              finishValue={entry.finishTime}
+              onStartChange={(value) => onUpdate(entry.dayDate, { startTime: value })}
+              onFinishChange={(value) => onUpdate(entry.dayDate, { finishTime: value })}
+              startInvalid={missingField === 'start'}
+              finishInvalid={missingField === 'finish'}
+              className={workerFieldClass}
+            />
+          </div>
+        ) : (
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                Start
+              </span>
               <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
                 {entry.startTime?.slice(0, 5) || '—'}
               </p>
-            )}
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Finish
-            </span>
-            {editable ? (
-              <TimesheetTimeInput
-                value={entry.finishTime}
-                onChange={(value) => onUpdate(entry.dayDate, { finishTime: value })}
-                timeFormat="24-hour"
-                className={workerFieldClass}
-                invalid={missingField === 'finish'}
-              />
-            ) : (
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                Finish
+              </span>
               <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
                 {entry.finishTime?.slice(0, 5) || '—'}
               </p>
-            )}
-          </label>
-        </div>
+            </label>
+          </div>
+        )}
         {incompletePair ? (
           <p className="mt-2 text-xs font-medium text-rose-600">
             {TIMESHEET_TIME_PAIR_MESSAGE}
