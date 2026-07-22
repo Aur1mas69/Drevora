@@ -2,7 +2,10 @@
 <html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>DREVORA</title>
     <meta
       name="description"
@@ -13,6 +16,36 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="DREVORA" />
+    <!--
+      Critical first-paint containment for installed PWA / mobile Safari.
+      Applies before the main CSS bundle so the shell cannot briefly layout
+      wider than the device width on cold launch.
+    -->
+    <style>
+      html {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: clip;
+      }
+      body {
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: clip;
+      }
+      #root {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: clip;
+      }
+      img,
+      svg,
+      video,
+      canvas {
+        max-width: 100%;
+      }
+    </style>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />

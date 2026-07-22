@@ -71,8 +71,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Static application shell only — versioned bundles, fonts, and approved local assets.
-        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2,webmanifest}'],
+        // Static application shell — include HTML so navigateFallback stays version-matched
+        // with hashed JS/CSS on cold PWA launch (avoids stale shell / layout mismatch).
+        globPatterns: ['**/*.{html,js,css,ico,png,svg,woff,woff2,webmanifest}'],
         globIgnores: ['**/hero-backgrounds/**'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [

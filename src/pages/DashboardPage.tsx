@@ -41,7 +41,7 @@ function DashboardPage() {
     null
 
   return (
-    <div className="mx-auto max-w-md space-y-5 lg:max-w-3xl">
+    <div className="mx-auto w-full min-w-0 max-w-md space-y-5 lg:max-w-3xl">
       <header className="space-y-1">
         <p className="text-sm font-medium text-slate-500">{getTimeGreeting()}</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-950">

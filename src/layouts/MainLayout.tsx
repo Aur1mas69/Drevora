@@ -99,13 +99,13 @@ function MainLayout() {
   }
 
   return (
-    <div className="worker-mobile-layout bg-[#F6F9FF] text-slate-950">
-      <main className="mx-auto w-full min-w-0 max-w-4xl px-4 pt-5 pb-28 sm:px-6 sm:pt-8 lg:pb-32">
+    <div className="worker-mobile-layout w-full max-w-full min-w-0 bg-[#F6F9FF] text-slate-950">
+      <main className="mx-auto w-full min-w-0 max-w-4xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 sm:px-6 sm:pt-8 lg:pb-32">
         <Outlet />
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/85 px-3 py-3 shadow-[0_-12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-4">
-        <div className="relative mx-auto max-w-md lg:max-w-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-30 w-full max-w-full border-t border-slate-200/80 bg-white/85 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-4">
+        <div className="relative mx-auto w-full min-w-0 max-w-md lg:max-w-lg">
           {moreOpen ? (
             <div
               ref={morePanelRef}
@@ -160,7 +160,7 @@ function MainLayout() {
             </div>
           ) : null}
 
-          <div className="flex items-center justify-between gap-1 rounded-[2rem] border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-200/70">
+          <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-[2rem] border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-200/70">
             <NavLink
               to={WORKER_HOME_PATH}
               className={() =>
