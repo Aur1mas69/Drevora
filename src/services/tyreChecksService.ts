@@ -1,9 +1,11 @@
 import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
+import { getCurrentViewToday } from '@/lib/currentViewVisibility'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
   formatTyreSummaryLabel,
+  type TyreCheckAdminOverviewStats,
   type TyreCheckListItem,
   type TyreCheckOverallResult,
   type TyreChecksPageResult,
@@ -13,6 +15,20 @@ import {
   type TyreStatus,
   type TyreUnit,
 } from '@/lib/tyreCheckTypes'
+import {
+  getVehicleStatusForDate,
+  type Vehicle,
+  type VehicleStatus,
+} from '@/services/vehiclesService'
+
+const TYRE_OVERVIEW_UNAVAILABLE_STATUSES: VehicleStatus[] = [
+  'Off Road',
+  'Maintenance',
+  'Workshop',
+  'Out of Service',
+  'Reserved',
+  'Assigned',
+]
 
 export class TyreChecksServiceError extends Error {
   constructor(message: string) {
@@ -389,6 +405,25 @@ export async function fetchTyreChecks(
     request = request.eq('overall_result', query.result)
   }
 
+  if (query.defectFocus && query.defectFocus !== 'all') {
+    switch (query.defectFocus) {
+      case 'critical':
+        request = request.gt('critical_count', 0)
+        break
+      case 'attention':
+        request = request.gt('attention_count', 0)
+        break
+      case 'dirty':
+        request = request.gt('dirty_count', 0)
+        break
+      case 'has_defect':
+        request = request.gt('defect_count', 0)
+        break
+      default:
+        break
+    }
+  }
+
   if (query.vehicleId && query.vehicleId !== 'all') {
     request = request.eq('vehicle_id', query.vehicleId)
   }
@@ -452,6 +487,100 @@ export async function fetchTyreChecks(
     totalCount: count ?? rows.length,
     page,
     pageSize,
+  }
+}
+
+export async function fetchTyreCheckAdminOverview(
+  vehicles: Vehicle[],
+  companyToday: string = getCurrentViewToday(),
+): Promise<TyreCheckAdminOverviewStats> {
+  const companyId = requireVerifiedCompanyId()
+  const start = startOfDayIso(companyToday)
+  const end = endOfDayIso(companyToday)
+
+  const activeVehicleIds = new Set<string>()
+  for (const vehicle of vehicles) {
+    const status = getVehicleStatusForDate(vehicle, companyToday)
+    if (!TYRE_OVERVIEW_UNAVAILABLE_STATUSES.includes(status)) {
+      activeVehicleIds.add(vehicle.id)
+    }
+  }
+
+  const totalActiveVehicles = activeVehicleIds.size
+
+  const empty: TyreCheckAdminOverviewStats = {
+    completedToday: 0,
+    notCheckedToday: totalActiveVehicles,
+    attention: 0,
+    critical: 0,
+    dirty: 0,
+    openDefects: 0,
+    totalActiveVehicles,
+    needsAttention: [],
+  }
+
+  if (totalActiveVehicles === 0) return empty
+
+  const { data, error } = await requireSupabase()
+    .from('tyre_checks')
+    .select(tyreCheckListSelect)
+    .eq('company_id', companyId)
+    .eq('status', 'submitted')
+    .gte('created_at', start)
+    .lte('created_at', end)
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.fetchTyreCheckAdminOverview',
+    table: 'tyre_checks',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingTyreChecksError(error.message)) return empty
+    throw new TyreChecksServiceError(error.message)
+  }
+
+  const rows = ((data ?? []) as unknown as TyreCheckRow[]).map(mapListRow)
+  const checkedVehicleIds = new Set<string>()
+  let attention = 0
+  let critical = 0
+  let dirty = 0
+  let openDefects = 0
+
+  for (const row of rows) {
+    if (activeVehicleIds.has(row.vehicleId)) {
+      checkedVehicleIds.add(row.vehicleId)
+    }
+    attention += row.attentionCount
+    critical += row.criticalCount
+    dirty += row.dirtyCount
+    openDefects += row.defectCount
+  }
+
+  const needsAttention = rows
+    .filter(
+      (row) =>
+        row.criticalCount > 0 ||
+        row.attentionCount > 0 ||
+        row.dirtyCount > 0 ||
+        row.defectCount > 0 ||
+        row.overallResult === 'fail' ||
+        row.overallResult === 'attention',
+    )
+    .slice(0, 8)
+
+  return {
+    completedToday: checkedVehicleIds.size,
+    notCheckedToday: Math.max(0, totalActiveVehicles - checkedVehicleIds.size),
+    attention,
+    critical,
+    dirty,
+    openDefects,
+    totalActiveVehicles,
+    needsAttention,
   }
 }
 

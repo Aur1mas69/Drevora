@@ -53,8 +53,9 @@ function resolveTargetPath(item: AdminNotificationWithReadState): string {
     case 'holiday_request_created':
       return '/admin/holidays'
     case 'vehicle_check_attention':
-    case 'tyre_check_critical':
       return '/admin/vehicle-checks'
+    case 'tyre_check_critical':
+      return '/admin/vehicle-checks?tab=tyre-check&section=history'
     case 'driver_report_created':
       return '/admin/driver-reports'
     case 'document_expiry':

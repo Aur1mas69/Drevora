@@ -259,6 +259,7 @@ export function TyreChecksToolbar({
                 >
                   <option value="all">All results</option>
                   <option value="pass">Passed</option>
+                  <option value="attention">Attention</option>
                   <option value="fail">Defects found</option>
                 </select>
               </label>

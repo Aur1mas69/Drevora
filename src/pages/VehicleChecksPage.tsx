@@ -64,6 +64,7 @@ import {
 } from '@/services/vehiclesService'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 const vehicleUnavailableStatuses: VehicleStatus[] = [
   'Off Road',
@@ -74,11 +75,27 @@ const vehicleUnavailableStatuses: VehicleStatus[] = [
   'Assigned',
 ]
 
+function parseVehicleChecksModuleTab(value: string | null): VehicleChecksModuleTab {
+  return value === 'tyre-check' ? 'tyre-check' : 'vehicle-checks'
+}
+
 export default function VehicleChecksPage() {
   const { companyName, settings, formatDate, weekStarts, timezone } = useCompanySettings()
   const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
-  const [moduleTab, setModuleTab] = useState<VehicleChecksModuleTab>('vehicle-checks')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const moduleTab = parseVehicleChecksModuleTab(searchParams.get('tab'))
+
+  function handleModuleTabChange(tab: VehicleChecksModuleTab) {
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'tyre-check') {
+      next.set('tab', 'tyre-check')
+    } else {
+      next.delete('tab')
+      next.delete('section')
+    }
+    setSearchParams(next, { replace: true })
+  }
   const [items, setItems] = useState<VehicleCheckListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [exportDateRange, setExportDateRange] =
@@ -573,7 +590,7 @@ export default function VehicleChecksPage() {
       <div className="space-y-4">
         <VehicleChecksModuleTabs
           activeTab={moduleTab}
-          onTabChange={setModuleTab}
+          onTabChange={handleModuleTabChange}
         />
 
         {moduleTab === 'tyre-check' ? (

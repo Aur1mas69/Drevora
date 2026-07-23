@@ -54,8 +54,22 @@ export type TyreCheckOverallResult = 'incomplete' | 'pass' | 'attention' | 'fail
  * Result filter for the Tyre Checks history table.
  * - pass → Passed
  * - fail → Defects found (critical tread and/or defect flags per DB compute)
+ * - attention → Attention overall result
  */
-export type TyreCheckResultFilter = 'all' | 'pass' | 'fail'
+export type TyreCheckResultFilter = 'all' | 'pass' | 'fail' | 'attention'
+
+/**
+ * Defect-focused history filters using stored count columns (no invented data).
+ * Applied as count > 0 on the matching tyre_checks column.
+ */
+export type TyreCheckDefectFocusFilter =
+  | 'all'
+  | 'critical'
+  | 'attention'
+  | 'dirty'
+  | 'has_defect'
+
+export type TyreCheckAdminSection = 'overview' | 'configuration' | 'history'
 
 export type TyreCheckListItem = {
   id: string
@@ -86,11 +100,23 @@ export type TyreCheckListItem = {
   status: 'draft' | 'in_progress' | 'submitted'
 }
 
+export type TyreCheckAdminOverviewStats = {
+  completedToday: number
+  notCheckedToday: number
+  attention: number
+  critical: number
+  dirty: number
+  openDefects: number
+  totalActiveVehicles: number
+  needsAttention: TyreCheckListItem[]
+}
+
 export type TyreChecksQuery = {
   search?: string
   dateFrom?: string
   dateTo?: string
   result?: TyreCheckResultFilter
+  defectFocus?: TyreCheckDefectFocusFilter
   vehicleId?: string | 'all'
   workerId?: string | 'all'
   trailerVehicleId?: string | 'all'

@@ -113,7 +113,7 @@ export function TyreChecksOverviewCard({
       <DashboardOverviewCardHeader
         title="Tyre Checks"
         subtitle="Today's tyre inspection overview"
-        actionTo="/admin/vehicle-checks"
+        actionTo="/admin/vehicle-checks?tab=tyre-check"
         actionLabel="View"
         leading={
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#D0E4F6] bg-[#E8F3FE] text-[#3B82F6] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300">
