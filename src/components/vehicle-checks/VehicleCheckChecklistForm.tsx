@@ -11,7 +11,7 @@ import {
   isVehicleCheckItemAnswered,
 } from '@/lib/vehicleCheckUtils'
 import { VehicleCheckDefectPhotoField } from '@/components/vehicle-checks/VehicleCheckDefectPhotoField'
-import { Camera, Info, X } from 'lucide-react'
+import { Camera, Check, Info, X } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 
 const RESULT_OPTIONS: VehicleCheckItemResult[] = ['Pass', 'Advisory', 'Fail']
@@ -19,13 +19,51 @@ const RESULT_OPTIONS: VehicleCheckItemResult[] = ['Pass', 'Advisory', 'Fail']
 const commentClassName =
   'min-h-10 w-full rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-3 py-2 text-sm text-[#113C69] outline-none placeholder:text-[#7FAFCC] focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30'
 
+/**
+ * Outdoor / bright-sunlight status controls.
+ * Pass = OK (green), Advisory = Defect (red), Fail = N/A (amber).
+ * Selected uses saturated fill + dark border + high-contrast label; not pastel.
+ */
+const resultButtonBaseClassName =
+  'inline-flex min-h-11 items-center justify-center gap-1 rounded-[12px] border-2 px-1.5 text-xs font-extrabold tracking-wide transition-[transform,background-color,border-color,box-shadow,color,ring-color] duration-100 ease-out active:scale-[0.96] focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-45 sm:px-2 sm:text-sm'
+
 const resultButtonStyles: Record<VehicleCheckItemResult, string> = {
-  Pass:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-400 data-[selected=true]:border-emerald-500 data-[selected=true]:bg-emerald-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(16,185,129,0.16)]',
-  Advisory:
-    'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-400 data-[selected=true]:border-amber-500 data-[selected=true]:bg-amber-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(245,158,11,0.16)]',
-  Fail:
-    'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 data-[selected=true]:border-slate-500 data-[selected=true]:bg-slate-100 data-[selected=true]:shadow-[0_0_0_2px_rgba(100,116,139,0.16)]',
+  Pass: [
+    'border-emerald-700 bg-emerald-200 text-emerald-950',
+    'hover:border-emerald-800 hover:bg-emerald-300',
+    'active:bg-emerald-300',
+    'focus-visible:ring-emerald-400/80',
+    'data-[selected=true]:border-emerald-950 data-[selected=true]:bg-emerald-600 data-[selected=true]:text-white',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-emerald-300/90',
+    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(6,78,59,0.45)]',
+    'data-[selected=true]:active:bg-emerald-700',
+  ].join(' '),
+  Advisory: [
+    'border-red-700 bg-red-200 text-red-950',
+    'hover:border-red-800 hover:bg-red-300',
+    'active:bg-red-300',
+    'focus-visible:ring-red-400/80',
+    'data-[selected=true]:border-red-950 data-[selected=true]:bg-red-600 data-[selected=true]:text-white',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-red-300/90',
+    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(127,29,29,0.45)]',
+    'data-[selected=true]:active:bg-red-700',
+  ].join(' '),
+  Fail: [
+    'border-amber-700 bg-amber-200 text-amber-950',
+    'hover:border-amber-800 hover:bg-amber-300',
+    'active:bg-amber-300',
+    'focus-visible:ring-amber-400/80',
+    'data-[selected=true]:border-amber-950 data-[selected=true]:bg-amber-500 data-[selected=true]:text-amber-950',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-amber-300/95',
+    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(120,53,15,0.4)]',
+    'data-[selected=true]:active:bg-amber-600 data-[selected=true]:active:text-white',
+  ].join(' '),
+}
+
+const resultBadgeStyles: Record<VehicleCheckItemResult, string> = {
+  Pass: 'border-emerald-800 bg-emerald-600 text-white',
+  Advisory: 'border-red-800 bg-red-600 text-white',
+  Fail: 'border-amber-800 bg-amber-500 text-amber-950',
 }
 
 const resultLabels: Record<VehicleCheckItemResult, string> = {
@@ -305,9 +343,9 @@ export function VehicleCheckChecklistForm({
                       {readOnly ? (
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${resultButtonStyles[item.result]}`}
-                            data-selected="true"
+                            className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-1 text-xs font-extrabold ${resultBadgeStyles[item.result]}`}
                           >
+                            <Check className="size-3.5 shrink-0" aria-hidden="true" />
                             {resultLabels[item.result]}
                           </span>
                           {isDefect && item.comment?.trim() ? (
@@ -316,25 +354,40 @@ export function VehicleCheckChecklistForm({
                         </div>
                       ) : (
                         <>
-                          <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:gap-2">
-                            {RESULT_OPTIONS.map((option) => (
-                              <button
-                                key={option}
-                                type="button"
-                                onClick={() =>
-                                  updateItem(item.category, item.itemName, {
-                                    result: option,
-                                    isAnswered: true,
-                                    comment: option === 'Advisory' ? item.comment ?? '' : '',
-                                  })
-                                }
-                                className={`min-h-11 rounded-[10px] border px-1.5 text-xs font-bold transition-all active:scale-[0.98] sm:min-h-10 sm:px-2 sm:text-sm ${resultButtonStyles[option]}`}
-                                data-selected={isAnswered && item.result === option}
-                                aria-pressed={isAnswered && item.result === option}
-                              >
-                                {resultLabels[option]}
-                              </button>
-                            ))}
+                          <div
+                            className="mt-1.5 grid grid-cols-3 gap-1.5 sm:gap-2"
+                            role="group"
+                            aria-label={`Status for ${item.itemName}`}
+                          >
+                            {RESULT_OPTIONS.map((option) => {
+                              const selected = isAnswered && item.result === option
+                              return (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  onClick={() =>
+                                    updateItem(item.category, item.itemName, {
+                                      result: option,
+                                      isAnswered: true,
+                                      comment: option === 'Advisory' ? item.comment ?? '' : '',
+                                    })
+                                  }
+                                  className={`${resultButtonBaseClassName} ${resultButtonStyles[option]}`}
+                                  data-selected={selected}
+                                  aria-pressed={selected}
+                                  aria-label={`${resultLabels[option]}${selected ? ', selected' : ''}`}
+                                >
+                                  {selected ? (
+                                    <Check
+                                      className="size-3.5 shrink-0 sm:size-4"
+                                      strokeWidth={3}
+                                      aria-hidden="true"
+                                    />
+                                  ) : null}
+                                  {resultLabels[option]}
+                                </button>
+                              )
+                            })}
                           </div>
 
                           {shouldShowDefectNotes ? (
