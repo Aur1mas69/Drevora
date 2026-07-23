@@ -1,3 +1,4 @@
+import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
@@ -67,15 +68,9 @@ export function useMembershipAccessState(): MembershipAccessState {
   return { status: 'blocked', message: UNSUPPORTED_ROLE_MESSAGE }
 }
 
-/** Neutral full-viewport placeholder — no Office or Worker chrome. */
+/** Full-viewport auth splash — no Office or Worker chrome. */
 export function MembershipLoadingScreen() {
-  return (
-    <div
-      className="min-h-dvh bg-[#F6F9FF]"
-      aria-label="Loading account"
-      role="status"
-    />
-  )
+  return <AuthSplashScreen />
 }
 
 /** Fail-closed screen without Office/Worker application chrome. */

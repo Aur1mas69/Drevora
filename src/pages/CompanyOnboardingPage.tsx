@@ -1,3 +1,4 @@
+import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
@@ -91,13 +92,7 @@ function CompanyOnboardingPage() {
   }
 
   if (isAuthLoading || isChecking) {
-    return (
-      <div
-        className="min-h-dvh bg-[#F6F9FF]"
-        aria-label="Loading onboarding"
-        role="status"
-      />
-    )
+    return <AuthSplashScreen />
   }
 
   if (!isAuthenticated) {

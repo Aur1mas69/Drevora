@@ -768,7 +768,77 @@ img.drevora-brand-logo {
   }
 }
 
+/* DREVORA auth splash — block assemble into D mark */
+@keyframes auth-splash-block-in {
+  0% {
+    opacity: 0;
+    transform: translate(var(--splash-x), var(--splash-y)) scale(0.35);
+  }
+  55% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.55);
+  }
+}
+
+@keyframes auth-splash-mark-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-splash-wordmark-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-splash-block {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: auth-splash-block-in 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--splash-delay, 0ms);
+}
+
+.auth-splash-mark {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: auth-splash-mark-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 340ms;
+}
+
+.auth-splash-wordmark {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: auth-splash-wordmark-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 480ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .auth-splash-block {
+    display: none !important;
+    animation: none !important;
+  }
+
+  .auth-splash-mark,
+  .auth-splash-wordmark {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
   .drevora-app-shell {
     transition: none;
   }

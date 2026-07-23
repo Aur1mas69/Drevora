@@ -1,4 +1,5 @@
 import drevoraLogoFull from '@/assets/drevora-logo-full.png'
+import { AuthBootstrapGate } from '@/components/auth/AuthBootstrapGate'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRoleBasedAuthRedirect } from '@/hooks/useRoleBasedAuthRedirect'
@@ -82,6 +83,7 @@ function LoginTwilightPreviewPage() {
   }
 
   return (
+    <AuthBootstrapGate>
     <div className="relative min-h-dvh w-full lg:min-h-screen">
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -313,6 +315,7 @@ function LoginTwilightPreviewPage() {
         </div>
       </div>
     </div>
+    </AuthBootstrapGate>
   )
 }
 
