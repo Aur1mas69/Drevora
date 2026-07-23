@@ -1223,10 +1223,10 @@ function ConfigurationSection({
               Rules reference
             </h2>
             <ul className={`space-y-2 text-sm ${adminTextMuted}`}>
-              <li>Good: tread ≥ 3.0 mm</li>
-              <li>Attention: tread 2.0–2.9 mm</li>
-              <li>Critical: tread &lt; 2.0 mm</li>
-              <li>Dirty: marked dirty (yellow)</li>
+              <li>Good: tread ≥ 6.0 mm</li>
+              <li>Attention: tread 4.0–5.9 mm</li>
+              <li>Critical: tread &lt; 4.0 mm</li>
+              <li>Dirty: marked dirty (yellow) — separate from tread band</li>
               <li>Defect flags are recorded by Workers during inspection</li>
             </ul>
             <p className="rounded-[12px] border border-dashed border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-400">

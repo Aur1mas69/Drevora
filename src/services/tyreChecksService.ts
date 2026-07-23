@@ -3,17 +3,24 @@ import { getCurrentViewToday } from '@/lib/currentViewVisibility'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
+  buildTyreLayout,
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
   formatTyreSummaryLabel,
+  parseTyreTreadDepthMm,
+  treadDepthToStatus,
+  tyreAxleTypeFor,
+  tyrePositionFromDb,
+  tyrePositionToDb,
+  validateTyreAxleCounts,
   type TyreCheckAdminOverviewStats,
   type TyreCheckListItem,
   type TyreCheckOverallResult,
   type TyreChecksPageResult,
   type TyreChecksQuery,
   type TyreMeasurement,
-  type TyrePosition,
   type TyreStatus,
   type TyreUnit,
+  type WorkerTyreCheckDraft,
 } from '@/lib/tyreCheckTypes'
 import {
   getVehicleStatusForDate,
@@ -43,6 +50,9 @@ const tyreCheckListSelect = `
   submitted_at,
   inspection_started_at,
   inspection_completed_at,
+  duration_seconds,
+  odometer,
+  odometer_unit,
   vehicle_id,
   trailer_vehicle_id,
   trailer_number_snapshot,
@@ -115,6 +125,9 @@ type TyreCheckRow = {
   submitted_at: string | null
   inspection_started_at: string | null
   inspection_completed_at: string | null
+  duration_seconds?: number | null
+  odometer?: number | null
+  odometer_unit?: string | null
   vehicle_id: string
   trailer_vehicle_id: string | null
   trailer_number_snapshot: string | null
@@ -247,54 +260,76 @@ function mapListRow(row: TyreCheckRow): TyreCheckListItem {
   }
 }
 
-function mapPosition(value: string): TyrePosition {
-  switch (value) {
-    case 'left':
-      return 'Left'
-    case 'right':
-      return 'Right'
-    case 'outer_left':
-      return 'Outer Left'
-    case 'inner_left':
-      return 'Inner Left'
-    case 'inner_right':
-      return 'Inner Right'
-    case 'outer_right':
-      return 'Outer Right'
-    default:
-      return 'Left'
-  }
-}
-
 function mapItemStatus(row: TyreCheckItemRow): TyreStatus {
-  if (row.is_dirty) return 'dirty'
-  const status = row.tread_status
-  if (
-    status === 'good' ||
-    status === 'attention' ||
-    status === 'critical' ||
-    status === 'not_checked'
-  ) {
-    return status
-  }
-  return 'not_checked'
+  return treadDepthToStatus(row.tread_depth_mm, row.is_dirty)
 }
 
 function mapDetailMeasurements(items: TyreCheckItemRow[]): TyreMeasurement[] {
-  return items.map((item) => {
-    const unit = (item.unit === 'trailer' ? 'trailer' : 'vehicle') as TyreUnit
-    const axleLabel =
-      unit === 'trailer' ? `Trailer axle ${item.axle_number}` : `Axle ${item.axle_number}`
-    return {
-      id: item.id,
-      unit,
-      axleNumber: item.axle_number,
-      position: mapPosition(item.position),
-      axleLabel,
-      treadDepthMm: item.tread_depth_mm,
-      status: mapItemStatus(item),
-    }
-  })
+  return items
+    .slice()
+    .sort((a, b) => {
+      if (a.unit !== b.unit) return a.unit === 'vehicle' ? -1 : 1
+      if (a.axle_number !== b.axle_number) return a.axle_number - b.axle_number
+      return a.position.localeCompare(b.position)
+    })
+    .map((item) => {
+      const unit = (item.unit === 'trailer' ? 'trailer' : 'vehicle') as TyreUnit
+      const position = tyrePositionFromDb(item.position)
+      const axleLabel =
+        unit === 'trailer'
+          ? `Trailer Axle ${item.axle_number}`
+          : item.axle_number === 1
+            ? 'Steer Axle 1'
+            : `Drive Axle ${item.axle_number}`
+      return {
+        id: `${unit}-${item.axle_number}-${position}`,
+        dbItemId: item.id,
+        unit,
+        axleNumber: item.axle_number,
+        position,
+        axleLabel,
+        treadDepthMm: item.tread_depth_mm,
+        status: mapItemStatus(item),
+        isDirty: item.is_dirty,
+        hasDefect: item.has_defect,
+        defectNotes: item.defect_notes?.trim() || '',
+        notes: item.notes?.trim() || '',
+      }
+    })
+}
+
+function mapWorkerDraft(
+  listItem: TyreCheckListItem,
+  measurements: TyreMeasurement[],
+  meta: {
+    odometer: number
+    odometerUnit: 'miles' | 'km'
+    inspectionStartedAt: string
+    durationSeconds: number | null
+  },
+): WorkerTyreCheckDraft {
+  return {
+    checkId: listItem.id,
+    vehicleId: listItem.vehicleId,
+    trailerVehicleId: listItem.trailerVehicleId,
+    truckAxleCount: listItem.truckAxleCount,
+    trailerAxleCount: listItem.trailerAxleCount,
+    workerId: listItem.workerId,
+    odometer: meta.odometer,
+    odometerUnit: meta.odometerUnit,
+    inspectionStartedAt: meta.inspectionStartedAt,
+    status: listItem.status,
+    items: measurements,
+    goodCount: listItem.goodCount,
+    attentionCount: listItem.attentionCount,
+    criticalCount: listItem.criticalCount,
+    dirtyCount: listItem.dirtyCount,
+    defectCount: listItem.defectCount,
+    notCheckedCount: listItem.notCheckedCount,
+    overallResult: listItem.overallResult,
+    durationSeconds: meta.durationSeconds,
+    submittedAt: listItem.submittedAt,
+  }
 }
 
 async function resolveSearchTargetIds(
@@ -615,4 +650,239 @@ export async function fetchTyreCheckDetail(id: string): Promise<{
     listItem: mapListRow(row),
     measurements: mapDetailMeasurements(row.tyre_check_items ?? []),
   }
+}
+
+export type CreateWorkerTyreCheckInput = {
+  workerId: string
+  vehicleId: string
+  trailerVehicleId?: string | null
+  truckAxleCount: number
+  trailerAxleCount?: number | null
+  odometer: number
+  odometerUnit?: 'miles' | 'km'
+}
+
+export type UpdateWorkerTyreCheckItemInput = {
+  treadDepthMm: number | null
+  isDirty: boolean
+  hasDefect: boolean
+  defectNotes: string
+  notes?: string
+}
+
+export async function createWorkerTyreCheck(
+  input: CreateWorkerTyreCheckInput,
+): Promise<WorkerTyreCheckDraft> {
+  const companyId = requireVerifiedCompanyId()
+  const trailerVehicleId = input.trailerVehicleId?.trim() || null
+  const trailerAxleCount = trailerVehicleId
+    ? (input.trailerAxleCount ?? null)
+    : null
+
+  const axleError = validateTyreAxleCounts(input.truckAxleCount, trailerAxleCount)
+  if (axleError) throw new TyreChecksServiceError(axleError)
+
+  if (!Number.isInteger(input.odometer) || input.odometer < 0) {
+    throw new TyreChecksServiceError('Enter a valid odometer reading.')
+  }
+
+  const inspectionStartedAt = new Date().toISOString()
+  const parentPayload = {
+    company_id: companyId,
+    vehicle_id: input.vehicleId,
+    trailer_vehicle_id: trailerVehicleId,
+    trailer_axle_count: trailerAxleCount,
+    worker_id: input.workerId,
+    status: 'in_progress' as const,
+    truck_axle_count: input.truckAxleCount,
+    inspection_started_at: inspectionStartedAt,
+    odometer: input.odometer,
+    odometer_unit: input.odometerUnit === 'km' ? 'km' : 'miles',
+  }
+
+  const { data: parentData, error: parentError } = await requireSupabase()
+    .from('tyre_checks')
+    .insert(parentPayload)
+    .select('id')
+    .single()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.createWorkerTyreCheck',
+    table: 'tyre_checks',
+    data: parentData ? [parentData] : [],
+    error: parentError,
+  })
+
+  if (parentError || !parentData) {
+    throw new TyreChecksServiceError(
+      parentError?.message || 'Unable to start tyre check.',
+    )
+  }
+
+  const checkId = parentData.id as string
+  const layout = buildTyreLayout(input.truckAxleCount, trailerAxleCount)
+  const itemRows = layout.map((tyre) => ({
+    tyre_check_id: checkId,
+    unit: tyre.unit,
+    axle_number: tyre.axleNumber,
+    axle_type: tyreAxleTypeFor(tyre.unit, tyre.axleNumber),
+    position: tyrePositionToDb(tyre.position),
+    tread_depth_mm: null,
+    is_dirty: false,
+    has_defect: false,
+    defect_notes: null,
+    notes: null,
+    photo_paths: [] as string[],
+  }))
+
+  const { error: itemsError } = await requireSupabase()
+    .from('tyre_check_items')
+    .insert(itemRows)
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.createWorkerTyreCheck.items',
+    table: 'tyre_check_items',
+    data: itemRows,
+    error: itemsError,
+  })
+
+  if (itemsError) {
+    await requireSupabase().from('tyre_checks').delete().eq('id', checkId)
+    throw new TyreChecksServiceError(
+      itemsError.message || 'Unable to create tyre check positions.',
+    )
+  }
+
+  const draft = await fetchWorkerTyreCheckDraft(checkId)
+  if (!draft) {
+    throw new TyreChecksServiceError('Tyre check was created but could not be reloaded.')
+  }
+  return draft
+}
+
+export async function fetchWorkerTyreCheckDraft(
+  checkId: string,
+): Promise<WorkerTyreCheckDraft | null> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('tyre_checks')
+    .select(tyreCheckDetailSelect)
+    .eq('company_id', companyId)
+    .eq('id', checkId)
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.fetchWorkerTyreCheckDraft',
+    table: 'tyre_checks',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) {
+    if (isMissingTyreChecksError(error.message)) return null
+    throw new TyreChecksServiceError(error.message)
+  }
+  if (!data) return null
+
+  const row = data as unknown as TyreCheckDetailRow & {
+    odometer: number | null
+    odometer_unit: string | null
+    duration_seconds: number | null
+  }
+
+  return mapWorkerDraft(mapListRow(row), mapDetailMeasurements(row.tyre_check_items ?? []), {
+    odometer: row.odometer ?? 0,
+    odometerUnit: row.odometer_unit === 'km' ? 'km' : 'miles',
+    inspectionStartedAt:
+      row.inspection_started_at || row.created_at || new Date().toISOString(),
+    durationSeconds: row.duration_seconds,
+  })
+}
+
+export async function updateWorkerTyreCheckItem(
+  itemId: string,
+  patch: UpdateWorkerTyreCheckItemInput,
+): Promise<TyreMeasurement> {
+  if (patch.hasDefect && !patch.defectNotes.trim()) {
+    throw new TyreChecksServiceError('Defect notes are required when Defect is selected.')
+  }
+
+  if (patch.treadDepthMm != null) {
+    const parsed = parseTyreTreadDepthMm(String(patch.treadDepthMm))
+    if (!parsed.ok) throw new TyreChecksServiceError(parsed.error)
+  }
+
+  const payload = {
+    tread_depth_mm: patch.treadDepthMm,
+    is_dirty: patch.isDirty,
+    has_defect: patch.hasDefect,
+    defect_notes: patch.hasDefect ? patch.defectNotes.trim() : null,
+    notes: patch.notes?.trim() || null,
+  }
+
+  const { data, error } = await requireSupabase()
+    .from('tyre_check_items')
+    .update(payload)
+    .eq('id', itemId)
+    .select(
+      'id, unit, axle_number, axle_type, position, tread_depth_mm, tread_status, is_dirty, has_defect, defect_notes, notes, photo_paths',
+    )
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.updateWorkerTyreCheckItem',
+    table: 'tyre_check_items',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) throw new TyreChecksServiceError(error.message)
+  if (!data) throw new TyreChecksServiceError('Tyre position not found or not editable.')
+
+  const [measurement] = mapDetailMeasurements([data as TyreCheckItemRow])
+  return measurement
+}
+
+export async function submitWorkerTyreCheck(
+  checkId: string,
+): Promise<WorkerTyreCheckDraft> {
+  const draft = await fetchWorkerTyreCheckDraft(checkId)
+  if (!draft) throw new TyreChecksServiceError('Tyre check not found.')
+  if (draft.status === 'submitted') {
+    throw new TyreChecksServiceError('This tyre check is already submitted.')
+  }
+
+  for (const item of draft.items) {
+    if (item.treadDepthMm == null) {
+      throw new TyreChecksServiceError(
+        'Every tyre needs a tread depth before you can submit.',
+      )
+    }
+    if (item.hasDefect && !item.defectNotes?.trim()) {
+      throw new TyreChecksServiceError(
+        'Add defect notes for every tyre marked Defect.',
+      )
+    }
+  }
+
+  const { error } = await requireSupabase()
+    .from('tyre_checks')
+    .update({ status: 'submitted' })
+    .eq('id', checkId)
+    .in('status', ['draft', 'in_progress'])
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.submitWorkerTyreCheck',
+    table: 'tyre_checks',
+    data: [{ id: checkId, status: 'submitted' }],
+    error,
+  })
+
+  if (error) throw new TyreChecksServiceError(error.message)
+
+  const submitted = await fetchWorkerTyreCheckDraft(checkId)
+  if (!submitted || submitted.status !== 'submitted') {
+    throw new TyreChecksServiceError('Submit did not complete. Please try again.')
+  }
+  return submitted
 }

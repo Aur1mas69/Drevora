@@ -317,8 +317,11 @@ export default function WorkerVehiclesPage() {
           title="Start Tyre Check"
           description="Tyre inspection workflow."
           icon={CircleDot}
-          disabled
-          comingSoon
+          to={
+            selectedVehicle
+              ? `/worker/tyre-checks/new?vehicleId=${encodeURIComponent(selectedVehicle.id)}`
+              : '/worker/tyre-checks/new'
+          }
         />
         <VehicleActionCard
           title="Add Consumable"

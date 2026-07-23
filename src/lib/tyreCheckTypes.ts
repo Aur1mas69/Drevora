@@ -21,6 +21,35 @@ export type TyreMeasurement = TyrePositionKey & {
   axleLabel: string
   treadDepthMm: number | null
   status: TyreStatus
+  /** Present when loaded from / saved to tyre_check_items. */
+  dbItemId?: string | null
+  isDirty?: boolean
+  hasDefect?: boolean
+  defectNotes?: string
+  notes?: string
+}
+
+export type WorkerTyreCheckDraft = {
+  checkId: string
+  vehicleId: string
+  trailerVehicleId: string | null
+  truckAxleCount: number
+  trailerAxleCount: number | null
+  workerId: string
+  odometer: number
+  odometerUnit: 'miles' | 'km'
+  inspectionStartedAt: string
+  status: 'draft' | 'in_progress' | 'submitted'
+  items: TyreMeasurement[]
+  goodCount: number
+  attentionCount: number
+  criticalCount: number
+  dirtyCount: number
+  defectCount: number
+  notCheckedCount: number
+  overallResult: TyreCheckOverallResult
+  durationSeconds: number | null
+  submittedAt: string | null
 }
 
 export type TyreCheckSummaryCounts = {
@@ -155,12 +184,103 @@ export const MAX_COMBINED_TYRE_AXLES = 6
 export const DEFAULT_TRUCK_AXLE_COUNT = 3
 export const DEFAULT_TRAILER_AXLE_COUNT = 3
 
+/**
+ * Aligns with DB `drevora_tyre_tread_status`:
+ * not_checked | good (>=6.0) | attention (4.0–5.9) | critical (<4.0).
+ * Dirty is a separate flag — when `dirty` is true the UI may prefer Dirty over tread colour.
+ */
 export function treadDepthToStatus(depthMm: number | null, dirty: boolean): TyreStatus {
-  if (dirty) return 'dirty'
   if (depthMm == null || Number.isNaN(depthMm)) return 'not_checked'
-  if (depthMm < 2) return 'critical'
-  if (depthMm < 3) return 'attention'
-  return 'good'
+  if (dirty) return 'dirty'
+  if (depthMm >= 6) return 'good'
+  if (depthMm >= 4) return 'attention'
+  return 'critical'
+}
+
+/** Pure tread band (ignores dirty) — matches generated DB tread_status. */
+export function treadDepthBand(depthMm: number | null): Exclude<TyreStatus, 'dirty'> {
+  if (depthMm == null || Number.isNaN(depthMm)) return 'not_checked'
+  if (depthMm >= 6) return 'good'
+  if (depthMm >= 4) return 'attention'
+  return 'critical'
+}
+
+/**
+ * Accept tread depths allowed by DB:
+ * null, exact 1.6, or multiples of 0.5 mm within 0–30.
+ */
+export function parseTyreTreadDepthMm(
+  raw: string,
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  const trimmed = raw.trim()
+  if (trimmed === '') return { ok: true, value: null }
+
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed)) {
+    return { ok: false, error: 'Enter a valid tread depth in millimetres.' }
+  }
+  if (parsed < 0 || parsed > 30) {
+    return { ok: false, error: 'Tread depth must be between 0 and 30 mm.' }
+  }
+  if (parsed === 1.6) return { ok: true, value: 1.6 }
+
+  const stepped = Math.round(parsed * 2) / 2
+  if (Math.abs(parsed - stepped) > 1e-9) {
+    return { ok: false, error: 'Use 0.5 mm steps (for example 7.5), or exact 1.6 mm.' }
+  }
+  return { ok: true, value: stepped }
+}
+
+export type TyreDbPosition =
+  | 'left'
+  | 'right'
+  | 'outer_left'
+  | 'inner_left'
+  | 'inner_right'
+  | 'outer_right'
+
+export type TyreAxleType = 'steer' | 'drive' | 'trailer'
+
+export function tyrePositionToDb(position: TyrePosition): TyreDbPosition {
+  switch (position) {
+    case 'Left':
+      return 'left'
+    case 'Right':
+      return 'right'
+    case 'Outer Left':
+      return 'outer_left'
+    case 'Inner Left':
+      return 'inner_left'
+    case 'Inner Right':
+      return 'inner_right'
+    case 'Outer Right':
+      return 'outer_right'
+  }
+}
+
+export function tyrePositionFromDb(value: string): TyrePosition {
+  switch (value) {
+    case 'left':
+      return 'Left'
+    case 'right':
+      return 'Right'
+    case 'outer_left':
+      return 'Outer Left'
+    case 'inner_left':
+      return 'Inner Left'
+    case 'inner_right':
+      return 'Inner Right'
+    case 'outer_right':
+      return 'Outer Right'
+    default:
+      return 'Left'
+  }
+}
+
+export function tyreAxleTypeFor(unit: TyreUnit, axleNumber: number): TyreAxleType {
+  if (unit === 'trailer') return 'trailer'
+  if (axleNumber === 1) return 'steer'
+  return 'drive'
 }
 
 export function tyreStatusLabel(status: TyreStatus): string {
@@ -178,7 +298,7 @@ export function tyreStatusLabel(status: TyreStatus): string {
   }
 }
 
-/** Baby-blue DREVORA status colours for tyre tiles (light + Admin dark). */
+/** Outdoor-readable status colours for tyre tiles (Worker + Admin). */
 export function tyreStatusClasses(status: TyreStatus): {
   tile: string
   badge: string
@@ -188,40 +308,40 @@ export function tyreStatusClasses(status: TyreStatus): {
     case 'good':
       return {
         tile:
-          'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/45',
+          'border-emerald-700 bg-emerald-500 text-white dark:border-emerald-400 dark:bg-emerald-600',
         badge:
-          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-900/60',
-        dot: 'bg-emerald-500',
+          'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white ring-1 ring-emerald-900/40',
+        dot: 'bg-emerald-700 dark:bg-emerald-300',
       }
     case 'attention':
       return {
         tile:
-          'border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/45',
+          'border-amber-700 bg-amber-500 text-amber-950 dark:border-amber-400 dark:bg-amber-500',
         badge:
-          'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-1 dark:ring-amber-900/60',
-        dot: 'bg-amber-500',
+          'bg-amber-500 text-amber-950 dark:bg-amber-400 dark:text-amber-950 ring-1 ring-amber-900/40',
+        dot: 'bg-amber-700 dark:bg-amber-200',
       }
     case 'critical':
       return {
-        tile: 'border-rose-200 bg-rose-50 dark:border-rose-800/60 dark:bg-rose-950/45',
+        tile: 'border-red-800 bg-red-600 text-white dark:border-red-400 dark:bg-red-600',
         badge:
-          'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-1 dark:ring-rose-900/60',
-        dot: 'bg-rose-500',
+          'bg-red-600 text-white dark:bg-red-500 dark:text-white ring-1 ring-red-950/40',
+        dot: 'bg-red-800 dark:bg-red-300',
       }
     case 'dirty':
       return {
         tile:
-          'border-yellow-200 bg-yellow-50 dark:border-yellow-800/55 dark:bg-yellow-950/40',
+          'border-yellow-700 bg-yellow-400 text-yellow-950 dark:border-yellow-300 dark:bg-yellow-400',
         badge:
-          'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-300 dark:ring-1 dark:ring-yellow-900/55',
-        dot: 'bg-yellow-400',
+          'bg-yellow-400 text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950 ring-1 ring-yellow-900/40',
+        dot: 'bg-yellow-600 dark:bg-yellow-200',
       }
     case 'not_checked':
       return {
-        tile: 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-800/60',
+        tile: 'border-slate-500 bg-slate-200 text-slate-800 dark:border-slate-400 dark:bg-slate-700 dark:text-slate-100',
         badge:
-          'bg-slate-100 text-slate-600 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-1 dark:ring-white/10',
-        dot: 'bg-slate-400',
+          'bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-slate-100 ring-1 ring-slate-500/40',
+        dot: 'bg-slate-500 dark:bg-slate-300',
       }
   }
 }
