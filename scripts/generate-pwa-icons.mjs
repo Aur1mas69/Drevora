@@ -54,5 +54,9 @@ await createIcon(512, 'pwa-512x512.png', 0.72)
 // Maskable: more safe padding — D mark ~60% (safe zone for Android masks).
 await createIcon(512, 'pwa-512x512-maskable.png', 0.6)
 await createIcon(180, 'apple-touch-icon.png', 0.72)
+// Browser tab favicon — same white-canvas D family; 64px stays crisp when scaled to 16/32.
+await createIcon(64, 'favicon.png', 0.72)
 
-console.log('Generated PWA icons in public/ from landing/images/drevora-mark.png')
+console.log(
+  'Generated PWA icons + favicon.png in public/ from landing/images/drevora-mark.png',
+)
