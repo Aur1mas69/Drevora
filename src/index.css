@@ -182,7 +182,28 @@ body {
 }
 
 .worker-mobile-layout main {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Worker Home greeting block — lock first-paint geometry on iOS PWA. */
+.worker-mobile-layout .worker-home-header {
+  position: relative;
+  inset-inline-start: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  transform: none;
+  overflow-x: clip;
+}
+
+.worker-mobile-layout .worker-home-header > * {
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 /* Brand mark — keep a stable mobile size; do not inherit overflow shrink rules. */

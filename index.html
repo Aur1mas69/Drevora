@@ -22,6 +22,14 @@
       wider than the device width on cold launch.
     -->
     <style>
+      /* Border-box must apply before the main CSS bundle — otherwise w-full +
+         horizontal padding on Worker main can briefly exceed the viewport and
+         clip the Home header on iOS PWA cold launch. */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
       html {
         width: 100%;
         max-width: 100%;

@@ -101,7 +101,7 @@ function MainLayout() {
 
   return (
     <div className="worker-mobile-layout w-full max-w-full min-w-0 bg-[#F6F9FF] text-slate-950">
-      <main className="mx-auto w-full min-w-0 max-w-4xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 sm:px-6 sm:pt-8 lg:pb-32">
+      <main className="mx-auto box-border w-full min-w-0 max-w-4xl overflow-x-clip px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 sm:px-6 sm:pt-8 lg:pb-32">
         <Outlet />
       </main>
 

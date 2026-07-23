@@ -5,6 +5,73 @@ import { getTimeGreeting } from '@/lib/greeting'
 import { WORKER_NAV_ITEMS } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { Truck } from 'lucide-react'
+import { useLayoutEffect, useRef } from 'react'
+
+function resetHorizontalScrollOffset() {
+  const scrollingElement = document.scrollingElement
+  if (scrollingElement) {
+    scrollingElement.scrollLeft = 0
+  }
+  document.documentElement.scrollLeft = 0
+  document.body.scrollLeft = 0
+  window.scrollTo(0, window.scrollY || window.pageYOffset || 0)
+}
+
+function WorkerHomeHeader({
+  firstName,
+  companyName,
+}: {
+  firstName: string
+  companyName: string
+}) {
+  const headerRef = useRef<HTMLElement>(null)
+
+  useLayoutEffect(() => {
+    // iOS PWA cold launch can keep a non-zero horizontal scroll offset (or a
+    // briefly over-wide content box) from the first layout pass, which clips
+    // only this left-aligned greeting until a manual refresh.
+    const syncHeaderPosition = () => {
+      resetHorizontalScrollOffset()
+      const node = headerRef.current
+      if (!node) return
+      const { left } = node.getBoundingClientRect()
+      if (left < 0) {
+        resetHorizontalScrollOffset()
+      }
+    }
+
+    syncHeaderPosition()
+
+    let cancelled = false
+    const fontsReady = document.fonts?.ready
+    if (fontsReady) {
+      void fontsReady.then(() => {
+        if (!cancelled) syncHeaderPosition()
+      })
+    }
+
+    window.addEventListener('pageshow', syncHeaderPosition)
+    window.visualViewport?.addEventListener('resize', syncHeaderPosition)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('pageshow', syncHeaderPosition)
+      window.visualViewport?.removeEventListener('resize', syncHeaderPosition)
+    }
+  }, [])
+
+  return (
+    <header ref={headerRef} className="worker-home-header w-full min-w-0 max-w-full space-y-1">
+      <p className="text-sm font-medium text-slate-500">{getTimeGreeting()}</p>
+      <h1 className="max-w-full text-3xl font-semibold tracking-tight break-words text-slate-950">
+        Hello, {firstName}
+      </h1>
+      <p className="max-w-full text-sm font-medium break-words text-slate-500">
+        {companyName}
+      </p>
+    </header>
+  )
+}
 
 function DashboardPage() {
   const { worker, isLoading, error } = useCurrentWorker()
@@ -41,14 +108,8 @@ function DashboardPage() {
     null
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-md space-y-5 lg:max-w-3xl">
-      <header className="space-y-1">
-        <p className="text-sm font-medium text-slate-500">{getTimeGreeting()}</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-          Hello, {firstName}
-        </h1>
-        <p className="text-sm font-medium text-slate-500">{verifiedCompany}</p>
-      </header>
+    <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
+      <WorkerHomeHeader firstName={firstName} companyName={verifiedCompany} />
 
       {defaultVehicleLabel ? (
         <div className="flex items-center gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-3 shadow-sm shadow-slate-200/50">
