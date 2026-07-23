@@ -530,3 +530,217 @@ grant select, insert, update, delete on public.notification_reads to authenticat
 revoke all on function public.drevora_create_company_with_trial_plan(text, text) from public;
 revoke all on function public.drevora_create_company_with_trial_plan(text, text) from anon;
 grant execute on function public.drevora_create_company_with_trial_plan(text, text) to authenticated;
+
+-- =============================================================================
+-- Tyre Checks — tenant RLS (NOT MVP-disabled)
+-- Canonical: migrations/20260717220000_create_tyre_check_foundation.sql
+--
+-- Access model:
+--   Office: company-scoped SELECT only (writes blocked by migration triggers)
+--   Worker: own-row SELECT/INSERT/UPDATE/DELETE for draft/in_progress only
+--   Anon: no privileges
+--   Items: access always via parent tyre_checks ownership/company relationship
+-- =============================================================================
+
+create or replace function public.drevora_tyre_check_is_worker_editable(p_status text)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select p_status in ('draft', 'in_progress');
+$$;
+
+revoke all on function public.drevora_tyre_wear_percent(numeric) from public;
+revoke all on function public.drevora_tyre_wear_percent(numeric) from anon;
+revoke all on function public.drevora_tyre_wear_percent(numeric) from authenticated;
+grant execute on function public.drevora_tyre_wear_percent(numeric) to authenticated;
+
+revoke all on function public.drevora_tyre_tread_status(numeric) from public;
+revoke all on function public.drevora_tyre_tread_status(numeric) from anon;
+revoke all on function public.drevora_tyre_tread_status(numeric) from authenticated;
+grant execute on function public.drevora_tyre_tread_status(numeric) to authenticated;
+
+revoke all on function public.drevora_tyre_check_is_worker_editable(text) from public;
+revoke all on function public.drevora_tyre_check_is_worker_editable(text) from anon;
+revoke all on function public.drevora_tyre_check_is_worker_editable(text) from authenticated;
+grant execute on function public.drevora_tyre_check_is_worker_editable(text) to authenticated;
+
+alter table public.tyre_checks enable row level security;
+alter table public.tyre_check_items enable row level security;
+
+revoke all on table public.tyre_checks from public;
+revoke all on table public.tyre_checks from anon;
+revoke all on table public.tyre_check_items from public;
+revoke all on table public.tyre_check_items from anon;
+
+grant select, insert, update, delete on table public.tyre_checks to authenticated;
+grant select, insert, update, delete on table public.tyre_check_items to authenticated;
+
+drop policy if exists tyre_checks_office_select on public.tyre_checks;
+create policy tyre_checks_office_select
+  on public.tyre_checks
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+  );
+
+drop policy if exists tyre_checks_worker_select_own on public.tyre_checks;
+create policy tyre_checks_worker_select_own
+  on public.tyre_checks
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and worker_id = public.drevora_auth_user_driver_id()
+  );
+
+drop policy if exists tyre_checks_worker_insert_own on public.tyre_checks;
+create policy tyre_checks_worker_insert_own
+  on public.tyre_checks
+  for insert
+  to authenticated
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and worker_id = public.drevora_auth_user_driver_id()
+    and public.drevora_vehicle_in_company(vehicle_id, company_id)
+    and (
+      trailer_vehicle_id is null
+      or public.drevora_vehicle_in_company(trailer_vehicle_id, company_id)
+    )
+    and public.drevora_driver_in_company(worker_id, company_id)
+    and status in ('draft', 'in_progress')
+  );
+
+drop policy if exists tyre_checks_worker_update_own on public.tyre_checks;
+create policy tyre_checks_worker_update_own
+  on public.tyre_checks
+  for update
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and worker_id = public.drevora_auth_user_driver_id()
+    and public.drevora_tyre_check_is_worker_editable(status)
+  )
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and worker_id = public.drevora_auth_user_driver_id()
+    and public.drevora_vehicle_in_company(vehicle_id, company_id)
+    and (
+      trailer_vehicle_id is null
+      or public.drevora_vehicle_in_company(trailer_vehicle_id, company_id)
+    )
+    and public.drevora_driver_in_company(worker_id, company_id)
+    and status in ('draft', 'in_progress', 'submitted')
+  );
+
+drop policy if exists tyre_checks_worker_delete_own on public.tyre_checks;
+create policy tyre_checks_worker_delete_own
+  on public.tyre_checks
+  for delete
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and worker_id = public.drevora_auth_user_driver_id()
+    and public.drevora_tyre_check_is_worker_editable(status)
+  );
+
+drop policy if exists tyre_check_items_office_select on public.tyre_check_items;
+create policy tyre_check_items_office_select
+  on public.tyre_check_items
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_has_office_role_for_company(tc.company_id)
+    )
+  );
+
+drop policy if exists tyre_check_items_worker_select_own on public.tyre_check_items;
+create policy tyre_check_items_worker_select_own
+  on public.tyre_check_items
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_belongs_to_company_id(tc.company_id)
+        and tc.worker_id = public.drevora_auth_user_driver_id()
+    )
+  );
+
+drop policy if exists tyre_check_items_worker_insert_own on public.tyre_check_items;
+create policy tyre_check_items_worker_insert_own
+  on public.tyre_check_items
+  for insert
+  to authenticated
+  with check (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_belongs_to_company_id(tc.company_id)
+        and tc.worker_id = public.drevora_auth_user_driver_id()
+        and public.drevora_tyre_check_is_worker_editable(tc.status)
+    )
+  );
+
+drop policy if exists tyre_check_items_worker_update_own on public.tyre_check_items;
+create policy tyre_check_items_worker_update_own
+  on public.tyre_check_items
+  for update
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_belongs_to_company_id(tc.company_id)
+        and tc.worker_id = public.drevora_auth_user_driver_id()
+        and public.drevora_tyre_check_is_worker_editable(tc.status)
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_belongs_to_company_id(tc.company_id)
+        and tc.worker_id = public.drevora_auth_user_driver_id()
+        and public.drevora_tyre_check_is_worker_editable(tc.status)
+    )
+  );
+
+drop policy if exists tyre_check_items_worker_delete_own on public.tyre_check_items;
+create policy tyre_check_items_worker_delete_own
+  on public.tyre_check_items
+  for delete
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.tyre_checks tc
+      where tc.id = tyre_check_id
+        and tc.company_id is not null
+        and public.drevora_auth_user_belongs_to_company_id(tc.company_id)
+        and tc.worker_id = public.drevora_auth_user_driver_id()
+        and public.drevora_tyre_check_is_worker_editable(tc.status)
+    )
+  );

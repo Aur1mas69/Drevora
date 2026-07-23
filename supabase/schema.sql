@@ -265,6 +265,14 @@ alter table public.vehicles
 alter table public.vehicles
   add column if not exists trailer_number text;
 
+comment on column public.vehicles.trailer_number is
+  'Internal UK trailer identity (e.g. PVG4546). Not a registration plate. Empty strings normalised to NULL.';
+
+create unique index if not exists vehicles_company_trailer_number_ci_uidx
+  on public.vehicles (company_id, lower(trailer_number))
+  where trailer_number is not null
+    and company_id is not null;
+
 alter table public.vehicles
   add column if not exists archived_at timestamptz;
 
@@ -835,6 +843,258 @@ alter table public.vehicle_checks disable row level security;
 alter table public.vehicle_check_items disable row level security;
 grant select, insert, update, delete on public.vehicle_checks to anon, authenticated;
 grant select, insert, update, delete on public.vehicle_check_items to anon, authenticated;
+
+-- =============================================================================
+-- Tyre Checks (canonical: 20260717220000_create_tyre_check_foundation.sql
+--              + 20260718000000_limit_tyre_check_total_axles.sql)
+-- RLS/grants for these tables live in policies.sql (authenticated only; anon revoked).
+-- =============================================================================
+
+create or replace function public.drevora_tyre_wear_percent(p_depth numeric)
+returns numeric
+language plpgsql
+immutable
+strict
+set search_path = public
+as $$
+declare
+  depths constant numeric[] := array[8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.6];
+  wears constant numeric[] := array[0.0, 16.0, 31.0, 47.0, 62.0, 78.0, 94.0, 100.0];
+  i integer;
+  d_hi numeric;
+  d_lo numeric;
+  w_hi numeric;
+  w_lo numeric;
+  result numeric;
+begin
+  if p_depth is null then
+    return null;
+  end if;
+
+  if p_depth >= 8.0 then
+    return 0.00;
+  end if;
+
+  if p_depth <= 1.6 then
+    return 100.00;
+  end if;
+
+  for i in 1..7 loop
+    if p_depth = depths[i] then
+      return round(wears[i], 2);
+    end if;
+
+    if p_depth < depths[i] and p_depth > depths[i + 1] then
+      d_hi := depths[i];
+      d_lo := depths[i + 1];
+      w_hi := wears[i];
+      w_lo := wears[i + 1];
+      result := w_hi + ((d_hi - p_depth) / (d_hi - d_lo)) * (w_lo - w_hi);
+      result := greatest(0.0, least(100.0, result));
+      return round(result, 2);
+    end if;
+  end loop;
+
+  if p_depth = depths[8] then
+    return 100.00;
+  end if;
+
+  return null;
+end;
+$$;
+
+create or replace function public.drevora_tyre_tread_status(p_depth numeric)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select case
+    when p_depth is null then 'not_checked'
+    when p_depth >= 6.0 then 'good'
+    when p_depth >= 4.0 then 'attention'
+    else 'critical'
+  end;
+$$;
+
+comment on function public.drevora_tyre_wear_percent(numeric) is
+  'Tyre wear % from tread depth mm using the DREVORA 8.0→1.6 reference scale with linear interpolation.';
+
+comment on function public.drevora_tyre_tread_status(numeric) is
+  'Derived tread_status only: not_checked / good (>=6.0) / attention (4.0–5.9) / critical (<4.0).';
+
+create table if not exists public.tyre_checks (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete restrict,
+  vehicle_id uuid not null references public.vehicles (id) on delete restrict,
+  trailer_vehicle_id uuid null references public.vehicles (id) on delete restrict,
+  trailer_number_snapshot text null,
+  worker_id uuid not null references public.drivers (id) on delete restrict,
+  status text not null default 'draft',
+  overall_result text not null default 'incomplete',
+  truck_axle_count smallint not null,
+  trailer_axle_count smallint null,
+  inspection_started_at timestamptz null,
+  inspection_completed_at timestamptz null,
+  submitted_at timestamptz null,
+  duration_seconds integer null,
+  odometer integer null,
+  odometer_unit text not null default 'miles',
+  notes text null,
+  signature_url text null,
+  signed_at timestamptz null,
+  good_count integer not null default 0,
+  attention_count integer not null default 0,
+  critical_count integer not null default 0,
+  dirty_count integer not null default 0,
+  defect_count integer not null default 0,
+  not_checked_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tyre_checks_status_check check (
+    status in ('draft', 'in_progress', 'submitted')
+  ),
+  constraint tyre_checks_overall_result_check check (
+    overall_result in ('incomplete', 'pass', 'attention', 'fail')
+  ),
+  constraint tyre_checks_odometer_unit_check check (
+    odometer_unit in ('miles', 'km')
+  ),
+  constraint tyre_checks_truck_axle_count_check check (
+    truck_axle_count between 1 and 6
+  ),
+  constraint tyre_checks_trailer_axle_count_check check (
+    trailer_axle_count is null
+    or trailer_axle_count between 1 and 6
+  ),
+  constraint tyre_checks_total_axle_count_max_6_chk check (
+    truck_axle_count + coalesce(trailer_axle_count, 0) <= 6
+  ),
+  constraint tyre_checks_duration_seconds_non_negative check (
+    duration_seconds is null or duration_seconds >= 0
+  ),
+  constraint tyre_checks_summary_counts_non_negative check (
+    good_count >= 0
+    and attention_count >= 0
+    and critical_count >= 0
+    and dirty_count >= 0
+    and defect_count >= 0
+    and not_checked_count >= 0
+  ),
+  constraint tyre_checks_trailer_consistency_check check (
+    (
+      trailer_vehicle_id is null
+      and trailer_axle_count is null
+      and trailer_number_snapshot is null
+    )
+    or (
+      trailer_vehicle_id is not null
+      and trailer_axle_count between 1 and 6
+      and trailer_number_snapshot is not null
+      and btrim(trailer_number_snapshot) <> ''
+    )
+  ),
+  constraint tyre_checks_truck_trailer_distinct_check check (
+    trailer_vehicle_id is null
+    or trailer_vehicle_id <> vehicle_id
+  )
+);
+
+comment on table public.tyre_checks is
+  'Parent tyre inspection record. Truck required; trailer optional (also a vehicles row). Lifecycle: draft → in_progress → submitted.';
+
+comment on column public.tyre_checks.trailer_number_snapshot is
+  'Frozen trailer_number at check time so history stays stable if the vehicle row is edited later.';
+
+comment on constraint tyre_checks_total_axle_count_max_6_chk on public.tyre_checks is
+  'Truck + Trailer combined axle count is limited to six axles. Truck-only checks use trailer_axle_count NULL and may still have 1–6 truck axles.';
+
+create table if not exists public.tyre_check_items (
+  id uuid primary key default gen_random_uuid(),
+  tyre_check_id uuid not null references public.tyre_checks (id) on delete cascade,
+  unit text not null,
+  axle_number smallint not null,
+  axle_type text not null,
+  position text not null,
+  tread_depth_mm numeric(4, 1) null,
+  wear_percent numeric(5, 2)
+    generated always as (public.drevora_tyre_wear_percent(tread_depth_mm)) stored,
+  tread_status text
+    generated always as (public.drevora_tyre_tread_status(tread_depth_mm)) stored,
+  is_dirty boolean not null default false,
+  has_defect boolean not null default false,
+  defect_notes text null,
+  notes text null,
+  photo_paths text[] not null default '{}'::text[],
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tyre_check_items_unit_check check (
+    unit in ('vehicle', 'trailer')
+  ),
+  constraint tyre_check_items_axle_type_check check (
+    axle_type in ('steer', 'drive', 'trailer')
+  ),
+  constraint tyre_check_items_position_check check (
+    position in (
+      'left',
+      'right',
+      'outer_left',
+      'inner_left',
+      'inner_right',
+      'outer_right'
+    )
+  ),
+  constraint tyre_check_items_unit_axle_type_check check (
+    (unit = 'vehicle' and axle_type in ('steer', 'drive'))
+    or (unit = 'trailer' and axle_type = 'trailer')
+  ),
+  constraint tyre_check_items_axle_type_position_check check (
+    (axle_type = 'steer' and position in ('left', 'right'))
+    or (
+      axle_type in ('drive', 'trailer')
+      and position in ('outer_left', 'inner_left', 'inner_right', 'outer_right')
+    )
+  ),
+  constraint tyre_check_items_axle_number_check check (
+    axle_number between 1 and 6
+  ),
+  constraint tyre_check_items_tread_depth_range_check check (
+    tread_depth_mm is null
+    or (
+      tread_depth_mm >= 0
+      and tread_depth_mm <= 30.0
+    )
+  ),
+  constraint tyre_check_items_tread_depth_step_check check (
+    tread_depth_mm is null
+    or tread_depth_mm = 1.6
+    or (tread_depth_mm * 2) = trunc(tread_depth_mm * 2)
+  )
+);
+
+comment on table public.tyre_check_items is
+  'Per-tyre measurements for a tyre_checks parent. tread_status/wear_percent are derived; Dirty/Defect are separate flags.';
+
+create unique index if not exists tyre_check_items_position_uidx
+  on public.tyre_check_items (tyre_check_id, unit, axle_number, position);
+
+create index if not exists tyre_check_items_tyre_check_id_idx
+  on public.tyre_check_items (tyre_check_id);
+
+create index if not exists tyre_checks_company_created_at_idx
+  on public.tyre_checks (company_id, created_at desc);
+
+create index if not exists tyre_checks_company_vehicle_created_at_idx
+  on public.tyre_checks (company_id, vehicle_id, created_at desc);
+
+create index if not exists tyre_checks_company_trailer_created_at_idx
+  on public.tyre_checks (company_id, trailer_vehicle_id, created_at desc);
+
+create index if not exists tyre_checks_company_worker_created_at_idx
+  on public.tyre_checks (company_id, worker_id, created_at desc);
+
+create index if not exists tyre_checks_company_status_created_at_idx
+  on public.tyre_checks (company_id, status, created_at desc);
 
 -- Vehicle check templates (flexible company/vehicle-type checklists)
 create table if not exists public.vehicle_check_templates (
