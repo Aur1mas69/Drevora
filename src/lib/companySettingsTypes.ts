@@ -216,6 +216,19 @@ export function formatWeekendGuaranteedPaidHoursLabel(hours: number): string {
 
 export type OvertimeCalculationMethod = 'daily' | 'weekly' | 'none'
 
+export const DEFAULT_OVERTIME_CALCULATION_METHOD: OvertimeCalculationMethod = 'daily'
+export const DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS = 45
+
+/** Weekly automatic OT threshold options (hours per week). */
+export const WEEKLY_OVERTIME_AFTER_HOURS_OPTIONS = Array.from(
+  { length: Math.round((60 - 20) / 0.5) + 1 },
+  (_, index) => Math.round((20 + index * 0.5) * 10) / 10,
+)
+
+export function formatWeeklyOvertimeAfterHoursLabel(hours: number): string {
+  return `${hours.toFixed(1)} hours per week`
+}
+
 export type TimesheetOvertimeRules = {
   overtimeAfterHours: number
   overtimeMultiplier: number
@@ -235,8 +248,8 @@ export type TimesheetOvertimeRules = {
 export const DEFAULT_TIMESHEET_OVERTIME_RULES: TimesheetOvertimeRules = {
   overtimeAfterHours: DEFAULT_OVERTIME_AFTER_HOURS,
   overtimeMultiplier: DEFAULT_OVERTIME_MULTIPLIER,
-  overtimeCalculationMethod: 'daily',
-  weeklyOvertimeAfterHours: 45,
+  overtimeCalculationMethod: DEFAULT_OVERTIME_CALCULATION_METHOD,
+  weeklyOvertimeAfterHours: DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeEnabled: false,
   saturdayOvertimeAfterHours: DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   saturdayOvertimeMultiplier: DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
@@ -292,7 +305,9 @@ export type CompanySettings = {
   allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
+  overtimeCalculationMethod: OvertimeCalculationMethod
   overtimeMultiplier: OvertimeMultiplier
+  weeklyOvertimeAfterHours: number
   currency: CompanyCurrency
   roundTimeMinutes: RoundTimeMinutes
   requireTimesheetApproval: boolean
@@ -343,7 +358,9 @@ export type CompanySettingsInput = {
   allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
   overtimeMode: OvertimeMode
+  overtimeCalculationMethod: OvertimeCalculationMethod
   overtimeMultiplier: OvertimeMultiplier
+  weeklyOvertimeAfterHours: number
   currency: CompanyCurrency
   roundTimeMinutes: RoundTimeMinutes
   requireTimesheetApproval: boolean
@@ -393,7 +410,9 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   allowMedicalDocumentUploads: false,
   overtimeAfterHours: 10.5,
   overtimeMode: 'Manual',
+  overtimeCalculationMethod: DEFAULT_OVERTIME_CALCULATION_METHOD,
   overtimeMultiplier: 1.5,
+  weeklyOvertimeAfterHours: DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
   currency: 'GBP',
   roundTimeMinutes: 0,
   requireTimesheetApproval: true,

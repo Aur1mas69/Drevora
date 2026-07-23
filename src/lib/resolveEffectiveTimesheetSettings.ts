@@ -94,13 +94,20 @@ export function companySettingsToTimesheetForm(
 
   return {
     overtimeMode: normalizeOvertimeMode(company.overtimeMode, 'Manual'),
-    overtimeCalculationMethod: 'daily',
+    overtimeCalculationMethod: normalizeOtMethod(
+      company.overtimeCalculationMethod,
+      'daily',
+    ),
     overtimeAfterHours: normalizePositiveHours(
       company.overtimeAfterHours,
       DEFAULT_OVERTIME_AFTER_HOURS,
       24,
     ),
-    weeklyOvertimeAfterHours: DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
+    weeklyOvertimeAfterHours: normalizePositiveHours(
+      company.weeklyOvertimeAfterHours,
+      DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
+      168,
+    ),
     overtimeMultiplier: normalizeMultiplier(
       company.overtimeMultiplier,
       DEFAULT_OVERTIME_MULTIPLIER,

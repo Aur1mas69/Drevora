@@ -13,12 +13,15 @@ import {
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
+  WEEKLY_OVERTIME_AFTER_HOURS_OPTIONS,
   formatOvertimeAfterHoursLabel,
   formatOvertimeMultiplierLabel,
+  formatWeeklyOvertimeAfterHoursLabel,
   formatWeekendOvertimeMultiplierLabel,
   type CompanyCurrency,
   type CompanySettingsInput,
   type DefaultBreakMinutes,
+  type OvertimeCalculationMethod,
   type OvertimeMode,
   type OvertimeMultiplier,
   type RoundTimeMinutes,
@@ -228,6 +231,14 @@ function WeekendDaySection({
 export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPanelProps) {
   const isManual = form.overtimeMode === 'Manual'
   const isAutomatic = form.overtimeMode === 'Automatic'
+  const otMethod = form.overtimeCalculationMethod
+  const weeklyThresholdOptions = WEEKLY_OVERTIME_AFTER_HOURS_OPTIONS.includes(
+    form.weeklyOvertimeAfterHours,
+  )
+    ? WEEKLY_OVERTIME_AFTER_HOURS_OPTIONS
+    : [...WEEKLY_OVERTIME_AFTER_HOURS_OPTIONS, form.weeklyOvertimeAfterHours].sort(
+        (a, b) => a - b,
+      )
 
   return (
     <div className="space-y-3 sm:col-span-2 sm:space-y-3.5">
@@ -283,43 +294,132 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
           </div>
         ) : null}
 
-        {isAutomatic ? (
-          <div className="grid gap-3 border-t border-[rgba(75,120,220,0.12)] pt-3 sm:grid-cols-2 dark:border-slate-700">
-            <SettingsField label="Overtime after">
-              <select
-                value={form.overtimeAfterHours}
-                onChange={(event) =>
-                  onChange({ overtimeAfterHours: Number.parseFloat(event.target.value) })
-                }
-                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-              >
-                {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                  <option key={hours.toFixed(1)} value={hours}>
-                    {formatOvertimeAfterHoursLabel(hours)}
-                  </option>
-                ))}
-              </select>
-            </SettingsField>
+        <div className="space-y-3 border-t border-[rgba(75,120,220,0.12)] pt-3 dark:border-slate-700">
+          <SettingsChipGroup<OvertimeCalculationMethod>
+            label="Overtime calculation"
+            hint="Company default for Automatic mode. Workers may override personally."
+            options={[
+              { value: 'daily', label: 'Daily overtime' },
+              { value: 'weekly', label: 'Weekly overtime' },
+              { value: 'none', label: 'No automatic overtime' },
+            ]}
+            value={otMethod}
+            onChange={(value) => onChange({ overtimeCalculationMethod: value })}
+          />
 
-            <SettingsField label="Overtime multiplier">
-              <select
-                value={form.overtimeMultiplier}
-                onChange={(event) =>
-                  onChange({
-                    overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
-                  })
-                }
-                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-              >
-                {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {formatOvertimeMultiplierLabel(option)}
-                  </option>
-                ))}
-              </select>
-            </SettingsField>
-          </div>
-        ) : null}
+          {otMethod === 'daily' ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingsField label="Daily overtime threshold">
+                <select
+                  value={form.overtimeAfterHours}
+                  onChange={(event) =>
+                    onChange({ overtimeAfterHours: Number.parseFloat(event.target.value) })
+                  }
+                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+                >
+                  {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
+                    <option key={hours.toFixed(1)} value={hours}>
+                      {formatOvertimeAfterHoursLabel(hours)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  Example: 10.5 hours per day
+                </p>
+              </SettingsField>
+
+              <SettingsField label="Overtime multiplier">
+                <select
+                  value={form.overtimeMultiplier}
+                  onChange={(event) =>
+                    onChange({
+                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                    })
+                  }
+                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+                >
+                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {formatOvertimeMultiplierLabel(option)}
+                    </option>
+                  ))}
+                </select>
+              </SettingsField>
+            </div>
+          ) : null}
+
+          {otMethod === 'weekly' ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingsField label="Weekly overtime threshold">
+                <select
+                  value={form.weeklyOvertimeAfterHours}
+                  onChange={(event) =>
+                    onChange({
+                      weeklyOvertimeAfterHours: Number.parseFloat(event.target.value),
+                    })
+                  }
+                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+                >
+                  {weeklyThresholdOptions.map((hours) => (
+                    <option key={hours.toFixed(1)} value={hours}>
+                      {formatWeeklyOvertimeAfterHoursLabel(hours)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  Example: 45 hours per week
+                </p>
+              </SettingsField>
+
+              <SettingsField label="Overtime multiplier">
+                <select
+                  value={form.overtimeMultiplier}
+                  onChange={(event) =>
+                    onChange({
+                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                    })
+                  }
+                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+                >
+                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {formatOvertimeMultiplierLabel(option)}
+                    </option>
+                  ))}
+                </select>
+              </SettingsField>
+            </div>
+          ) : null}
+
+          {otMethod === 'none' ? (
+            <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+              <div className="rounded-[14px] border border-[rgba(75,120,220,0.14)] bg-white/70 px-3.5 py-3 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
+                Automatic mode will not create OT hours. Manual OT entry remains available when
+                Timesheet mode is Manual.
+              </div>
+              <SettingsField label="Overtime multiplier">
+                <select
+                  value={form.overtimeMultiplier}
+                  onChange={(event) =>
+                    onChange({
+                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                    })
+                  }
+                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+                >
+                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {formatOvertimeMultiplierLabel(option)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  Used for Total when Manual OT is entered.
+                </p>
+              </SettingsField>
+            </div>
+          ) : null}
+        </div>
       </CompactCard>
 
       {/* 2. Two-column rules section */}

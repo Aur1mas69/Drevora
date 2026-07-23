@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { adminTabActive, adminTabInactive } from '@/lib/adminUiStyles'
 
 export type VehicleChecksModuleTab = 'vehicle-checks' | 'tyre-check'
 
@@ -7,6 +6,12 @@ const TABS: { id: VehicleChecksModuleTab; label: string }[] = [
   { id: 'vehicle-checks', label: 'Vehicle Checks' },
   { id: 'tyre-check', label: 'Tyre Check' },
 ]
+
+const tabActiveClassName =
+  'bg-[#2563EB] text-white shadow-sm hover:bg-[#1d4ed8] hover:text-white dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500'
+
+const tabInactiveClassName =
+  'bg-transparent text-slate-500 hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-blue-300'
 
 type VehicleChecksModuleTabsProps = {
   activeTab: VehicleChecksModuleTab
@@ -18,7 +23,7 @@ export function VehicleChecksModuleTabs({
   onTabChange,
 }: VehicleChecksModuleTabsProps) {
   return (
-    <div className="inline-flex flex-wrap gap-1 rounded-[18px] bg-[#EAF4FF] p-1 ring-1 ring-blue-100 dark:bg-slate-800/60 dark:ring-white/10">
+    <div className="inline-flex flex-wrap gap-2">
       {TABS.map((tab) => (
         <Button
           key={tab.id}
@@ -26,7 +31,7 @@ export function VehicleChecksModuleTabs({
           variant="ghost"
           onClick={() => onTabChange(tab.id)}
           className={`h-10 rounded-[14px] px-4 text-sm font-semibold transition-all duration-[250ms] ease-out ${
-            activeTab === tab.id ? adminTabActive : adminTabInactive
+            activeTab === tab.id ? tabActiveClassName : tabInactiveClassName
           }`}
         >
           {tab.label}

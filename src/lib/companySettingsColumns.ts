@@ -24,7 +24,9 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'allow_medical_document_uploads',
   'overtime_after_hours',
   'overtime_mode',
+  'overtime_calculation_method',
   'overtime_multiplier',
+  'weekly_overtime_after_hours',
   'currency',
   'round_time_minutes',
   'require_manager_approval',
@@ -193,10 +195,22 @@ export const companySettingsConsumablePricesSelect = `
   consumable_default_prices
 ` as const
 
+/** OT calculation method + weekly threshold — optional until migration is applied. */
+export const COMPANY_SETTINGS_OVERTIME_CALCULATION_COLUMNS = [
+  'overtime_calculation_method',
+  'weekly_overtime_after_hours',
+] as const
+
+export const companySettingsOvertimeCalculationSelect = `
+  overtime_calculation_method,
+  weekly_overtime_after_hours
+` as const
+
 /**
  * Full Company Settings select.
- * Newer optional columns (weekend default-break toggles, consumable prices) are
- * merged via dedicated optional selects so a missing column does not 400 this query.
+ * Newer optional columns (weekend default-break toggles, consumable prices,
+ * overtime calculation method) are merged via dedicated optional selects so a
+ * missing column does not 400 this query.
  * Subscription plan columns are loaded separately by companyPlanService.
  */
 export const companySettingsSelect = `

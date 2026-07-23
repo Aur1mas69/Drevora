@@ -131,8 +131,8 @@ export function getGlobalTimesheetOvertimeRules(): TimesheetOvertimeRules {
   return {
     overtimeAfterHours: settings.overtimeAfterHours,
     overtimeMultiplier: settings.overtimeMultiplier,
-    overtimeCalculationMethod: 'daily',
-    weeklyOvertimeAfterHours: 45,
+    overtimeCalculationMethod: settings.overtimeCalculationMethod ?? 'daily',
+    weeklyOvertimeAfterHours: settings.weeklyOvertimeAfterHours ?? 45,
     saturdayOvertimeEnabled: settings.saturdayOvertimeEnabled,
     saturdayOvertimeAfterHours: settings.saturdayOvertimeAfterHours,
     saturdayOvertimeMultiplier: settings.saturdayOvertimeMultiplier,

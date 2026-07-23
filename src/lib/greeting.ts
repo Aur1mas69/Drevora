@@ -1,5 +1,6 @@
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import { formatTimeFromDate } from '@/lib/dateTimeFormat'
+import { WORKER_EMPLOYMENT_TYPES } from '@/lib/workerProfileUtils'
 
 export function getTimeGreeting(date = new Date()): string {
   const hour = date.getHours()
@@ -8,6 +9,43 @@ export function getTimeGreeting(date = new Date()): string {
   if (hour >= 12 && hour < 17) return 'Good Afternoon'
   if (hour >= 17 && hour < 22) return 'Good Evening'
   return 'Good Night'
+}
+
+/** Sentence-case daypart for personal greetings (Worker Home). */
+export function getSentenceTimeGreeting(date = new Date()): string {
+  const hour = date.getHours()
+
+  if (hour >= 5 && hour < 12) return 'Good morning'
+  if (hour >= 12 && hour < 17) return 'Good afternoon'
+  if (hour >= 17 && hour < 22) return 'Good evening'
+  return 'Good night'
+}
+
+const INVALID_GREETING_FIRST_NAMES = new Set(
+  WORKER_EMPLOYMENT_TYPES.map((value) => value.toLowerCase()),
+)
+
+/**
+ * Worker first name for greetings. Rejects empty values and employment-type
+ * labels (e.g. "Temporary") that must never appear as a personal name.
+ */
+export function resolveGreetingFirstName(
+  firstName: string | null | undefined,
+): string | null {
+  const trimmed = firstName?.trim()
+  if (!trimmed) return null
+  if (INVALID_GREETING_FIRST_NAMES.has(trimmed.toLowerCase())) return null
+  return trimmed
+}
+
+/** Combined "Good morning, Aurimas" — daypart only while name is unavailable. */
+export function formatPersonalTimeGreeting(
+  firstName: string | null | undefined,
+  date = new Date(),
+): string {
+  const daypart = getSentenceTimeGreeting(date)
+  const name = resolveGreetingFirstName(firstName)
+  return name ? `${daypart}, ${name}` : daypart
 }
 
 export function getOperationsDate(date = new Date()): string {

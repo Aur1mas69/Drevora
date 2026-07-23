@@ -5,6 +5,7 @@ import {
   companySettingsHolidayCountingSelect,
   companySettingsConsumablePricesSelect,
   companySettingsMedicalUploadSelect,
+  companySettingsOvertimeCalculationSelect,
   companySettingsSelect,
   companySettingsWeekendSelect,
   companySettingsWeekNumberingSelect,
@@ -19,6 +20,7 @@ import {
   type CompanyWeekStarts,
   type DefaultBreakMinutes,
   type OvertimeAfterHours,
+  type OvertimeCalculationMethod,
   type OvertimeMode,
   type OvertimeMultiplier,
   type RoundTimeMinutes,
@@ -27,6 +29,8 @@ import {
   DEFAULT_OVERTIME_MULTIPLIER,
   DEFAULT_CURRENCY,
   DEFAULT_OVERTIME_AFTER_HOURS,
+  DEFAULT_OVERTIME_CALCULATION_METHOD,
+  DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
   DEFAULT_SATURDAY_OVERTIME_AFTER_HOURS,
   DEFAULT_SATURDAY_OVERTIME_MULTIPLIER,
   DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
@@ -80,7 +84,9 @@ type CompanyRow = {
   allow_medical_document_uploads?: boolean | null
   overtime_after_hours: number | null
   overtime_mode: string | null
+  overtime_calculation_method?: string | null
   overtime_multiplier: number | null
+  weekly_overtime_after_hours?: number | null
   currency: string | null
   round_time_minutes: number | null
   require_manager_approval: boolean | null
@@ -331,6 +337,26 @@ function normalizeOvertimeMode(value: string | null | undefined): OvertimeMode {
   return value === 'Automatic' ? 'Automatic' : 'Manual'
 }
 
+function normalizeOvertimeCalculationMethod(
+  value: string | null | undefined,
+): OvertimeCalculationMethod {
+  return value === 'daily' || value === 'weekly' || value === 'none'
+    ? value
+    : DEFAULT_OVERTIME_CALCULATION_METHOD
+}
+
+function normalizeWeeklyOvertimeAfterHours(
+  value: number | string | null | undefined,
+): number {
+  if (value == null || value === '') return DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS
+
+  const parsed = Number.parseFloat(String(value))
+  if (Number.isNaN(parsed)) return DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS
+
+  const snapped = Math.round(parsed * 2) / 2
+  return Math.min(168, Math.max(0, snapped))
+}
+
 function normalizeOvertimeMultiplier(
   value: number | string | null | undefined,
 ): OvertimeMultiplier {
@@ -421,7 +447,13 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     allowMedicalDocumentUploads: normalizePaidBreaks(row.allow_medical_document_uploads),
     overtimeAfterHours: normalizeOvertimeHours(row.overtime_after_hours),
     overtimeMode: normalizeOvertimeMode(row.overtime_mode),
+    overtimeCalculationMethod: normalizeOvertimeCalculationMethod(
+      row.overtime_calculation_method,
+    ),
     overtimeMultiplier: normalizeOvertimeMultiplier(row.overtime_multiplier),
+    weeklyOvertimeAfterHours: normalizeWeeklyOvertimeAfterHours(
+      row.weekly_overtime_after_hours,
+    ),
     currency: normalizeCurrency(row.currency),
     roundTimeMinutes: normalizeRoundTime(row.round_time_minutes),
     requireTimesheetApproval: row.require_manager_approval ?? true,
@@ -501,7 +533,9 @@ export function companySettingsToFormValues(
     allowMedicalDocumentUploads: settings.allowMedicalDocumentUploads,
     overtimeAfterHours: settings.overtimeAfterHours,
     overtimeMode: settings.overtimeMode,
+    overtimeCalculationMethod: settings.overtimeCalculationMethod,
     overtimeMultiplier: settings.overtimeMultiplier,
+    weeklyOvertimeAfterHours: settings.weeklyOvertimeAfterHours,
     currency: settings.currency,
     roundTimeMinutes: settings.roundTimeMinutes,
     requireTimesheetApproval: settings.requireTimesheetApproval,
@@ -580,9 +614,19 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   if (input.overtimeMode !== undefined) {
     payload.overtime_mode = input.overtimeMode
   }
+  if (input.overtimeCalculationMethod !== undefined) {
+    payload.overtime_calculation_method = normalizeOvertimeCalculationMethod(
+      input.overtimeCalculationMethod,
+    )
+  }
   if (input.overtimeMultiplier !== undefined) {
     payload.overtime_multiplier = normalizeOvertimeMultiplier(
       coerceNumericHours(input.overtimeMultiplier),
+    )
+  }
+  if (input.weeklyOvertimeAfterHours !== undefined) {
+    payload.weekly_overtime_after_hours = normalizeWeeklyOvertimeAfterHours(
+      coerceNumericHours(input.weeklyOvertimeAfterHours),
     )
   }
   if (input.currency !== undefined) {
@@ -704,6 +748,11 @@ function logCompanySettingsPersistenceError(
   })
 }
 
+const OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS = [
+  'overtime_calculation_method',
+  'weekly_overtime_after_hours',
+] as const
+
 async function updateCompanyRecord(
   companyId: string,
   payload: Record<string, unknown>,
@@ -715,6 +764,34 @@ async function updateCompanyRecord(
     .eq('id', companyId)
 
   if (!error) return
+
+  const hasOptionalOtColumns = OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS.some(
+    (key) => key in payload,
+  )
+
+  if (error && isMissingColumnError(error) && hasOptionalOtColumns) {
+    logCompanySettingsPersistenceError('update', table, payload, error)
+    const retryPayload = { ...payload }
+    for (const key of OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS) {
+      delete retryPayload[key]
+    }
+
+    if (Object.keys(retryPayload).length === 0) {
+      throw new CompanySettingsServiceError(
+        'Overtime calculation defaults are not available yet. Run the company overtime calculation migration in Supabase first.',
+      )
+    }
+
+    const { error: retryError } = await requireSupabase()
+      .from('companies')
+      .update(retryPayload)
+      .eq('id', companyId)
+
+    if (!retryError) return
+
+    logCompanySettingsPersistenceError('update', table, retryPayload, retryError)
+    throw new CompanySettingsServiceError(retryError.message)
+  }
 
   logCompanySettingsPersistenceError('update', table, payload, error)
   throw new CompanySettingsServiceError(error.message)
@@ -766,6 +843,38 @@ async function fetchAlternateCompanyName(companyId: string): Promise<string | nu
   return null
 }
 
+async function mergeOptionalOvertimeCalculationDefaults(
+  companyId: string,
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data, error } = await queryCompanyRow(
+    companyId,
+    companySettingsOvertimeCalculationSelect,
+  )
+
+  if (!error && data) {
+    return {
+      ...row,
+      ...(data as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      {
+        select: companySettingsOvertimeCalculationSelect,
+        optional: 'overtime_calculation_defaults',
+        companyId,
+      },
+      error,
+    )
+  }
+
+  return row
+}
+
 async function mergeOptionalConsumableDefaultPrices(
   companyId: string,
   row: CompanyRow,
@@ -807,7 +916,7 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
 
   if (!error && data) {
     // Full select succeeded — still merge newer optional weekend columns
-    // (e.g. use_company_default_break) when those migrations are present.
+    // (e.g. use_company_default_break) and OT calculation defaults when present.
     let merged = { ...(data as unknown as Record<string, unknown>) }
     const { data: weekendData, error: weekendError } = await queryCompanyRow(
       companyId,
@@ -816,10 +925,11 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
     if (!weekendError && weekendData) {
       merged = { ...merged, ...(weekendData as unknown as Record<string, unknown>) }
     }
-    return mergeOptionalConsumableDefaultPrices(
+    const withOtDefaults = await mergeOptionalOvertimeCalculationDefaults(
       companyId,
       merged as unknown as CompanyRow,
     )
+    return mergeOptionalConsumableDefaultPrices(companyId, withOtDefaults)
   }
 
   if (error && !isMissingColumnError(error)) {
@@ -936,6 +1046,27 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
       table,
       { select: companySettingsHolidayCountingSelect, optional: 'holiday_counting', companyId },
       holidayCountingError,
+    )
+  }
+
+  const { data: overtimeCalculationData, error: overtimeCalculationError } =
+    await queryCompanyRow(companyId, companySettingsOvertimeCalculationSelect)
+
+  if (!overtimeCalculationError && overtimeCalculationData) {
+    merged = {
+      ...merged,
+      ...(overtimeCalculationData as unknown as Record<string, unknown>),
+    }
+  } else if (overtimeCalculationError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      {
+        select: companySettingsOvertimeCalculationSelect,
+        optional: 'overtime_calculation_defaults',
+        companyId,
+      },
+      overtimeCalculationError,
     )
   }
 

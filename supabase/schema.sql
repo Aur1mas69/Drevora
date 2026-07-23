@@ -367,7 +367,9 @@ create table if not exists public.companies (
   session_timeout_minutes integer not null default 480,
   require_mfa boolean not null default false,
   overtime_mode text not null default 'Manual',
+  overtime_calculation_method text not null default 'daily',
   overtime_multiplier numeric not null default 1.5,
+  weekly_overtime_after_hours numeric not null default 45,
   currency text not null default 'GBP',
   saturday_overtime_enabled boolean not null default false,
   saturday_overtime_after_hours numeric not null default 6.0,
@@ -427,10 +429,17 @@ create table if not exists public.companies (
   ),
   constraint companies_round_time_check check (round_time_minutes in (0, 5, 15)),
   constraint companies_overtime_mode_check check (overtime_mode in ('Manual', 'Automatic')),
+  constraint companies_overtime_calculation_method_check check (
+    overtime_calculation_method in ('daily', 'weekly', 'none')
+  ),
   constraint companies_overtime_multiplier_check check (
     overtime_multiplier >= 1.1
     and overtime_multiplier <= 2.5
     and mod((overtime_multiplier * 10)::numeric, 1) = 0
+  ),
+  constraint companies_weekly_overtime_after_hours_check check (
+    weekly_overtime_after_hours >= 0
+    and weekly_overtime_after_hours <= 168
   ),
   constraint companies_currency_check check (currency in ('GBP', 'EUR', 'USD', 'RUB')),
   constraint companies_saturday_overtime_after_hours_check check (
