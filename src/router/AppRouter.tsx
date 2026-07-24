@@ -14,11 +14,10 @@ import {
 import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
 import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
 import {
+  LOGIN_PATH,
   OFFICE_HOME_PATH,
   WORKER_HOME_PATH,
-  WORKER_LOGIN_PATH,
 } from '@/lib/membershipRoles'
-import WorkerLoginPage from '@/pages/WorkerLoginPage'
 
 const MainLayout = lazy(() => import('@/layouts/MainLayout'))
 const AdminDashboardPage = lazy(loadAdminDashboardPage)
@@ -114,7 +113,7 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
   }
 
   if (access.status === 'unauthenticated') {
-    return <Navigate to="/login" replace />
+    return <Navigate to={LOGIN_PATH} replace />
   }
 
   if (access.status === 'worker') {
@@ -144,7 +143,7 @@ function RequireWorkerAccess() {
   }
 
   if (access.status === 'unauthenticated') {
-    return <Navigate to={WORKER_LOGIN_PATH} replace />
+    return <Navigate to={LOGIN_PATH} replace />
   }
 
   if (access.status === 'office') {
@@ -176,14 +175,11 @@ function AppRouter() {
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
         <Route path="/" element={<RootToLoginRedirect />} />
-        <Route path="/login" element={<LoginTwilightPreviewPage />} />
-        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
-        <Route
-          path="/driver-login"
-          element={<Navigate to={WORKER_LOGIN_PATH} replace />}
-        />
-        <Route path={WORKER_LOGIN_PATH} element={<WorkerLoginPage />} />
+        <Route path={LOGIN_PATH} element={<LoginTwilightPreviewPage />} />
+        <Route path="/admin/login" element={<Navigate to={LOGIN_PATH} replace />} />
+        <Route path="/admin-login" element={<Navigate to={LOGIN_PATH} replace />} />
+        <Route path="/worker-login" element={<Navigate to={LOGIN_PATH} replace />} />
+        <Route path="/driver-login" element={<Navigate to={LOGIN_PATH} replace />} />
         <Route path="/onboarding" element={<CompanyOnboardingPage />} />
         <Route
           path="/login-design-preview"

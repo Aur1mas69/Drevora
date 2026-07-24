@@ -5,7 +5,7 @@ import {
   applyResolvedWorkerAppearance,
   subscribeWorkerSystemAppearance,
 } from '@/lib/workerAppearance'
-import { WORKER_LOGIN_PATH } from '@/lib/membershipRoles'
+import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
   getWorkerMoreNavItems,
   getWorkerPrimaryNavItems,
@@ -80,7 +80,7 @@ function MainLayout() {
   async function handleSignOut() {
     setMoreOpen(false)
     await signOut()
-    navigate(WORKER_LOGIN_PATH, { replace: true })
+    navigate(LOGIN_PATH, { replace: true })
   }
 
   function renderNavLink(item: WorkerNavItem) {

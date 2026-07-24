@@ -7,7 +7,7 @@ import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveT
 import {
   type CompanyTheme,
 } from '@/lib/companySettingsTypes'
-import { WORKER_LOGIN_PATH } from '@/lib/membershipRoles'
+import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
   applyResolvedWorkerAppearance,
   readWorkerAppearancePreference,
@@ -51,7 +51,7 @@ export default function WorkerSettingsPage() {
 
   async function handleSignOut() {
     await signOut()
-    navigate(WORKER_LOGIN_PATH, { replace: true })
+    navigate(LOGIN_PATH, { replace: true })
   }
 
   function handleAppearanceChange(next: CompanyTheme) {

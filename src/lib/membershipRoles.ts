@@ -21,8 +21,14 @@ export type WorkerMembershipRole = typeof WORKER_MEMBERSHIP_ROLE
 /** Existing Worker shell landing route (Worker DashboardPage + MainLayout). */
 export const WORKER_HOME_PATH = '/dashboard'
 
-/** Current Worker login route (not Admin /login, not obsolete /driver-login). */
-export const WORKER_LOGIN_PATH = '/worker-login'
+/** Canonical login route for Worker and Office (single official login page). */
+export const LOGIN_PATH = '/login'
+
+/**
+ * Alias of LOGIN_PATH for older Worker call sites.
+ * Legacy URL `/worker-login` redirects to LOGIN_PATH in the router.
+ */
+export const WORKER_LOGIN_PATH = LOGIN_PATH
 
 /** Existing Office shell landing route. */
 export const OFFICE_HOME_PATH = '/admin'

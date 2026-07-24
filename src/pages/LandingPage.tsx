@@ -6,8 +6,8 @@ function LandingPage() {
 
   return (
     <LandingPageContent
-      onAdminLogin={() => navigate('/admin-login')}
-      onWorkerLogin={() => navigate('/worker-login')}
+      onAdminLogin={() => navigate('/login')}
+      onWorkerLogin={() => navigate('/login')}
     />
   )
 }

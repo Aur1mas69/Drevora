@@ -383,7 +383,7 @@ function useAdminLogout() {
 
     try {
       await signOut()
-      navigate('/admin-login', { replace: true })
+      navigate('/login', { replace: true })
       return true
     } catch (error) {
       const message =

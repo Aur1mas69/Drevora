@@ -2,7 +2,7 @@ import { WorkerTimesheetSettingsForm } from '@/components/worker/WorkerTimesheet
 import { Button } from '@/components/ui/button'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
-import { WORKER_LOGIN_PATH } from '@/lib/membershipRoles'
+import { LOGIN_PATH } from '@/lib/membershipRoles'
 import { useAuth } from '@/contexts/AuthContext'
 import { ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -20,7 +20,7 @@ export default function WorkerTimesheetSettingsPage() {
 
   async function handleSignOut() {
     await signOut()
-    navigate(WORKER_LOGIN_PATH, { replace: true })
+    navigate(LOGIN_PATH, { replace: true })
   }
 
   if (isLoading) {
