@@ -1,4 +1,3 @@
-import drevoraMark from '@/assets/drevora-mark.png'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -8,15 +7,15 @@ type AuthSplashScreenProps = {
 }
 
 const BLOCKS = [
-  { x: -42, y: -36, delay: 0 },
-  { x: 8, y: -44, delay: 40 },
-  { x: 46, y: -28, delay: 80 },
-  { x: -48, y: 2, delay: 110 },
-  { x: 52, y: 6, delay: 140 },
-  { x: -36, y: 38, delay: 170 },
-  { x: 6, y: 48, delay: 200 },
-  { x: 40, y: 34, delay: 230 },
-  { x: -8, y: -8, delay: 260 },
+  { x: -48, y: -40, delay: 0 },
+  { x: 10, y: -50, delay: 30 },
+  { x: 52, y: -32, delay: 60 },
+  { x: -54, y: 2, delay: 85 },
+  { x: 58, y: 8, delay: 110 },
+  { x: -40, y: 42, delay: 135 },
+  { x: 8, y: 54, delay: 160 },
+  { x: 44, y: 38, delay: 185 },
+  { x: -6, y: -6, delay: 210 },
 ] as const
 
 /**
@@ -30,7 +29,7 @@ export function AuthSplashScreen({
   return (
     <div
       className={cn(
-        'auth-splash fixed inset-0 z-[100] flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[linear-gradient(160deg,#FFFFFF_0%,#F4F9FF_48%,#EAF4FF_100%)] transition-opacity duration-300 ease-out',
+        'auth-splash fixed inset-0 z-[100] flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[linear-gradient(160deg,#FFFFFF_0%,#F4F9FF_48%,#EAF4FF_100%)] px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-opacity duration-300 ease-out',
         fadingOut && 'pointer-events-none opacity-0',
         className,
       )}
@@ -38,12 +37,12 @@ export function AuthSplashScreen({
       aria-live="polite"
       aria-label="Loading DREVORA"
     >
-      <div className="relative flex w-full max-w-[18rem] flex-col items-center px-6">
-        <div className="auth-splash-stage relative flex size-[7.5rem] items-center justify-center sm:size-[8.5rem]">
+      <div className="relative flex w-full max-w-[17rem] flex-col items-center">
+        <div className="auth-splash-stage relative flex size-[10.5rem] items-center justify-center sm:size-[11.5rem]">
           {BLOCKS.map((block, index) => (
             <span
               key={index}
-              className="auth-splash-block absolute size-3 rounded-[5px] bg-[#2563EB] sm:size-3.5 sm:rounded-[6px]"
+              className="auth-splash-block absolute size-3.5 rounded-[5px] bg-[#2563EB] sm:size-4 sm:rounded-[6px]"
               style={
                 {
                   '--splash-x': `${block.x}px`,
@@ -56,14 +55,16 @@ export function AuthSplashScreen({
           ))}
 
           <img
-            src={drevoraMark}
+            src="/pwa-512x512.png"
             alt=""
-            className="auth-splash-mark relative z-[1] h-[4.75rem] w-auto object-contain sm:h-[5.5rem]"
+            width={512}
+            height={512}
+            className="auth-splash-mark relative z-[1] h-[8.75rem] w-[8.75rem] object-contain sm:h-[9.5rem] sm:w-[9.5rem]"
             draggable={false}
           />
         </div>
 
-        <p className="auth-splash-wordmark mt-5 text-[0.95rem] font-semibold tracking-[0.28em] text-[#1E3A6E]">
+        <p className="auth-splash-wordmark mt-[18px] text-[1.05rem] font-semibold tracking-[0.28em] text-[#1E3A6E]">
           DREVORA
         </p>
       </div>
