@@ -9,8 +9,6 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
   displayWeatherSnapshot,
   getWeatherForLocation,
-  resolveDashboardBackgroundMood,
-  type DashboardBackgroundMood,
   type WeatherSnapshot,
 } from '@/services/weatherService'
 import { useEffect, useMemo, useState } from 'react'
@@ -30,7 +28,6 @@ export type FleetOperationsHeaderState = {
   operationsDate: string
   weather: WeatherSnapshot | null
   weatherDisplay: WeatherDisplayState
-  backgroundMood: DashboardBackgroundMood
   isProfileLoading: boolean
 }
 
@@ -158,10 +155,6 @@ export function useFleetOperationsHeader(): FleetOperationsHeaderState {
     return displayWeatherSnapshot(weather, isNightHours(now, companyTimezone))
   }, [companyTimezone, now, weather])
 
-  const backgroundMood = useMemo((): DashboardBackgroundMood => {
-    return resolveDashboardBackgroundMood(displayedWeather, now, companyTimezone)
-  }, [companyTimezone, displayedWeather, now])
-
   return {
     now,
     greeting,
@@ -172,7 +165,6 @@ export function useFleetOperationsHeader(): FleetOperationsHeaderState {
     operationsDate,
     weather: displayedWeather,
     weatherDisplay,
-    backgroundMood,
     isProfileLoading,
   }
 }

@@ -1,3 +1,4 @@
+import { CreateVehicleCheckCorrectionModal } from '@/components/vehicle-checks/CreateVehicleCheckCorrectionModal'
 import { DeleteVehicleCheckModal } from '@/components/vehicle-checks/DeleteVehicleCheckModal'
 import { EditVehicleCheckModal } from '@/components/vehicle-checks/EditVehicleCheckModal'
 import { NewVehicleCheckModal } from '@/components/vehicle-checks/NewVehicleCheckModal'
@@ -34,7 +35,10 @@ import {
   exportVehicleChecksExcel,
   exportVehicleChecksFilteredPdfs,
 } from '@/lib/export/modules/vehicleChecksExport'
-import { formatVehicleCheckResultLabel } from '@/lib/vehicleCheckUtils'
+import {
+  formatVehicleCheckResultLabel,
+  isVehicleCheckEditable,
+} from '@/lib/vehicleCheckUtils'
 import type {
   SaveVehicleCheckDefectReviewInput,
   VehicleCheck,
@@ -49,31 +53,19 @@ import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import {
   createVehicleCheck,
+  createVehicleCheckCorrection,
   deleteVehicleCheck,
   fetchVehicleCheckById,
+  fetchVehicleCheckCorrections,
   fetchVehicleChecks,
   saveVehicleCheckDefectReview,
   updateVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
-import {
-  fetchVehicles,
-  getVehicleStatusForDate,
-  type Vehicle,
-  type VehicleStatus,
-} from '@/services/vehiclesService'
+import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-
-const vehicleUnavailableStatuses: VehicleStatus[] = [
-  'Off Road',
-  'Maintenance',
-  'Workshop',
-  'Out of Service',
-  'Reserved',
-  'Assigned',
-]
 
 function parseVehicleChecksModuleTab(value: string | null): VehicleChecksModuleTab {
   return value === 'tyre-check' ? 'tyre-check' : 'vehicle-checks'
@@ -108,7 +100,6 @@ export default function VehicleChecksPage() {
     defectsFoundToday: 0,
     awaitingReview: 0,
     defectItemsReported: 0,
-    vehiclesChecked: 0,
   })
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
@@ -129,8 +120,12 @@ export default function VehicleChecksPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_VEHICLE_CHECK_PAGE_SIZE)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [viewCheck, setViewCheck] = useState<VehicleCheck | null>(null)
+  const [viewCorrections, setViewCorrections] = useState<VehicleCheckListItem[]>([])
   const [editCheck, setEditCheck] = useState<VehicleCheck | null>(null)
   const [reviewCheck, setReviewCheck] = useState<VehicleCheck | null>(null)
+  const [correctionSource, setCorrectionSource] =
+    useState<VehicleCheckListItem | null>(null)
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
   const [deletingCheck, setDeletingCheck] = useState<VehicleCheckListItem | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -365,10 +360,34 @@ export default function VehicleChecksPage() {
         return
       }
 
-      if (mode === 'view') {
-        setViewCheck(detail)
-      } else {
+      if (mode === 'edit') {
+        if (!isVehicleCheckEditable(detail)) {
+          showToast('Completed Vehicle Checks are read-only. Create a correction to amend.')
+          setViewCheck(detail)
+          if (!detail.originalCheckId) {
+            try {
+              setViewCorrections(await fetchVehicleCheckCorrections(detail.id))
+            } catch {
+              setViewCorrections([])
+            }
+          } else {
+            setViewCorrections([])
+          }
+          return
+        }
         setEditCheck(detail)
+        return
+      }
+
+      setViewCheck(detail)
+      if (!detail.originalCheckId) {
+        try {
+          setViewCorrections(await fetchVehicleCheckCorrections(detail.id))
+        } catch {
+          setViewCorrections([])
+        }
+      } else {
+        setViewCorrections([])
       }
     } catch (error) {
       const message =
@@ -378,6 +397,33 @@ export default function VehicleChecksPage() {
       showToast(message)
     } finally {
       setIsLoadingDetail(false)
+    }
+  }
+
+  async function handleCreateCorrection(reason: string) {
+    if (!correctionSource) return
+
+    setIsSaving(true)
+    setCorrectionError(null)
+    try {
+      const correction = await createVehicleCheckCorrection({
+        originalCheckId: correctionSource.id,
+        reason,
+      })
+      setCorrectionSource(null)
+      setViewCheck(null)
+      setViewCorrections([])
+      showToast('Correction created')
+      await loadChecks()
+      setEditCheck(correction)
+    } catch (error) {
+      const message =
+        error instanceof VehicleChecksServiceError
+          ? error.message
+          : 'Failed to create correction'
+      setCorrectionError(message)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -568,11 +614,6 @@ export default function VehicleChecksPage() {
   }
 
   const today = getCurrentViewToday()
-  const activeVehicleCount = vehicles.filter(
-    (vehicle) => !vehicleUnavailableStatuses.includes(getVehicleStatusForDate(vehicle, today)),
-  ).length
-  const vehiclesNotChecked =
-    vehicles.length > 0 ? Math.max(activeVehicleCount - stats.vehiclesChecked, 0) : null
   const isTodayView =
     debouncedSearch.trim().length === 0 &&
     statusFilter === 'all' &&
@@ -608,7 +649,6 @@ export default function VehicleChecksPage() {
 
         <VehicleChecksSummaryCards
           stats={stats}
-          vehiclesNotChecked={vehiclesNotChecked}
           activeFilter={activeKpiFilter}
           onFilterChange={handleKpiFilterChange}
         />
@@ -711,6 +751,19 @@ export default function VehicleChecksPage() {
               onView={(check) => void openCheckDetail(check.id, 'view')}
               onEdit={(check) => void openCheckDetail(check.id, 'edit')}
               onReviewDefects={(check) => void openReviewDefects(check.id)}
+              onCreateCorrection={(check) => {
+                setCorrectionError(null)
+                setCorrectionSource(check)
+              }}
+              onOpenOriginal={(originalCheckId) => {
+                void openCheckDetail(originalCheckId, 'view')
+              }}
+              onOpenLatestCorrection={(correctionId) => {
+                void openCheckDetail(correctionId, 'view')
+              }}
+              onOpenCorrectionHistory={(check) => {
+                void openCheckDetail(check.id, 'view')
+              }}
               onDelete={(check) => {
                 setDeleteError(null)
                 setDeletingCheck(check)
@@ -788,11 +841,27 @@ export default function VehicleChecksPage() {
         check={viewCheck}
         isOpen={viewCheck !== null}
         isDownloadingPdf={isDownloadingPdf}
-        onClose={() => setViewCheck(null)}
+        corrections={viewCorrections}
+        onClose={() => {
+          setViewCheck(null)
+          setViewCorrections([])
+        }}
         onEdit={() => {
-          if (!viewCheck) return
+          if (!viewCheck || !isVehicleCheckEditable(viewCheck)) return
           setEditCheck(viewCheck)
           setViewCheck(null)
+          setViewCorrections([])
+        }}
+        onCreateCorrection={() => {
+          if (!viewCheck) return
+          setCorrectionError(null)
+          setCorrectionSource(viewCheck)
+        }}
+        onViewCorrection={(correctionId) => {
+          void openCheckDetail(correctionId, 'view')
+        }}
+        onViewOriginal={(originalCheckId) => {
+          void openCheckDetail(originalCheckId, 'view')
         }}
         onDownloadPdf={() => {
           if (!viewCheck) return
@@ -804,6 +873,21 @@ export default function VehicleChecksPage() {
             .then(() => showToast('Exported vehicle check to PDF'))
             .catch((error) => showToast(toExportUserMessage(error)))
             .finally(() => setIsDownloadingPdf(false))
+        }}
+      />
+
+      <CreateVehicleCheckCorrectionModal
+        check={correctionSource}
+        isOpen={correctionSource !== null}
+        isSaving={isSaving}
+        errorMessage={correctionError}
+        onClose={() => {
+          if (isSaving) return
+          setCorrectionSource(null)
+          setCorrectionError(null)
+        }}
+        onConfirm={(reason) => {
+          void handleCreateCorrection(reason)
         }}
       />
 

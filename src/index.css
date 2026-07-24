@@ -266,17 +266,49 @@ img.drevora-brand-logo {
   background-size: 180px 180px;
 }
 
-/* Admin dashboard — baby-blue background on the main scroll column only */
+/* Admin dashboard — soft white → baby-blue canvas (main scroll column only) */
 .admin-main-column.admin-dashboard {
   --drevora-card-shadow: 0 4px 16px rgba(22, 58, 99, 0.06);
-  --admin-dashboard-background:
-    radial-gradient(
-      circle at 18% 12%,
-      rgba(255, 255, 255, 0.92) 0%,
-      rgba(255, 255, 255, 0) 34%
-    ),
-    linear-gradient(135deg, #eef7ff 0%, #ddeeff 52%, #cfe6ff 100%);
-  background: var(--admin-dashboard-background) !important;
+  /* Left stays near-white; right / lower-right gets clearer baby blue. */
+  --admin-dashboard-background-color: #edf5ff;
+  --admin-dashboard-background: linear-gradient(
+    135deg,
+    #f8fbff 0%,
+    #edf5ff 25%,
+    #c9e0ff 52%,
+    #a9ceff 78%,
+    #8fbcff 100%
+  );
+  background-color: var(--admin-dashboard-background-color) !important;
+  background-image: var(--admin-dashboard-background) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  /* Keep the gradient covering the full scrollport (desktop) and full page (mobile). */
+  min-height: 100%;
+}
+
+/* Admin dashboard hero — whiter left wash for text readability (light mode) */
+.admin-dashboard-hero-left-wash {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(255, 255, 255, 0.88) 28%,
+    rgba(248, 251, 255, 0.55) 52%,
+    rgba(248, 251, 255, 0.18) 72%,
+    rgba(248, 251, 255, 0) 100%
+  );
+}
+
+/* Preserve the previous white wash in dark mode */
+.dark .admin-dashboard-hero-left-wash {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.82) 18%,
+    rgba(255, 255, 255, 0.68) 38%,
+    rgba(255, 255, 255, 0.38) 56%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 
 /* Admin dashboard dark — deep navy/slate canvas with soft baby-blue depth */

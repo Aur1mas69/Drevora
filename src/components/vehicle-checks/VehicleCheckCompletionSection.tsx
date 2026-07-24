@@ -40,12 +40,12 @@ export function VehicleCheckCompletionSection({
   const isSignatureMissing = !signatureFile
 
   return (
-    <section className="mt-4 rounded-[14px] border border-[#D3E9FC] bg-[#FAFCFF] p-3 sm:p-3.5">
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <section className="mt-3 rounded-[14px] border border-[#D3E9FC] bg-[#FAFCFF] p-2.5 sm:mt-4 sm:p-3.5">
+      <div className="mb-2 flex items-start justify-between gap-3 sm:mb-3">
         <div>
           <h3 className="text-sm font-semibold text-[#113C69]">Complete inspection</h3>
-          <p className="mt-0.5 text-xs text-[#5499BF]">
-            Mileage and worker signature are required before saving.
+          <p className="mt-0.5 text-[11px] text-[#5499BF] sm:text-xs">
+            Mileage and signature required.
           </p>
         </div>
         {durationLabel ? (
@@ -56,12 +56,12 @@ export function VehicleCheckCompletionSection({
         ) : null}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5 sm:space-y-3">
         <div>
           <label className="block text-sm font-medium text-slate-700" htmlFor="vehicle-check-odometer">
             Odometer / mileage
           </label>
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-1 flex gap-2 sm:mt-1.5">
             <Input
               id="vehicle-check-odometer"
               type="number"
@@ -81,7 +81,7 @@ export function VehicleCheckCompletionSection({
                   type="button"
                   disabled={disabled}
                   onClick={() => onOdometerUnitChange(option.value)}
-                  className={`min-h-10 min-w-[3.5rem] rounded-[10px] px-2 text-xs font-semibold transition-colors ${
+                  className={`min-h-11 min-w-[3.25rem] rounded-[10px] px-2 text-xs font-semibold transition-colors sm:min-h-10 ${
                     odometerUnit === option.value
                       ? 'bg-[#218EE7] text-white'
                       : 'text-[#5499BF] hover:bg-[#F5FAFF]'
@@ -94,17 +94,17 @@ export function VehicleCheckCompletionSection({
             </div>
           </div>
           {lastRecordedOdometer != null ? (
-            <p className="mt-1.5 text-[11px] text-[#5499BF]">
-              Last recorded on vehicle: {lastRecordedOdometer.toLocaleString()} {odometerUnit}
+            <p className="mt-1 text-[11px] text-[#5499BF]">
+              Last recorded: {lastRecordedOdometer.toLocaleString()} {odometerUnit}
             </p>
           ) : null}
           {showValidation && isOdometerMissing ? (
-            <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+            <p className="mt-1 text-[11px] font-medium text-rose-600">
               Odometer / mileage is required.
             </p>
           ) : null}
           {showValidation && isOdometerInvalid ? (
-            <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+            <p className="mt-1 text-[11px] font-medium text-rose-600">
               Enter a valid number greater than or equal to 0.
             </p>
           ) : null}
@@ -112,14 +112,14 @@ export function VehicleCheckCompletionSection({
 
         <div>
           <p className="text-sm font-medium text-slate-700">Worker signature</p>
-          <div className="mt-1.5">
+          <div className="mt-1 sm:mt-1.5">
             <VehicleCheckSignaturePad
               onChange={onSignatureChange}
               disabled={disabled}
             />
           </div>
           {showValidation && isSignatureMissing ? (
-            <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+            <p className="mt-1 text-[11px] font-medium text-rose-600">
               Worker signature is required.
             </p>
           ) : null}

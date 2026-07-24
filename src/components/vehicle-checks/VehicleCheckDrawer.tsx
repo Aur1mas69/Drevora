@@ -1,14 +1,25 @@
 import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
-import type { VehicleCheck, VehicleCheckItem } from '@/lib/vehicleCheckTypes'
+import type {
+  VehicleCheck,
+  VehicleCheckItem,
+  VehicleCheckListItem,
+} from '@/lib/vehicleCheckTypes'
 import {
   formatDefectReviewStatusLabel,
   formatVehicleCheckItemResultLabel,
+  formatVehicleCheckReference,
   formatVehicleCheckResultLabel,
   getDefectReviewBadgeClass,
+  getItemResultBadgeClass,
   getResultBadgeClass,
   getStatusBadgeClass,
+  getVehicleCheckCorrectionBadgeClassName,
+  isVehicleCheckEditable,
+  isVehicleCheckFinal,
+  vehicleCheckCorrectionLinkClassName,
+  vehicleCheckSemanticBadge,
 } from '@/lib/vehicleCheckUtils'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
@@ -19,8 +30,12 @@ type VehicleCheckDrawerProps = {
   check: VehicleCheck | null
   isOpen: boolean
   isDownloadingPdf?: boolean
+  corrections?: VehicleCheckListItem[]
   onClose: () => void
   onEdit?: () => void
+  onCreateCorrection?: () => void
+  onViewCorrection?: (correctionId: string) => void
+  onViewOriginal?: (originalCheckId: string) => void
   onDownloadPdf?: () => void
 }
 
@@ -76,8 +91,12 @@ export function VehicleCheckDrawer({
   check,
   isOpen,
   isDownloadingPdf = false,
+  corrections = [],
   onClose,
   onEdit,
+  onCreateCorrection,
+  onViewCorrection,
+  onViewOriginal,
   onDownloadPdf,
 }: VehicleCheckDrawerProps) {
   const { formatDate } = useCompanySettings()
@@ -94,6 +113,10 @@ export function VehicleCheckDrawer({
   }, [isOpen, isDownloadingPdf, onClose])
 
   if (!isOpen || !check) return null
+
+  const editable = isVehicleCheckEditable(check)
+  const isFinal = isVehicleCheckFinal(check)
+  const isCorrection = Boolean(check.originalCheckId)
 
   const checklistItems = check.items.map((item) => ({
     category: item.category,
@@ -135,7 +158,7 @@ export function VehicleCheckDrawer({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                Vehicle Inspection
+                {isCorrection ? 'Correction' : 'Vehicle Inspection'}
               </p>
               <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
                 {check.vehicleRegistration}
@@ -144,6 +167,13 @@ export function VehicleCheckDrawer({
                 {check.fleetNumber ? `Fleet ${check.fleetNumber} · ` : ''}
                 {check.workerName}
               </p>
+              {isFinal ? (
+                <p
+                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${vehicleCheckSemanticBadge.neutral}`}
+                >
+                  Completed — read only
+                </p>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {onDownloadPdf ? (
@@ -179,6 +209,73 @@ export function VehicleCheckDrawer({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          {isCorrection && check.originalCheckId ? (
+            <section className="rounded-[12px] border border-violet-200 bg-violet-50/70 px-3 py-3 dark:border-violet-900/50 dark:bg-violet-950/30">
+              <p className={getVehicleCheckCorrectionBadgeClassName()}>↳ Correction</p>
+              <p className="mt-2 text-sm font-semibold text-violet-900 dark:text-violet-200">
+                Correction of Vehicle Check{' '}
+                {formatVehicleCheckReference(check.originalCheckId)}
+              </p>
+              {check.correctionReason ? (
+                <p className="mt-1 text-sm text-violet-800/80 dark:text-violet-200/80">
+                  {check.correctionReason}
+                </p>
+              ) : null}
+              {onViewOriginal ? (
+                <button
+                  type="button"
+                  onClick={() => onViewOriginal(check.originalCheckId!)}
+                  className={`mt-2 text-sm font-semibold ${vehicleCheckCorrectionLinkClassName}`}
+                  aria-label="Open original vehicle check"
+                >
+                  View original inspection
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+
+          {!isCorrection && corrections.length > 0 ? (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Corrections
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {corrections.map((correction) => (
+                  <li
+                    key={correction.id}
+                    className="rounded-[12px] border border-[rgba(75,120,220,0.12)] px-3 py-2 dark:border-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">
+                          {formatVehicleCheckReference(correction.id)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {correction.status} ·{' '}
+                          {formatDate(correction.createdAt.slice(0, 10))}
+                        </p>
+                        {correction.correctionReason ? (
+                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                            {correction.correctionReason}
+                          </p>
+                        ) : null}
+                      </div>
+                      {onViewCorrection ? (
+                        <button
+                          type="button"
+                          onClick={() => onViewCorrection(correction.id)}
+                          className="shrink-0 text-sm font-semibold text-[#2563EB] hover:underline"
+                        >
+                          View
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
               Summary
@@ -306,7 +403,7 @@ export function VehicleCheckDrawer({
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-semibold text-amber-950">{item.itemName}</p>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getResultBadgeClass(item.result)}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getItemResultBadgeClass(item.result)}`}
                       >
                         {formatVehicleCheckItemResultLabel(item.result)}
                       </span>
@@ -348,7 +445,7 @@ export function VehicleCheckDrawer({
           </section>
         </div>
 
-        {onEdit ? (
+        {editable && onEdit ? (
           <div className="border-t border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10">
             <Button
               type="button"
@@ -356,6 +453,18 @@ export function VehicleCheckDrawer({
               className="h-10 w-full rounded-[12px] bg-[#2563EB] text-sm font-semibold text-white hover:bg-[#1d4ed8]"
             >
               Edit inspection
+            </Button>
+          </div>
+        ) : null}
+
+        {isFinal && onCreateCorrection ? (
+          <div className="border-t border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10">
+            <Button
+              type="button"
+              onClick={onCreateCorrection}
+              className="h-10 w-full rounded-[12px] bg-[#2563EB] text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+            >
+              Create Correction
             </Button>
           </div>
         ) : null}

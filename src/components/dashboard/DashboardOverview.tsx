@@ -36,17 +36,17 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-type ActivityAccent = {
-  label: string
-  /** Soft tinted card surface */
-  surfaceClass: string
-  /** Soft left accent glow */
-  accentBarClass: string
-  /** Refined type pill */
-  pillClass: string
-  /** Soft hover lift / glow */
-  hoverClass: string
-}
+/** Shared Recent Activity item chrome — identical for every activity type. */
+const ACTIVITY_ITEM_SURFACE =
+  'border border-[#D3E9FC]/90 bg-white/95 shadow-[0_1px_4px_rgba(40,80,140,0.06)] dark:border-white/10 dark:bg-slate-900/55 dark:shadow-[0_1px_4px_rgba(0,0,0,0.25)]'
+
+const ACTIVITY_ITEM_HOVER =
+  'md:hover:border-[#BFE3F5] md:hover:bg-[#F8FBFF] md:hover:shadow-[0_2px_8px_rgba(40,80,140,0.08)] dark:md:hover:border-white/15 dark:md:hover:bg-slate-800/70'
+
+const ACTIVITY_ITEM_ACCENT = 'bg-[#89CFF0] dark:bg-sky-400/70'
+
+const ACTIVITY_ITEM_BADGE =
+  'bg-[#EAF4FF] text-[#2563EB] ring-1 ring-[#BFDBFE]/80 dark:bg-sky-950/45 dark:text-sky-300 dark:ring-sky-800/50'
 
 const OFF_ROAD_WARNING_STATUSES = [
   'off road',
@@ -60,131 +60,29 @@ function isAvailabilityWarningStatus(title: string): boolean {
   return OFF_ROAD_WARNING_STATUSES.some((value) => status.includes(value))
 }
 
-function getActivityAccent(activity: DashboardRecentActivity): ActivityAccent {
+/** Badge label text only — no colour mapping by type. */
+function getActivityBadgeLabel(activity: DashboardRecentActivity): string {
   switch (activity.type) {
     case 'worker':
-      return {
-        label: 'Worker',
-        accentBarClass: 'bg-[#3B82F6]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(248,251,255,0.98)_0%,rgba(220,238,255,0.55)_100%)] shadow-[0_2px_10px_rgba(59,130,246,0.07)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(59,130,246,0.14)]',
-        pillClass: 'bg-[#DCEEFF]/90 text-[#2563EB]',
-      }
+      return 'Worker'
     case 'vehicle':
-      return {
-        label: 'Vehicle',
-        accentBarClass: 'bg-[#06B6D4]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(242,252,254,0.98)_0%,rgba(186,230,253,0.45)_100%)] shadow-[0_2px_10px_rgba(6,182,212,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(6,182,212,0.16)]',
-        pillClass: 'bg-[#E0F7FA]/95 text-[#0E7490]',
-      }
+      return 'Vehicle'
     case 'availability':
-      if (isAvailabilityWarningStatus(activity.title)) {
-        return {
-          label: 'Fleet',
-          accentBarClass: 'bg-[#F97316]',
-          surfaceClass:
-            'bg-[linear-gradient(135deg,rgba(255,248,243,0.98)_0%,rgba(255,237,213,0.55)_100%)] shadow-[0_2px_10px_rgba(249,115,22,0.08)]',
-          hoverClass:
-            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(249,115,22,0.14)]',
-          pillClass: 'bg-[#FFEDD5]/95 text-[#C2410C]',
-        }
-      }
-      return {
-        label: 'Vehicle',
-        accentBarClass: 'bg-[#06B6D4]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(242,252,254,0.98)_0%,rgba(186,230,253,0.45)_100%)] shadow-[0_2px_10px_rgba(6,182,212,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(6,182,212,0.16)]',
-        pillClass: 'bg-[#E0F7FA]/95 text-[#0E7490]',
-      }
+      return isAvailabilityWarningStatus(activity.title) ? 'Fleet' : 'Vehicle'
     case 'holiday_request':
-      return {
-        label: 'Holiday',
-        accentBarClass: 'bg-[#A855F7]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(250,245,255,0.98)_0%,rgba(243,232,255,0.55)_100%)] shadow-[0_2px_10px_rgba(168,85,247,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(168,85,247,0.14)]',
-        pillClass: 'bg-[#F3E8FF]/95 text-[#7E22CE]',
-      }
+      return 'Holiday'
     case 'timesheet':
-      return {
-        label: 'Timesheet',
-        accentBarClass: 'bg-[#22C55E]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(243,251,246,0.98)_0%,rgba(220,252,231,0.5)_100%)] shadow-[0_2px_10px_rgba(34,197,94,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(34,197,94,0.14)]',
-        pillClass: 'bg-[#DCFCE7]/95 text-[#15803D]',
-      }
+      return 'Timesheet'
     case 'vehicle_check':
-      if (activity.severity === 'danger') {
-        return {
-          label: 'Check Failed',
-          accentBarClass: 'bg-[#EF4444]',
-          surfaceClass:
-            'bg-[linear-gradient(135deg,rgba(255,241,242,0.98)_0%,rgba(254,226,226,0.55)_100%)] shadow-[0_2px_10px_rgba(239,68,68,0.08)]',
-          hoverClass:
-            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(239,68,68,0.14)]',
-          pillClass: 'bg-[#FFE4E6]/95 text-[#BE123C]',
-        }
-      }
-      if (activity.severity === 'warning') {
-        return {
-          label: 'Check Issue',
-          accentBarClass: 'bg-[#F97316]',
-          surfaceClass:
-            'bg-[linear-gradient(135deg,rgba(255,247,237,0.98)_0%,rgba(255,237,213,0.55)_100%)] shadow-[0_2px_10px_rgba(249,115,22,0.08)]',
-          hoverClass:
-            'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(249,115,22,0.14)]',
-          pillClass: 'bg-[#FFEDD5]/95 text-[#C2410C]',
-        }
-      }
-      return {
-        label: 'Vehicle Check',
-        accentBarClass: 'bg-[#14B8A6]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(240,250,250,0.98)_0%,rgba(204,251,241,0.5)_100%)] shadow-[0_2px_10px_rgba(20,184,166,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(20,184,166,0.14)]',
-        pillClass: 'bg-[#CCFBF1]/95 text-[#0F766E]',
-      }
+      if (activity.severity === 'danger') return 'Check Failed'
+      if (activity.severity === 'warning') return 'Check Issue'
+      return 'Vehicle Check'
     case 'driver_report':
-      return {
-        label: 'Driver Report',
-        accentBarClass: 'bg-[#F59E0B]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(255,249,243,0.98)_0%,rgba(254,243,199,0.5)_100%)] shadow-[0_2px_10px_rgba(245,158,11,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(245,158,11,0.14)]',
-        pillClass: 'bg-[#FEF3C7]/95 text-[#B45309]',
-      }
+      return 'Driver Report'
     case 'document':
-      return {
-        label: 'Document',
-        accentBarClass: 'bg-[#64748B]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.7)_100%)] shadow-[0_2px_10px_rgba(100,116,139,0.07)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(100,116,139,0.12)]',
-        pillClass: 'bg-[#F1F5F9]/95 text-[#475569]',
-      }
+      return 'Document'
     case 'consumable':
-      return {
-        label: 'Consumables',
-        accentBarClass: 'bg-[#D97706]',
-        surfaceClass:
-          'bg-[linear-gradient(135deg,rgba(255,251,240,0.98)_0%,rgba(254,243,199,0.5)_100%)] shadow-[0_2px_10px_rgba(217,119,6,0.08)]',
-        hoverClass:
-          'md:hover:-translate-y-0.5 md:hover:shadow-[0_8px_20px_rgba(217,119,6,0.14)]',
-        pillClass: 'bg-[#FEF3C7]/95 text-[#B45309]',
-      }
+      return 'Consumables'
   }
 }
 
@@ -246,28 +144,28 @@ function RecentActivityItem({
 }) {
   const navigate = useNavigate()
   const route = item.path ?? getDashboardActivityRoute(item)
-  const accent = getActivityAccent(item)
+  const badgeLabel = getActivityBadgeLabel(item)
   const isClickable = Boolean(route)
 
   const itemClassName = [
-    'group relative w-full overflow-hidden rounded-2xl px-3.5 py-2.5 text-left transition-all duration-200 ease-out motion-reduce:transition-none',
-    accent.surfaceClass,
+    'group relative w-full overflow-hidden rounded-2xl px-3.5 py-2.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
+    ACTIVITY_ITEM_SURFACE,
     isClickable
-      ? `cursor-pointer select-none active:translate-y-0 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/40 focus-visible:ring-offset-1 ${accent.hoverClass}`
+      ? `cursor-pointer select-none active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/40 focus-visible:ring-offset-1 ${ACTIVITY_ITEM_HOVER}`
       : '',
   ].join(' ')
 
   const content = (
     <>
       <span
-        className={`pointer-events-none absolute inset-y-2.5 left-0 w-[3px] rounded-full ${accent.accentBarClass} opacity-80 shadow-[0_0_8px_rgba(56,189,248,0.25)]`}
+        className={`pointer-events-none absolute inset-y-2.5 left-0 w-[2px] rounded-full ${ACTIVITY_ITEM_ACCENT}`}
         aria-hidden="true"
       />
       <div className="pl-2.5">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ${accent.pillClass}`}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${ACTIVITY_ITEM_BADGE}`}
         >
-          {accent.label}
+          {badgeLabel}
         </span>
         <p className="mt-1.5 truncate text-[13px] font-semibold leading-snug tracking-[-0.01em] text-[#163A63] dark:text-slate-100">
           {getTimelineTitle(item)}
@@ -479,13 +377,13 @@ export function DashboardOverview({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 overflow-visible pt-3 pb-2 sm:gap-x-5 sm:gap-y-6 sm:pt-4 sm:pb-0 xl:grid-cols-4 xl:gap-6">
+      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-4 gap-y-7 overflow-visible pt-3 pb-2 sm:gap-x-8 sm:gap-y-8 sm:pt-4 sm:pb-0 xl:grid-cols-4 xl:gap-x-10 xl:gap-y-8">
         {loading.kpis ? (
           Array.from({ length: 4 }).map((_, index) => <DashboardKpiSkeleton key={index} />)
         ) : (
           <>
             <DashboardKpiCard
-              title="Active Vehicles"
+              title="Fleet Live Status"
               value={stats.availableVehicles}
               helper="Available today"
               icon={Truck}
@@ -494,16 +392,16 @@ export function DashboardOverview({
               ringPercent={availablePercent}
             />
             <DashboardKpiCard
-              title="Workers"
+              title="Active Workers"
               value={stats.workingToday}
-              helper="Working status today"
+              helper="Current workforce"
               icon={Users}
               to="/drivers"
               accent="cyan"
               ringPercent={workingPercent}
             />
             <DashboardKpiCard
-              title="Vehicle Checks"
+              title="Today's Vehicle Checks"
               value={vehicleChecksKpi.value}
               helper={vehicleChecksKpi.helper}
               icon={ClipboardCheck}
@@ -515,9 +413,9 @@ export function DashboardOverview({
               onNavigate={handleVehicleChecksNavigate}
             />
             <DashboardKpiCard
-              title="Open Reports"
+              title="Open Driver Reports"
               value={stats.driverReports.open}
-              helper="Driver reports awaiting action"
+              helper="Awaiting action"
               icon={FileBarChart}
               to="/admin/driver-reports"
               accent="warning"

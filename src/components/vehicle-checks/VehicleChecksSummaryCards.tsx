@@ -6,7 +6,6 @@ import {
   CalendarCheck,
   CheckCircle2,
   ClipboardList,
-  ShieldQuestion,
 } from 'lucide-react'
 
 export type VehicleChecksKpiFilter =
@@ -14,12 +13,10 @@ export type VehicleChecksKpiFilter =
   | 'passedToday'
   | 'defectsFound'
   | 'awaitingReview'
-  | 'vehiclesNotChecked'
   | null
 
 type VehicleChecksSummaryCardsProps = {
   stats: VehicleCheckSummaryStats
-  vehiclesNotChecked: number | null
   activeFilter: VehicleChecksKpiFilter
   onFilterChange: (value: VehicleChecksKpiFilter) => void
 }
@@ -43,7 +40,7 @@ type VehicleCheckKpiCard = {
   label: string
   subtitle: string
   icon: LucideIcon
-  value: (stats: VehicleCheckSummaryStats, vehiclesNotChecked: number | null) => number | null
+  value: (stats: VehicleCheckSummaryStats) => number
   resultFilter?: VehicleCheckResultFilter
   style: VehicleCheckKpiStyle
 }
@@ -52,7 +49,6 @@ const blue = adminKpiDarkAccent.blue
 const green = adminKpiDarkAccent.green
 const amber = adminKpiDarkAccent.amber
 const rose = adminKpiDarkAccent.rose
-const violet = adminKpiDarkAccent.violet
 
 const styles = {
   blue: {
@@ -107,19 +103,6 @@ const styles = {
     labelClass: `text-rose-800 ${rose.label}`,
     subtitleClass: `text-rose-800/75 ${rose.subtitle}`,
   },
-  purple: {
-    gradient: `bg-gradient-to-br from-violet-50 via-slate-50 to-[#EDE9FE] ${violet.surface}`,
-    border: `border-violet-200 ${violet.border}`,
-    leftBorder: `border-l-violet-500 ${violet.leftBorder}`,
-    shadow: `shadow-[0_8px_24px_rgba(109,40,217,0.12)] ${violet.shadow}`,
-    hover: `hover:-translate-y-0.5 hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(109,40,217,0.18),0_16px_36px_rgba(109,40,217,0.16)] ${violet.hoverBorder} ${violet.hoverShadow}`,
-    selected: `border-violet-500 ring-2 ring-violet-300/70 shadow-[0_0_0_2px_rgba(109,40,217,0.24),0_14px_34px_rgba(109,40,217,0.2)] ${violet.selectedBorder} ${violet.selectedRing} ${violet.selectedShadow}`,
-    iconWrap: `bg-violet-100 ring-violet-200 ${violet.iconWrap}`,
-    iconClass: `text-violet-700 ${violet.icon}`,
-    valueClass: `text-violet-950 ${violet.value}`,
-    labelClass: `text-violet-800 ${violet.label}`,
-    subtitleClass: `text-violet-800/75 ${violet.subtitle}`,
-  },
 } satisfies Record<string, VehicleCheckKpiStyle>
 
 const cards: VehicleCheckKpiCard[] = [
@@ -157,29 +140,18 @@ const cards: VehicleCheckKpiCard[] = [
     value: (stats) => stats.awaitingReview,
     style: styles.rose,
   },
-  {
-    id: 'vehiclesNotChecked',
-    label: 'Vehicles Not Checked',
-    subtitle: 'Outstanding today',
-    icon: ShieldQuestion,
-    value: (_stats, vehiclesNotChecked) => vehiclesNotChecked,
-    style: styles.purple,
-  },
 ]
 
 export function VehicleChecksSummaryCards({
   stats,
-  vehiclesNotChecked,
   activeFilter,
   onFilterChange,
 }: VehicleChecksSummaryCardsProps) {
-  const visibleCards = cards.filter((card) => card.value(stats, vehiclesNotChecked) !== null)
-
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      {visibleCards.map((card) => {
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => {
         const Icon = card.icon
-        const value = card.value(stats, vehiclesNotChecked) ?? 0
+        const value = card.value(stats)
         const isSelected = activeFilter === card.id
 
         return (

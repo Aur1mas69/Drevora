@@ -5,7 +5,15 @@ type VehicleCheckSignaturePadProps = {
   disabled?: boolean
 }
 
-const CANVAS_HEIGHT = 128
+const CANVAS_HEIGHT_DESKTOP = 128
+const CANVAS_HEIGHT_MOBILE = 96
+
+function getSignatureCanvasHeight() {
+  if (typeof window === 'undefined') return CANVAS_HEIGHT_DESKTOP
+  return window.matchMedia('(max-width: 639px)').matches
+    ? CANVAS_HEIGHT_MOBILE
+    : CANVAS_HEIGHT_DESKTOP
+}
 
 function exportSignatureFile(canvas: HTMLCanvasElement): Promise<File | null> {
   return new Promise((resolve) => {
@@ -43,12 +51,13 @@ export function VehicleCheckSignaturePad({
     const container = containerRef.current
     if (!canvas || !container) return
 
+    const height = getSignatureCanvasHeight()
     const width = Math.max(container.clientWidth, 280)
     const dpr = window.devicePixelRatio || 1
     canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(CANVAS_HEIGHT * dpr)
+    canvas.height = Math.round(height * dpr)
     canvas.style.width = `${width}px`
-    canvas.style.height = `${CANVAS_HEIGHT}px`
+    canvas.style.height = `${height}px`
 
     const context = canvas.getContext('2d')
     if (!context) return
@@ -59,7 +68,7 @@ export function VehicleCheckSignaturePad({
     context.lineWidth = 2.5
     context.strokeStyle = '#113C69'
     context.fillStyle = '#FFFFFF'
-    context.fillRect(0, 0, width, CANVAS_HEIGHT)
+    context.fillRect(0, 0, width, height)
   }
 
   useEffect(() => {
@@ -157,13 +166,13 @@ export function VehicleCheckSignaturePad({
           aria-label="Worker signature pad"
         />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="mt-1.5 flex items-center justify-between gap-2 sm:mt-2">
         <p className="text-[11px] text-[#5499BF]">Sign with your finger</p>
         <button
           type="button"
           onClick={handleClear}
           disabled={disabled}
-          className="text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
+          className="inline-flex min-h-11 items-center px-1 text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60 sm:min-h-0"
         >
           Clear signature
         </button>

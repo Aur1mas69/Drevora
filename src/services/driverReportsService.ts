@@ -288,7 +288,19 @@ export async function updateDriverReport(
     .select(reportSelect)
     .maybeSingle()
 
-  if (error) throw new DriverReportsServiceError(error.message)
+  logSupabaseQuery({
+    service: 'driverReportsService.updateDriverReport',
+    table: 'driver_reports',
+    data: data ? [data] : null,
+    error,
+  })
+
+  if (error) {
+    const detail = [error.message, error.code].filter(Boolean).join(' · ')
+    throw new DriverReportsServiceError(
+      detail || 'Unable to update driver report.',
+    )
+  }
 
   if (!data) {
     throw new DriverReportsServiceError(

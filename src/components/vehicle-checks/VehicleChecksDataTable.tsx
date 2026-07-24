@@ -9,9 +9,17 @@ import type { VehicleCheckListItem } from '@/lib/vehicleCheckTypes'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import {
   formatDefectReviewStatusLabel,
+  formatVehicleCheckReference,
   formatVehicleCheckResultLabel,
   getDefectReviewBadgeClass,
   getResultBadgeClass,
+  getVehicleCheckCorrectionAddedBadgeClassName,
+  getVehicleCheckCorrectionBadgeClassName,
+  getVehicleCheckCorrectionReferenceLinkClassName,
+  isVehicleCheckEditable,
+  isVehicleCheckFinal,
+  vehicleCheckDefectCountTextClassName,
+  vehicleCheckNeutralTextClassName,
 } from '@/lib/vehicleCheckUtils'
 import {
   adminTableEntityName,
@@ -21,7 +29,7 @@ import {
   adminText,
   adminTextStrong,
 } from '@/lib/adminUiStyles'
-import { ClipboardCheck, Eye, Pencil, Trash2 } from 'lucide-react'
+import { ClipboardCheck, Eye, FilePlus2, Pencil, Trash2 } from 'lucide-react'
 
 type VehicleChecksDataTableProps = {
   checks: VehicleCheckListItem[]
@@ -29,20 +37,32 @@ type VehicleChecksDataTableProps = {
   onEdit: (check: VehicleCheckListItem) => void
   onDelete: (check: VehicleCheckListItem) => void
   onReviewDefects: (check: VehicleCheckListItem) => void
+  onCreateCorrection: (check: VehicleCheckListItem) => void
+  onOpenOriginal: (originalCheckId: string) => void
+  onOpenLatestCorrection: (correctionId: string) => void
+  onOpenCorrectionHistory: (check: VehicleCheckListItem) => void
 }
 
 function VehicleCheckRowActions({
   canReview,
+  canEdit,
+  canDelete,
+  canCreateCorrection,
   onView,
   onEdit,
   onDelete,
   onReviewDefects,
+  onCreateCorrection,
 }: {
   canReview: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canCreateCorrection: boolean
   onView: () => void
   onEdit: () => void
   onDelete: () => void
   onReviewDefects: () => void
+  onCreateCorrection: () => void
 }) {
   const actions: RowAction[] = [
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
@@ -57,10 +77,28 @@ function VehicleCheckRowActions({
     })
   }
 
-  actions.push(
-    { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
-    { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
-  )
+  if (canCreateCorrection) {
+    actions.push({
+      id: 'correct',
+      label: 'Create Correction',
+      icon: FilePlus2,
+      onClick: onCreateCorrection,
+    })
+  }
+
+  if (canEdit) {
+    actions.push({ id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit })
+  }
+
+  if (canDelete) {
+    actions.push({
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      tone: 'danger',
+      onClick: onDelete,
+    })
+  }
 
   return <RowActionsMenu actions={actions} />
 }
@@ -71,6 +109,10 @@ export function VehicleChecksDataTable({
   onEdit,
   onDelete,
   onReviewDefects,
+  onCreateCorrection,
+  onOpenOriginal,
+  onOpenLatestCorrection,
+  onOpenCorrectionHistory,
 }: VehicleChecksDataTableProps) {
   const { formatDate, compactTables } = useCompanySettings()
   const rowPadding = compactTables ? 'py-3' : 'py-4'
@@ -78,6 +120,9 @@ export function VehicleChecksDataTable({
   const cellPadding = `px-4 ${rowPadding}`
   const badgeClassName =
     'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 sm:px-3 sm:py-1.5 sm:text-sm'
+  const correctionBadgeClassName = getVehicleCheckCorrectionBadgeClassName()
+  const correctionAddedBadgeClassName = getVehicleCheckCorrectionAddedBadgeClassName()
+  const correctionLinkClassName = getVehicleCheckCorrectionReferenceLinkClassName()
 
   function formatCheckDateTime(check: VehicleCheckListItem): string {
     const datePart = formatDate(check.inspectionDate)
@@ -132,8 +177,52 @@ export function VehicleChecksDataTable({
                 key={check.id}
                 className={`${adminTableRow} min-h-[68px] text-sm sm:min-h-[72px]`}
               >
-                <td className={`${cellPadding} align-middle tabular-nums font-medium ${adminTextStrong}`}>
-                  {formatCheckDateTime(check)}
+                <td className={`${cellPadding} align-middle`}>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className={`tabular-nums font-medium ${adminTextStrong}`}>
+                      {formatCheckDateTime(check)}
+                    </span>
+                    {check.originalCheckId ? (
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className={correctionBadgeClassName} title="Correction record">
+                          ↳ Correction
+                        </span>
+                        <button
+                          type="button"
+                          className={correctionLinkClassName}
+                          aria-label="Open original vehicle check"
+                          onClick={() => onOpenOriginal(check.originalCheckId!)}
+                        >
+                          Correction of{' '}
+                          {formatVehicleCheckReference(check.originalCheckId)}
+                        </button>
+                      </div>
+                    ) : check.linkedCorrectionCount > 0 ? (
+                      <button
+                        type="button"
+                        className={correctionAddedBadgeClassName}
+                        aria-label={
+                          check.linkedCorrectionCount === 1
+                            ? 'Open latest correction'
+                            : `Open correction history, ${check.linkedCorrectionCount} corrections`
+                        }
+                        onClick={() => {
+                          if (
+                            check.linkedCorrectionCount === 1 &&
+                            check.latestCorrectionId
+                          ) {
+                            onOpenLatestCorrection(check.latestCorrectionId)
+                            return
+                          }
+                          onOpenCorrectionHistory(check)
+                        }}
+                      >
+                        {check.linkedCorrectionCount === 1
+                          ? 'Correction added'
+                          : `Corrections added (${check.linkedCorrectionCount})`}
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
                 <td className={`${cellPadding} align-middle`}>
                   <div className={`truncate ${adminTableEntityName}`}>
@@ -158,8 +247,8 @@ export function VehicleChecksDataTable({
                 <td
                   className={`${cellPadding} align-middle font-medium ${
                     check.defectCount > 0
-                      ? 'font-semibold text-amber-700 dark:text-amber-300'
-                      : adminText
+                      ? vehicleCheckDefectCountTextClassName
+                      : `${adminText} ${vehicleCheckNeutralTextClassName}`
                   }`}
                 >
                   {getDefectsLabel(check)}
@@ -180,10 +269,14 @@ export function VehicleChecksDataTable({
                 <TableActionsCell className={rowPadding}>
                   <VehicleCheckRowActions
                     canReview={check.defectCount > 0}
+                    canEdit={isVehicleCheckEditable(check)}
+                    canDelete={isVehicleCheckEditable(check)}
+                    canCreateCorrection={isVehicleCheckFinal(check)}
                     onView={() => onView(check)}
                     onEdit={() => onEdit(check)}
                     onDelete={() => onDelete(check)}
                     onReviewDefects={() => onReviewDefects(check)}
+                    onCreateCorrection={() => onCreateCorrection(check)}
                   />
                 </TableActionsCell>
               </tr>

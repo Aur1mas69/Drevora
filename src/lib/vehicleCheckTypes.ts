@@ -69,6 +69,15 @@ export type VehicleCheckListItem = {
   defectReviewedBy: string | null
   defectReviewedByName: string | null
   defectReviewNotes: string | null
+  /** When set, this row is a correction of another Vehicle Check. */
+  originalCheckId: string | null
+  correctionReason: string | null
+  correctionCreatedBy: string | null
+  correctionCreatedAt: string | null
+  /** Linked corrections that point at this row (0 when this row is itself a correction). */
+  linkedCorrectionCount: number
+  /** Newest linked correction id for this original, if any. */
+  latestCorrectionId: string | null
 }
 
 export type VehicleCheck = VehicleCheckListItem & {
@@ -85,7 +94,6 @@ export type VehicleCheckSummaryStats = {
   awaitingReview: number
   /** Individual Defect (Advisory) item count (all-time, company-scoped). */
   defectItemsReported: number
-  vehiclesChecked: number
 }
 
 export type VehicleChecksQuery = {
@@ -157,6 +165,11 @@ export type SaveVehicleCheckDefectReviewInput = {
   notes?: string | null
   reviewerName: string
   confirmVehicleOffRoad?: boolean
+}
+
+export type CreateVehicleCheckCorrectionInput = {
+  originalCheckId: string
+  reason: string
 }
 
 export const VEHICLE_CHECK_PAGE_SIZE_OPTIONS = [25, 50, 100] as const

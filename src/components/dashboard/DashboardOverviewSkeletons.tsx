@@ -3,8 +3,8 @@ import { dashboardOverviewCardBase } from '@/components/dashboard/dashboardOverv
 export function DashboardKpiSkeleton() {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-full flex-col items-center">
-      <div className="aspect-square w-full max-w-[clamp(6.75rem,34vw,8.75rem)] rounded-full border-2 border-[#CFE3F5] bg-[#DCEEFF]/60 dark:border-slate-600 dark:bg-slate-800/60 sm:max-w-[11.75rem] lg:max-w-[12.25rem]" />
-      <div className="mt-2 h-3 w-20 rounded bg-[#DCEEFF]/60 dark:bg-slate-800/60" />
+      <div className="aspect-square w-full max-w-[clamp(8.5rem,36vw,9.375rem)] rounded-full border-[3px] border-[#D7E8FF] bg-[#F4F9FF] dark:border-slate-600 dark:bg-slate-800/60 sm:max-w-[10.5rem] lg:max-w-[11rem]" />
+      <div className="mt-2.5 h-3 w-24 rounded bg-[#DCEEFF]/60 dark:bg-slate-800/60" />
     </div>
   )
 }
@@ -36,7 +36,7 @@ export function RecentActivitySkeleton() {
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
-            className="h-[4.25rem] rounded-2xl bg-white/55 shadow-[0_2px_10px_rgba(59,130,246,0.08)] dark:bg-slate-800/50"
+            className="h-[4.25rem] rounded-2xl border border-[#D3E9FC]/90 bg-white/95 shadow-[0_1px_4px_rgba(40,80,140,0.06)] dark:border-white/10 dark:bg-slate-900/55"
           />
         ))}
       </div>
@@ -47,7 +47,7 @@ export function RecentActivitySkeleton() {
 export function DashboardOverviewSkeleton() {
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-2 gap-y-6 sm:gap-x-5 sm:gap-y-6 xl:grid-cols-4 xl:gap-6">
+      <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-4 gap-y-7 sm:gap-x-8 sm:gap-y-8 xl:grid-cols-4 xl:gap-x-10 xl:gap-y-8">
         {Array.from({ length: 4 }).map((_, index) => (
           <DashboardKpiSkeleton key={index} />
         ))}

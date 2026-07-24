@@ -20,50 +20,50 @@ const commentClassName =
   'min-h-10 w-full rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-3 py-2 text-sm text-[#113C69] outline-none placeholder:text-[#7FAFCC] focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30'
 
 /**
- * Outdoor / bright-sunlight status controls.
+ * Outdoor / bright-sunlight status controls (Worker mobile first).
  * Pass = OK (green), Advisory = Defect (red), Fail = N/A (amber).
- * Selected uses saturated fill + dark border + high-contrast label; not pastel.
+ * Selected fill is saturated so it stays obvious in sunlight.
  */
 const resultButtonBaseClassName =
-  'inline-flex min-h-11 items-center justify-center gap-1 rounded-[12px] border-2 px-1.5 text-xs font-extrabold tracking-wide transition-[transform,background-color,border-color,box-shadow,color,ring-color] duration-100 ease-out active:scale-[0.96] focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-45 sm:px-2 sm:text-sm'
+  'inline-flex min-h-12 items-center justify-center gap-1 rounded-[12px] border-[2.5px] px-1.5 text-[13px] font-black tracking-wide transition-[transform,background-color,border-color,box-shadow,color,ring-color] duration-100 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-45 sm:min-h-11 sm:px-2 sm:text-sm'
 
 const resultButtonStyles: Record<VehicleCheckItemResult, string> = {
   Pass: [
-    'border-emerald-700 bg-emerald-200 text-emerald-950',
-    'hover:border-emerald-800 hover:bg-emerald-300',
-    'active:bg-emerald-300',
-    'focus-visible:ring-emerald-400/80',
-    'data-[selected=true]:border-emerald-950 data-[selected=true]:bg-emerald-600 data-[selected=true]:text-white',
-    'data-[selected=true]:ring-4 data-[selected=true]:ring-emerald-300/90',
-    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(6,78,59,0.45)]',
-    'data-[selected=true]:active:bg-emerald-700',
+    'border-green-800 bg-green-100 text-green-950',
+    'hover:border-green-900 hover:bg-green-200',
+    'active:bg-green-200',
+    'focus-visible:ring-green-400/90',
+    'data-[selected=true]:border-green-950 data-[selected=true]:bg-green-600 data-[selected=true]:text-white',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-green-300',
+    'data-[selected=true]:shadow-[0_2px_0_#14532d,inset_0_-2px_0_rgba(6,78,59,0.55)]',
+    'data-[selected=true]:active:bg-green-700',
   ].join(' '),
   Advisory: [
-    'border-red-700 bg-red-200 text-red-950',
-    'hover:border-red-800 hover:bg-red-300',
-    'active:bg-red-300',
-    'focus-visible:ring-red-400/80',
+    'border-red-800 bg-red-100 text-red-950',
+    'hover:border-red-900 hover:bg-red-200',
+    'active:bg-red-200',
+    'focus-visible:ring-red-400/90',
     'data-[selected=true]:border-red-950 data-[selected=true]:bg-red-600 data-[selected=true]:text-white',
-    'data-[selected=true]:ring-4 data-[selected=true]:ring-red-300/90',
-    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(127,29,29,0.45)]',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-red-300',
+    'data-[selected=true]:shadow-[0_2px_0_#7f1d1d,inset_0_-2px_0_rgba(127,29,29,0.5)]',
     'data-[selected=true]:active:bg-red-700',
   ].join(' '),
   Fail: [
-    'border-amber-700 bg-amber-200 text-amber-950',
-    'hover:border-amber-800 hover:bg-amber-300',
-    'active:bg-amber-300',
-    'focus-visible:ring-amber-400/80',
-    'data-[selected=true]:border-amber-950 data-[selected=true]:bg-amber-500 data-[selected=true]:text-amber-950',
-    'data-[selected=true]:ring-4 data-[selected=true]:ring-amber-300/95',
-    'data-[selected=true]:shadow-[inset_0_-2px_0_rgba(120,53,15,0.4)]',
-    'data-[selected=true]:active:bg-amber-600 data-[selected=true]:active:text-white',
+    'border-amber-800 bg-amber-100 text-amber-950',
+    'hover:border-amber-900 hover:bg-amber-200',
+    'active:bg-amber-200',
+    'focus-visible:ring-amber-400/90',
+    'data-[selected=true]:border-amber-950 data-[selected=true]:bg-amber-400 data-[selected=true]:text-amber-950',
+    'data-[selected=true]:ring-4 data-[selected=true]:ring-amber-200',
+    'data-[selected=true]:shadow-[0_2px_0_#92400e,inset_0_-2px_0_rgba(120,53,15,0.45)]',
+    'data-[selected=true]:active:bg-amber-500',
   ].join(' '),
 }
 
 const resultBadgeStyles: Record<VehicleCheckItemResult, string> = {
-  Pass: 'border-emerald-800 bg-emerald-600 text-white',
-  Advisory: 'border-red-800 bg-red-600 text-white',
-  Fail: 'border-amber-800 bg-amber-500 text-amber-950',
+  Pass: 'border-green-900 bg-green-600 text-white',
+  Advisory: 'border-red-900 bg-red-600 text-white',
+  Fail: 'border-amber-900 bg-amber-400 text-amber-950',
 }
 
 const resultLabels: Record<VehicleCheckItemResult, string> = {
@@ -145,6 +145,18 @@ export function VehicleCheckChecklistForm({
 
     return numbers
   }, [grouped])
+
+  const currentCheckNumber = useMemo(() => {
+    if (totalCount === 0) return 0
+    for (const [, categoryItems] of grouped) {
+      for (const item of categoryItems) {
+        if (!isVehicleCheckItemAnswered(item)) {
+          return numberedItems.get(getVehicleCheckItemKey(item)) ?? 1
+        }
+      }
+    }
+    return totalCount
+  }, [grouped, numberedItems, totalCount])
 
   function clearDefectPhoto(item: VehicleCheckItemInput) {
     if (item.photoPreviewUrl?.startsWith('blob:')) {
@@ -254,29 +266,33 @@ export function VehicleCheckChecklistForm({
   const helpGuidance = helpItem ? getVehicleCheckTemplateGuidance(helpItem) : null
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       {!readOnly && totalCount > 0 ? (
-        <div className="sticky top-0 z-10 rounded-[10px] border border-[#D3E9FC] bg-[#FAFCFF]/95 px-3 py-2 shadow-sm backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-[#5499BF]">
-              Checked{' '}
-              <span className="tabular-nums text-[#113C69]">{answeredCount}</span>
-              {' / '}
-              <span className="tabular-nums text-[#113C69]">{totalCount}</span>
-            </p>
+        <div className="sticky top-0 z-10 rounded-[12px] border border-[#BFE3F5] bg-[#EAF4FF]/95 px-3 py-2 shadow-[0_4px_14px_rgba(33,142,231,0.12)] backdrop-blur-md">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#0B68BE]">
+                Check {currentCheckNumber} of {totalCount}
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums leading-none text-[#113C69]">
+                {answeredCount}
+                <span className="font-semibold text-[#5499BF]"> answered</span>
+                <span className="ml-2 text-[#0B68BE]">{progressPercent}% complete</span>
+              </p>
+            </div>
             {highlightUnanswered && answeredCount < totalCount ? (
-              <span className="text-[11px] font-semibold text-amber-700">
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
                 {totalCount - answeredCount} left
               </span>
             ) : null}
           </div>
           <div
-            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#E8F3FE]"
+            className="mt-2 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-[#C5DFFB]"
             role="progressbar"
             aria-valuemin={0}
-            aria-valuemax={totalCount}
-            aria-valuenow={answeredCount}
-            aria-label={`Checklist progress: ${answeredCount} of ${totalCount} items answered`}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+            aria-label={`Check ${currentCheckNumber} of ${totalCount}, ${progressPercent} percent complete`}
           >
             <div
               className="h-full rounded-full bg-[#218EE7] transition-all duration-200"
@@ -289,9 +305,9 @@ export function VehicleCheckChecklistForm({
       {[...grouped.entries()].map(([category, categoryItems]) => (
         <section
           key={category}
-          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_6px_18px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
+          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_4px_14px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
         >
-          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1.5 dark:from-slate-800/70 dark:to-slate-800/50">
+          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               {category}
             </h3>
@@ -310,7 +326,7 @@ export function VehicleCheckChecklistForm({
               return (
                 <div
                   key={key}
-                  className={`px-2.5 py-2 sm:px-3 sm:py-2.5 ${
+                  className={`px-2.5 py-1.5 sm:px-3 sm:py-2.5 ${
                     showUnansweredHighlight
                       ? 'bg-amber-50/70 ring-1 ring-inset ring-amber-200/90'
                       : ''
@@ -319,7 +335,7 @@ export function VehicleCheckChecklistForm({
                   <div className="flex items-start gap-1.5">
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-start gap-1.5">
-                        <h4 className="min-w-0 flex-1 text-sm font-semibold leading-5 text-[#113C69]">
+                        <h4 className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-[#113C69] sm:text-sm">
                           <span className="mr-1.5 font-bold tabular-nums text-[#218EE7]">
                             {itemNumber}.
                           </span>
@@ -333,7 +349,7 @@ export function VehicleCheckChecklistForm({
                         <button
                           type="button"
                           onClick={() => setHelpItem(item)}
-                          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE]"
+                          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE] sm:size-9"
                           aria-label={`Show guidance for ${item.itemName}`}
                         >
                           <Info className="size-3.5" />
@@ -355,7 +371,7 @@ export function VehicleCheckChecklistForm({
                       ) : (
                         <>
                           <div
-                            className="mt-1.5 grid grid-cols-3 gap-1.5 sm:gap-2"
+                            className="mt-1.5 grid grid-cols-3 gap-2"
                             role="group"
                             aria-label={`Status for ${item.itemName}`}
                           >
@@ -379,8 +395,8 @@ export function VehicleCheckChecklistForm({
                                 >
                                   {selected ? (
                                     <Check
-                                      className="size-3.5 shrink-0 sm:size-4"
-                                      strokeWidth={3}
+                                      className="size-4 shrink-0"
+                                      strokeWidth={3.5}
                                       aria-hidden="true"
                                     />
                                   ) : null}
@@ -390,53 +406,71 @@ export function VehicleCheckChecklistForm({
                             })}
                           </div>
 
-                          {shouldShowDefectNotes ? (
-                            <div className="mt-2">
-                              <textarea
-                                value={item.comment ?? ''}
-                                onChange={(event) =>
-                                  updateItem(item.category, item.itemName, {
-                                    comment: event.target.value,
-                                  })
-                                }
-                                rows={2}
-                                placeholder="Describe the defect…"
-                                className={commentClassName}
-                              />
+                          <div
+                            className={`grid transition-[grid-template-rows,opacity,margin] duration-200 ease-out ${
+                              shouldShowDefectNotes
+                                ? 'mt-2 grid-rows-[1fr] opacity-100'
+                                : 'mt-0 grid-rows-[0fr] opacity-0'
+                            }`}
+                          >
+                            <div className="min-h-0 overflow-hidden">
+                              {shouldShowDefectNotes ? (
+                                <textarea
+                                  value={item.comment ?? ''}
+                                  onChange={(event) =>
+                                    updateItem(item.category, item.itemName, {
+                                      comment: event.target.value,
+                                    })
+                                  }
+                                  rows={2}
+                                  placeholder="Describe the defect…"
+                                  className={commentClassName}
+                                />
+                              ) : null}
                             </div>
-                          ) : null}
+                          </div>
 
-                          {shouldShowDefectPhoto ? (
-                            <div className="mt-2">
-                              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#5499BF]">
-                                <Camera className="size-3.5" />
-                                Defect photo
-                              </p>
-                              <VehicleCheckDefectPhotoField
-                                storagePath={
-                                  item.photoFile ? null : item.photoUrl ?? null
-                                }
-                                previewBlobUrl={item.photoPreviewUrl ?? null}
-                                selectedFile={item.photoFile ?? null}
-                                onPhotoSelected={(file, previewUrl) => {
-                                  clearDefectPhoto(item)
-                                  updateItem(item.category, item.itemName, {
-                                    photoFile: file,
-                                    photoPreviewUrl: previewUrl,
-                                    photoUrl: null,
-                                  })
-                                }}
-                                onPhotoRemoved={() => {
-                                  clearDefectPhoto(item)
-                                  updateItem(item.category, item.itemName, {
-                                    photoFile: null,
-                                    photoPreviewUrl: null,
-                                    photoUrl: null,
-                                  })
-                                }}
-                              />
+                          <div
+                            className={`grid transition-[grid-template-rows,opacity,margin] duration-200 ease-out ${
+                              shouldShowDefectPhoto
+                                ? 'mt-1.5 grid-rows-[1fr] opacity-100'
+                                : 'mt-0 grid-rows-[0fr] opacity-0'
+                            }`}
+                          >
+                            <div className="min-h-0 overflow-hidden">
+                              {shouldShowDefectPhoto ? (
+                                <div>
+                                  <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#5499BF]">
+                                    <Camera className="size-3.5" />
+                                    Defect photo
+                                  </p>
+                                  <VehicleCheckDefectPhotoField
+                                    storagePath={
+                                      item.photoFile ? null : item.photoUrl ?? null
+                                    }
+                                    previewBlobUrl={item.photoPreviewUrl ?? null}
+                                    selectedFile={item.photoFile ?? null}
+                                    onPhotoSelected={(file, previewUrl) => {
+                                      clearDefectPhoto(item)
+                                      updateItem(item.category, item.itemName, {
+                                        photoFile: file,
+                                        photoPreviewUrl: previewUrl,
+                                        photoUrl: null,
+                                      })
+                                    }}
+                                    onPhotoRemoved={() => {
+                                      clearDefectPhoto(item)
+                                      updateItem(item.category, item.itemName, {
+                                        photoFile: null,
+                                        photoPreviewUrl: null,
+                                        photoUrl: null,
+                                      })
+                                    }}
+                                  />
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
+                          </div>
                         </>
                       )}
                     </div>
@@ -449,7 +483,7 @@ export function VehicleCheckChecklistForm({
       ))}
 
       {helpItem ? (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/35 px-3 pb-3 backdrop-blur-[2px] sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/35 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] backdrop-blur-[2px] sm:items-center sm:p-6">
           <button
             type="button"
             className="absolute inset-0"
@@ -474,7 +508,7 @@ export function VehicleCheckChecklistForm({
               <button
                 type="button"
                 onClick={() => setHelpItem(null)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm dark:bg-slate-800 dark:text-blue-300"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm dark:bg-slate-800 dark:text-blue-300 sm:size-9"
                 aria-label="Close guidance"
               >
                 <X className="size-4" />

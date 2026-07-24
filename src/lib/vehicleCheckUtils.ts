@@ -15,6 +15,27 @@ export function isVehicleCheckDefectResult(result: string | null | undefined): b
   return result === 'Advisory'
 }
 
+/** Pending / In Progress and unsigned — Office (and Worker where allowed) may edit. */
+export function isVehicleCheckEditable(
+  check: Pick<VehicleCheckListItem, 'status' | 'signedAt'>,
+): boolean {
+  return (
+    (check.status === 'Pending' || check.status === 'In Progress') && !check.signedAt
+  )
+}
+
+/** Completed or signed — inspection record is immutable; use a correction to amend. */
+export function isVehicleCheckFinal(
+  check: Pick<VehicleCheckListItem, 'status' | 'signedAt'>,
+): boolean {
+  return check.status === 'Completed' || Boolean(check.signedAt)
+}
+
+/** Compact display reference for an inspection id (first 8 chars). */
+export function formatVehicleCheckReference(id: string): string {
+  return id.replace(/-/g, '').slice(0, 8).toUpperCase()
+}
+
 type VehicleCheckItemDescriptionSource = {
   description?: string | null
   templateItem?: { description?: string | null } | null
@@ -275,27 +296,57 @@ export function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+/**
+ * Shared Vehicle Checks semantic badge colours.
+ * Same meaning → same colour across table, drawer, KPIs, and checklist displays.
+ */
+export const vehicleCheckSemanticBadge = {
+  success:
+    'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60',
+  warning:
+    'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60',
+  urgent:
+    'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60',
+  active:
+    'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60',
+  neutral:
+    'bg-slate-50 text-slate-600 ring-slate-100 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10',
+  correction:
+    'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:ring-violet-900/60',
+} as const
+
+export const vehicleCheckCorrectionLinkClassName =
+  'text-violet-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 dark:text-violet-300 dark:focus-visible:ring-violet-700'
+
+export const vehicleCheckDefectCountTextClassName =
+  'font-semibold text-amber-700 dark:text-amber-300'
+
+export const vehicleCheckNeutralTextClassName =
+  'text-slate-500 dark:text-slate-400'
+
 export function getStatusBadgeClass(status: VehicleCheckListItem['status']): string {
   switch (status) {
     case 'Completed':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
+      return vehicleCheckSemanticBadge.success
     case 'In Progress':
-      return 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
+      return vehicleCheckSemanticBadge.active
     case 'Pending':
-      return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
+      return vehicleCheckSemanticBadge.neutral
   }
 
-  return 'bg-slate-50 text-slate-700 ring-slate-100 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
+  return vehicleCheckSemanticBadge.neutral
 }
 
 export function getResultBadgeClass(result: VehicleCheckResult): string {
   switch (result) {
     case 'Pass':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
+      return vehicleCheckSemanticBadge.success
     case 'Advisory':
-      return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
+      // Historical "Defects found" stays amber even after review is Resolved.
+      return vehicleCheckSemanticBadge.warning
     case 'Fail':
-      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
+      // Legacy overall_result labelled as "Defects found" — warning, not urgent.
+      return vehicleCheckSemanticBadge.warning
   }
 }
 
@@ -323,7 +374,15 @@ export function formatVehicleCheckItemResultLabel(result: VehicleCheckItemResult
 }
 
 export function getItemResultBadgeClass(result: VehicleCheckItemResult): string {
-  return getResultBadgeClass(result)
+  switch (result) {
+    case 'Pass':
+      return vehicleCheckSemanticBadge.success
+    case 'Advisory':
+      return vehicleCheckSemanticBadge.warning
+    case 'Fail':
+      // Item N/A — informational, not a defect or failure.
+      return vehicleCheckSemanticBadge.neutral
+  }
 }
 
 export function formatDefectReviewStatusLabel(
@@ -351,27 +410,39 @@ export function getDefectReviewBadgeClass(
   defectCount: number,
 ): string {
   if (defectCount <= 0 || !status) {
-    return 'bg-slate-50 text-slate-600 ring-slate-100 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
+    return vehicleCheckSemanticBadge.neutral
   }
 
   switch (status) {
     case 'awaiting_review':
-      return 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60'
+      return vehicleCheckSemanticBadge.urgent
     case 'safe_to_operate':
-      return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60'
+      return vehicleCheckSemanticBadge.success
     case 'repair_required':
-      return 'bg-orange-50 text-orange-800 ring-orange-100 dark:bg-orange-950/40 dark:text-orange-300 dark:ring-orange-900/60'
+      return vehicleCheckSemanticBadge.warning
     case 'vehicle_off_road':
-      return 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60'
+      return vehicleCheckSemanticBadge.urgent
     case 'resolved':
-      return 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60'
+      return vehicleCheckSemanticBadge.success
   }
+}
+
+export function getVehicleCheckCorrectionBadgeClassName(): string {
+  return `inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.02em] ring-1 ${vehicleCheckSemanticBadge.correction}`
+}
+
+export function getVehicleCheckCorrectionAddedBadgeClassName(): string {
+  return `inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.02em] ring-1 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 dark:hover:bg-amber-950/70 dark:focus-visible:ring-amber-700 ${vehicleCheckSemanticBadge.warning}`
+}
+
+export function getVehicleCheckCorrectionReferenceLinkClassName(): string {
+  return `mt-0.5 block w-fit max-w-full text-left text-[11px] font-medium leading-4 ${vehicleCheckCorrectionLinkClassName}`
 }
 
 export function computeVehicleCheckSummaryStats(
   checks: Pick<
     VehicleCheckListItem,
-    'inspectionDate' | 'overallResult' | 'vehicleId' | 'defectCount' | 'defectReviewStatus'
+    'inspectionDate' | 'overallResult' | 'defectCount' | 'defectReviewStatus'
   >[],
   defectItemCount: number,
 ): VehicleCheckSummaryStats {
@@ -385,7 +456,6 @@ export function computeVehicleCheckSummaryStats(
   const awaitingReview = checks.filter(
     (check) => check.defectCount > 0 && check.defectReviewStatus === 'awaiting_review',
   ).length
-  const vehiclesChecked = new Set(todayChecks.map((check) => check.vehicleId)).size
 
   return {
     totalChecks: checks.length,
@@ -394,7 +464,6 @@ export function computeVehicleCheckSummaryStats(
     defectsFoundToday,
     awaitingReview,
     defectItemsReported: defectItemCount,
-    vehiclesChecked,
   }
 }
 

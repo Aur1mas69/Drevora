@@ -4,9 +4,11 @@ import {
   countDefectAnswers,
   defaultDefectReviewStatus,
   enrichVehicleCheckItemsWithTemplates,
+  isVehicleCheckFinal,
   resolveInspectionResult,
 } from '@/lib/vehicleCheckUtils'
 import type {
+  CreateVehicleCheckCorrectionInput,
   CreateVehicleCheckInput,
   SaveVehicleCheckDefectReviewInput,
   UpdateVehicleCheckInput,
@@ -99,6 +101,10 @@ const vehicleCheckListSelect = `
   defect_reviewed_by,
   defect_reviewed_by_name,
   defect_review_notes,
+  original_check_id,
+  correction_reason,
+  correction_created_by,
+  correction_created_at,
   drivers ( first_name, last_name ),
   vehicles ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
@@ -126,6 +132,10 @@ const vehicleCheckDetailSelect = `
   defect_reviewed_by,
   defect_reviewed_by_name,
   defect_review_notes,
+  original_check_id,
+  correction_reason,
+  correction_created_by,
+  correction_created_at,
   drivers ( first_name, last_name ),
   vehicles ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
@@ -153,6 +163,10 @@ type VehicleCheckRow = {
   defect_reviewed_by: string | null
   defect_reviewed_by_name: string | null
   defect_review_notes: string | null
+  original_check_id: string | null
+  correction_reason: string | null
+  correction_created_by: string | null
+  correction_created_at: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
   vehicles:
     | (VehicleJoinRow & { status?: string | null })
@@ -272,7 +286,71 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     defectReviewedBy: row.defect_reviewed_by,
     defectReviewedByName: row.defect_reviewed_by_name,
     defectReviewNotes: row.defect_review_notes,
+    originalCheckId: row.original_check_id ?? null,
+    correctionReason: row.correction_reason ?? null,
+    correctionCreatedBy: row.correction_created_by ?? null,
+    correctionCreatedAt: row.correction_created_at ?? null,
+    linkedCorrectionCount: 0,
+    latestCorrectionId: null,
   }
+}
+
+/**
+ * One company-scoped batch query for the current page of originals.
+ * Avoids N+1 while powering table correction markers.
+ */
+async function attachLinkedCorrectionSummaries(
+  companyId: string,
+  items: VehicleCheckListItem[],
+): Promise<VehicleCheckListItem[]> {
+  const originalIds = items
+    .filter((item) => !item.originalCheckId)
+    .map((item) => item.id)
+
+  if (originalIds.length === 0) return items
+
+  const { data, error } = await requireSupabase()
+    .from('vehicle_checks')
+    .select('id, original_check_id, created_at')
+    .eq('company_id', companyId)
+    .in('original_check_id', originalIds)
+    .order('created_at', { ascending: false })
+
+  logSupabaseQuery({
+    service: 'vehicleChecksService.attachLinkedCorrectionSummaries',
+    table: 'vehicle_checks',
+    data: data ?? [],
+    error,
+  })
+
+  if (error) {
+    throw new VehicleChecksServiceError(error.message)
+  }
+
+  const byOriginal = new Map<string, { count: number; latestId: string }>()
+  for (const row of data ?? []) {
+    const originalId = row.original_check_id as string | null
+    const correctionId = row.id as string
+    if (!originalId) continue
+
+    const existing = byOriginal.get(originalId)
+    if (!existing) {
+      byOriginal.set(originalId, { count: 1, latestId: correctionId })
+    } else {
+      existing.count += 1
+    }
+  }
+
+  return items.map((item) => {
+    if (item.originalCheckId) return item
+    const summary = byOriginal.get(item.id)
+    if (!summary) return item
+    return {
+      ...item,
+      linkedCorrectionCount: summary.count,
+      latestCorrectionId: summary.latestId,
+    }
+  })
 }
 
 function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
@@ -355,7 +433,7 @@ async function fetchVehicleCheckStats(
   const checksResult = await requireSupabase()
     .from('vehicle_checks')
     .select(
-      'id, inspection_date, overall_result, vehicle_id, defect_review_status, vehicle_check_items ( result )',
+      'id, inspection_date, overall_result, defect_review_status, vehicle_check_items ( result )',
     )
     .eq('company_id', companyId)
 
@@ -374,7 +452,6 @@ async function fetchVehicleCheckStats(
     id: string
     inspection_date: string
     overall_result: string
-    vehicle_id: string
     defect_review_status: string | null
     vehicle_check_items?: { result: string }[] | null
   }>
@@ -391,7 +468,6 @@ async function fetchVehicleCheckStats(
     return {
       inspectionDate: row.inspection_date,
       overallResult: resolveInspectionResult(row.overall_result, defectCount),
-      vehicleId: row.vehicle_id,
       defectCount,
       defectReviewStatus:
         defectCount > 0 ? (storedReview ?? 'awaiting_review') : null,
@@ -449,7 +525,9 @@ function matchesReviewStatusFilter(
   return effective === reviewStatus
 }
 
-async function requireOfficeReviewerContext(): Promise<{
+async function requireOfficeVehicleCheckContext(
+  actionLabel: string,
+): Promise<{
   userId: string
   companyId: string
   membershipRole: string
@@ -462,14 +540,14 @@ async function requireOfficeReviewerContext(): Promise<{
   if (membership.status !== 'ready') {
     throw new VehicleChecksServiceError(
       membership.status === 'unauthenticated'
-        ? 'Sign in to review defects.'
+        ? `Sign in to ${actionLabel}.`
         : membership.message,
     )
   }
 
   if (!isOfficeMembershipRole(membership.membershipRole)) {
     throw new VehicleChecksServiceError(
-      'Only office roles can save a defect review decision.',
+      `Only office roles can ${actionLabel}.`,
     )
   }
 
@@ -674,8 +752,11 @@ export async function fetchVehicleChecks(
     query.reviewStatus === 'none' ||
     (query.result === 'Advisory' && filteredRows.length !== (count ?? 0))
 
+  const pageItems = filteredRows.slice(from, to).map(mapListRow)
+  const items = await attachLinkedCorrectionSummaries(companyId, pageItems)
+
   return {
-    items: filteredRows.slice(from, to).map(mapListRow),
+    items,
     totalCount: needsClientCount ? filteredRows.length : (count ?? filteredRows.length),
     page,
     pageSize,
@@ -899,6 +980,12 @@ export async function updateVehicleCheck(
     throw new VehicleChecksServiceError('Inspection not found.')
   }
 
+  if (isVehicleCheckFinal(existing)) {
+    throw new VehicleChecksServiceError(
+      'Completed Vehicle Checks are read-only. Create a correction to amend.',
+    )
+  }
+
   const items = input.items ?? existing.items.map((item) => ({
     category: item.category,
     itemName: item.itemName,
@@ -1069,6 +1156,16 @@ export async function updateVehicleCheck(
 
 export async function deleteVehicleCheck(id: string): Promise<void> {
   const verifiedCompanyId = requireVerifiedCompanyId()
+  const existing = await fetchVehicleCheckById(id)
+  if (!existing) {
+    throw new VehicleChecksServiceError('Inspection not found.')
+  }
+  if (isVehicleCheckFinal(existing)) {
+    throw new VehicleChecksServiceError(
+      'Completed Vehicle Checks cannot be deleted. Create a correction instead.',
+    )
+  }
+
   let error: Error | null = null
 
   try {
@@ -1093,6 +1190,156 @@ export async function deleteVehicleCheck(id: string): Promise<void> {
 }
 
 /**
+ * Office-only: create a new editable correction linked to a completed inspection.
+ * The original completed record is never modified.
+ */
+export async function createVehicleCheckCorrection(
+  input: CreateVehicleCheckCorrectionInput,
+): Promise<VehicleCheck> {
+  const { userId, companyId } = await requireOfficeVehicleCheckContext(
+    'create a Vehicle Check correction',
+  )
+  const reason = input.reason.trim()
+  if (!reason) {
+    throw new VehicleChecksServiceError('A correction reason is required.')
+  }
+
+  const original = await fetchVehicleCheckById(input.originalCheckId)
+  if (!original) {
+    throw new VehicleChecksServiceError('Original inspection not found.')
+  }
+  if (!isVehicleCheckFinal(original)) {
+    throw new VehicleChecksServiceError(
+      'Only completed Vehicle Checks can be corrected. Edit the existing draft instead.',
+    )
+  }
+
+  const now = new Date().toISOString()
+  const overallResult = computeOverallResult(original.items)
+  const defectCount = countDefectAnswers(original.items)
+  const defectReviewStatus = defaultDefectReviewStatus(defectCount)
+
+  const { data: checkRow, error: checkError } = await requireSupabase()
+    .from('vehicle_checks')
+    .insert({
+      company_id: companyId,
+      vehicle_id: original.vehicleId,
+      worker_id: original.workerId,
+      inspection_date: original.inspectionDate,
+      odometer: original.odometer,
+      odometer_unit: original.odometerUnit,
+      status: 'In Progress',
+      overall_result: overallResult,
+      defect_review_status: defectReviewStatus,
+      notes: original.notes,
+      inspection_started_at: now,
+      original_check_id: original.id,
+      correction_reason: reason,
+      correction_created_by: userId,
+      correction_created_at: now,
+    })
+    .select('id')
+    .single()
+
+  logSupabaseQuery({
+    service: 'vehicleChecksService.createVehicleCheckCorrection.insert',
+    table: 'vehicle_checks',
+    data: checkRow ? [checkRow] : [],
+    error: checkError,
+  })
+
+  if (checkError || !checkRow) {
+    throw new VehicleChecksServiceError(
+      checkError?.message ?? 'Failed to create correction.',
+    )
+  }
+
+  try {
+    // Clone checklist answers/comments only — do not reuse photo storage paths
+    // (updates must never delete photos belonging to the original inspection).
+    const itemInputs: VehicleCheckItemInput[] = original.items.map((item) => ({
+      category: item.category,
+      itemName: item.itemName,
+      result: item.result,
+      comment: item.comment,
+      photoUrl: null,
+      description: item.description,
+      templateItem: item.templateItem,
+      allowNotes: item.allowNotes,
+      allowPhoto: item.allowPhoto,
+      failOnDefect: item.failOnDefect,
+      isAnswered: true,
+    }))
+
+    await assertVehicleCheckInCompany(checkRow.id, companyId)
+    const itemRows = buildItemRows(checkRow.id, itemInputs)
+    if (itemRows.length > 0) {
+      const { error: itemsError } = await requireSupabase()
+        .from(VEHICLE_CHECK_ITEMS_TABLE)
+        .insert(itemRows)
+
+      logSupabaseQuery({
+        service: 'vehicleChecksService.createVehicleCheckCorrection.items',
+        table: 'vehicle_check_items',
+        data: itemRows,
+        error: itemsError,
+      })
+
+      if (itemsError) {
+        throw new VehicleChecksServiceError(itemsError.message)
+      }
+    }
+  } catch (error) {
+    try {
+      await deleteVehicleCheckForCompany(checkRow.id, companyId)
+    } catch {
+      // Best-effort cleanup of the unfinished correction row.
+    }
+    throw error instanceof VehicleChecksServiceError
+      ? error
+      : new VehicleChecksServiceError(
+          error instanceof Error ? error.message : 'Failed to create correction.',
+        )
+  }
+
+  const created = await fetchVehicleCheckById(checkRow.id)
+  if (!created) {
+    throw new VehicleChecksServiceError(
+      'Correction was created but could not be loaded.',
+    )
+  }
+
+  return created
+}
+
+/** Company-scoped corrections that reference the given original inspection. */
+export async function fetchVehicleCheckCorrections(
+  originalCheckId: string,
+): Promise<VehicleCheckListItem[]> {
+  const companyId = requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase()
+    .from('vehicle_checks')
+    .select(vehicleCheckListSelect)
+    .eq('company_id', companyId)
+    .eq('original_check_id', originalCheckId)
+    .order('created_at', { ascending: false })
+
+  logSupabaseQuery({
+    service: 'vehicleChecksService.fetchVehicleCheckCorrections',
+    table: 'vehicle_checks',
+    data: data ?? [],
+    error,
+  })
+
+  if (error) {
+    throw new VehicleChecksServiceError(error.message)
+  }
+
+  return ((data ?? []) as unknown as VehicleCheckRow[]).map(mapListRow)
+}
+
+/**
  * Office-only operational decision for inspections with defects.
  * Does not modify Worker checklist answers or historical defect records.
  */
@@ -1100,7 +1347,9 @@ export async function saveVehicleCheckDefectReview(
   id: string,
   input: SaveVehicleCheckDefectReviewInput,
 ): Promise<VehicleCheck> {
-  const { userId, companyId, membershipRole } = await requireOfficeReviewerContext()
+  const { userId, companyId, membershipRole } = await requireOfficeVehicleCheckContext(
+    'save a defect review decision',
+  )
   const existing = await fetchVehicleCheckById(id)
   if (!existing) {
     throw new VehicleChecksServiceError('Inspection not found.')
@@ -1201,7 +1450,9 @@ export async function saveVehicleCheckDefectReview(
 export const vehicleChecksService = {
   fetchVehicleChecks,
   fetchVehicleCheckById,
+  fetchVehicleCheckCorrections,
   createVehicleCheck,
+  createVehicleCheckCorrection,
   updateVehicleCheck,
   deleteVehicleCheck,
   saveVehicleCheckDefectReview,

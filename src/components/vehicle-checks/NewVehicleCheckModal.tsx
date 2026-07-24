@@ -357,14 +357,14 @@ export function NewVehicleCheckModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-950/45 max-sm:p-0 sm:items-center sm:px-4 sm:py-6 sm:backdrop-blur-sm">
       <div
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 dark:shadow-black/50"
+        className="flex h-dvh max-h-dvh w-full max-w-3xl flex-col bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 max-sm:rounded-none sm:h-auto sm:max-h-[92vh] sm:rounded-[18px] dark:bg-slate-900/95 dark:ring-white/10 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-vehicle-check-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-5 py-4 dark:border-white/10 sm:px-6">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(75,120,220,0.10)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-white/10 sm:px-6 sm:py-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
               Step {step} of 2
@@ -375,7 +375,7 @@ export function NewVehicleCheckModal({
             >
               {step === 1 ? 'Inspection details' : 'Inspection checklist'}
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-sm:line-clamp-2">
               {step === 1
                 ? 'Search by number plate, then confirm the vehicle details.'
                 : selectedVehicle
@@ -391,14 +391,14 @@ export function NewVehicleCheckModal({
             size="sm"
             onClick={onClose}
             disabled={isSaving}
-            className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
+            className="h-11 w-11 shrink-0 rounded-[10px] p-0 text-slate-500 sm:h-8 sm:w-8"
             aria-label="Close"
           >
             <X className="size-4" />
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+        <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
           {step === 1 ? (
             <form id="vehicle-check-step-1" onSubmit={(event) => void handleContinue(event)} className="space-y-4">
               {rememberedVehicle ? (
@@ -517,17 +517,17 @@ export function NewVehicleCheckModal({
           ) : (
             <form id="vehicle-check-step-2" onSubmit={(event) => void handleSave(event)}>
               {selectedVehicle ? (
-                <div className="mb-4">
+                <div className="mb-2 sm:mb-4">
                   <VehicleSummaryCard vehicle={selectedVehicle} />
                 </div>
               ) : null}
 
               {isLoadingChecklist ? (
-                <p className="mb-3 text-sm text-slate-500">Loading checklist…</p>
+                <p className="mb-2 text-sm text-slate-500 sm:mb-3">Loading checklist…</p>
               ) : null}
 
               {checklistNotice ? (
-                <p className="mb-3 rounded-[10px] bg-[#EEF6FF] px-3 py-2 text-sm text-[#0B68BE]">
+                <p className="mb-2 rounded-[10px] bg-[#EEF6FF] px-3 py-2 text-sm text-[#0B68BE] sm:mb-3">
                   {checklistNotice}
                 </p>
               ) : null}
@@ -540,19 +540,19 @@ export function NewVehicleCheckModal({
                 highlightUnanswered={showChecklistValidation}
               />
 
-              <label className="mt-4 block text-sm font-medium text-slate-700">
+              <label className="mt-3 block text-sm font-medium text-slate-700 sm:mt-4">
                 Overall notes
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  rows={3}
+                  rows={2}
                   placeholder="Additional notes about this inspection"
-                  className="mt-1.5 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100"
+                  className="mt-1 w-full rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 sm:mt-1.5 sm:min-h-[4.5rem]"
                 />
               </label>
 
               {items.length > 0 ? (
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-2 text-sm text-slate-600 sm:mt-3">
                   Overall result:{' '}
                   <span className="font-semibold text-[#2A376F]">
                     {overallResult === 'Advisory' ? 'Defects found' : 'Passed'}
@@ -589,55 +589,55 @@ export function NewVehicleCheckModal({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-between gap-2 border-t border-[rgba(75,120,220,0.10)] px-5 py-4 sm:px-6">
-          {step === 2 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setStep(1)
-                setInspectionStartedAt(null)
-              }}
-              disabled={isSaving}
-              className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600"
-            >
-              <ChevronLeft className="mr-1 size-4" />
-              Back
-            </Button>
-          ) : (
-            <span />
-          )}
-
-          <div className="flex flex-wrap gap-2">
+        <div className="sticky bottom-0 z-20 flex shrink-0 flex-col gap-2 border-t border-[#C5DFFB] bg-[#EAF4FF]/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:static sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:border-[rgba(75,120,220,0.10)] sm:bg-white sm:px-6 sm:py-4 sm:backdrop-blur-none dark:sm:bg-slate-900/95">
+          <div className="flex items-center gap-2 max-sm:order-2">
+            {step === 2 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setStep(1)
+                  setInspectionStartedAt(null)
+                }}
+                disabled={isSaving}
+                className="h-11 min-w-11 rounded-[12px] px-3 text-sm font-semibold text-slate-600 sm:h-10 sm:px-4"
+              >
+                <ChevronLeft className="mr-1 size-4" />
+                Back
+              </Button>
+            ) : (
+              <span className="max-sm:hidden" />
+            )}
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
               disabled={isSaving}
-              className="h-10 rounded-[12px] px-4 text-sm font-semibold text-slate-600"
+              className="h-11 rounded-[12px] px-3 text-sm font-semibold text-slate-600 sm:h-10 sm:px-4"
             >
               Cancel
             </Button>
-            {step === 1 ? (
-              <Button
-                type="submit"
-                form="vehicle-check-step-1"
-                disabled={sortedDrivers.length === 0 || isLoadingChecklist}
-                className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
-              >
-                {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                form="vehicle-check-step-2"
-                disabled={isSaving || isLoadingChecklist || !canSaveInspection}
-                className="h-10 rounded-[12px] bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
-              >
-                {isSaving ? 'Saving…' : 'Save Inspection'}
-              </Button>
-            )}
           </div>
+
+          {step === 1 ? (
+            <Button
+              type="submit"
+              form="vehicle-check-step-1"
+              disabled={sortedDrivers.length === 0 || isLoadingChecklist}
+              className="h-12 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-bold text-white hover:bg-[#0B68BE] max-sm:order-1 sm:h-10 sm:w-auto sm:font-semibold"
+            >
+              {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              form="vehicle-check-step-2"
+              disabled={isSaving || isLoadingChecklist || !canSaveInspection}
+              className="h-12 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-bold text-white shadow-[0_4px_14px_rgba(33,142,231,0.35)] hover:bg-[#0B68BE] disabled:opacity-60 max-sm:order-1 sm:h-10 sm:w-auto sm:font-semibold sm:shadow-none"
+            >
+              {isSaving ? 'Saving…' : 'Complete Vehicle Check'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

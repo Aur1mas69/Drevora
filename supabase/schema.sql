@@ -773,7 +773,11 @@ alter table public.vehicle_checks
   add column if not exists defect_reviewed_at timestamptz,
   add column if not exists defect_reviewed_by uuid references auth.users (id) on delete set null,
   add column if not exists defect_reviewed_by_name text,
-  add column if not exists defect_review_notes text;
+  add column if not exists defect_review_notes text,
+  add column if not exists original_check_id uuid references public.vehicle_checks (id) on delete restrict,
+  add column if not exists correction_reason text,
+  add column if not exists correction_created_by uuid references auth.users (id) on delete set null,
+  add column if not exists correction_created_at timestamptz;
 
 update public.vehicle_checks
 set odometer_unit = 'miles'
@@ -816,6 +820,18 @@ alter table public.vehicle_checks
     )
   );
 
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_correction_reason_required;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_correction_reason_required check (
+    original_check_id is null
+    or (
+      correction_reason is not null
+      and length(trim(correction_reason)) > 0
+    )
+  );
+
 create table if not exists public.vehicle_check_items (
   id uuid primary key default gen_random_uuid(),
   vehicle_check_id uuid not null references public.vehicle_checks (id) on delete cascade,
@@ -845,8 +861,136 @@ create index if not exists vehicle_checks_inspection_date_idx on public.vehicle_
 create index if not exists vehicle_checks_status_idx on public.vehicle_checks (status);
 create index if not exists vehicle_checks_overall_result_idx on public.vehicle_checks (overall_result);
 create index if not exists vehicle_checks_defect_review_status_idx on public.vehicle_checks (defect_review_status);
+create index if not exists vehicle_checks_original_check_id_idx
+  on public.vehicle_checks (original_check_id)
+  where original_check_id is not null;
 create index if not exists vehicle_check_items_check_id_idx on public.vehicle_check_items (vehicle_check_id);
 create index if not exists vehicle_check_items_result_idx on public.vehicle_check_items (result);
+
+-- Completed Vehicle Check immutability + correction workflow helpers
+-- (canonical: 20260724220000_vehicle_checks_completed_immutable_and_corrections.sql)
+create or replace function public.drevora_vehicle_check_is_final(
+  p_status text,
+  p_signed_at timestamptz
+)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select
+    p_status = 'Completed'
+    or p_signed_at is not null;
+$$;
+
+revoke all on function public.drevora_vehicle_check_is_final(text, timestamptz) from public;
+grant execute on function public.drevora_vehicle_check_is_final(text, timestamptz) to authenticated;
+
+create or replace function public.drevora_enforce_vehicle_check_completed_immutable()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if public.drevora_is_trusted_tenant_writer() then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
+  if tg_op = 'DELETE' then
+    if public.drevora_vehicle_check_is_final(old.status, old.signed_at) then
+      raise exception 'DREVORA: Completed Vehicle Checks cannot be deleted. Create a correction instead.';
+    end if;
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE'
+     and public.drevora_vehicle_check_is_final(old.status, old.signed_at) then
+    if new.id is distinct from old.id
+       or new.company_id is distinct from old.company_id
+       or new.vehicle_id is distinct from old.vehicle_id
+       or new.worker_id is distinct from old.worker_id
+       or new.inspection_date is distinct from old.inspection_date
+       or new.odometer is distinct from old.odometer
+       or new.odometer_unit is distinct from old.odometer_unit
+       or new.status is distinct from old.status
+       or new.overall_result is distinct from old.overall_result
+       or new.notes is distinct from old.notes
+       or new.signature_url is distinct from old.signature_url
+       or new.signed_at is distinct from old.signed_at
+       or new.inspection_started_at is distinct from old.inspection_started_at
+       or new.inspection_completed_at is distinct from old.inspection_completed_at
+       or new.duration_seconds is distinct from old.duration_seconds
+       or new.original_check_id is distinct from old.original_check_id
+       or new.correction_reason is distinct from old.correction_reason
+       or new.correction_created_by is distinct from old.correction_created_by
+       or new.correction_created_at is distinct from old.correction_created_at
+       or new.created_at is distinct from old.created_at then
+      raise exception 'DREVORA: Completed Vehicle Checks are read-only. Create a correction to amend.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists drevora_enforce_vehicle_check_completed_immutable
+  on public.vehicle_checks;
+
+create trigger drevora_enforce_vehicle_check_completed_immutable
+  before update or delete on public.vehicle_checks
+  for each row
+  execute function public.drevora_enforce_vehicle_check_completed_immutable();
+
+revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from public;
+revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from anon;
+revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from authenticated;
+
+create or replace function public.drevora_enforce_vehicle_check_item_completed_immutable()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_parent_id uuid;
+  v_status text;
+  v_signed_at timestamptz;
+begin
+  if public.drevora_is_trusted_tenant_writer() then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
+  v_parent_id := case
+    when tg_op = 'DELETE' then old.vehicle_check_id
+    else new.vehicle_check_id
+  end;
+
+  select vc.status, vc.signed_at
+    into v_status, v_signed_at
+  from public.vehicle_checks vc
+  where vc.id = v_parent_id;
+
+  if public.drevora_vehicle_check_is_final(v_status, v_signed_at) then
+    raise exception 'DREVORA: Checklist items on a completed Vehicle Check cannot be changed.';
+  end if;
+
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+drop trigger if exists drevora_enforce_vehicle_check_item_completed_immutable
+  on public.vehicle_check_items;
+
+create trigger drevora_enforce_vehicle_check_item_completed_immutable
+  before insert or update or delete on public.vehicle_check_items
+  for each row
+  execute function public.drevora_enforce_vehicle_check_item_completed_immutable();
+
+revoke all on function public.drevora_enforce_vehicle_check_item_completed_immutable() from public;
+revoke all on function public.drevora_enforce_vehicle_check_item_completed_immutable() from anon;
+revoke all on function public.drevora_enforce_vehicle_check_item_completed_immutable() from authenticated;
 
 alter table public.vehicle_checks disable row level security;
 alter table public.vehicle_check_items disable row level security;

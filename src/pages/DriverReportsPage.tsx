@@ -409,6 +409,8 @@ export default function DriverReportsPage() {
 
       await loadReports()
     } catch (error) {
+      // Restore list from the server — never keep a successful UI after a failed write.
+      await loadReports().catch(() => undefined)
       if (error instanceof DriverReportFileStorageError) throw error
       throw error instanceof DriverReportsServiceError
         ? error
