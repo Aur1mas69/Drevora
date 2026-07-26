@@ -223,6 +223,19 @@ export function formatCalculatedCost(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
 }
 
+/**
+ * Format a unit price for editable inputs.
+ * Keeps up to 4 decimal places so petrol-station prices like 1.479 stay intact.
+ */
+export function formatUnitPriceInput(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return ''
+  if (Number.isInteger(value)) return String(value)
+  return value
+    .toFixed(4)
+    .replace(/(\.\d*?[1-9])0+$/, '$1')
+    .replace(/\.0+$/, '')
+}
+
 export function deriveUnitPriceFromTotal(
   quantity: number,
   totalCost: number | null,
@@ -230,5 +243,18 @@ export function deriveUnitPriceFromTotal(
   if (totalCost === null || !Number.isFinite(quantity) || quantity <= 0) return ''
   const unitPrice = totalCost / quantity
   if (!Number.isFinite(unitPrice) || unitPrice < 0) return ''
-  return formatCalculatedCost(unitPrice)
+  return formatUnitPriceInput(unitPrice)
+}
+
+export function formatUnitPriceLabel(
+  unit: ConsumableUnit,
+  currency: CompanyCurrency = DEFAULT_CURRENCY,
+): string {
+  const symbols: Record<CompanyCurrency, string> = {
+    GBP: '£',
+    EUR: '€',
+    USD: '$',
+    RUB: '₽',
+  }
+  return `Unit price (${symbols[currency] ?? '£'}/${unit})`
 }

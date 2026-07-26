@@ -60,7 +60,10 @@ export function ConsumableReceiptField({
 
   return (
     <div className="sm:col-span-2">
-      <p className="text-sm font-medium text-[#113C69]">Receipt / Photo</p>
+      <p className="text-sm font-medium text-[#113C69]">
+        Receipt / Photo{' '}
+        <span className="font-normal text-[#3D7A9C]">· Optional · Recommended</span>
+      </p>
 
       {hasExistingReceipt ? (
         <div className="mt-1.5 rounded-xl border border-[#D3E9FC] bg-[#F5FAFF]/80 p-4">
@@ -131,7 +134,10 @@ export function ConsumableReceiptField({
         >
           <Upload className="size-6 text-[#218EE7]" strokeWidth={1.8} />
           <p className="mt-3 text-sm font-semibold text-[#113C69]">Upload receipt or photo</p>
-          <p className="mt-1 text-sm text-[#3D7A9C]">JPG, PNG, WEBP or PDF up to 10 MB</p>
+          <p className="mt-1 text-sm text-[#3D7A9C]">
+            Receipt photo is optional but recommended
+          </p>
+          <p className="mt-0.5 text-xs text-[#5499BF]">JPG, PNG, WEBP or PDF up to 10 MB</p>
         </button>
       ) : null}
 

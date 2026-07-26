@@ -460,9 +460,14 @@ async function fetchVehicleLabelMap(vehicleIds: string[]): Promise<Map<string, s
   const uniqueIds = [...new Set(vehicleIds.filter(Boolean))]
   if (uniqueIds.length === 0) return new Map()
 
+  // Same verified company scope as vehiclesService.fetchVehicles.
+  // Office RLS already allows active + archived own-company rows; Workers remain
+  // limited to active Vehicles by vehicles_worker_select_company.
+  const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
     .from('vehicles')
     .select('id, registration, fleet_number')
+    .eq('company_id', companyId)
     .in('id', uniqueIds)
 
   logSupabaseQuery({
@@ -470,18 +475,29 @@ async function fetchVehicleLabelMap(vehicleIds: string[]): Promise<Map<string, s
     table: 'vehicles',
     data,
     error,
+    // ID-scoped lookup: zero matches is often legitimate (orphaned link or no
+    // vehicle-linked Documents on this page), not proof of Vehicles RLS failure.
+    warnOnEmpty: false,
   })
 
   if (error) {
     throw new DocumentsServiceError(error.message)
   }
 
-  return new Map(
-    (data ?? []).map((row) => {
-      const vehicle = row as VehicleLookupRow
-      return [vehicle.id, mapVehicleLabel(vehicle)]
-    }),
-  )
+  const rows = (data ?? []) as VehicleLookupRow[]
+
+  if (import.meta.env.DEV && rows.length < uniqueIds.length) {
+    const found = new Set(rows.map((row) => row.id))
+    const missing = uniqueIds.filter((id) => !found.has(id))
+    console.info('[documentsService.fetchVehicleLabelMap] unmatched vehicle ids', {
+      companyId,
+      requested: uniqueIds.length,
+      matched: rows.length,
+      missingCount: missing.length,
+    })
+  }
+
+  return new Map(rows.map((vehicle) => [vehicle.id, mapVehicleLabel(vehicle)]))
 }
 
 async function mapDocumentRows(rows: DocumentRow[]): Promise<Document[]> {

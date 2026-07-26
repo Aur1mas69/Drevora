@@ -289,18 +289,12 @@ export default function TermsPage() {
                     refund is required by law or DREVORA expressly agrees otherwise.
                   </p>
                 </Callout>
-                <p>The Customer may cancel its monthly subscription at any time.</p>
-                <p>Cancellation prevents the next monthly renewal.</p>
                 <p>After cancellation:</p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>access continues until the end of the billing period already paid for;</li>
                   <li>no further monthly subscription charge will be taken;</li>
                   <li>access may be restricted or terminated when the paid billing period ends.</li>
                 </ul>
-                <p>
-                  Payments already taken for the current billing period are non-refundable, except
-                  where a refund is required by law or DREVORA expressly agrees otherwise.
-                </p>
                 <p>
                   No partial refund or credit is provided for unused days in an already paid billing
                   period.
@@ -362,11 +356,6 @@ export default function TermsPage() {
                   </p>
                 </Callout>
                 <p>
-                  Medical document uploads are optional and disabled by default unless enabled by
-                  the Customer.
-                </p>
-                <p>Medical documents may contain special-category personal data.</p>
-                <p>
                   If the Customer enables or uses medical-document uploads, the Customer is
                   responsible for:
                 </p>
@@ -378,73 +367,126 @@ export default function TermsPage() {
                   <li>deleting the document when it is no longer required;</li>
                   <li>complying with applicable employment and data-protection laws.</li>
                 </ul>
-                <p>
-                  DREVORA does not require Customers to record diagnoses, medications, detailed
-                  medical conditions, doctor’s notes or full examination responses.
-                </p>
               </section>
 
               <section className="space-y-3" aria-labelledby="retention">
                 <SectionHeading id="retention">11. Data Retention</SectionHeading>
                 <p>
-                  DREVORA is designed to support retention of business records for periods selected
-                  or required by the Customer.
+                  DREVORA is designed to support different retention periods for different
+                  categories of business and personal data. There is no single retention period that
+                  applies to every record.
                 </p>
                 <p>
-                  Unless a shorter retention period is selected, the Customer deletes the data, the
-                  account is terminated, or applicable law requires a different period, Customer
-                  operational records may be retained for up to six years.
+                  Unless the Customer selects another lawful period, deletes the record earlier, or
+                  applicable law requires a different period, DREVORA’s standard retention schedule
+                  is:
                 </p>
-                <p>Different retention periods may apply to:</p>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>account and billing records;</li>
-                  <li>Timesheets;</li>
-                  <li>Holiday Requests;</li>
-                  <li>Vehicle Checks;</li>
-                  <li>Driver Reports;</li>
-                  <li>Documents;</li>
-                  <li>Consumables;</li>
-                  <li>security and technical logs.</li>
+                <ul className="list-disc space-y-1.5 pl-5">
+                  <li>
+                    Timesheets: up to six years from the end of the relevant work week or
+                    pay-reference period;
+                  </li>
+                  <li>
+                    Holiday Requests, holiday entitlement and holiday-pay records: up to six years
+                    from the date the record was made;
+                  </li>
+                  <li>
+                    account, billing, payment and financial records: up to six years from the end of
+                    the relevant financial or tax period;
+                  </li>
+                  <li>
+                    Consumables receipts, invoices and other records used as financial evidence: up
+                    to six years from the end of the relevant financial or tax period;
+                  </li>
+                  <li>
+                    CMR, POD, delivery notes, load documents and other records used as commercial,
+                    contractual, customs or tax evidence: up to six years from the relevant
+                    transaction, delivery or financial period;
+                  </li>
+                  <li>
+                    Vehicle Checks, Tyre Checks, vehicle defect reports, repair evidence and
+                    associated photographs or signatures: normally 24 months from completion or
+                    closure of the record;
+                  </li>
+                  <li>
+                    drivers’ hours and tachograph operational records stored in DREVORA: normally 24
+                    months from the record date, unless a longer period is required for another
+                    lawful purpose;
+                  </li>
+                  <li>
+                    Driving Licence, Driver CPC and Tachograph Card records: normally for the
+                    Worker’s active engagement and up to 24 months after the Worker is archived or
+                    the engagement ends;
+                  </li>
+                  <li>
+                    Right to Work evidence: for the duration of the Worker’s employment and normally
+                    for two years after the employment ends;
+                  </li>
+                  <li>
+                    the minimum archived Worker or Vehicle profile required to preserve authorised
+                    historical, compliance, accounting or contractual links: up to six years after
+                    archive;
+                  </li>
+                  <li>
+                    security, audit and technical logs: for the shorter period reasonably necessary
+                    for security, fraud prevention, troubleshooting and legal compliance.
+                  </li>
                 </ul>
                 <p>
-                  The detailed retention schedule will be stated in the Privacy Policy and may be
-                  updated to reflect legal, technical and product requirements.
+                  Medical documents and other special-category personal data are not subject to a
+                  general 24-month or six-year default. Where the Customer enables medical-document
+                  uploads, the Customer must determine whether retaining the document is necessary,
+                  select the shortest appropriate period, restrict access and delete the document
+                  when it is no longer required. DREVORA may retain only limited status, verification
+                  or expiry metadata where a full copy is not necessary.
                 </p>
                 <p>
-                  The Customer remains responsible for determining the retention period legally
-                  required for its own records.
+                  Archiving a Worker or Vehicle does not automatically restart, shorten or extend the
+                  retention period of historical records linked to that Worker or Vehicle. Each
+                  Timesheet, Holiday Request, Vehicle Check, Driver Report, Document, Consumable or
+                  other operational record may have its own retention deadline calculated from the
+                  relevant event or record date.
                 </p>
                 <p>
-                  DREVORA may retain limited records for longer where required by law, necessary for
-                  legal claims, fraud prevention, security investigations or dispute resolution.
+                  The expiry of a retention period means that a record may become eligible for
+                  deletion or anonymisation. It does not guarantee immediate or automatic deletion.
+                  DREVORA may provide a review, export, legal-hold or controlled deletion process
+                  before final removal.
+                </p>
+                <p>
+                  Records may be retained for longer where required by law, a competent authority, an
+                  active legal hold, legal claims, litigation, tax or regulatory enquiries, fraud
+                  prevention, security investigations or dispute resolution. When the additional
+                  retention purpose ends, the record will be reviewed and deleted or anonymised where
+                  it is no longer required.
+                </p>
+                <p>
+                  The Customer remains responsible for determining the retention periods legally
+                  required for its organisation, applying any required legal hold, keeping
+                  independent copies and not retaining personal data for longer than necessary.
+                </p>
+                <p>
+                  The detailed retention schedule, purposes and relevant categories of personal data
+                  will also be described in the Privacy Policy and may be updated to reflect changes
+                  in law, regulation, product functionality or documented Customer requirements.
                 </p>
               </section>
 
               <section className="space-y-3" aria-labelledby="exports">
                 <SectionHeading id="exports">12. Customer Exports and Independent Copies</SectionHeading>
-                <Callout title="Exports and independent copies">
-                  <p>
-                    Where export functionality is available, the Customer may export records
-                    regularly and should store those exports in its own private storage system.
-                  </p>
-                  <p>
-                    The Customer should not rely on DREVORA as the only permanent copy of records
-                    that it is legally required to retain.
-                  </p>
-                </Callout>
                 <p>
-                  The Customer should maintain independent copies of information that is important
-                  to its business, regulatory compliance or legal obligations.
-                </p>
-                <p>
-                  Where export functionality is available, the Customer may export records
-                  regularly, including as frequently as daily, and store those exports in its own
-                  private storage system.
+                  Where export functionality is available, the Customer may export records regularly,
+                  including as frequently as daily, and should store those exports in its own private
+                  storage system.
                 </p>
                 <p>Export functionality and supported formats may vary between modules.</p>
                 <p>
                   The Customer should not rely on DREVORA as the only permanent copy of records that
                   it is legally required to retain.
+                </p>
+                <p>
+                  The Customer should maintain independent copies of information that is important
+                  to its business, regulatory compliance or legal obligations.
                 </p>
                 <p>
                   Before cancelling a subscription or closing an account, the Customer should export
@@ -648,13 +690,6 @@ export default function TermsPage() {
                     12 months immediately preceding the event giving rise to the claim.
                   </p>
                 </Callout>
-                <p>Nothing in these Terms excludes or limits liability for:</p>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>death or personal injury caused by negligence;</li>
-                  <li>fraud or fraudulent misrepresentation;</li>
-                  <li>deliberate misconduct;</li>
-                  <li>any liability that cannot legally be excluded or limited.</li>
-                </ul>
                 <p>Subject to the above, DREVORA will not be liable for:</p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>indirect or consequential loss;</li>
@@ -671,12 +706,6 @@ export default function TermsPage() {
                     credentials.
                   </li>
                 </ul>
-                <p>
-                  Subject to liability that cannot legally be limited, DREVORA’s total aggregate
-                  liability arising from or connected with the Service will not exceed the
-                  subscription fees paid by the Customer during the 12 months immediately preceding
-                  the event giving rise to the claim.
-                </p>
                 <p>Each limitation applies only to the extent permitted by applicable law.</p>
               </section>
 

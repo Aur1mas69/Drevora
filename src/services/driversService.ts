@@ -1087,6 +1087,29 @@ function applyLifecycleFilterToRows(
   return drivers
 }
 
+function logFetchDriversResult(
+  companyId: string,
+  lifecycle: DriverLifecycleFilter,
+  drivers: Driver[],
+): void {
+  logSupabaseQuery({
+    service: 'driversService.fetchDrivers',
+    table: 'drivers',
+    data: drivers,
+    error: null,
+    // Empty is valid: new company, or no Workers in the requested lifecycle
+    // (default active-only for selectors). Not proof of Drivers RLS failure.
+    warnOnEmpty: false,
+  })
+
+  if (import.meta.env.DEV && drivers.length === 0) {
+    console.info('[driversService.fetchDrivers] no workers matched scope', {
+      companyId,
+      lifecycle,
+    })
+  }
+}
+
 export async function fetchDrivers(
   options?: FetchDriversOptions,
 ): Promise<Driver[]> {
@@ -1101,12 +1124,7 @@ export async function fetchDrivers(
     const drivers = await ensureWorkerCodesForDrivers(
       await queryDrivers(workerProfileSelect, lifecycle),
     )
-    logSupabaseQuery({
-      service: 'driversService.fetchDrivers',
-      table,
-      data: drivers,
-      error: null,
-    })
+    logFetchDriversResult(companyId, lifecycle, drivers)
     return drivers
   } catch (primaryError) {
     const missingColumn = extractMissingColumn(
@@ -1127,27 +1145,20 @@ export async function fetchDrivers(
           missingArchivedColumn ? 'all' : lifecycle,
         ),
       )
-      logSupabaseQuery({
-        service: 'driversService.fetchDrivers',
-        table,
-        data: drivers,
-        error: null,
-      })
-      return missingArchivedColumn || missingRetentionColumn
-        ? applyLifecycleFilterToRows(drivers, lifecycle)
-        : drivers
+      const resolved =
+        missingArchivedColumn || missingRetentionColumn
+          ? applyLifecycleFilterToRows(drivers, lifecycle)
+          : drivers
+      logFetchDriversResult(companyId, lifecycle, resolved)
+      return resolved
     } catch {
       try {
         const drivers = await ensureWorkerCodesForDrivers(
           await queryDrivers(complianceDriverSelect, 'all'),
         )
-        logSupabaseQuery({
-          service: 'driversService.fetchDrivers',
-          table,
-          data: drivers,
-          error: null,
-        })
-        return applyLifecycleFilterToRows(drivers, lifecycle)
+        const resolved = applyLifecycleFilterToRows(drivers, lifecycle)
+        logFetchDriversResult(companyId, lifecycle, resolved)
+        return resolved
       } catch {
         const fallback = await requireSupabase()
           .from(table)
@@ -1155,18 +1166,28 @@ export async function fetchDrivers(
           .eq('company_id', companyId)
           .order('created_at', { ascending: false })
 
+        // Real query failures must keep the RLS-oriented empty warning off the
+        // success path; errors still go through logSupabaseQuery as console.error.
         logSupabaseQuery({
           service: 'driversService.fetchDrivers',
           table,
           data: fallback.data,
           error: fallback.error,
+          warnOnEmpty: false,
         })
 
         if (!fallback.error) {
-          return applyLifecycleFilterToRows(
+          const resolved = applyLifecycleFilterToRows(
             await ensureWorkerCodesForDrivers(await mapDriverRows(fallback.data ?? [])),
             lifecycle,
           )
+          if (import.meta.env.DEV && resolved.length === 0) {
+            console.info('[driversService.fetchDrivers] no workers matched scope', {
+              companyId,
+              lifecycle,
+            })
+          }
+          return resolved
         }
 
         const legacyFallback = await requireSupabase()
@@ -1176,12 +1197,14 @@ export async function fetchDrivers(
           .order('created_at', { ascending: false })
 
         if (!legacyFallback.error) {
-          return applyLifecycleFilterToRows(
+          const resolved = applyLifecycleFilterToRows(
             await ensureWorkerCodesForDrivers(
               await mapDriverRows(legacyFallback.data ?? []),
             ),
             lifecycle,
           )
+          logFetchDriversResult(companyId, lifecycle, resolved)
+          return resolved
         }
 
         const minimalFallback = await requireSupabase()
@@ -1191,15 +1214,23 @@ export async function fetchDrivers(
           .order('created_at', { ascending: false })
 
         if (minimalFallback.error) {
+          logSupabaseQuery({
+            service: 'driversService.fetchDrivers',
+            table,
+            data: minimalFallback.data,
+            error: minimalFallback.error,
+          })
           throw new DriversServiceError(minimalFallback.error.message)
         }
 
-        return applyLifecycleFilterToRows(
+        const resolved = applyLifecycleFilterToRows(
           await ensureWorkerCodesForDrivers(
             await mapDriverRows(minimalFallback.data ?? []),
           ),
           lifecycle,
         )
+        logFetchDriversResult(companyId, lifecycle, resolved)
+        return resolved
       }
     }
   }

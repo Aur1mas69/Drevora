@@ -1237,33 +1237,39 @@ export async function updateTimesheet(
 }
 
 export type CleanTimesheetsCurrentViewInput = {
-  /** Exact displayed week_start (will be normalized with company Monday/Sunday setting). */
-  weekStart: string
+  /**
+   * Same date bounds as Current list fetch (week_start gte/lte).
+   * Omit both to clean all eligible Approved Current company timesheets.
+   * Draft / Submitted / Rejected are never cleaned.
+   */
+  weekStartFrom?: string
+  weekStartTo?: string
+}
+
+type CleanTimesheetsCurrentViewRpcRow = {
+  id: string
+  cleaned_at: string | null
 }
 
 /**
- * Soft-clean Current week view: sets cleaned_at only on timesheets for that week.
- * Does not change status and does not touch timesheet_entries.
- * Scope: company_id, deleted_at IS NULL, cleaned_at IS NULL, week_start = normalized week.
+ * Soft-clean Current view via Office RPC (sets cleaned_at + updated_at only).
+ * Moves Approved Timesheets only. Does not change status or touch entries.
+ * Scope: verified company_id, deleted_at IS NULL, cleaned_at IS NULL,
+ * status = Approved, optional week_start From/To.
  */
 export async function cleanTimesheetsCurrentView(
-  input: CleanTimesheetsCurrentViewInput,
+  input: CleanTimesheetsCurrentViewInput = {},
 ): Promise<{ cleanedCount: number; cleanedIds: string[] }> {
   const companyId = requireVerifiedCompanyId()
-  const weekStart = normalizeWeekStartForCompany(input.weekStart)
-  const cleanedAt = new Date().toISOString()
 
-  const { data, error } = await requireSupabase()
-    .from('timesheets')
-    .update({
-      cleaned_at: cleanedAt,
-      updated_at: cleanedAt,
-    })
-    .eq('week_start', weekStart)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .is('cleaned_at', null)
-    .select('id, cleaned_at')
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_clean_timesheets_current_view',
+    {
+      p_company_id: companyId,
+      p_week_start_from: input.weekStartFrom || null,
+      p_week_start_to: input.weekStartTo || null,
+    },
+  )
 
   logSupabaseQuery({
     service: 'timesheetsService.cleanTimesheetsCurrentView',
@@ -1273,19 +1279,24 @@ export async function cleanTimesheetsCurrentView(
   })
 
   if (error) {
-    if (isMissingCleanedAtColumnError(error.message)) {
+    if (
+      isMissingCleanedAtColumnError(error.message) ||
+      /function .*drevora_clean_timesheets_current_view/i.test(error.message)
+    ) {
       throw new TimesheetsServiceError(
-        'Timesheets cleanup is not available yet. Ensure cleaned_at exists on timesheets.',
+        'Timesheets cleanup is not available yet. Ask DREVORA support to apply the latest database migration.',
       )
     }
     throw new TimesheetsServiceError(error.message)
   }
 
-  const cleanedIds = (data ?? []).map((row) => String((row as { id: string }).id))
+  const rows = (data ?? []) as CleanTimesheetsCurrentViewRpcRow[]
+  const cleanedIds = rows.map((row) => String(row.id)).filter(Boolean)
 
   if (import.meta.env.DEV) {
     console.info('[timesheets] clean current view', {
-      weekStart,
+      weekStartFrom: input.weekStartFrom ?? null,
+      weekStartTo: input.weekStartTo ?? null,
       cleanedCount: cleanedIds.length,
       cleanedIds,
     })
@@ -1440,55 +1451,130 @@ export async function upsertTimesheetEntries(
   return fetchTimesheetRowById(timesheetId, companyId)
 }
 
-export async function approveTimesheet(id: string): Promise<Timesheet> {
+type ApproveTimesheetsRpcRow = {
+  id: string
+  status: string
+  approved_at: string | null
+  updated_at: string | null
+}
+
+function isMissingApproveTimesheetsRpcError(message: string): boolean {
+  return /function .*drevora_approve_timesheets/i.test(message)
+}
+
+/**
+ * Office Approve via lifecycle RPC (single or bulk). Atomic: every requested
+ * Current Submitted Timesheet is approved, or none are.
+ */
+async function approveTimesheetsViaRpc(ids: string[]): Promise<ApproveTimesheetsRpcRow[]> {
   const companyId = requireVerifiedCompanyId()
-  const now = new Date().toISOString()
-  const { data, error } = await requireSupabase()
-    .from('timesheets')
-    .update({ status: 'Approved', approved_at: now, updated_at: now })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .select('id')
-    .maybeSingle()
+  const timesheetIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]
+
+  if (timesheetIds.length === 0) {
+    throw new TimesheetsServiceError('At least one Timesheet id is required.')
+  }
+
+  const { data, error } = await requireSupabase().rpc('drevora_approve_timesheets', {
+    p_company_id: companyId,
+    p_timesheet_ids: timesheetIds,
+  })
 
   logSupabaseQuery({
-    service: 'timesheetsService.approveTimesheet',
+    service: 'timesheetsService.approveTimesheetsViaRpc',
     table: 'timesheets',
-    data: data ? [data] : [],
+    data,
     error,
   })
 
-  if (error || !data) {
-    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
+  if (error) {
+    if (isMissingApproveTimesheetsRpcError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Timesheet approval is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    throw new TimesheetsServiceError(error.message)
   }
 
+  const rows = (data ?? []) as ApproveTimesheetsRpcRow[]
+  const returnedIds = new Set(rows.map((row) => String(row.id)))
+  const missing = timesheetIds.filter((id) => !returnedIds.has(id))
+
+  if (rows.length !== timesheetIds.length || missing.length > 0) {
+    throw new TimesheetsServiceError(
+      'Approve aborted: not every selected Timesheet could be approved. Refresh and try again.',
+    )
+  }
+
+  return rows
+}
+
+export async function approveTimesheet(id: string): Promise<Timesheet> {
+  const companyId = requireVerifiedCompanyId()
+  await approveTimesheetsViaRpc([id])
   return fetchTimesheetRowById(id, companyId)
+}
+
+type RejectTimesheetsRpcRow = {
+  id: string
+  status: string
+  rejected_at: string | null
+  updated_at: string | null
+}
+
+function isMissingRejectTimesheetsRpcError(message: string): boolean {
+  return /function .*drevora_reject_timesheets/i.test(message)
+}
+
+/**
+ * Office Reject via lifecycle RPC (single or bulk). Atomic: every requested
+ * Current Submitted Timesheet is rejected, or none are.
+ * No rejection-reason field exists on public.timesheets.
+ */
+async function rejectTimesheetsViaRpc(ids: string[]): Promise<RejectTimesheetsRpcRow[]> {
+  const companyId = requireVerifiedCompanyId()
+  const timesheetIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]
+
+  if (timesheetIds.length === 0) {
+    throw new TimesheetsServiceError('At least one Timesheet id is required.')
+  }
+
+  const { data, error } = await requireSupabase().rpc('drevora_reject_timesheets', {
+    p_company_id: companyId,
+    p_timesheet_ids: timesheetIds,
+  })
+
+  logSupabaseQuery({
+    service: 'timesheetsService.rejectTimesheetsViaRpc',
+    table: 'timesheets',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingRejectTimesheetsRpcError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Timesheet rejection is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    throw new TimesheetsServiceError(error.message)
+  }
+
+  const rows = (data ?? []) as RejectTimesheetsRpcRow[]
+  const returnedIds = new Set(rows.map((row) => String(row.id)))
+  const missing = timesheetIds.filter((id) => !returnedIds.has(id))
+
+  if (rows.length !== timesheetIds.length || missing.length > 0) {
+    throw new TimesheetsServiceError(
+      'Reject aborted: not every selected Timesheet could be rejected. Refresh and try again.',
+    )
+  }
+
+  return rows
 }
 
 export async function rejectTimesheet(id: string): Promise<Timesheet> {
   const companyId = requireVerifiedCompanyId()
-  const now = new Date().toISOString()
-  const { data, error } = await requireSupabase()
-    .from('timesheets')
-    .update({ status: 'Rejected', rejected_at: now, updated_at: now })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .select('id')
-    .maybeSingle()
-
-  logSupabaseQuery({
-    service: 'timesheetsService.rejectTimesheet',
-    table: 'timesheets',
-    data: data ? [data] : [],
-    error,
-  })
-
-  if (error || !data) {
-    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
-  }
-
+  await rejectTimesheetsViaRpc([id])
   return fetchTimesheetRowById(id, companyId)
 }
 
@@ -1541,59 +1627,15 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
 }
 
 export async function bulkApproveTimesheets(ids: string[]): Promise<number> {
-  const companyId = requireVerifiedCompanyId()
   if (ids.length === 0) return 0
-
-  const now = new Date().toISOString()
-  const { data, error } = await requireSupabase()
-    .from('timesheets')
-    .update({ status: 'Approved', approved_at: now, updated_at: now })
-    .in('id', ids)
-    .eq('company_id', companyId)
-    .eq('status', 'Submitted')
-    .is('deleted_at', null)
-    .select('id')
-
-  logSupabaseQuery({
-    service: 'timesheetsService.bulkApproveTimesheets',
-    table: 'timesheets',
-    data,
-    error,
-  })
-
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
-  }
-
-  return data?.length ?? 0
+  const rows = await approveTimesheetsViaRpc(ids)
+  return rows.length
 }
 
 export async function bulkRejectTimesheets(ids: string[]): Promise<number> {
-  const companyId = requireVerifiedCompanyId()
   if (ids.length === 0) return 0
-
-  const now = new Date().toISOString()
-  const { data, error } = await requireSupabase()
-    .from('timesheets')
-    .update({ status: 'Rejected', rejected_at: now, updated_at: now })
-    .in('id', ids)
-    .eq('company_id', companyId)
-    .in('status', ['Submitted', 'Draft'])
-    .is('deleted_at', null)
-    .select('id')
-
-  logSupabaseQuery({
-    service: 'timesheetsService.bulkRejectTimesheets',
-    table: 'timesheets',
-    data,
-    error,
-  })
-
-  if (error) {
-    throw new TimesheetsServiceError(error.message)
-  }
-
-  return data?.length ?? 0
+  const rows = await rejectTimesheetsViaRpc(ids)
+  return rows.length
 }
 
 export async function fetchExistingTimesheetDriverIdsForWeek(

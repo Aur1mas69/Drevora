@@ -3,6 +3,10 @@ import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Consumable } from '@/lib/consumableTypes'
 import {
+  deriveUnitPriceFromTotal,
+  formatUnitPriceLabel,
+} from '@/lib/consumableDefaultPrices'
+import {
   formatConsumableEntryDateTime,
   formatConsumableItemCost,
   formatQuantityWithUnit,
@@ -10,6 +14,21 @@ import {
   getConsumableTypeBadgeClass,
   hasReceiptAttached,
 } from '@/lib/consumableUtils'
+import { DEFAULT_CURRENCY, type CompanyCurrency } from '@/lib/companySettingsTypes'
+
+function formatUnitPriceDisplay(
+  unitPriceText: string,
+  currency: CompanyCurrency,
+): string {
+  if (!unitPriceText.trim()) return '—'
+  const symbols: Record<CompanyCurrency, string> = {
+    GBP: '£',
+    EUR: '€',
+    USD: '$',
+    RUB: '₽',
+  }
+  return `${symbols[currency] ?? '£'}${unitPriceText}`
+}
 import { isImageReceiptPath } from '@/lib/consumableReceiptStorage'
 import { getConsumableReceiptSignedUrl } from '@/services/consumableReceiptStorageService'
 import { Download, Loader2, Pencil, X } from 'lucide-react'
@@ -45,6 +64,10 @@ export function ConsumableDrawer({
 }: ConsumableDrawerProps) {
   const { formatDate, formatTime, settings } = useCompanySettings()
   const defaultPrices = settings?.consumableDefaultPrices ?? {}
+  const currency = settings?.currency ?? DEFAULT_CURRENCY
+  const derivedUnitPrice = record
+    ? deriveUnitPriceFromTotal(record.quantity, record.cost)
+    : ''
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -143,11 +166,15 @@ export function ConsumableDrawer({
               value={formatQuantityWithUnit(record.quantity, record.unit)}
             />
             <DetailRow
-              label="Cost"
-              value={formatConsumableItemCost(record, defaultPrices)}
+              label={formatUnitPriceLabel(record.unit, currency)}
+              value={formatUnitPriceDisplay(derivedUnitPrice, currency)}
             />
             <DetailRow
-              label="Supplier / Site"
+              label="Total cost"
+              value={formatConsumableItemCost(record, defaultPrices, currency)}
+            />
+            <DetailRow
+              label="Supplier / Location"
               value={formatSupplierSite(record.supplier, record.site)}
             />
             <DetailRow

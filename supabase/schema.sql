@@ -135,6 +135,7 @@ create or replace function public.generate_worker_code()
 returns text
 language plpgsql
 volatile
+set search_path = ''
 as $$
 declare
   letters constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -173,6 +174,7 @@ create or replace function public.generate_unique_worker_code(p_company text)
 returns text
 language plpgsql
 volatile
+set search_path = ''
 as $$
 declare
   candidate text;
@@ -199,6 +201,7 @@ $$;
 create or replace function public.drivers_set_worker_code()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.worker_code is null or btrim(new.worker_code) = '' then
@@ -1525,6 +1528,7 @@ create index if not exists vehicle_check_template_items_is_active_idx
 create or replace function public.set_vehicle_check_template_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -2127,6 +2131,7 @@ $$;
 create or replace function public.drevora_set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -2275,6 +2280,7 @@ create index if not exists notification_reads_notification_id_idx
 create or replace function public.drevora_protect_company_plan_columns()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if tg_op = 'UPDATE' then
@@ -2303,7 +2309,7 @@ create or replace function public.drevora_create_company_with_trial_plan(
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -2387,6 +2393,7 @@ create or replace function public.drevora_active_worker_limit_for_plan(p_plan_co
 returns integer
 language sql
 immutable
+set search_path = ''
 as $$
   select case lower(trim(coalesce(p_plan_code, '')))
     when 'starter' then 20
@@ -2400,7 +2407,7 @@ create or replace function public.drevora_enforce_worker_plan_allowance()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_company_id uuid;
@@ -2602,6 +2609,7 @@ create or replace function public.drevora_active_vehicle_limit_for_plan(p_plan_c
 returns integer
 language sql
 immutable
+set search_path = ''
 as $$
   select case lower(trim(coalesce(p_plan_code, '')))
     when 'starter' then 10
@@ -2615,7 +2623,7 @@ create or replace function public.drevora_enforce_vehicle_plan_allowance()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_company_id uuid;

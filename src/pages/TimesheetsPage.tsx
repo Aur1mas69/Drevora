@@ -334,16 +334,19 @@ export default function TimesheetsPage() {
 
     setIsCleaningCurrentView(true)
     try {
-      // Scope: non-cleaned timesheets for the company week matching From (or current week).
-      const cleanWeekStart = normalizeWeekStartForCompany(
-        dateFrom || getDefaultWeekStartMonday(),
-      )
+      // Empty From/To = all eligible Approved Current timesheets for the company.
+      // Draft / Submitted / Rejected are never cleaned (remain in Current).
       const { cleanedCount } = await cleanTimesheetsCurrentView({
-        weekStart: cleanWeekStart,
+        weekStartFrom: dateFrom || undefined,
+        weekStartTo: dateTo || undefined,
       })
 
       if (cleanedCount === 0) {
-        showToast('No timesheets were cleaned from the current view.')
+        showToast(
+          dateFrom || dateTo
+            ? 'No approved Timesheets to move to History for the selected date filters.'
+            : 'No approved Timesheets to move to History.',
+        )
         return
       }
 
@@ -360,8 +363,8 @@ export default function TimesheetsPage() {
       await loadTimesheets()
       showToast(
         cleanedCount === 1
-          ? '1 timesheet removed from current view'
-          : `${cleanedCount} timesheets removed from current view`,
+          ? '1 approved timesheet moved to History'
+          : `${cleanedCount} approved timesheets moved to History`,
       )
     } catch (error) {
       showToast(
@@ -421,11 +424,16 @@ export default function TimesheetsPage() {
   }
 
   async function handleReject(timesheet: TimesheetListItem) {
+    if (timesheet.status !== 'Submitted') {
+      showToast('Only submitted timesheets can be rejected.')
+      return
+    }
+
     try {
       const updated = await rejectTimesheet(timesheet.id)
       replaceListItem(updated)
       showToast(`${timesheet.driverName} rejected`)
-      void loadTimesheets()
+      await loadTimesheets()
     } catch (error) {
       showToast(
         error instanceof TimesheetsServiceError
@@ -552,17 +560,28 @@ export default function TimesheetsPage() {
   )
 
   async function handleBulkApprove() {
+    if (isBulkBusy) return
+
+    const submittedIds = items
+      .filter((item) => selectedIds.has(item.id) && item.status === 'Submitted')
+      .map((item) => item.id)
+
+    if (submittedIds.length === 0) {
+      showToast('No submitted timesheets selected')
+      return
+    }
+
     setIsBulkBusy(true)
     try {
-      const count = await bulkApproveTimesheets([...selectedIds])
-      if (count === 0) {
-        showToast('No submitted timesheets selected')
-      } else if (count < selectedIds.size) {
-        showToast(`Approved ${count} submitted timesheet${count === 1 ? '' : 's'}`)
-      } else {
-        showToast(`Approved ${count} timesheet${count === 1 ? '' : 's'}`)
+      const count = await bulkApproveTimesheets(submittedIds)
+      if (count !== submittedIds.length) {
+        showToast(
+          'Approve aborted: not every selected Timesheet could be approved. Refresh and try again.',
+        )
+        return
       }
-      void loadTimesheets()
+      showToast(`Approved ${count} timesheet${count === 1 ? '' : 's'}`)
+      await loadTimesheets()
     } catch (error) {
       showToast(
         error instanceof TimesheetsServiceError
@@ -852,7 +871,7 @@ export default function TimesheetsPage() {
       <CleanCurrentViewModal
         open={isCleanCurrentViewOpen}
         title="Clean timesheets current view?"
-        description="Timesheets will be removed from the Current view and kept in History. No records or Timesheet entries will be permanently deleted."
+        description="Only Approved Timesheets will be moved from Current to History. Draft, Submitted and Rejected Timesheets stay in Current. No Timesheet or Timesheet entry will be permanently deleted."
         confirmLabel="Clean current view"
         confirming={isCleaningCurrentView}
         onCancel={() => {
