@@ -813,7 +813,7 @@ img.drevora-brand-logo {
 
 .auth-splash-halo {
   background: radial-gradient(
-    circle,
+    ellipse,
     rgba(56, 189, 248, 0.24) 0%,
     rgba(124, 58, 237, 0.14) 55%,
     transparent 75%
@@ -821,11 +821,6 @@ img.drevora-brand-logo {
   filter: blur(1px);
 }
 
-.auth-splash-word {
-  color: #1e3a6e;
-}
-
-.auth-splash-tagline,
 .auth-splash-message {
   color: #33507a;
 }
@@ -848,18 +843,13 @@ img.drevora-brand-logo {
 
 :where(.dark, .worker-dark) .auth-splash-halo {
   background: radial-gradient(
-    circle,
+    ellipse,
     rgba(163, 241, 171, 0.3) 0%,
     rgba(67, 68, 246, 0.32) 55%,
     transparent 75%
   );
 }
 
-:where(.dark, .worker-dark) .auth-splash-word {
-  color: #f8fafc;
-}
-
-:where(.dark, .worker-dark) .auth-splash-tagline,
 :where(.dark, .worker-dark) .auth-splash-message {
   color: #94a3b8;
 }
@@ -870,9 +860,11 @@ img.drevora-brand-logo {
 
 /* Calm, continuous motion — opt-in only when the user has no motion
    preference, so reduced-motion gets a static mark + non-moving bar for
-   free without needing override rules. */
+   free without needing override rules. Only the wrapping frame/halo
+   animates (subtle uniform scale + opacity); the official logo image
+   itself is never targeted by animation, filter or recolour rules. */
 @media (prefers-reduced-motion: no-preference) {
-  .auth-splash-mark {
+  .auth-splash-mark-frame {
     animation: auth-splash-breathe 3.2s ease-in-out infinite;
   }
 
