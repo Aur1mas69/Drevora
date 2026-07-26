@@ -71,6 +71,7 @@ type TimesheetRow = {
   approved_at?: string | null
   rejected_at?: string | null
   cleaned_at?: string | null
+  retention_expires_at?: string | null
   driver_id: string
   vehicle_id: string | null
   week_start: string
@@ -172,6 +173,27 @@ const timesheetEntrySelectWithDailyComment = `
   `
 
 const timesheetDetailSelect = `
+  id,
+  created_at,
+  updated_at,
+  submitted_at,
+  approved_at,
+  rejected_at,
+  cleaned_at,
+  retention_expires_at,
+  driver_id,
+  vehicle_id,
+  week_start,
+  status,
+  notes,
+  bonus_amount,
+  drivers ( first_name, last_name, role ),
+  vehicles ( registration, fleet_number ),
+  timesheet_entries (${timesheetEntrySelectWithDailyComment})
+`
+
+/** Pre-migration fallback when retention_expires_at is not yet available. */
+const timesheetDetailSelectWithoutRetention = `
   id,
   created_at,
   updated_at,
@@ -417,6 +439,7 @@ function mapListRow(
     approvedAt: row.approved_at ?? null,
     rejectedAt: row.rejected_at ?? null,
     cleanedAt: row.cleaned_at ?? null,
+    retentionExpiresAt: row.retention_expires_at?.trim() || null,
     driverName,
     driverRole: normalizeDriverRole(driver?.role ?? null),
     fleetNo: vehicle?.fleet_number?.trim() || '—',
@@ -673,49 +696,53 @@ function buildListSelect(query: TimesheetsQuery): string {
 }
 
 async function fetchTimesheetRowById(id: string, companyId: string): Promise<Timesheet> {
-  let { data, error } = await requireSupabase()
-    .from('timesheets')
-    .select(timesheetDetailSelect)
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .is('timesheet_entries.deleted_at', null)
-    .single()
+  const selectAttempts = [
+    timesheetDetailSelect,
+    timesheetDetailSelectWithoutRetention,
+    timesheetDetailSelectWithoutDailyComment,
+    timesheetDetailSelectMinimalEntries,
+  ]
 
-  if (isMissingTimesheetEntryColumnError(error)) {
-    ;({ data, error } = await requireSupabase()
+  let data: unknown = null
+  let error: { message?: string; code?: string } | null = null
+
+  for (const select of selectAttempts) {
+    const result = await requireSupabase()
       .from('timesheets')
-      .select(timesheetDetailSelectWithoutDailyComment)
+      .select(select)
       .eq('id', id)
       .eq('company_id', companyId)
       .is('deleted_at', null)
       .is('timesheet_entries.deleted_at', null)
-      .single())
+      .single()
+
+    data = result.data
+    error = result.error
+
+    if (!error) break
+
+    const canRetry =
+      isMissingRetentionExpiresAtColumnError(error.message) ||
+      isMissingTimesheetEntryColumnError(error)
+    if (!canRetry) break
   }
 
-  if (isMissingTimesheetEntryColumnError(error)) {
-    ;({ data, error } = await requireSupabase()
-      .from('timesheets')
-      .select(timesheetDetailSelectMinimalEntries)
-      .eq('id', id)
-      .eq('company_id', companyId)
-      .is('deleted_at', null)
-      .is('timesheet_entries.deleted_at', null)
-      .single())
-  }
+  const logError = error
+    ? { message: error.message ?? 'Unknown error', code: error.code }
+    : null
 
   logSupabaseQuery({
     service: 'timesheetsService.fetchTimesheetById',
     table: 'timesheets',
     data: data ? [data] : [],
-    error,
+    error: logError,
   })
 
   if (error || !data) {
     throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
   }
 
-  const row = data as unknown as TimesheetRow
+  const row = data as TimesheetRow
   const effective = await resolveEffectiveForDriver(row.driver_id)
   return mapTimesheetRow(row, effective)
 }
@@ -849,6 +876,20 @@ function isMissingCleanedAtColumnError(message: string): boolean {
   )
 }
 
+function isMissingRetentionExpiresAtColumnError(
+  message: string | null | undefined,
+): boolean {
+  if (!message) return false
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('retention_expires_at') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('could not find the') ||
+      normalized.includes('column'))
+  )
+}
+
 /** Apply Current / History / All cleaned_at visibility to a timesheets query. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyTimesheetsCleanedAtViewFilter(request: any, viewMode: TimesheetsQuery['viewMode']): any {
@@ -935,7 +976,7 @@ export async function fetchTimesheetWeekStats(
 
 export async function fetchTimesheets(): Promise<Timesheet[]> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
+  const primary = await requireSupabase()
     .from('timesheets')
     .select(timesheetDetailSelect)
     .eq('company_id', companyId)
@@ -943,6 +984,20 @@ export async function fetchTimesheets(): Promise<Timesheet[]> {
     .is('timesheet_entries.deleted_at', null)
     .order('week_start', { ascending: false })
     .order('updated_at', { ascending: false })
+
+  const fallback = isMissingRetentionExpiresAtColumnError(primary.error?.message)
+    ? await requireSupabase()
+        .from('timesheets')
+        .select(timesheetDetailSelectWithoutRetention)
+        .eq('company_id', companyId)
+        .is('deleted_at', null)
+        .is('timesheet_entries.deleted_at', null)
+        .order('week_start', { ascending: false })
+        .order('updated_at', { ascending: false })
+    : null
+
+  const data = fallback?.data ?? primary.data
+  const error = fallback?.error ?? primary.error
 
   logSupabaseQuery({
     service: 'timesheetsService.fetchTimesheets',

@@ -50,6 +50,7 @@ type HolidayRequestRow = {
   id: string
   created_at: string
   updated_at: string
+  retention_expires_at?: string | null
   worker_id: string
   start_date: string
   end_date: string
@@ -66,6 +67,33 @@ type HolidayRequestRow = {
 }
 
 const holidayRequestSelect = `
+  id,
+  created_at,
+  updated_at,
+  retention_expires_at,
+  worker_id,
+  start_date,
+  end_date,
+  total_days,
+  reason,
+  status,
+  manager_note,
+  leave_type,
+  is_paid_leave,
+  holiday_days_deducted,
+  calendar_days_total,
+  non_working_days_excluded,
+  drivers (
+    first_name,
+    last_name,
+    role,
+    employment_type,
+    company
+  )
+`
+
+/** Pre-migration fallback when retention_expires_at is not yet available. */
+const holidayRequestSelectWithoutRetention = `
   id,
   created_at,
   updated_at,
@@ -113,6 +141,41 @@ function isMissingColumnReadError(error: { message?: string; code?: string } | n
     message.includes('could not find the') ||
     (message.includes('column') && message.includes('does not exist'))
   )
+}
+
+function isMissingRetentionExpiresAtColumnError(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
+  const message = error?.message?.toLowerCase() ?? ''
+  return (
+    message.includes('retention_expires_at') &&
+    (isMissingColumnReadError(error) || message.includes('column'))
+  )
+}
+
+async function selectHolidayRequestById(
+  id: string,
+  companyId: string,
+): Promise<{ data: unknown | null; error: { message: string; code?: string } | null }> {
+  const primary = await requireSupabase()
+    .from('holiday_requests')
+    .select(holidayRequestSelect)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (!isMissingRetentionExpiresAtColumnError(primary.error)) {
+    return { data: primary.data, error: primary.error }
+  }
+
+  const fallback = await requireSupabase()
+    .from('holiday_requests')
+    .select(holidayRequestSelectWithoutRetention)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  return { data: fallback.data, error: fallback.error }
 }
 
 export class HolidayRequestsServiceError extends Error {
@@ -215,6 +278,7 @@ function mapRow(
     id: row.id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    retentionExpiresAt: row.retention_expires_at?.trim() || null,
     workerId: row.worker_id,
     workerName,
     workerRole: (driver?.role as DriverRole | null) ?? null,
@@ -547,7 +611,41 @@ export async function fetchHolidayRequests(
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  const { data, error, count } = await request
+  let { data, error, count } = await request
+
+  if (isMissingRetentionExpiresAtColumnError(error)) {
+    let fallback = requireSupabase()
+      .from('holiday_requests')
+      .select(holidayRequestSelectWithoutRetention, { count: 'exact' })
+      .eq('company_id', companyId)
+
+    if (query.status && query.status !== 'all') {
+      fallback = fallback.eq('status', query.status)
+    }
+    if (query.workerId && query.workerId !== 'all') {
+      fallback = fallback.eq('worker_id', query.workerId)
+    }
+    if (query.dateFrom) {
+      fallback = fallback.gte('end_date', query.dateFrom)
+    }
+    if (query.dateTo) {
+      fallback = fallback.lte('start_date', query.dateTo)
+    }
+    if (search) {
+      fallback = fallback.or(
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%`,
+        { referencedTable: 'drivers' },
+      )
+    }
+
+    const fallbackResult = await fallback
+      .order('start_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(from, to)
+    data = fallbackResult.data as typeof data
+    error = fallbackResult.error
+    count = fallbackResult.count
+  }
 
   logSupabaseQuery({
     service: 'holidayRequestsService.fetchHolidayRequests',
@@ -592,9 +690,29 @@ export async function fetchHolidayCalendarRequests(
     request = request.eq('worker_id', query.workerId)
   }
 
-  const { data, error } = await request
+  let { data, error } = await request
     .order('start_date', { ascending: true })
     .order('created_at', { ascending: true })
+
+  if (isMissingRetentionExpiresAtColumnError(error)) {
+    let fallback = requireSupabase()
+      .from('holiday_requests')
+      .select(holidayRequestSelectWithoutRetention)
+      .eq('company_id', companyId)
+      .in('status', statuses)
+      .gte('end_date', query.dateFrom)
+      .lte('start_date', query.dateTo)
+
+    if (query.workerId) {
+      fallback = fallback.eq('worker_id', query.workerId)
+    }
+
+    const fallbackResult = await fallback
+      .order('start_date', { ascending: true })
+      .order('created_at', { ascending: true })
+    data = fallbackResult.data as typeof data
+    error = fallbackResult.error
+  }
 
   logSupabaseQuery({
     service: 'holidayRequestsService.fetchHolidayCalendarRequests',
@@ -660,12 +778,7 @@ export async function checkHolidayRequestCapacity(input: {
 
 export async function fetchHolidayRequestById(id: string): Promise<HolidayRequest | null> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('holiday_requests')
-    .select(holidayRequestSelect)
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .maybeSingle()
+  const { data, error } = await selectHolidayRequestById(id, companyId)
 
   logSupabaseQuery({
     service: 'holidayRequestsService.fetchHolidayRequestById',
@@ -680,7 +793,7 @@ export async function fetchHolidayRequestById(id: string): Promise<HolidayReques
 
   if (!data) return null
   const { settings } = await getHolidayCountingContext()
-  return mapRow(data as unknown as HolidayRequestRow, settings)
+  return mapRow(data as HolidayRequestRow, settings)
 }
 
 export async function createHolidayRequest(
@@ -721,11 +834,21 @@ export async function createHolidayRequest(
     status: 'Pending',
   }
 
-  const { data, error } = await requireSupabase()
+  let { data, error } = await requireSupabase()
     .from('holiday_requests')
     .insert(payload)
     .select(holidayRequestSelect)
     .single()
+
+  if (isMissingRetentionExpiresAtColumnError(error)) {
+    const fallbackResult = await requireSupabase()
+      .from('holiday_requests')
+      .insert(payload)
+      .select(holidayRequestSelectWithoutRetention)
+      .single()
+    data = fallbackResult.data as typeof data
+    error = fallbackResult.error
+  }
 
   logSupabaseQuery({
     service: 'holidayRequestsService.createHolidayRequest',
@@ -801,12 +924,23 @@ export async function updateHolidayRequest(
     patch.non_working_days_excluded = balance.nonWorkingDaysExcluded
   }
 
-  const { data, error } = await requireSupabase()
+  let { data, error } = await requireSupabase()
     .from('holiday_requests')
     .update(patch)
     .eq('id', id)
     .eq('company_id', companyId)
     .select(holidayRequestSelect)
+
+  if (isMissingRetentionExpiresAtColumnError(error)) {
+    const fallbackResult = await requireSupabase()
+      .from('holiday_requests')
+      .update(patch)
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .select(holidayRequestSelectWithoutRetention)
+    data = fallbackResult.data as typeof data
+    error = fallbackResult.error
+  }
 
   logSupabaseQuery({
     service: 'holidayRequestsService.updateHolidayRequest',

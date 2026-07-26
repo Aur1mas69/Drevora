@@ -16,9 +16,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 export type StatusFilter = VehicleStatus | 'All' | 'Unavailable' | 'MaintenanceDue'
 
+export type VehiclesLifecycleFilter = 'active' | 'archived'
+
 type VehiclesFilterBarProps = {
   searchTerm: string
   onSearchTermChange: (value: string) => void
+  lifecycleFilter: VehiclesLifecycleFilter
+  onLifecycleFilterChange: (value: VehiclesLifecycleFilter) => void
   statusFilter: StatusFilter
   onStatusFilterChange: (value: StatusFilter) => void
   driverFilter: string
@@ -47,6 +51,8 @@ const documentFilterOptions: DocumentFilter[] = [
 export function VehiclesFilterBar({
   searchTerm,
   onSearchTermChange,
+  lifecycleFilter,
+  onLifecycleFilterChange,
   statusFilter,
   onStatusFilterChange,
   driverFilter,
@@ -113,10 +119,44 @@ export function VehiclesFilterBar({
   }
 
   return (
+    <div className="space-y-3">
+      <div
+        className="inline-flex rounded-2xl border border-[#D3E9FC] bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
+        role="tablist"
+        aria-label="Vehicle lifecycle"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lifecycleFilter === 'active'}
+          onClick={() => onLifecycleFilterChange('active')}
+          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+            lifecycleFilter === 'active'
+              ? 'bg-[#218EE7] text-white'
+              : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+          }`}
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lifecycleFilter === 'archived'}
+          onClick={() => onLifecycleFilterChange('archived')}
+          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+            lifecycleFilter === 'archived'
+              ? 'bg-[#218EE7] text-white'
+              : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+          }`}
+        >
+          Archived
+        </button>
+      </div>
+
     <ModuleListToolbar
       primaryActionLabel="Add Vehicle"
       onPrimaryAction={onAddVehicle}
-      primaryActionDisabled={!canAddVehicle}
+      primaryActionDisabled={!canAddVehicle || lifecycleFilter === 'archived'}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
       searchPlaceholder="Search registration, fleet #, make/model, or driver…"
@@ -259,5 +299,6 @@ export function VehiclesFilterBar({
         </>
       }
     />
+    </div>
   )
 }

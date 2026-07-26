@@ -47,6 +47,13 @@ export type Timesheet = {
   approvedAt: string | null
   rejectedAt: string | null
   cleanedAt: string | null
+  /**
+   * Final included parent retention instant (UTC):
+   * start of (week_start + 7) + 6 years − 1 microsecond.
+   * Admin “Retained until” uses the UTC calendar date of this instant.
+   * Null until migration applied.
+   */
+  retentionExpiresAt: string | null
   driverName: string
   driverRole: DriverRole | null
   fleetNo: string

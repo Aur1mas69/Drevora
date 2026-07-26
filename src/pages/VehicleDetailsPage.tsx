@@ -6,7 +6,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
 import { Button } from '@/components/ui/button'
@@ -18,9 +18,15 @@ import {
   EditAvailabilityModal,
   type AvailabilityDetailsContext,
 } from '@/components/vehicles/AvailabilityEventModals'
-import { DeleteVehicleModal } from '@/components/vehicles/DeleteVehicleModal'
+import { ArchiveVehicleModal } from '@/components/vehicles/ArchiveVehicleModal'
+import { RestoreVehicleModal } from '@/components/vehicles/RestoreVehicleModal'
 import { VehicleConsumablesTab } from '@/components/vehicles/VehicleConsumablesTab'
 import { VehicleEditModal } from '@/components/vehicles/VehicleEditModal'
+import type { VehicleArchiveReason } from '@/lib/vehicleArchive'
+import {
+  formatVehiclePlanLimitError,
+  isVehiclePlanLimitError,
+} from '@/lib/vehicleAllowance'
 import { VehicleProfileAvailabilityTab } from '@/components/vehicles/profile/VehicleProfileAvailabilityTab'
 import { VehicleProfileChecksTab } from '@/components/vehicles/profile/VehicleProfileChecksTab'
 import { VehicleProfileDocumentsTab } from '@/components/vehicles/profile/VehicleProfileDocumentsTab'
@@ -264,16 +270,18 @@ function VehicleDetailsSkeleton() {
 
 function VehicleDetailsPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [activeTab, setActiveTab] = useState<VehicleProfileTabId>('overview')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false)
   const [availabilityForm, setAvailabilityForm] = useState<AvailabilityForm>(
     initialAvailabilityForm,
@@ -427,7 +435,7 @@ function VehicleDetailsPage() {
   }, [drivers, vehicle?.currentDriverId])
 
   function openEditVehicleModal() {
-    if (!vehicle) return
+    if (!vehicle || vehicle.archivedAt != null) return
     setVehicleForm(getVehicleFormValues(vehicle))
     setVehicleFormErrors({})
     setVehicleSaveError(null)
@@ -506,6 +514,7 @@ function VehicleDetailsPage() {
   }
 
   function openAvailabilityModal() {
+    if (!vehicle || vehicle.archivedAt != null) return
     setAvailabilityForm(initialAvailabilityForm)
     setAvailabilityErrors({})
     setAvailabilitySaveError(null)
@@ -625,18 +634,54 @@ function VehicleDetailsPage() {
     }
   }
 
-  async function handleConfirmDeleteVehicle() {
+  async function handleConfirmArchiveVehicle(input: {
+    reason: VehicleArchiveReason
+    archiveDate: string
+  }) {
     if (!vehicle) return
 
-    setIsDeleting(true)
-    setDeleteError(null)
+    setIsArchiving(true)
+    setArchiveError(null)
 
     try {
-      await vehiclesService.deleteVehicle(vehicle.id)
-      navigate('/vehicles')
-    } catch {
-      setDeleteError('Unable to delete vehicle. Please try again.')
-      setIsDeleting(false)
+      const archived = await vehiclesService.archiveVehicle(vehicle.id, input)
+      setVehicle(archived)
+      setIsArchiveModalOpen(false)
+      notifyVehiclesUpdated()
+    } catch (error) {
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to archive vehicle. Please try again.',
+      )
+    } finally {
+      setIsArchiving(false)
+    }
+  }
+
+  async function handleConfirmRestoreVehicle() {
+    if (!vehicle) return
+
+    setIsRestoring(true)
+    setRestoreError(null)
+
+    try {
+      const restored = await vehiclesService.restoreVehicle(vehicle.id)
+      setVehicle(restored)
+      setIsRestoreModalOpen(false)
+      notifyVehiclesUpdated()
+    } catch (error) {
+      if (isVehiclePlanLimitError(error)) {
+        setRestoreError(formatVehiclePlanLimitError(error))
+      } else {
+        setRestoreError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to restore vehicle. Please try again.',
+        )
+      }
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -702,16 +747,26 @@ function VehicleDetailsPage() {
           vehicle={vehicle}
           assignedWorkerLabel={currentDriverName}
           onEdit={openEditVehicleModal}
-          onDelete={() => {
-            setDeleteError(null)
-            setIsDeleteModalOpen(true)
+          onArchive={() => {
+            setArchiveError(null)
+            setIsArchiveModalOpen(true)
           }}
-          isDeleting={isDeleting}
+          onRestore={() => {
+            setRestoreError(null)
+            setIsRestoreModalOpen(true)
+          }}
+          isArchiving={isArchiving}
+          isRestoring={isRestoring}
         />
 
-        {deleteError ? (
+        {archiveError && !isArchiveModalOpen ? (
           <div className={`${vehicleProfilePanelClass} px-4 py-3 text-sm font-medium text-rose-600`}>
-            {deleteError}
+            {archiveError}
+          </div>
+        ) : null}
+        {restoreError && !isRestoreModalOpen ? (
+          <div className={`${vehicleProfilePanelClass} px-4 py-3 text-sm font-medium text-rose-600`}>
+            {restoreError}
           </div>
         ) : null}
 
@@ -783,16 +838,30 @@ function VehicleDetailsPage() {
         />
       ) : null}
 
-      {isDeleteModalOpen ? (
-        <DeleteVehicleModal
+      {isArchiveModalOpen ? (
+        <ArchiveVehicleModal
+          key={vehicle.id}
           vehicle={vehicle}
-          errorMessage={deleteError}
-          isDeleting={isDeleting}
+          errorMessage={archiveError}
+          isArchiving={isArchiving}
           onCancel={() => {
-            if (isDeleting) return
-            setIsDeleteModalOpen(false)
+            if (isArchiving) return
+            setIsArchiveModalOpen(false)
           }}
-          onConfirm={handleConfirmDeleteVehicle}
+          onConfirm={handleConfirmArchiveVehicle}
+        />
+      ) : null}
+
+      {isRestoreModalOpen ? (
+        <RestoreVehicleModal
+          vehicle={vehicle}
+          errorMessage={restoreError}
+          isRestoring={isRestoring}
+          onCancel={() => {
+            if (isRestoring) return
+            setIsRestoreModalOpen(false)
+          }}
+          onConfirm={handleConfirmRestoreVehicle}
         />
       ) : null}
 

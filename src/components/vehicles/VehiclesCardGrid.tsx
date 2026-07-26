@@ -18,6 +18,7 @@ type VehiclesCardGridProps = {
   onAddVehicle: () => void
   onEditVehicle: (vehicle: Vehicle) => void
   onArchiveVehicle: (vehicle: Vehicle) => void
+  onRestoreVehicle?: (vehicle: Vehicle) => void
 }
 
 export function VehiclesCardGrid({
@@ -33,6 +34,7 @@ export function VehiclesCardGrid({
   onAddVehicle,
   onEditVehicle,
   onArchiveVehicle,
+  onRestoreVehicle,
 }: VehiclesCardGridProps) {
   return (
     <div className="space-y-4">
@@ -45,6 +47,7 @@ export function VehiclesCardGrid({
               drivers={drivers}
               onEdit={onEditVehicle}
               onArchive={onArchiveVehicle}
+              onRestore={onRestoreVehicle}
             />
           ) : (
             <VehicleAvailableSlotCard

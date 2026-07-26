@@ -136,6 +136,13 @@ export type Vehicle = {
   availabilityRecords: VehicleAvailability[]
   /** Null = active plan seat. Set when archived (former Vehicle). */
   archivedAt: string | null
+  /** Present when archived. Sold / Returned to lease / Written off / Other. */
+  archiveReason: string | null
+  /**
+   * Archived Vehicle profile retention deadline (archived_at + 6 years).
+   * Null when active. Admin “Retained until” uses the UTC calendar date.
+   */
+  retentionExpiresAt: string | null
 }
 
 export type VehicleInput = {
@@ -188,6 +195,20 @@ type VehicleRow = {
   off_road_notes: string | null
   notes: string | null
   archived_at?: string | null
+  archive_reason?: string | null
+  retention_expires_at?: string | null
+}
+
+export type VehicleLifecycleFilter = 'active' | 'archived' | 'all'
+
+export type FetchVehiclesOptions = {
+  /** Default `active` so new-record selectors never offer archived Vehicles. */
+  lifecycle?: VehicleLifecycleFilter
+}
+
+export type ArchiveVehicleInput = {
+  reason: string
+  archiveDate: string
 }
 
 type VehicleAvailabilityRow = {
@@ -412,14 +433,30 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
     notes: row.notes,
     availabilityRecords: [],
     archivedAt: row.archived_at?.trim() || null,
+    archiveReason: row.archive_reason?.trim() || null,
+    retentionExpiresAt: row.retention_expires_at?.trim() || null,
   }
 }
 
 const vehicleSelect =
-  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at'
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason, retention_expires_at'
+
+/** Archive columns without retention (pre-retention migration / partial apply). */
+const vehicleSelectWithoutRetention =
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason'
 
 const vehicleSelectLegacy =
   'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
+
+function isMissingRetentionColumnError(error: {
+  message?: string
+  code?: string
+}): boolean {
+  const message = (error.message ?? '').toLowerCase()
+  return (
+    isMissingColumnError(error) && message.includes('retention_expires_at')
+  )
+}
 
 const vehicleAvailabilitySelect =
   'id, created_at, vehicle_id, status, start_date, end_date, reason, notes'
@@ -443,6 +480,24 @@ function mapVehicleWriteError(error: unknown): never {
       formatVehiclePlanLimitError({ message, code: planCode }),
       planCode ?? planLimitErrorCodeFromMessage(message),
     )
+  }
+
+  if (/VEHICLE_ARCHIVE_FUTURE_DATE/i.test(message)) {
+    throw new VehiclesServiceError('Archive date cannot be in the future.')
+  }
+  if (/VEHICLE_ARCHIVE_REASON_REQUIRED/i.test(message)) {
+    throw new VehiclesServiceError(
+      'Choose an archive reason: Sold, Returned to lease, Written off, or Other.',
+    )
+  }
+  if (/VEHICLE_ALREADY_ARCHIVED/i.test(message)) {
+    throw new VehiclesServiceError('This Vehicle is already archived.')
+  }
+  if (/VEHICLE_NOT_ARCHIVED/i.test(message)) {
+    throw new VehiclesServiceError('This Vehicle is already active.')
+  }
+  if (/VEHICLE_ARCHIVE_FORBIDDEN|VEHICLE_RESTORE_FORBIDDEN/i.test(message)) {
+    throw new VehiclesServiceError('Office access is required for this action.')
   }
 
   const isDuplicateTrailerNumber =
@@ -568,33 +623,61 @@ async function fetchRelevantAvailabilityRecords(
   )
 }
 
-export async function fetchVehicles(): Promise<Vehicle[]> {
+export async function fetchVehicles(
+  options?: FetchVehiclesOptions,
+): Promise<Vehicle[]> {
   const table = 'vehicles'
   const companyId = requireVerifiedCompanyId()
-  let data: unknown[] | null = null
-  let errorMessage: string | null = null
-  let errorCode: string | undefined
+  const lifecycle: VehicleLifecycleFilter = options?.lifecycle ?? 'active'
 
-  {
-    const primary = await requireSupabase()
+  let primaryQuery = requireSupabase()
+    .from(table)
+    .select(vehicleSelect)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+
+  if (lifecycle === 'active') {
+    primaryQuery = primaryQuery.is('archived_at', null)
+  } else if (lifecycle === 'archived') {
+    primaryQuery = primaryQuery.not('archived_at', 'is', null)
+  }
+
+  const primary = await primaryQuery
+  let data: unknown[] | null = primary.data
+  let errorMessage: string | null = primary.error?.message ?? null
+  let errorCode: string | undefined = primary.error?.code
+
+  if (primary.error && isMissingRetentionColumnError(primary.error)) {
+    let fallbackQuery = requireSupabase()
       .from(table)
-      .select(vehicleSelect)
+      .select(vehicleSelectWithoutRetention)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
-    data = primary.data
-    errorMessage = primary.error?.message ?? null
-    errorCode = primary.error?.code
-
-    if (primary.error && isMissingColumnError(primary.error)) {
-      const legacy = await requireSupabase()
-        .from(table)
-        .select(vehicleSelectLegacy)
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false })
-      data = legacy.data
-      errorMessage = legacy.error?.message ?? null
-      errorCode = legacy.error?.code
+    if (lifecycle === 'active') {
+      fallbackQuery = fallbackQuery.is('archived_at', null)
+    } else if (lifecycle === 'archived') {
+      fallbackQuery = fallbackQuery.not('archived_at', 'is', null)
     }
+    const withoutRetention = await fallbackQuery
+    data = withoutRetention.data
+    errorMessage = withoutRetention.error?.message ?? null
+    errorCode = withoutRetention.error?.code
+  }
+
+  if (errorMessage && isMissingColumnError({ message: errorMessage, code: errorCode })) {
+    // Legacy schema without archived_at: only "active"/"all" are meaningful.
+    if (lifecycle === 'archived') {
+      return []
+    }
+
+    const legacy = await requireSupabase()
+      .from(table)
+      .select(vehicleSelectLegacy)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+    data = legacy.data
+    errorMessage = legacy.error?.message ?? null
+    errorCode = legacy.error?.code
   }
 
   logSupabaseQuery({
@@ -635,31 +718,40 @@ export async function fetchVehicleTimelineRecords(
 
 export async function fetchVehicleById(id: string): Promise<Vehicle | null> {
   const companyId = requireVerifiedCompanyId()
-  let data: unknown | null = null
-  let errorMessage: string | null = null
+  const primary = await requireSupabase()
+    .from('vehicles')
+    .select(vehicleSelect)
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .maybeSingle()
 
-  {
-    const primary = await requireSupabase()
+  let data: unknown | null = primary.data
+  let errorMessage: string | null = primary.error?.message ?? null
+
+  // Live DB may not have retention / archive columns until migration 180000 is applied.
+  if (primary.error && isMissingRetentionColumnError(primary.error)) {
+    const withoutRetention = await requireSupabase()
       .from('vehicles')
-      .select(vehicleSelect)
+      .select(vehicleSelectWithoutRetention)
       .eq('id', id)
       .eq('company_id', companyId)
       .maybeSingle()
-    data = primary.data
-    errorMessage = primary.error?.message ?? null
+    data = withoutRetention.data
+    errorMessage = withoutRetention.error?.message ?? null
+  }
 
-    // Live DB may not have archived_at until the vehicle-archive migration is applied.
-    // Match fetchVehicles(): fall back to the legacy column set so profile load still works.
-    if (primary.error && isMissingColumnError(primary.error)) {
-      const legacy = await requireSupabase()
-        .from('vehicles')
-        .select(vehicleSelectLegacy)
-        .eq('id', id)
-        .eq('company_id', companyId)
-        .maybeSingle()
-      data = legacy.data
-      errorMessage = legacy.error?.message ?? null
-    }
+  if (
+    errorMessage &&
+    isMissingColumnError({ message: errorMessage })
+  ) {
+    const legacy = await requireSupabase()
+      .from('vehicles')
+      .select(vehicleSelectLegacy)
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .maybeSingle()
+    data = legacy.data
+    errorMessage = legacy.error?.message ?? null
   }
 
   if (errorMessage) {
@@ -905,43 +997,37 @@ export async function updateVehicle(
   return mapVehicleRow(data as VehicleRow)
 }
 
-export async function deleteVehicle(id: string): Promise<void> {
-  const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('vehicles')
-    .delete()
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .select('id')
-
-  if (error) {
-    logVehicleSaveError({ id }, error)
-    throw error
-  }
-
-  if ((data ?? []).length === 0) {
-    throw new VehiclesServiceError(
-      'Vehicle could not be deleted for your company. Refresh and try again.',
-    )
-  }
+/**
+ * Hard delete is closed. Use archiveVehicle / restoreVehicle instead.
+ * Kept only so accidental callers receive a clear error (not a silent no-op).
+ */
+export async function deleteVehicle(..._args: never[]): Promise<void> {
+  void _args
+  throw new VehiclesServiceError(
+    'Vehicles cannot be permanently deleted. Archive the Vehicle instead.',
+  )
 }
 
 /**
- * Soft-archive a Vehicle. Frees an active plan seat without deleting history.
+ * Soft-archive via Office RPC. Frees an active plan seat without deleting history.
  */
-export async function archiveVehicle(id: string): Promise<Vehicle> {
-  const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('vehicles')
-    .update({ archived_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .is('archived_at', null)
-    .select(vehicleSelectLegacy)
-    .maybeSingle()
+export async function archiveVehicle(
+  id: string,
+  input: ArchiveVehicleInput,
+): Promise<Vehicle> {
+  requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase().rpc('drevora_archive_vehicle', {
+    p_vehicle_id: id,
+    p_archive_reason: input.reason,
+    p_archive_date: input.archiveDate,
+  })
 
   if (error) {
-    if (isMissingColumnError(error)) {
+    if (
+      isMissingColumnError(error) ||
+      /function .*drevora_archive_vehicle/i.test(error.message ?? '')
+    ) {
       throw new VehiclesServiceError(
         'Vehicle archiving is not available yet. Ask DREVORA support to apply the latest database migration.',
       )
@@ -955,28 +1041,26 @@ export async function archiveVehicle(id: string): Promise<Vehicle> {
     )
   }
 
-  return mapVehicleRow({ ...(data as VehicleRow), archived_at: new Date().toISOString() })
+  return mapVehicleRow(data as VehicleRow)
 }
 
 /**
- * Reactivate an archived Vehicle when a plan seat is available.
- * Server trigger rejects with VEHICLE_PLAN_LIMIT_REACHED when full.
+ * Restore an archived Vehicle when a plan seat is available (Office RPC).
  */
-export async function reactivateVehicle(id: string): Promise<Vehicle> {
-  const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('vehicles')
-    .update({ archived_at: null })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .not('archived_at', 'is', null)
-    .select(vehicleSelectLegacy)
-    .maybeSingle()
+export async function restoreVehicle(id: string): Promise<Vehicle> {
+  requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase().rpc('drevora_restore_vehicle', {
+    p_vehicle_id: id,
+  })
 
   if (error) {
-    if (isMissingColumnError(error)) {
+    if (
+      isMissingColumnError(error) ||
+      /function .*drevora_restore_vehicle/i.test(error.message ?? '')
+    ) {
       throw new VehiclesServiceError(
-        'Vehicle reactivation is not available yet. Ask DREVORA support to apply the latest database migration.',
+        'Vehicle restore is not available yet. Ask DREVORA support to apply the latest database migration.',
       )
     }
     mapVehicleWriteError(error)
@@ -984,11 +1068,16 @@ export async function reactivateVehicle(id: string): Promise<Vehicle> {
 
   if (!data) {
     throw new VehiclesServiceError(
-      'Vehicle could not be reactivated for your company. Refresh and try again.',
+      'Vehicle could not be restored for your company. Refresh and try again.',
     )
   }
 
-  return mapVehicleRow({ ...(data as VehicleRow), archived_at: null })
+  return mapVehicleRow(data as VehicleRow)
+}
+
+/** @deprecated Use restoreVehicle. */
+export async function reactivateVehicle(id: string): Promise<Vehicle> {
+  return restoreVehicle(id)
 }
 
 export const vehiclesService = {
@@ -1006,5 +1095,6 @@ export const vehiclesService = {
   updateVehicle,
   deleteVehicle,
   archiveVehicle,
+  restoreVehicle,
   reactivateVehicle,
 }

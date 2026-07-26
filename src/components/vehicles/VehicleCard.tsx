@@ -21,7 +21,7 @@ import {
   getVehicleStatusForDate,
   type Vehicle,
 } from '@/services/vehiclesService'
-import { Droplets, Eye, Pencil, Trash2, Truck } from 'lucide-react'
+import { Droplets, Eye, Pencil, RotateCcw, Trash2, Truck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 type VehicleCardProps = {
@@ -29,6 +29,7 @@ type VehicleCardProps = {
   drivers: Driver[]
   onEdit: (vehicle: Vehicle) => void
   onArchive: (vehicle: Vehicle) => void
+  onRestore?: (vehicle: Vehicle) => void
 }
 
 function registrationLabel(vehicle: Vehicle): string {
@@ -44,6 +45,7 @@ export function VehicleCard({
   drivers,
   onEdit,
   onArchive,
+  onRestore,
 }: VehicleCardProps) {
   const navigate = useNavigate()
   const profilePath = `/vehicles/${vehicle.id}`
@@ -63,6 +65,7 @@ export function VehicleCard({
   const nextEventSummary = nextEvent.nearest
     ? `${nextEvent.nearest.label}, ${formatVehicleCardEventTiming(nextEvent.nearest)}`
     : 'No upcoming events'
+  const isArchived = vehicle.archivedAt != null
 
   const actions: RowAction[] = [
     {
@@ -71,26 +74,38 @@ export function VehicleCard({
       icon: Eye,
       to: profilePath,
     },
-    {
-      id: 'edit',
-      label: 'Edit',
-      icon: Pencil,
-      onClick: () => onEdit(vehicle),
-    },
-    {
-      id: 'consumables',
-      label: 'View consumables',
-      icon: Droplets,
-      to: `${profilePath}?tab=consumables`,
-    },
-    {
-      id: 'archive',
-      label: 'Archive',
-      icon: Trash2,
-      tone: 'danger',
-      onClick: () => onArchive(vehicle),
-    },
   ]
+
+  if (!isArchived) {
+    actions.push(
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: Pencil,
+        onClick: () => onEdit(vehicle),
+      },
+      {
+        id: 'consumables',
+        label: 'View consumables',
+        icon: Droplets,
+        to: `${profilePath}?tab=consumables`,
+      },
+      {
+        id: 'archive',
+        label: 'Archive Vehicle',
+        icon: Trash2,
+        tone: 'danger',
+        onClick: () => onArchive(vehicle),
+      },
+    )
+  } else if (onRestore) {
+    actions.push({
+      id: 'restore',
+      label: 'Restore',
+      icon: RotateCcw,
+      onClick: () => onRestore(vehicle),
+    })
+  }
 
   function openProfile() {
     navigate(profilePath)
@@ -148,8 +163,23 @@ export function VehicleCard({
           {vehicle.vehicleType?.trim() || 'No type'}
         </p>
 
+        {isArchived ? (
+          <div className="mt-1.5 flex flex-col gap-1">
+            <span className="inline-flex w-fit max-w-full truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+              Archived
+              {vehicle.archiveReason ? ` · ${vehicle.archiveReason}` : ''}
+              {vehicle.archivedAt ? ` · ${vehicle.archivedAt.slice(0, 10)}` : ''}
+            </span>
+            {vehicle.retentionExpiresAt ? (
+              <span className="inline-flex w-fit max-w-full truncate rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-slate-700">
+                Retained until {vehicle.retentionExpiresAt.slice(0, 10)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-auto flex flex-col gap-1.5 pt-2">
-          <VehicleStatusBadge status={status} />
+          {isArchived ? null : <VehicleStatusBadge status={status} />}
 
           <p
             className="truncate text-[11px] font-medium text-[#113C69] dark:text-slate-200"

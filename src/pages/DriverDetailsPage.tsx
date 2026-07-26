@@ -5,12 +5,13 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Mail,
   Pencil,
   Phone,
+  RotateCcw,
   Trash2,
 } from 'lucide-react'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -34,6 +35,11 @@ import {
   type WorkerProfileHistoryTab,
 } from '@/components/workers/profile/WorkerProfileHistoryTabs'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
+import { RestoreWorkerModal } from '@/components/workers/RestoreWorkerModal'
+import {
+  formatWorkerPlanLimitError,
+  isWorkerPlanLimitError,
+} from '@/lib/workerAllowance'
 import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
@@ -123,16 +129,16 @@ function DriverStatusBadge({ status }: { status: DriverStatus }) {
   )
 }
 
-function DeleteDriverModal({
+function ArchiveDriverModal({
   driver,
   errorMessage,
-  isDeleting,
+  isArchiving,
   onCancel,
   onConfirm,
 }: {
   driver: Driver
   errorMessage: string | null
-  isDeleting: boolean
+  isArchiving: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
@@ -140,13 +146,18 @@ function DeleteDriverModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[20px] bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-500">
-          Delete Worker
+          Archive Worker
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-100">
-          Are you sure you want to delete this worker?
+          Archive this worker?
         </h2>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-          {getDriverName(driver)} will be removed from DREVORA.
+          {getDriverName(driver)} will be archived and will no longer occupy an
+          active Worker seat. Historical records stay intact.
+        </p>
+        <p className="mt-2 text-sm font-medium leading-6 text-amber-700 dark:text-amber-300">
+          Archiving this Worker will block their Worker-app access and remove
+          current Vehicle assignments. Historical records will be kept.
         </p>
 
         {errorMessage ? (
@@ -160,7 +171,7 @@ function DeleteDriverModal({
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={isDeleting}
+            disabled={isArchiving}
             className="h-11 rounded-[16px] border-0 bg-white px-5 font-semibold text-slate-700 shadow-sm ring-1 ring-blue-100 transition-all duration-[250ms] ease-out hover:bg-[#EAF4FF] hover:text-[#2563EB] dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-800/50 dark:hover:text-blue-300"
           >
             Cancel
@@ -168,10 +179,10 @@ function DeleteDriverModal({
           <Button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isArchiving}
             className="h-11 rounded-[16px] bg-rose-600 px-5 font-semibold text-white shadow-[0_14px_28px_rgba(225,29,72,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 hover:bg-rose-700 disabled:translate-y-0 disabled:opacity-70"
           >
-            {isDeleting ? 'Deleting...' : 'Delete Worker'}
+            {isArchiving ? 'Archiving...' : 'Archive Worker'}
           </Button>
         </div>
       </div>
@@ -249,7 +260,6 @@ function parseDriverDetailsTab(value: string | null): DriverDetailsTab | null {
 
 function DriverDetailsPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [driver, setDriver] = useState<Driver | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -261,11 +271,14 @@ function DriverDetailsPage() {
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false)
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
@@ -318,7 +331,7 @@ function DriverDetailsPage() {
   }, [toastMessage])
 
   function openEditModal() {
-    if (!driver) return
+    if (!driver || driver.archivedAt != null) return
 
     setForm(getDriverFormValues(driver))
     setFormErrors({})
@@ -416,22 +429,55 @@ function DriverDetailsPage() {
     }
   }
 
-  async function handleConfirmDeleteDriver() {
+  async function handleConfirmArchiveDriver() {
     if (!driver) return
 
-    setIsDeleting(true)
-    setDeleteError(null)
+    setIsArchiving(true)
+    setArchiveError(null)
 
     try {
-      await driversService.deleteDriver(driver.id)
-      navigate('/drivers', {
-        state: { toastMessage: 'Worker deleted successfully.' },
-      })
-    } catch {
-      setDeleteError('Unable to delete worker. Please try again.')
-      setIsDeleting(false)
+      const archived = await driversService.archiveDriver(driver.id)
+      setDriver(archived)
+      setIsArchiveModalOpen(false)
+      setToastMessage('Worker archived successfully.')
+    } catch (error) {
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to archive worker. Please try again.',
+      )
+    } finally {
+      setIsArchiving(false)
     }
   }
+
+  async function handleConfirmRestoreDriver() {
+    if (!driver) return
+
+    setIsRestoring(true)
+    setRestoreError(null)
+
+    try {
+      const restored = await driversService.restoreDriver(driver.id)
+      setDriver(restored)
+      setIsRestoreModalOpen(false)
+      setToastMessage('Worker restored successfully.')
+    } catch (error) {
+      if (isWorkerPlanLimitError(error)) {
+        setRestoreError(formatWorkerPlanLimitError(error))
+      } else {
+        setRestoreError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to restore worker. Please try again.',
+        )
+      }
+    } finally {
+      setIsRestoring(false)
+    }
+  }
+
+  const isArchived = driver?.archivedAt != null
 
   if (isLoading) {
     return (
@@ -509,6 +555,19 @@ function DriverDetailsPage() {
                       code={driver.workerCode}
                       emptyLabel="No Worker ID"
                     />
+                    {isArchived ? (
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                        Archived
+                        {driver.archivedAt
+                          ? ` · ${driver.archivedAt.slice(0, 10)}`
+                          : ''}
+                      </span>
+                    ) : null}
+                    {isArchived && driver.retentionExpiresAt ? (
+                      <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-slate-700">
+                        Retained until {driver.retentionExpiresAt.slice(0, 10)}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -536,33 +595,55 @@ function DriverDetailsPage() {
               </div>
 
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  onClick={openEditModal}
-                  className="h-10 rounded-xl bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.2)] transition-all duration-200 hover:-translate-y-0.5"
-                >
-                  <Pencil className="size-4" />
-                  Edit Worker
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setIsDeleteModalOpen(true)
-                  }}
-                  disabled={isDeleting}
-                  variant="outline"
-                  className="h-10 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70 dark:border-rose-900/40 dark:bg-slate-900/70 dark:text-rose-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
-                >
-                  <Trash2 className="size-4" />
-                  {isDeleting ? 'Deleting...' : 'Delete Worker'}
-                </Button>
+                {!isArchived ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={openEditModal}
+                      className="h-10 rounded-xl bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.2)] transition-all duration-200 hover:-translate-y-0.5"
+                    >
+                      <Pencil className="size-4" />
+                      Edit Worker
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setArchiveError(null)
+                        setIsArchiveModalOpen(true)
+                      }}
+                      disabled={isArchiving}
+                      variant="outline"
+                      className="h-10 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-70 dark:border-rose-900/40 dark:bg-slate-900/70 dark:text-rose-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
+                    >
+                      <Trash2 className="size-4" />
+                      {isArchiving ? 'Archiving...' : 'Archive Worker'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setRestoreError(null)
+                      setIsRestoreModalOpen(true)
+                    }}
+                    disabled={isRestoring}
+                    className="h-10 rounded-xl bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.2)] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-70"
+                  >
+                    <RotateCcw className="size-4" />
+                    {isRestoring ? 'Restoring...' : 'Restore Worker'}
+                  </Button>
+                )}
               </div>
             </div>
 
-            {deleteError ? (
+            {archiveError && !isArchiveModalOpen ? (
               <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
-                {deleteError}
+                {archiveError}
+              </div>
+            ) : null}
+            {restoreError && !isRestoreModalOpen ? (
+              <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
+                {restoreError}
               </div>
             ) : null}
           </CardContent>
@@ -591,11 +672,15 @@ function DriverDetailsPage() {
 
         {activeTab === 'Overview' ? <WorkerProfileOverview driver={driver} /> : null}
         {activeTab !== 'Overview' ? (
-          <WorkerProfileHistoryTabs worker={driver} activeTab={activeTab} />
+          <WorkerProfileHistoryTabs
+            worker={driver}
+            activeTab={activeTab}
+            readOnly={isArchived}
+          />
         ) : null}
       </section>
 
-      {isEditModalOpen && form ? (
+      {isEditModalOpen && form && !isArchived ? (
         <WorkerFormModal
           eyebrow="Edit Worker"
           title="Edit Worker"
@@ -638,16 +723,29 @@ function DriverDetailsPage() {
         />
       ) : null}
 
-      {isDeleteModalOpen ? (
-        <DeleteDriverModal
+      {isArchiveModalOpen ? (
+        <ArchiveDriverModal
           driver={driver}
-          errorMessage={deleteError}
-          isDeleting={isDeleting}
+          errorMessage={archiveError}
+          isArchiving={isArchiving}
           onCancel={() => {
-            if (isDeleting) return
-            setIsDeleteModalOpen(false)
+            if (isArchiving) return
+            setIsArchiveModalOpen(false)
           }}
-          onConfirm={handleConfirmDeleteDriver}
+          onConfirm={handleConfirmArchiveDriver}
+        />
+      ) : null}
+
+      {isRestoreModalOpen ? (
+        <RestoreWorkerModal
+          driver={driver}
+          errorMessage={restoreError}
+          isRestoring={isRestoring}
+          onCancel={() => {
+            if (isRestoring) return
+            setIsRestoreModalOpen(false)
+          }}
+          onConfirm={handleConfirmRestoreDriver}
         />
       ) : null}
 

@@ -8,6 +8,8 @@ export type HolidayRequest = {
   id: string
   createdAt: string
   updatedAt: string
+  /** created_at + 6 years. Null until retention migration is applied. */
+  retentionExpiresAt: string | null
   workerId: string
   workerName: string
   workerRole: DriverRole | null

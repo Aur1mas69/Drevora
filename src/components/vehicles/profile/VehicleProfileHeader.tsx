@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Trash2, Truck } from 'lucide-react'
+import { ArrowLeft, Pencil, RotateCcw, Trash2, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { VehicleStatusBadge } from '@/components/vehicles/VehicleStatusBadge'
 import { getVehicleStatusForDate, type Vehicle } from '@/services/vehiclesService'
@@ -8,8 +8,10 @@ type VehicleProfileHeaderProps = {
   vehicle: Vehicle
   assignedWorkerLabel: string
   onEdit: () => void
-  onDelete: () => void
-  isDeleting?: boolean
+  onArchive: () => void
+  onRestore: () => void
+  isArchiving?: boolean
+  isRestoring?: boolean
 }
 
 function getVehicleName(vehicle: Vehicle): string {
@@ -20,9 +22,13 @@ export function VehicleProfileHeader({
   vehicle,
   assignedWorkerLabel,
   onEdit,
-  onDelete,
-  isDeleting = false,
+  onArchive,
+  onRestore,
+  isArchiving = false,
+  isRestoring = false,
 }: VehicleProfileHeaderProps) {
+  const isArchived = vehicle.archivedAt != null
+
   return (
     <header className="space-y-3">
       <Button
@@ -46,7 +52,14 @@ export function VehicleProfileHeader({
               <h1 className="text-2xl font-bold tracking-[-0.04em] text-[#113C69] dark:text-slate-100 sm:text-3xl">
                 {vehicle.registration}
               </h1>
-              <VehicleStatusBadge status={getVehicleStatusForDate(vehicle)} />
+              {isArchived ? (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                  Archived
+                  {vehicle.archiveReason ? ` · ${vehicle.archiveReason}` : ''}
+                </span>
+              ) : (
+                <VehicleStatusBadge status={getVehicleStatusForDate(vehicle)} />
+              )}
             </div>
             <p className="mt-1 text-base font-medium text-[#3D7A9C] dark:text-slate-300">
               {getVehicleName(vehicle) || 'Make / model not set'}
@@ -65,29 +78,53 @@ export function VehicleProfileHeader({
               <span className="inline-flex rounded-full bg-[#EEF6FF]/70 px-2.5 py-1 text-xs font-semibold text-[#3D7A9C] ring-1 ring-[#D3E9FC] dark:bg-slate-800/60 dark:text-slate-300 dark:ring-white/10">
                 {assignedWorkerLabel}
               </span>
+              {isArchived && vehicle.archivedAt ? (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                  Archived {vehicle.archivedAt.slice(0, 10)}
+                </span>
+              ) : null}
+              {isArchived && vehicle.retentionExpiresAt ? (
+                <span className="inline-flex rounded-full bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-slate-700">
+                  Retained until {vehicle.retentionExpiresAt.slice(0, 10)}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
 
         <div className="flex w-full shrink-0 flex-col gap-2 min-[400px]:flex-row min-[400px]:items-center lg:w-auto">
-          <Button
-            type="button"
-            onClick={onEdit}
-            className="h-10 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.22)] hover:bg-[#0B68BE] min-[400px]:w-auto"
-          >
-            <Pencil className="size-4" aria-hidden="true" />
-            Edit Vehicle
-          </Button>
-          <Button
-            type="button"
-            onClick={onDelete}
-            disabled={isDeleting}
-            variant="outline"
-            className="h-10 w-full rounded-[12px] border-rose-200 bg-rose-50/70 px-4 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100 hover:text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 min-[400px]:w-auto"
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete Vehicle
-          </Button>
+          {!isArchived ? (
+            <>
+              <Button
+                type="button"
+                onClick={onEdit}
+                className="h-10 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.22)] hover:bg-[#0B68BE] min-[400px]:w-auto"
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+                Edit Vehicle
+              </Button>
+              <Button
+                type="button"
+                onClick={onArchive}
+                disabled={isArchiving}
+                variant="outline"
+                className="h-10 w-full rounded-[12px] border-rose-200 bg-rose-50/70 px-4 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100 hover:text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 min-[400px]:w-auto"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Archive Vehicle
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              onClick={onRestore}
+              disabled={isRestoring}
+              className="h-10 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(33,142,231,0.22)] hover:bg-[#0B68BE] min-[400px]:w-auto"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Restore Vehicle
+            </Button>
+          )}
         </div>
       </div>
     </header>

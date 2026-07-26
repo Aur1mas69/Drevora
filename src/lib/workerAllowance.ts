@@ -173,17 +173,41 @@ export function formatWorkerPlanLimitError(error: unknown): string {
     return 'Your trial has expired. Existing records remain available. Contact DREVORA to renew your plan.'
   }
 
-  if (!(error instanceof Error)) {
+  const rawMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' &&
+          error != null &&
+          'message' in error &&
+          typeof (error as { message?: unknown }).message === 'string'
+        ? (error as { message: string }).message
+        : ''
+
+  if (!(error instanceof Error) && !rawMessage) {
     return 'Worker allowance reached. Archive an inactive Worker or change the company plan to add another Worker.'
   }
 
-  const blob = `${error.message} ${'code' in error ? String((error as { code?: unknown }).code ?? '') : ''}`.toUpperCase()
+  const code =
+    typeof error === 'object' &&
+    error != null &&
+    'code' in error &&
+    typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : ''
+  const blob = `${rawMessage} ${code}`.toUpperCase()
 
   if (blob.includes(WORKER_PLAN_ALLOWANCE_UNAVAILABLE)) {
     if (blob.includes('CUSTOM')) {
       return 'Custom Fleet Worker limit enforcement is not yet available. Contact DREVORA support before adding Workers.'
     }
     return 'Worker allowance unavailable. Assign a valid company plan before adding Workers.'
+  }
+
+  if (
+    blob.includes(WORKER_PLAN_LIMIT_REACHED) &&
+    /upgrade your plan before restoring/i.test(rawMessage)
+  ) {
+    return 'Your Worker limit has been reached. Archive another Worker or upgrade your plan before restoring this Worker.'
   }
 
   return 'Worker allowance reached. Archive an inactive Worker or change the company plan to add another Worker.'

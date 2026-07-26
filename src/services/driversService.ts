@@ -99,6 +99,8 @@ export type Driver = {
   avatarUrl: string | null
   /** Null/undefined = active plan seat. Set when archived (former Worker). */
   archivedAt: string | null
+  /** Archived profile shell retention deadline (archived_at + 6 years). Null when active. */
+  retentionExpiresAt: string | null
 }
 
 export type CreateDriverInput = {
@@ -216,6 +218,7 @@ type DriverRow = {
   country?: string | null
   avatar_url: string | null
   archived_at?: string | null
+  retention_expires_at?: string | null
 }
 
 const basicDriverSelectMinimal =
@@ -231,7 +234,7 @@ const workerCoreSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at, retention_expires_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -973,10 +976,21 @@ function mapDriverRow(row: DriverRow): Driver {
     country: row.country?.trim() || null,
     avatarUrl: row.avatar_url,
     archivedAt: row.archived_at?.trim() || null,
+    retentionExpiresAt: row.retention_expires_at?.trim() || null,
   }
 }
 
-async function queryDrivers(select: string): Promise<Driver[]> {
+export type DriverLifecycleFilter = 'active' | 'archived' | 'all'
+
+export type FetchDriversOptions = {
+  /** Default `active` excludes archived Workers from new-record selectors. */
+  lifecycle?: DriverLifecycleFilter
+}
+
+async function queryDrivers(
+  select: string,
+  lifecycle: DriverLifecycleFilter = 'all',
+): Promise<Driver[]> {
   const companyId = requireVerifiedCompanyId()
   const pageSize = 1000
   let from = 0
@@ -984,12 +998,20 @@ async function queryDrivers(select: string): Promise<Driver[]> {
 
   // Page through results so PostgREST max-rows never silently truncates the workers list.
   while (true) {
-    const { data, error } = await requireSupabase()
+    let query = requireSupabase()
       .from('drivers')
       .select(select)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .range(from, from + pageSize - 1)
+
+    if (lifecycle === 'active') {
+      query = query.is('archived_at', null)
+    } else if (lifecycle === 'archived') {
+      query = query.not('archived_at', 'is', null)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       throw error
@@ -1052,13 +1074,33 @@ async function mapDriverRows(rows: unknown[]): Promise<Driver[]> {
   )
 }
 
-export async function fetchDrivers(): Promise<Driver[]> {
+function applyLifecycleFilterToRows(
+  drivers: Driver[],
+  lifecycle: DriverLifecycleFilter,
+): Driver[] {
+  if (lifecycle === 'active') {
+    return drivers.filter((driver) => driver.archivedAt == null)
+  }
+  if (lifecycle === 'archived') {
+    return drivers.filter((driver) => driver.archivedAt != null)
+  }
+  return drivers
+}
+
+export async function fetchDrivers(
+  options?: FetchDriversOptions,
+): Promise<Driver[]> {
   const table = 'drivers'
   // Fail closed before any query if there is no verified company membership.
   const companyId = requireVerifiedCompanyId()
+  // Default active-only so new-record Worker selectors exclude archived Workers.
+  // Admin Workers page passes { lifecycle: 'all' }.
+  const lifecycle: DriverLifecycleFilter = options?.lifecycle ?? 'active'
 
   try {
-    const drivers = await ensureWorkerCodesForDrivers(await queryDrivers(workerProfileSelect))
+    const drivers = await ensureWorkerCodesForDrivers(
+      await queryDrivers(workerProfileSelect, lifecycle),
+    )
     logSupabaseQuery({
       service: 'driversService.fetchDrivers',
       table,
@@ -1066,20 +1108,38 @@ export async function fetchDrivers(): Promise<Driver[]> {
       error: null,
     })
     return drivers
-  } catch {
+  } catch (primaryError) {
+    const missingColumn = extractMissingColumn(
+      primaryError as SupabaseWriteError,
+    )
+    const missingArchivedColumn = missingColumn === 'archived_at'
+    const missingRetentionColumn = missingColumn === 'retention_expires_at'
+
+    if (missingArchivedColumn && lifecycle === 'archived') {
+      return []
+    }
+
     try {
-      const drivers = await ensureWorkerCodesForDrivers(await queryDrivers(workerCoreSelect))
+      // Core select omits retention_expires_at so list still loads pre-migration.
+      const drivers = await ensureWorkerCodesForDrivers(
+        await queryDrivers(
+          workerCoreSelect,
+          missingArchivedColumn ? 'all' : lifecycle,
+        ),
+      )
       logSupabaseQuery({
         service: 'driversService.fetchDrivers',
         table,
         data: drivers,
         error: null,
       })
-      return drivers
+      return missingArchivedColumn || missingRetentionColumn
+        ? applyLifecycleFilterToRows(drivers, lifecycle)
+        : drivers
     } catch {
       try {
         const drivers = await ensureWorkerCodesForDrivers(
-          await queryDrivers(complianceDriverSelect),
+          await queryDrivers(complianceDriverSelect, 'all'),
         )
         logSupabaseQuery({
           service: 'driversService.fetchDrivers',
@@ -1087,7 +1147,7 @@ export async function fetchDrivers(): Promise<Driver[]> {
           data: drivers,
           error: null,
         })
-        return drivers
+        return applyLifecycleFilterToRows(drivers, lifecycle)
       } catch {
         const fallback = await requireSupabase()
           .from(table)
@@ -1103,7 +1163,10 @@ export async function fetchDrivers(): Promise<Driver[]> {
         })
 
         if (!fallback.error) {
-          return ensureWorkerCodesForDrivers(await mapDriverRows(fallback.data ?? []))
+          return applyLifecycleFilterToRows(
+            await ensureWorkerCodesForDrivers(await mapDriverRows(fallback.data ?? [])),
+            lifecycle,
+          )
         }
 
         const legacyFallback = await requireSupabase()
@@ -1113,7 +1176,12 @@ export async function fetchDrivers(): Promise<Driver[]> {
           .order('created_at', { ascending: false })
 
         if (!legacyFallback.error) {
-          return ensureWorkerCodesForDrivers(await mapDriverRows(legacyFallback.data ?? []))
+          return applyLifecycleFilterToRows(
+            await ensureWorkerCodesForDrivers(
+              await mapDriverRows(legacyFallback.data ?? []),
+            ),
+            lifecycle,
+          )
         }
 
         const minimalFallback = await requireSupabase()
@@ -1126,7 +1194,12 @@ export async function fetchDrivers(): Promise<Driver[]> {
           throw new DriversServiceError(minimalFallback.error.message)
         }
 
-        return ensureWorkerCodesForDrivers(await mapDriverRows(minimalFallback.data ?? []))
+        return applyLifecycleFilterToRows(
+          await ensureWorkerCodesForDrivers(
+            await mapDriverRows(minimalFallback.data ?? []),
+          ),
+          lifecycle,
+        )
       }
     }
   }
@@ -1367,50 +1440,72 @@ export async function updateWorkerAvatarUrl(
   return persistWorkerCodeIfNeeded(driver)
 }
 
-export async function deleteDriver(id: string): Promise<void> {
-  const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('drivers')
-    .delete()
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .select('id')
+/**
+ * Hard delete is closed. Use archiveDriver / restoreDriver instead.
+ */
+export async function deleteDriver(..._args: never[]): Promise<void> {
+  void _args
+  throw new DriversServiceError(
+    'Workers cannot be permanently deleted. Archive the Worker instead.',
+  )
+}
 
-  if (error) {
-    console.error('[driversService.deleteDriver] Supabase delete error:', error)
-    throw new DriversServiceError(error.message)
-  }
+function mapDriverLifecycleWriteError(error: unknown): never {
+  const supabaseError = error as SupabaseWriteError | null
+  const combined = [supabaseError?.message, supabaseError?.details, supabaseError?.hint]
+    .filter(Boolean)
+    .join(' — ')
+  const planCode = planLimitErrorCodeFromMessage(combined)
 
-  if ((data ?? []).length === 0) {
+  if (
+    planCode ||
+    isWorkerPlanLimitError({ message: combined, code: supabaseError?.code ?? null })
+  ) {
     throw new DriversServiceError(
-      'Worker could not be deleted for your company. Refresh and try again.',
+      formatWorkerPlanLimitError({ message: combined, code: planCode }),
+      planCode ?? planLimitErrorCodeFromMessage(combined),
     )
   }
+
+  if (/WORKER_ALREADY_ARCHIVED/i.test(combined)) {
+    throw new DriversServiceError('This Worker is already archived.')
+  }
+  if (/WORKER_NOT_ARCHIVED/i.test(combined)) {
+    throw new DriversServiceError('This Worker is already active.')
+  }
+  if (/WORKER_ARCHIVE_FORBIDDEN|WORKER_RESTORE_FORBIDDEN/i.test(combined)) {
+    throw new DriversServiceError('Office access is required for this action.')
+  }
+
+  throw new DriversServiceError(
+    combined || 'Unable to update worker lifecycle.',
+    supabaseError?.code ?? null,
+  )
 }
 
 /**
- * Soft-archive a Worker. Frees an active plan seat without deleting history.
+ * Soft-archive via Office RPC. Clears current Vehicle assignments and frees a plan seat.
  */
 export async function archiveDriver(id: string): Promise<Driver> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('drivers')
-    .update({ archived_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .is('archived_at', null)
-    .select('id')
+
+  const { data, error } = await requireSupabase().rpc('drevora_archive_driver', {
+    p_driver_id: id,
+  })
 
   if (error) {
-    if (isMissingColumnWriteError(error)) {
+    if (
+      isMissingColumnWriteError(error) ||
+      /function .*drevora_archive_driver/i.test(error.message ?? '')
+    ) {
       throw new DriversServiceError(
         'Worker archiving is not available yet. Ask DREVORA support to apply the latest database migration.',
       )
     }
-    throw new DriversServiceError(formatWriteErrorMessage(error), error.code ?? null)
+    mapDriverLifecycleWriteError(error)
   }
 
-  if ((data ?? []).length === 0) {
+  if (!data) {
     throw new DriversServiceError(
       'Worker could not be archived for your company. Refresh and try again.',
     )
@@ -1418,51 +1513,82 @@ export async function archiveDriver(id: string): Promise<Driver> {
 
   const driver = await fetchDriverRowById(id, companyId)
   if (!driver) {
-    throw new DriversServiceError('Worker was archived but could not be loaded.')
+    const [mapped] = await enrichDriversWithDefaultVehicles([
+      mapDriverRow(data as unknown as DriverRow),
+    ])
+    return persistWorkerCodeIfNeeded(mapped)
   }
 
   return persistWorkerCodeIfNeeded(driver)
 }
 
 /**
- * Reactivate an archived Worker when a plan seat is available.
- * Server trigger rejects with WORKER_PLAN_LIMIT_REACHED when full.
+ * Restore an archived Worker when a plan seat is available (Office RPC).
  */
-export async function reactivateDriver(id: string): Promise<Driver> {
+export async function restoreDriver(id: string): Promise<Driver> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
-    .from('drivers')
-    .update({ archived_at: null })
-    .eq('id', id)
-    .eq('company_id', companyId)
-    .not('archived_at', 'is', null)
-    .select('id')
+
+  const { data, error } = await requireSupabase().rpc('drevora_restore_driver', {
+    p_driver_id: id,
+  })
 
   if (error) {
-    if (isMissingColumnWriteError(error)) {
+    if (
+      isMissingColumnWriteError(error) ||
+      /function .*drevora_restore_driver/i.test(error.message ?? '')
+    ) {
       throw new DriversServiceError(
-        'Worker reactivation is not available yet. Ask DREVORA support to apply the latest database migration.',
+        'Worker restore is not available yet. Ask DREVORA support to apply the latest database migration.',
       )
     }
-    const formatted = formatWriteErrorMessage(error)
-    throw new DriversServiceError(
-      formatted,
-      planLimitErrorCodeFromMessage(formatted) ?? error.code ?? null,
-    )
+    mapDriverLifecycleWriteError(error)
   }
 
-  if ((data ?? []).length === 0) {
+  if (!data) {
     throw new DriversServiceError(
-      'Worker could not be reactivated for your company. Refresh and try again.',
+      'Worker could not be restored for your company. Refresh and try again.',
     )
   }
 
   const driver = await fetchDriverRowById(id, companyId)
   if (!driver) {
-    throw new DriversServiceError('Worker was reactivated but could not be loaded.')
+    const [mapped] = await enrichDriversWithDefaultVehicles([
+      mapDriverRow(data as unknown as DriverRow),
+    ])
+    return persistWorkerCodeIfNeeded(mapped)
   }
 
   return persistWorkerCodeIfNeeded(driver)
+}
+
+/** @deprecated Use restoreDriver. */
+export async function reactivateDriver(id: string): Promise<Driver> {
+  return restoreDriver(id)
+}
+
+export type WorkerAccessStatus = 'active' | 'archived' | 'none'
+
+/**
+ * Worker-app gate: active | archived | none for the signed-in auth user.
+ * Falls back to `none` when the RPC is unavailable.
+ */
+export async function getWorkerAccessStatus(): Promise<WorkerAccessStatus> {
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_auth_worker_access_status',
+  )
+
+  if (error) {
+    if (/function .*drevora_auth_worker_access_status/i.test(error.message ?? '')) {
+      return 'none'
+    }
+    return 'none'
+  }
+
+  if (data === 'active' || data === 'archived' || data === 'none') {
+    return data
+  }
+
+  return 'none'
 }
 
 export const driversService = {
@@ -1476,6 +1602,8 @@ export const driversService = {
   updateWorkerAvatarUrl,
   deleteDriver,
   archiveDriver,
+  restoreDriver,
   reactivateDriver,
+  getWorkerAccessStatus,
   getDriverFormValues,
 }

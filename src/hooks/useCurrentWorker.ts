@@ -2,6 +2,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import { fetchDriverByEmail, type Driver } from '@/services/driversService'
 import { useEffect, useState } from 'react'
 
+export const WORKER_ACCOUNT_ARCHIVED_MESSAGE =
+  'Your Worker account has been archived. Contact your company administrator.'
+
 type UseCurrentWorkerResult = {
   worker: Driver | null
   isLoading: boolean
@@ -38,6 +41,12 @@ export function useCurrentWorker(): UseCurrentWorkerResult {
           setError(
             'We could not find a worker profile linked to your account. Please contact your manager.',
           )
+          return
+        }
+
+        if (matchedWorker.archivedAt != null) {
+          setWorker(null)
+          setError(WORKER_ACCOUNT_ARCHIVED_MESSAGE)
           return
         }
 

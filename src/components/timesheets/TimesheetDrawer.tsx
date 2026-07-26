@@ -144,6 +144,7 @@ export function TimesheetDrawer({
   onSubmit,
 }: TimesheetDrawerProps) {
   const {
+    formatDate,
     formatTime,
     timeFormat,
     settings,
@@ -226,6 +227,10 @@ export function TimesheetDrawer({
 
   const canEdit = timesheet ? canEditTimesheet(timesheet.status) : false
   const isEditable = mode === 'edit' && canEdit
+  const retentionUntilLabel =
+    timesheet?.retentionExpiresAt != null
+      ? formatDate(timesheet.retentionExpiresAt.slice(0, 10))
+      : null
 
   useBodyScrollLock(Boolean(timesheet))
 
@@ -393,6 +398,11 @@ export function TimesheetDrawer({
               <p className="mt-1 text-sm font-medium text-[#3D7A9C] dark:text-slate-300">
                 {timesheet.weekRangeLabel}
               </p>
+              {retentionUntilLabel ? (
+                <p className="mt-1 text-sm font-medium text-[#3D7A9C] dark:text-slate-300">
+                  Retained until {retentionUntilLabel}
+                </p>
+              ) : null}
               {timesheet.status !== 'Draft' && timesheet.submittedAt && isEditable ? (
                 <p className="mt-2 text-sm font-medium text-[#3D7A9C] dark:text-slate-300">
                   Submitted to director:{' '}

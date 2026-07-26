@@ -77,6 +77,8 @@ export type WorkerProfileHistoryTab =
 type WorkerProfileHistoryTabsProps = {
   worker: Driver
   activeTab: WorkerProfileHistoryTab
+  /** When true, hide edit/create entitlement actions (archived Worker profile). */
+  readOnly?: boolean
 }
 
 function ProfileViewLink({ to, label }: { to: string; label?: string }) {
@@ -391,7 +393,13 @@ function WorkerProfileTimesheetsTab({ worker }: { worker: Driver }) {
   )
 }
 
-function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
+function WorkerProfileHolidaysTab({
+  worker,
+  readOnly = false,
+}: {
+  worker: Driver
+  readOnly?: boolean
+}) {
   const { formatDate, formatDateTime, settings } = useCompanySettings()
   const [entitlementWorker, setEntitlementWorker] = useState(worker)
   const [balance, setBalance] = useState<HolidayBalanceSummary | null>(null)
@@ -507,17 +515,19 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
               Manage this worker’s paid holiday allowance and leave balance.
             </h3>
           </div>
-          <Button
-            type="button"
-            onClick={() => {
-              setEntitlementError(null)
-              setIsEditModalOpen(true)
-            }}
-            className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-sm font-semibold text-white hover:bg-[#0B68BE]"
-          >
-            <Pencil className="size-4" />
-            Edit entitlement
-          </Button>
+          {!readOnly ? (
+            <Button
+              type="button"
+              onClick={() => {
+                setEntitlementError(null)
+                setIsEditModalOpen(true)
+              }}
+              className="h-9 rounded-[12px] bg-[#218EE7] px-3 text-sm font-semibold text-white hover:bg-[#0B68BE]"
+            >
+              <Pencil className="size-4" />
+              Edit entitlement
+            </Button>
+          ) : null}
         </div>
 
         {!paidHolidayEnabled ? (
@@ -622,7 +632,7 @@ function WorkerProfileHolidaysTab({ worker }: { worker: Driver }) {
         </table>
       </WorkerProfileTabShell>
 
-      {isEditModalOpen ? (
+      {isEditModalOpen && !readOnly ? (
         <HolidayEntitlementEditModal
           worker={entitlementWorker}
           isSaving={isSavingEntitlement}
@@ -937,12 +947,13 @@ function WorkerProfileConsumablesTab({ worker }: { worker: Driver }) {
 export function WorkerProfileHistoryTabs({
   worker,
   activeTab,
+  readOnly = false,
 }: WorkerProfileHistoryTabsProps) {
   switch (activeTab) {
     case 'Timesheets':
       return <WorkerProfileTimesheetsTab worker={worker} />
     case 'Holidays':
-      return <WorkerProfileHolidaysTab worker={worker} />
+      return <WorkerProfileHolidaysTab worker={worker} readOnly={readOnly} />
     case 'Vehicle Checks':
       return <WorkerProfileVehicleChecksTab worker={worker} />
     case 'Documents':

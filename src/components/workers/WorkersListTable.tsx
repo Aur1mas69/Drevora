@@ -17,7 +17,7 @@ import {
 } from '@/lib/adminUiStyles'
 import { getWorkerDefaultVehicleLabel } from '@/lib/workerProfileUtils'
 import type { Driver, DriverRole, DriverStatus } from '@/services/driversService'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -114,11 +114,14 @@ function DriverRowActions({
   driver,
   onEdit,
   onDelete,
+  onRestore,
 }: {
   driver: Driver
   onEdit: () => void
   onDelete: () => void
+  onRestore: () => void
 }) {
+  const isArchived = driver.archivedAt != null
   const actions: RowAction[] = [
     {
       id: 'view',
@@ -126,20 +129,32 @@ function DriverRowActions({
       icon: Eye,
       to: getWorkerProfilePath(driver),
     },
-    {
-      id: 'edit',
-      label: 'Edit',
-      icon: Pencil,
-      onClick: onEdit,
-    },
-    {
-      id: 'archive',
-      label: 'Archive',
-      icon: Trash2,
-      tone: 'danger',
-      onClick: onDelete,
-    },
   ]
+
+  if (!isArchived) {
+    actions.push(
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: Pencil,
+        onClick: onEdit,
+      },
+      {
+        id: 'archive',
+        label: 'Archive Worker',
+        icon: Trash2,
+        tone: 'danger',
+        onClick: onDelete,
+      },
+    )
+  } else {
+    actions.push({
+      id: 'restore',
+      label: 'Restore',
+      icon: RotateCcw,
+      onClick: onRestore,
+    })
+  }
 
   return <RowActionsMenu actions={actions} appearance="workers" />
 }
@@ -153,6 +168,7 @@ type WorkersListTableProps = {
   onPageSizeChange: (pageSize: number) => void
   onEditDriver: (driver: Driver) => void
   onDeleteDriver: (driver: Driver) => void
+  onRestoreDriver?: (driver: Driver) => void
 }
 
 export function WorkersListTable({
@@ -164,6 +180,7 @@ export function WorkersListTable({
   onPageSizeChange,
   onEditDriver,
   onDeleteDriver,
+  onRestoreDriver,
 }: WorkersListTableProps) {
   return (
     <Card className={workersTableCardClass}>
@@ -228,6 +245,18 @@ export function WorkersListTable({
                       <p className="mt-1 truncate text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
                         {driver.email}
                       </p>
+                      {driver.archivedAt ? (
+                        <div className="mt-1.5 flex flex-col gap-1">
+                          <span className="inline-flex w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                            Archived · {driver.archivedAt.slice(0, 10)}
+                          </span>
+                          {driver.retentionExpiresAt ? (
+                            <span className="inline-flex w-fit rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-slate-700">
+                              Retained until {driver.retentionExpiresAt.slice(0, 10)}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -250,6 +279,7 @@ export function WorkersListTable({
                         driver={driver}
                         onEdit={() => onEditDriver(driver)}
                         onDelete={() => onDeleteDriver(driver)}
+                        onRestore={() => onRestoreDriver?.(driver)}
                       />
                     </div>
                   </TableActionsCell>

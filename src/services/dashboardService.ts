@@ -431,6 +431,8 @@ function buildDashboardVehicle(
       (record) => record.vehicleId === row.id,
     ),
     archivedAt: null,
+    archiveReason: null,
+    retentionExpiresAt: null,
   }
 }
 

@@ -174,13 +174,21 @@ export function formatVehiclePlanLimitError(error: unknown): string {
     return 'Vehicle allowance reached. Archive an inactive Vehicle or change the company plan to add another Vehicle.'
   }
 
-  const blob = `${error.message} ${'code' in error ? String((error as { code?: unknown }).code ?? '') : ''}`.toUpperCase()
+  const raw = error.message
+  const blob = `${raw} ${'code' in error ? String((error as { code?: unknown }).code ?? '') : ''}`.toUpperCase()
 
   if (blob.includes(VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE)) {
     if (blob.includes('CUSTOM')) {
       return 'Custom Vehicle allowance not configured. Contact DREVORA support before adding Vehicles.'
     }
     return 'Vehicle allowance unavailable. Assign a valid company plan before adding Vehicles.'
+  }
+
+  if (
+    blob.includes(VEHICLE_PLAN_LIMIT_REACHED) &&
+    /upgrade your plan before restoring/i.test(raw)
+  ) {
+    return 'Your vehicle limit has been reached. Archive another vehicle or upgrade your plan before restoring this vehicle.'
   }
 
   return 'Vehicle allowance reached. Archive an inactive Vehicle or change the company plan to add another Vehicle.'

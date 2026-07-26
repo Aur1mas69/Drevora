@@ -26,6 +26,7 @@ import {
 import { FleetAvailabilityOverview } from '@/components/vehicles/FleetAvailabilityOverview'
 import { FleetPlanningCalendar } from '@/components/vehicles/FleetPlanningCalendar'
 import { ArchiveVehicleModal } from '@/components/vehicles/ArchiveVehicleModal'
+import { RestoreVehicleModal } from '@/components/vehicles/RestoreVehicleModal'
 import { VehicleEditModal } from '@/components/vehicles/VehicleEditModal'
 import {
   VehiclesCardGrid,
@@ -38,7 +39,9 @@ import {
 import {
   VehiclesFilterBar,
   type StatusFilter,
+  type VehiclesLifecycleFilter,
 } from '@/components/vehicles/VehiclesFilterBar'
+import type { VehicleArchiveReason } from '@/lib/vehicleArchive'
 import { VehiclesAllowanceNotice } from '@/components/vehicles/VehiclesAllowanceNotice'
 import { VehiclesSummaryCards } from '@/components/vehicles/VehiclesSummaryCards'
 import type { VehicleKpiKey } from '@/components/vehicles/vehicleSummaryKpiStyles'
@@ -129,6 +132,8 @@ function VehiclesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [lifecycleFilter, setLifecycleFilter] =
+    useState<VehiclesLifecycleFilter>('active')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
   const [driverFilter, setDriverFilter] = useState('All')
   const [motFilter, setMotFilter] = useState<DocumentFilter>('All')
@@ -142,12 +147,15 @@ function VehiclesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [archivingVehicle, setArchivingVehicle] = useState<Vehicle | null>(null)
+  const [restoringVehicle, setRestoringVehicle] = useState<Vehicle | null>(null)
   const [form, setForm] = useState<VehicleInput>(initialVehicleForm)
   const [formErrors, setFormErrors] = useState<VehicleFormErrors>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [detailsContext, setDetailsContext] =
     useState<AvailabilityDetailsContext | null>(null)
@@ -174,7 +182,8 @@ function VehiclesPage() {
 
     try {
       const [vehicleResult, driverResult] = await Promise.all([
-        vehiclesService.fetchVehicles(),
+        // Admin list needs both Active and Archived; plan seats use active-only count.
+        vehiclesService.fetchVehicles({ lifecycle: 'all' }),
         driversService.fetchDrivers(),
       ])
       setVehicles(vehicleResult)
@@ -255,11 +264,28 @@ function VehiclesPage() {
   useEffect(() => {
     setTablePage(1)
     setGridPage(1)
-  }, [searchTerm, statusFilter, driverFilter, motFilter, insuranceFilter])
+  }, [
+    searchTerm,
+    lifecycleFilter,
+    statusFilter,
+    driverFilter,
+    motFilter,
+    insuranceFilter,
+  ])
 
-  const visibleVehicles = useMemo(
+  const activeVehicles = useMemo(
     () => vehicles.filter((vehicle) => vehicle.archivedAt == null),
     [vehicles],
+  )
+
+  const archivedVehicles = useMemo(
+    () => vehicles.filter((vehicle) => vehicle.archivedAt != null),
+    [vehicles],
+  )
+
+  const visibleVehicles = useMemo(
+    () => (lifecycleFilter === 'archived' ? archivedVehicles : activeVehicles),
+    [activeVehicles, archivedVehicles, lifecycleFilter],
   )
 
   const vehicleAllowance = useMemo(
@@ -272,8 +298,8 @@ function VehiclesPage() {
   )
 
   const summaryStats = useMemo(
-    () => computeFleetSummaryStats(visibleVehicles),
-    [visibleVehicles],
+    () => computeFleetSummaryStats(activeVehicles),
+    [activeVehicles],
   )
 
   const filteredVehicles = useMemo(() => {
@@ -470,11 +496,19 @@ function VehiclesPage() {
   }
 
   function openArchiveVehicleModal(vehicle: Vehicle) {
+    if (vehicle.archivedAt != null) return
     setArchiveError(null)
     setArchivingVehicle(vehicle)
   }
 
+  function openRestoreVehicleModal(vehicle: Vehicle) {
+    if (vehicle.archivedAt == null) return
+    setRestoreError(null)
+    setRestoringVehicle(vehicle)
+  }
+
   function openEditVehicleModal(vehicle: Vehicle) {
+    if (vehicle.archivedAt != null) return
     setForm(getVehicleFormValues(vehicle))
     setFormErrors({})
     setSaveError(null)
@@ -571,20 +605,53 @@ function VehiclesPage() {
     }
   }
 
-  async function handleConfirmArchiveVehicle() {
+  async function handleConfirmArchiveVehicle(input: {
+    reason: VehicleArchiveReason
+    archiveDate: string
+  }) {
     if (!archivingVehicle) return
 
     setIsArchiving(true)
     setArchiveError(null)
     try {
-      await vehiclesService.archiveVehicle(archivingVehicle.id)
+      await vehiclesService.archiveVehicle(archivingVehicle.id, input)
       setArchivingVehicle(null)
       await loadVehicles()
       setToastMessage('Vehicle archived successfully.')
-    } catch {
-      setArchiveError('Unable to archive vehicle. Please try again.')
+    } catch (error) {
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to archive vehicle. Please try again.',
+      )
     } finally {
       setIsArchiving(false)
+    }
+  }
+
+  async function handleConfirmRestoreVehicle() {
+    if (!restoringVehicle) return
+
+    setIsRestoring(true)
+    setRestoreError(null)
+    try {
+      await vehiclesService.restoreVehicle(restoringVehicle.id)
+      setRestoringVehicle(null)
+      setLifecycleFilter('active')
+      await loadVehicles()
+      setToastMessage('Vehicle restored successfully.')
+    } catch (error) {
+      if (isVehiclePlanLimitError(error)) {
+        setRestoreError(formatVehiclePlanLimitError(error))
+      } else {
+        setRestoreError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to restore vehicle. Please try again.',
+        )
+      }
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -694,6 +761,8 @@ function VehiclesPage() {
             <VehiclesFilterBar
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
+              lifecycleFilter={lifecycleFilter}
+              onLifecycleFilterChange={setLifecycleFilter}
               statusFilter={statusFilter}
               onStatusFilterChange={handleStatusFilterChange}
               driverFilter={driverFilter}
@@ -711,12 +780,14 @@ function VehiclesPage() {
               onViewModeChange={handleViewModeChange}
               hasActiveFilters={hasActiveFilters}
             />
-            <VehiclesAllowanceNotice allowance={vehicleAllowance} />
+            {lifecycleFilter === 'active' ? (
+              <VehiclesAllowanceNotice allowance={vehicleAllowance} />
+            ) : null}
           </div>
         ) : null}
 
         {isLoading ? (
-          viewMode === 'grid' ? (
+          viewMode === 'grid' && lifecycleFilter === 'active' ? (
             <VehiclesCardGridSkeleton />
           ) : (
             <VehiclesTableSkeleton />
@@ -740,9 +811,22 @@ function VehiclesPage() {
         ) : null}
 
         {!isLoading && !loadError && visibleVehicles.length === 0 ? (
-          viewMode === 'grid' &&
-          vehicleAllowance.allowance != null &&
-          vehicleAllowance.canAddVehicle ? (
+          lifecycleFilter === 'archived' ? (
+            <div className={`${adminEmptyState} py-14`}>
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#EEF4FF] text-[#2563EB] dark:bg-slate-800/70 dark:text-blue-300">
+                <Truck className="size-6" />
+              </div>
+              <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
+                No archived vehicles
+              </p>
+              <p className={`mt-2 text-sm ${adminTextMuted}`}>
+                Archived vehicles appear here. Active vehicles stay on the Active
+                tab and count toward your plan.
+              </p>
+            </div>
+          ) : viewMode === 'grid' &&
+            vehicleAllowance.allowance != null &&
+            vehicleAllowance.canAddVehicle ? (
             <VehiclesCardGrid
               items={slotPage.items}
               drivers={drivers}
@@ -756,6 +840,7 @@ function VehiclesPage() {
               onAddVehicle={openAddVehicleModal}
               onEditVehicle={openEditVehicleModal}
               onArchiveVehicle={openArchiveVehicleModal}
+              onRestoreVehicle={openRestoreVehicleModal}
             />
           ) : (
             <div className={`${adminEmptyState} py-14`}>
@@ -802,7 +887,7 @@ function VehiclesPage() {
                   Clear Filters
                 </Button>
               </div>
-            ) : viewMode === 'grid' ? (
+            ) : viewMode === 'grid' && lifecycleFilter === 'active' ? (
               <VehiclesCardGrid
                 items={slotPage.items}
                 drivers={drivers}
@@ -816,6 +901,7 @@ function VehiclesPage() {
                 onAddVehicle={openAddVehicleModal}
                 onEditVehicle={openEditVehicleModal}
                 onArchiveVehicle={openArchiveVehicleModal}
+                onRestoreVehicle={openRestoreVehicleModal}
               />
             ) : (
               <VehiclesDataTable
@@ -825,25 +911,30 @@ function VehiclesPage() {
                 onPageChange={setTablePage}
                 onEditVehicle={openEditVehicleModal}
                 onArchiveVehicle={openArchiveVehicleModal}
+                onRestoreVehicle={openRestoreVehicleModal}
                 onOpenAvailabilityEvent={openAvailabilityFromNextEvent}
               />
             )}
 
-            <FleetAvailabilityOverview
-              vehicles={filteredVehicles}
-              onOpenEvent={openAvailabilityFromPlanningEvent}
-              onOpenFullCalendar={openFullCalendar}
-            />
-
-            {showFullCalendar ? (
-              <div ref={calendarSectionRef} id="fleet-planning-calendar">
-                <FleetPlanningCalendar
+            {lifecycleFilter === 'active' ? (
+              <>
+                <FleetAvailabilityOverview
                   vehicles={filteredVehicles}
-                  initialView={calendarInitialView}
-                  onOpenPlanningEvent={openAvailabilityFromPlanningEvent}
-                  onOpenDayStatus={openAvailabilityFromCalendar}
+                  onOpenEvent={openAvailabilityFromPlanningEvent}
+                  onOpenFullCalendar={openFullCalendar}
                 />
-              </div>
+
+                {showFullCalendar ? (
+                  <div ref={calendarSectionRef} id="fleet-planning-calendar">
+                    <FleetPlanningCalendar
+                      vehicles={filteredVehicles}
+                      initialView={calendarInitialView}
+                      onOpenPlanningEvent={openAvailabilityFromPlanningEvent}
+                      onOpenDayStatus={openAvailabilityFromCalendar}
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </>
         ) : null}
@@ -871,6 +962,7 @@ function VehiclesPage() {
 
       {archivingVehicle ? (
         <ArchiveVehicleModal
+          key={archivingVehicle.id}
           vehicle={archivingVehicle}
           errorMessage={archiveError}
           isArchiving={isArchiving}
@@ -879,6 +971,19 @@ function VehiclesPage() {
             setArchivingVehicle(null)
           }}
           onConfirm={handleConfirmArchiveVehicle}
+        />
+      ) : null}
+
+      {restoringVehicle ? (
+        <RestoreVehicleModal
+          vehicle={restoringVehicle}
+          errorMessage={restoreError}
+          isRestoring={isRestoring}
+          onCancel={() => {
+            if (isRestoring) return
+            setRestoringVehicle(null)
+          }}
+          onConfirm={handleConfirmRestoreVehicle}
         />
       ) : null}
 

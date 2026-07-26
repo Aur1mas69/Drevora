@@ -29,7 +29,15 @@ import {
   getVehicleStatusForDate,
   type Vehicle,
 } from '@/services/vehiclesService'
-import { ChevronLeft, ChevronRight, Droplets, Eye, Pencil, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Droplets,
+  Eye,
+  Pencil,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -144,11 +152,14 @@ function VehicleRowActions({
   vehicle,
   onEdit,
   onArchive,
+  onRestore,
 }: {
   vehicle: Vehicle
   onEdit: () => void
   onArchive: () => void
+  onRestore: () => void
 }) {
+  const isArchived = vehicle.archivedAt != null
   const actions: RowAction[] = [
     {
       id: 'view',
@@ -156,26 +167,38 @@ function VehicleRowActions({
       icon: Eye,
       to: `/vehicles/${vehicle.id}`,
     },
-    {
-      id: 'edit',
-      label: 'Edit',
-      icon: Pencil,
-      onClick: onEdit,
-    },
-    {
-      id: 'consumables',
-      label: 'View consumables',
-      icon: Droplets,
-      to: `/vehicles/${vehicle.id}?tab=consumables`,
-    },
-    {
-      id: 'archive',
-      label: 'Archive',
-      icon: Trash2,
-      tone: 'danger',
-      onClick: onArchive,
-    },
   ]
+
+  if (!isArchived) {
+    actions.push(
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: Pencil,
+        onClick: onEdit,
+      },
+      {
+        id: 'consumables',
+        label: 'View consumables',
+        icon: Droplets,
+        to: `/vehicles/${vehicle.id}?tab=consumables`,
+      },
+      {
+        id: 'archive',
+        label: 'Archive Vehicle',
+        icon: Trash2,
+        tone: 'danger',
+        onClick: onArchive,
+      },
+    )
+  } else {
+    actions.push({
+      id: 'restore',
+      label: 'Restore',
+      icon: RotateCcw,
+      onClick: onRestore,
+    })
+  }
 
   return <RowActionsMenu actions={actions} appearance="workers" />
 }
@@ -187,6 +210,7 @@ type VehiclesDataTableProps = {
   onPageChange: (page: number) => void
   onEditVehicle: (vehicle: Vehicle) => void
   onArchiveVehicle: (vehicle: Vehicle) => void
+  onRestoreVehicle: (vehicle: Vehicle) => void
   onOpenAvailabilityEvent: (vehicle: Vehicle, event: PlanningEvent) => void
 }
 
@@ -197,6 +221,7 @@ export function VehiclesDataTable({
   onPageChange,
   onEditVehicle,
   onArchiveVehicle,
+  onRestoreVehicle,
   onOpenAvailabilityEvent,
 }: VehiclesDataTableProps) {
   const [pageSize, setPageSize] = useState(VEHICLES_PAGE_SIZE)
@@ -235,12 +260,29 @@ export function VehiclesDataTable({
             {pageVehicles.map((vehicle) => (
               <tr key={vehicle.id} className={`${vehicleTableRowClass} text-xs`}>
                 <td className="px-4 py-3">
-                  <Link
-                    to={`/vehicles/${vehicle.id}`}
-                    className={`${adminTableEntityName} transition-colors hover:text-[#218EE7]`}
-                  >
-                    {vehicle.registration}
-                  </Link>
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      to={`/vehicles/${vehicle.id}`}
+                      className={`${adminTableEntityName} transition-colors hover:text-[#218EE7]`}
+                    >
+                      {vehicle.registration}
+                    </Link>
+                    {vehicle.archivedAt ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex w-fit max-w-full truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                          Archived
+                          {vehicle.archiveReason ? ` · ${vehicle.archiveReason}` : ''}
+                          {' · '}
+                          {vehicle.archivedAt.slice(0, 10)}
+                        </span>
+                        {vehicle.retentionExpiresAt ? (
+                          <span className="inline-flex w-fit max-w-full truncate rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-slate-700">
+                            Retained until {vehicle.retentionExpiresAt.slice(0, 10)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <FleetNumberBadge fleetNumber={vehicle.fleetNumber} />
@@ -278,6 +320,7 @@ export function VehiclesDataTable({
                     vehicle={vehicle}
                     onEdit={() => onEditVehicle(vehicle)}
                     onArchive={() => onArchiveVehicle(vehicle)}
+                    onRestore={() => onRestoreVehicle(vehicle)}
                   />
                 </TableActionsCell>
               </tr>

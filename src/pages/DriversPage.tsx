@@ -26,6 +26,8 @@ import {
 import { DEFAULT_WORKER_PAGE_SIZE } from '@/components/workers/WorkersPagination'
 import { WorkersAllowanceNotice } from '@/components/workers/WorkersAllowanceNotice'
 import { WorkersViewSwitcher } from '@/components/workers/WorkersViewSwitcher'
+import { RestoreWorkerModal } from '@/components/workers/RestoreWorkerModal'
+import { WorkerCard } from '@/components/workers/WorkerCard'
 import {
   adminFilterChip,
   adminHeadingLg,
@@ -72,6 +74,7 @@ import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type StatusFilter = DriverStatus | 'All'
 type RoleFilter = DriverRole | 'All'
+type WorkersLifecycleFilter = 'active' | 'archived' | 'all'
 type CreateDriverForm = CreateDriverInput
 type DriverFormErrors = Partial<Record<keyof CreateDriverForm, string>>
 
@@ -166,6 +169,8 @@ function validateDriverForm(form: CreateDriverForm): DriverFormErrors {
 function DriversToolbar({
   searchTerm,
   onSearchTermChange,
+  lifecycleFilter,
+  onLifecycleFilterChange,
   statusFilter,
   onStatusFilterChange,
   roleFilter,
@@ -182,6 +187,8 @@ function DriversToolbar({
 }: {
   searchTerm: string
   onSearchTermChange: (value: string) => void
+  lifecycleFilter: WorkersLifecycleFilter
+  onLifecycleFilterChange: (value: WorkersLifecycleFilter) => void
   statusFilter: StatusFilter
   onStatusFilterChange: (value: StatusFilter) => void
   roleFilter: RoleFilter
@@ -202,10 +209,40 @@ function DriversToolbar({
     (companyFilter !== 'All' ? 1 : 0)
 
   return (
+    <div className="space-y-3">
+      <div
+        className="inline-flex rounded-2xl border border-[#D3E9FC] bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
+        role="tablist"
+        aria-label="Worker lifecycle"
+      >
+        {(
+          [
+            { id: 'active', label: 'Active' },
+            { id: 'archived', label: 'Archived' },
+            { id: 'all', label: 'All' },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={lifecycleFilter === tab.id}
+            onClick={() => onLifecycleFilterChange(tab.id)}
+            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+              lifecycleFilter === tab.id
+                ? 'bg-[#218EE7] text-white'
+                : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
     <ModuleListToolbar
       primaryActionLabel="Add Worker"
       onPrimaryAction={onAddDriver}
-      primaryActionDisabled={!canAddWorker}
+      primaryActionDisabled={!canAddWorker || lifecycleFilter === 'archived'}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
       searchPlaceholder="Search workers"
@@ -286,6 +323,7 @@ function DriversToolbar({
         ) : null
       }
     />
+    </div>
   )
 }
 
@@ -373,6 +411,10 @@ function ArchiveDriverModal({
           {getDriverName(driver)} will be archived and will no longer occupy an
           active Worker seat. Historical records stay intact.
         </p>
+        <p className="mt-2 text-sm font-medium leading-6 text-amber-700 dark:text-amber-300">
+          Archiving this Worker will block their Worker-app access and remove
+          current Vehicle assignments. Historical records will be kept.
+        </p>
 
         {errorMessage ? (
           <div className="mt-5 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100">
@@ -414,6 +456,8 @@ function DriversPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [lifecycleFilter, setLifecycleFilter] =
+    useState<WorkersLifecycleFilter>('active')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('All')
   const [roleQuickFilter, setRoleQuickFilter] = useState<WorkerRoleQuickFilter | null>(null)
@@ -427,12 +471,15 @@ function DriversPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
   const [archivingDriver, setArchivingDriver] = useState<Driver | null>(null)
+  const [restoringDriver, setRestoringDriver] = useState<Driver | null>(null)
   const [form, setForm] = useState<CreateDriverForm>(initialDriverForm)
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
   const [createError, setCreateError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
@@ -444,8 +491,8 @@ function DriversPage() {
     setLoadError(null)
 
     try {
-      // fetchDrivers is scoped to the verified company_id server-side.
-      const result = await driversService.fetchDrivers()
+      // Admin list needs Active + Archived; plan seats use active-only count.
+      const result = await driversService.fetchDrivers({ lifecycle: 'all' })
 
       // Deduplicate by id in case of overlapping query fallbacks
       const uniqueById = new Map(result.map((driver) => [driver.id, driver]))
@@ -528,10 +575,21 @@ function DriversPage() {
     navigate(location.pathname, { replace: true, state: null })
   }, [location.pathname, location.state, navigate])
 
-  const visibleDrivers = useMemo(
+  const activeDrivers = useMemo(
     () => drivers.filter((driver) => driver.archivedAt == null),
     [drivers],
   )
+
+  const archivedDrivers = useMemo(
+    () => drivers.filter((driver) => driver.archivedAt != null),
+    [drivers],
+  )
+
+  const visibleDrivers = useMemo(() => {
+    if (lifecycleFilter === 'archived') return archivedDrivers
+    if (lifecycleFilter === 'all') return drivers
+    return activeDrivers
+  }, [activeDrivers, archivedDrivers, drivers, lifecycleFilter])
 
   const workerAllowance = useMemo(
     () =>
@@ -542,6 +600,9 @@ function DriversPage() {
     [companyPlan, drivers],
   )
 
+  const canAddWorkerOnView =
+    workerAllowance.canAddWorker && lifecycleFilter !== 'archived'
+
   const companyOptions = useMemo(
     () =>
       Array.from(
@@ -551,8 +612,8 @@ function DriversPage() {
   )
 
   const roleSummaryStats = useMemo(
-    () => computeWorkerRoleSummaryStats(visibleDrivers),
-    [visibleDrivers],
+    () => computeWorkerRoleSummaryStats(activeDrivers),
+    [activeDrivers],
   )
 
   const filteredDrivers = useMemo(() => {
@@ -623,7 +684,15 @@ function DriversPage() {
   useEffect(() => {
     setGridPage(1)
     setTablePage(1)
-  }, [searchTerm, statusFilter, roleFilter, roleQuickFilter, companyFilter, pageSize])
+  }, [
+    searchTerm,
+    lifecycleFilter,
+    statusFilter,
+    roleFilter,
+    roleQuickFilter,
+    companyFilter,
+    pageSize,
+  ])
 
   const slotPage = useMemo(
     () =>
@@ -697,6 +766,11 @@ function DriversPage() {
   }
 
   function openAddDriverModal() {
+    if (lifecycleFilter === 'archived') {
+      setToastMessage('Switch to Active to add a Worker.')
+      return
+    }
+
     if (!workerAllowance.canAddWorker) {
       setToastMessage(workerAllowance.title || 'Worker allowance reached')
       return
@@ -711,6 +785,8 @@ function DriversPage() {
   }
 
   function openEditDriverModal(driver: Driver) {
+    if (driver.archivedAt != null) return
+
     setForm(getDriverFormValues(driver))
     setFormErrors({})
     setCreateError(null)
@@ -722,6 +798,11 @@ function DriversPage() {
   function openArchiveDriverModal(driver: Driver) {
     setArchiveError(null)
     setArchivingDriver(driver)
+  }
+
+  function openRestoreDriverModal(driver: Driver) {
+    setRestoreError(null)
+    setRestoringDriver(driver)
   }
 
   function closeAddDriverModal() {
@@ -851,10 +932,40 @@ function DriversPage() {
       setArchivingDriver(null)
       await loadDrivers()
       setToastMessage('Worker archived successfully.')
-    } catch {
-      setArchiveError('Unable to archive worker. Please try again.')
+    } catch (error) {
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to archive worker. Please try again.',
+      )
     } finally {
       setIsArchiving(false)
+    }
+  }
+
+  async function handleConfirmRestoreDriver() {
+    if (!restoringDriver) return
+
+    setIsRestoring(true)
+    setRestoreError(null)
+
+    try {
+      await driversService.restoreDriver(restoringDriver.id)
+      setRestoringDriver(null)
+      await loadDrivers()
+      setToastMessage('Worker restored successfully.')
+    } catch (error) {
+      if (isWorkerPlanLimitError(error)) {
+        setRestoreError(formatWorkerPlanLimitError(error))
+      } else {
+        setRestoreError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to restore worker. Please try again.',
+        )
+      }
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -884,6 +995,8 @@ function DriversPage() {
           <DriversToolbar
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
+            lifecycleFilter={lifecycleFilter}
+            onLifecycleFilterChange={setLifecycleFilter}
             statusFilter={statusFilter}
             onStatusFilterChange={handleStatusFilterChange}
             roleFilter={roleFilter}
@@ -894,7 +1007,7 @@ function DriversPage() {
             isFilterOpen={isFilterOpen}
             onFilterToggle={() => setIsFilterOpen((currentValue) => !currentValue)}
             onAddDriver={openAddDriverModal}
-            canAddWorker={workerAllowance.canAddWorker}
+            canAddWorker={canAddWorkerOnView}
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
           />
@@ -906,13 +1019,13 @@ function DriversPage() {
             />
           ) : null}
 
-          {!isLoading && !loadError ? (
+          {!isLoading && !loadError && lifecycleFilter === 'active' ? (
             <WorkersAllowanceNotice allowance={workerAllowance} />
           ) : null}
         </div>
 
         {isLoading ? (
-          viewMode === 'grid' ? (
+          viewMode === 'grid' && lifecycleFilter === 'active' ? (
             <WorkersCardGridSkeleton />
           ) : (
             <WorkersListTableSkeleton />
@@ -924,9 +1037,22 @@ function DriversPage() {
         ) : null}
 
         {!isLoading && !loadError && visibleDrivers.length === 0 ? (
-          viewMode === 'grid' &&
-          workerAllowance.allowance != null &&
-          workerAllowance.canAddWorker ? (
+          lifecycleFilter === 'archived' ? (
+            <Card className={workersPanelCardClass}>
+              <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
+                <p className={`text-lg font-semibold tracking-[-0.02em] ${adminHeadingLg}`}>
+                  No archived workers
+                </p>
+                <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>
+                  Archived workers appear here. Active workers stay on the Active
+                  tab and count toward your plan.
+                </p>
+              </CardContent>
+            </Card>
+          ) : viewMode === 'grid' &&
+            lifecycleFilter === 'active' &&
+            workerAllowance.allowance != null &&
+            workerAllowance.canAddWorker ? (
             <WorkersCardGrid
               items={slotPage.items}
               page={slotPage.page}
@@ -935,16 +1061,17 @@ function DriversPage() {
               slotTo={slotPage.slotTo}
               totalSlots={slotPage.totalSlots}
               showingWorkersOnly={slotPage.showingWorkersOnly}
-              canAddWorker={workerAllowance.canAddWorker}
+              canAddWorker={canAddWorkerOnView}
               onPageChange={setGridPage}
               onAddWorker={openAddDriverModal}
               onEditWorker={openEditDriverModal}
               onDeleteWorker={openArchiveDriverModal}
+              onRestoreWorker={openRestoreDriverModal}
             />
           ) : (
             <DriversEmptyState
               onAddDriver={openAddDriverModal}
-              canAddWorker={workerAllowance.canAddWorker}
+              canAddWorker={canAddWorkerOnView}
             />
           )
         ) : null}
@@ -957,13 +1084,13 @@ function DriversPage() {
                   No Workers match your search or filters.
                 </p>
                 <p className={`mt-2 max-w-md text-sm font-medium ${adminTextMuted}`}>
-                  {viewMode === 'grid'
+                  {viewMode === 'grid' && lifecycleFilter === 'active'
                     ? 'Clear search or filters to restore the full Worker slot grid.'
                     : 'Clear search or filters to restore the Worker list.'}
                 </p>
               </CardContent>
             </Card>
-          ) : viewMode === 'grid' ? (
+          ) : viewMode === 'grid' && lifecycleFilter === 'active' ? (
             <WorkersCardGrid
               items={slotPage.items}
               page={slotPage.page}
@@ -972,12 +1099,25 @@ function DriversPage() {
               slotTo={slotPage.slotTo}
               totalSlots={slotPage.totalSlots}
               showingWorkersOnly={slotPage.showingWorkersOnly}
-              canAddWorker={workerAllowance.canAddWorker}
+              canAddWorker={canAddWorkerOnView}
               onPageChange={setGridPage}
               onAddWorker={openAddDriverModal}
               onEditWorker={openEditDriverModal}
               onDeleteWorker={openArchiveDriverModal}
+              onRestoreWorker={openRestoreDriverModal}
             />
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7">
+              {filteredDrivers.map((driver) => (
+                <WorkerCard
+                  key={driver.id}
+                  driver={driver}
+                  onEdit={openEditDriverModal}
+                  onDelete={openArchiveDriverModal}
+                  onRestore={openRestoreDriverModal}
+                />
+              ))}
+            </div>
           ) : (
             <WorkersListTable
               drivers={listPage.drivers}
@@ -991,6 +1131,7 @@ function DriversPage() {
               }}
               onEditDriver={openEditDriverModal}
               onDeleteDriver={openArchiveDriverModal}
+              onRestoreDriver={openRestoreDriverModal}
             />
           )
         ) : null}
@@ -1044,6 +1185,19 @@ function DriversPage() {
             setArchivingDriver(null)
           }}
           onConfirm={handleConfirmArchiveDriver}
+        />
+      ) : null}
+
+      {restoringDriver ? (
+        <RestoreWorkerModal
+          driver={restoringDriver}
+          errorMessage={restoreError}
+          isRestoring={isRestoring}
+          onCancel={() => {
+            if (isRestoring) return
+            setRestoringDriver(null)
+          }}
+          onConfirm={handleConfirmRestoreDriver}
         />
       ) : null}
 

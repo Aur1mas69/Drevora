@@ -5,12 +5,14 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom'
-import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import {
   MembershipAccessBlocked,
   MembershipLoadingScreen,
   useMembershipAccessState,
 } from '@/components/auth/MembershipAccessGate'
+import { WORKER_ACCOUNT_ARCHIVED_MESSAGE } from '@/hooks/useCurrentWorker'
+import { getWorkerAccessStatus } from '@/services/driversService'
 import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
 import { loadAdminDashboardPage, preloadAdminDashboardPage } from '@/lib/adminDashboardRoute'
 import {
@@ -140,6 +142,31 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
  */
 function RequireWorkerAccess() {
   const access = useMembershipAccessState()
+  const [workerLifecycle, setWorkerLifecycle] = useState<
+    'loading' | 'active' | 'archived' | 'none'
+  >('loading')
+
+  useEffect(() => {
+    if (access.status !== 'worker') {
+      setWorkerLifecycle('loading')
+      return
+    }
+
+    let cancelled = false
+    setWorkerLifecycle('loading')
+
+    void getWorkerAccessStatus()
+      .then((status) => {
+        if (!cancelled) setWorkerLifecycle(status)
+      })
+      .catch(() => {
+        if (!cancelled) setWorkerLifecycle('none')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [access.status])
 
   if (access.status === 'loading') {
     return <MembershipLoadingScreen />
@@ -159,6 +186,16 @@ function RequireWorkerAccess() {
 
   if (access.status === 'blocked') {
     return <MembershipAccessBlocked message={access.message} />
+  }
+
+  if (workerLifecycle === 'loading') {
+    return <MembershipLoadingScreen />
+  }
+
+  if (workerLifecycle === 'archived') {
+    return (
+      <MembershipAccessBlocked message={WORKER_ACCOUNT_ARCHIVED_MESSAGE} />
+    )
   }
 
   return <MainLayout />

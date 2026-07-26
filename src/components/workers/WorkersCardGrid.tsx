@@ -18,6 +18,7 @@ type WorkersCardGridProps = {
   onAddWorker: () => void
   onEditWorker: (driver: Driver) => void
   onDeleteWorker: (driver: Driver) => void
+  onRestoreWorker?: (driver: Driver) => void
 }
 
 export function WorkersCardGrid({
@@ -33,6 +34,7 @@ export function WorkersCardGrid({
   onAddWorker,
   onEditWorker,
   onDeleteWorker,
+  onRestoreWorker,
 }: WorkersCardGridProps) {
   return (
     <div className="space-y-4">
@@ -44,6 +46,7 @@ export function WorkersCardGrid({
               driver={item.driver}
               onEdit={onEditWorker}
               onDelete={onDeleteWorker}
+              onRestore={onRestoreWorker}
             />
           ) : (
             <WorkerAvailableSlotCard

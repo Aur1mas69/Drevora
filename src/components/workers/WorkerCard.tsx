@@ -19,7 +19,7 @@ import {
   getWorkerDefaultVehicleLabel,
 } from '@/lib/workerProfileUtils'
 import type { Driver, DriverRole, DriverStatus } from '@/services/driversService'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const statusClassMap: Record<DriverStatus, string> = {
@@ -70,9 +70,10 @@ type WorkerCardProps = {
   driver: Driver
   onEdit: (driver: Driver) => void
   onDelete: (driver: Driver) => void
+  onRestore?: (driver: Driver) => void
 }
 
-export function WorkerCard({ driver, onEdit, onDelete }: WorkerCardProps) {
+export function WorkerCard({ driver, onEdit, onDelete, onRestore }: WorkerCardProps) {
   const navigate = useNavigate()
   const workerName = getDriverName(driver)
   const profilePath = getWorkerProfilePath(driver)
@@ -94,20 +95,32 @@ export function WorkerCard({ driver, onEdit, onDelete }: WorkerCardProps) {
       icon: Eye,
       to: profilePath,
     },
-    {
-      id: 'edit',
-      label: 'Edit',
-      icon: Pencil,
-      onClick: () => onEdit(driver),
-    },
-    {
-      id: 'archive',
-      label: 'Archive',
-      icon: Trash2,
-      tone: 'danger',
-      onClick: () => onDelete(driver),
-    },
   ]
+
+  if (!isArchived) {
+    actions.push(
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: Pencil,
+        onClick: () => onEdit(driver),
+      },
+      {
+        id: 'archive',
+        label: 'Archive Worker',
+        icon: Trash2,
+        tone: 'danger',
+        onClick: () => onDelete(driver),
+      },
+    )
+  } else if (onRestore) {
+    actions.push({
+      id: 'restore',
+      label: 'Restore',
+      icon: RotateCcw,
+      onClick: () => onRestore(driver),
+    })
+  }
 
   function openProfile() {
     navigate(profilePath)
@@ -171,6 +184,12 @@ export function WorkerCard({ driver, onEdit, onDelete }: WorkerCardProps) {
           {isArchived ? (
             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10">
               Archived
+              {driver.archivedAt ? ` · ${driver.archivedAt.slice(0, 10)}` : ''}
+            </span>
+          ) : null}
+          {isArchived && driver.retentionExpiresAt ? (
+            <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-400 dark:ring-white/10">
+              Retained until {driver.retentionExpiresAt.slice(0, 10)}
             </span>
           ) : null}
         </div>

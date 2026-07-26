@@ -108,6 +108,16 @@ alter table public.drivers
 comment on column public.drivers.archived_at is
   'Timestamp when the Worker was archived. NULL means active.';
 
+alter table public.drivers
+  add column if not exists retention_expires_at timestamptz;
+
+comment on column public.drivers.retention_expires_at is
+  'UTC deadline for minimum archived Worker profile shell retention (archived_at + 6 calendar years / 72 months). NULL when active. Does not auto-delete.';
+
+-- Tenant RLS for Workers (policies + column allowlists live in policies.sql
+-- and migration 20260726190000). Do not FORCE RLS — Archive/Restore SECURITY DEFINER RPCs.
+alter table public.drivers enable row level security;
+
 create index if not exists drivers_default_vehicle_id_idx
   on public.drivers (default_vehicle_id);
 
@@ -278,6 +288,22 @@ alter table public.vehicles
 
 comment on column public.vehicles.archived_at is
   'Timestamp when the Vehicle was archived. NULL means active.';
+
+alter table public.vehicles
+  add column if not exists archive_reason text;
+
+comment on column public.vehicles.archive_reason is
+  'Why the Vehicle was archived (Sold, Returned to lease, Written off, Other). NULL when active. Legacy archived rows may retain NULL until re-archived via RPC.';
+
+alter table public.vehicles
+  add column if not exists retention_expires_at timestamptz;
+
+comment on column public.vehicles.retention_expires_at is
+  'UTC deadline for minimum archived Vehicle profile retention (archived_at + 6 calendar years / 72 months). Applies only to the minimal archived Vehicle profile shell. Metadata for a future reviewed retention workflow — does not cause automatic deletion. NULL when active.';
+
+-- Tenant RLS for Vehicles (policies + column UPDATE allowlist live in policies.sql
+-- and migration 20260726180000). Do not FORCE RLS — Archive/Restore SECURITY DEFINER RPCs.
+alter table public.vehicles enable row level security;
 
 create index if not exists vehicles_company_id_idx on public.vehicles (company_id);
 create index if not exists vehicles_company_id_archived_at_idx
@@ -600,7 +626,8 @@ create table if not exists public.timesheets (
   submitted_at timestamptz,
   approved_at timestamptz,
   rejected_at timestamptz,
-  cleaned_at timestamptz
+  cleaned_at timestamptz,
+  retention_expires_at timestamptz
 );
 
 create table if not exists public.timesheet_entries (
@@ -635,7 +662,11 @@ alter table public.timesheets
   add column if not exists submitted_at timestamptz,
   add column if not exists approved_at timestamptz,
   add column if not exists rejected_at timestamptz,
-  add column if not exists cleaned_at timestamptz;
+  add column if not exists cleaned_at timestamptz,
+  add column if not exists retention_expires_at timestamptz;
+
+comment on column public.timesheets.retention_expires_at is
+  'Final included UTC retention instant for the Timesheet parent: start of (week_start + 7 days) + 6 calendar years − 1 microsecond. Preserves the full final work-week day and the full six-year period. Metadata only; does not auto-delete.';
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -677,6 +708,81 @@ create index if not exists idx_timesheet_entries_not_deleted
 create unique index if not exists timesheet_entries_timesheet_day_unique_idx
   on public.timesheet_entries (timesheet_id, day_date);
 
+-- Timesheet retention calculator + guard (see 20260726200000).
+create or replace function public.drevora_timesheet_retention_expires_at(p_week_start date)
+returns timestamptz
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  -- Final included instant: start of week_start+7 + 6 years − 1 microsecond (UTC).
+  select ((p_week_start + 7)::timestamp at time zone 'UTC')
+    + interval '6 years'
+    - interval '1 microsecond';
+$$;
+
+create or replace function public.drevora_timesheets_retention_guard()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_expected timestamptz;
+  v_week_final_included timestamptz;
+begin
+  if new.week_start is null then
+    raise exception 'TIMESHEET_WEEK_REQUIRED'
+      using errcode = 'P0001',
+            hint = 'Timesheet week_start is required to calculate retention.';
+  end if;
+
+  v_expected := public.drevora_timesheet_retention_expires_at(new.week_start);
+  v_week_final_included :=
+    ((new.week_start + 7)::timestamp at time zone 'UTC') - interval '1 microsecond';
+
+  -- Never trust a client-supplied retention date.
+  new.retention_expires_at := v_expected;
+
+  if new.retention_expires_at is null then
+    raise exception 'TIMESHEET_RETENTION_REQUIRED'
+      using errcode = 'P0001',
+            hint = 'Timesheet retention_expires_at could not be calculated.';
+  end if;
+
+  if new.retention_expires_at <= v_week_final_included then
+    raise exception 'TIMESHEET_RETENTION_INVALID'
+      using errcode = 'P0001',
+            hint = 'retention_expires_at must be after the Timesheet work-week final included instant.';
+  end if;
+
+  if new.retention_expires_at is distinct from v_expected then
+    raise exception 'TIMESHEET_RETENTION_INVALID'
+      using errcode = 'P0001',
+            hint = 'retention_expires_at must equal the canonical final included six-year deadline.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists timesheets_retention_guard on public.timesheets;
+drop trigger if exists timesheets_retention_guard_insert on public.timesheets;
+create trigger timesheets_retention_guard
+  before insert or update of week_start, retention_expires_at
+  on public.timesheets
+  for each row
+  execute function public.drevora_timesheets_retention_guard();
+
+revoke all on function public.drevora_timesheet_retention_expires_at(date) from public;
+revoke all on function public.drevora_timesheet_retention_expires_at(date) from anon;
+grant execute on function public.drevora_timesheet_retention_expires_at(date) to authenticated;
+
+revoke all on function public.drevora_timesheets_retention_guard() from public;
+revoke all on function public.drevora_timesheets_retention_guard() from anon;
+revoke all on function public.drevora_timesheets_retention_guard() from authenticated;
+
 
 -- Holiday leave requests
 create table if not exists public.holiday_requests (
@@ -695,6 +801,7 @@ create table if not exists public.holiday_requests (
   holiday_days_deducted numeric,
   calendar_days_total numeric,
   non_working_days_excluded numeric,
+  retention_expires_at timestamptz,
   constraint holiday_requests_end_after_start check (end_date >= start_date),
   constraint holiday_requests_status_check check (
     status in ('Pending', 'Approved', 'Rejected', 'Cancelled')
@@ -703,6 +810,15 @@ create table if not exists public.holiday_requests (
     leave_type in ('paid_holiday', 'unpaid_leave', 'bank_holiday')
   )
 );
+
+alter table public.holiday_requests
+  add column if not exists retention_expires_at timestamptz;
+
+comment on column public.holiday_requests.created_at is
+  'Database-authoritative create timestamp. On INSERT always set to transaction_timestamp(); immutable after INSERT for authenticated clients.';
+
+comment on column public.holiday_requests.retention_expires_at is
+  'Final retention metadata for the Holiday Request parent: created_at + 6 calendar years. Derived only from database-authoritative created_at. Does not auto-delete.';
 
 create index if not exists holiday_requests_worker_id_idx
   on public.holiday_requests (worker_id);
@@ -715,8 +831,104 @@ create index if not exists holiday_requests_end_date_idx
 create index if not exists holiday_requests_dates_idx
   on public.holiday_requests (start_date, end_date);
 
+-- Holiday Request created_at hardening + retention (see 20260726210000).
+create or replace function public.drevora_holiday_request_retention_expires_at(
+  p_created_at timestamptz
+)
+returns timestamptz
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select p_created_at + interval '6 years';
+$$;
+
+create or replace function public.drevora_holiday_requests_created_at_retention_guard()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_expected timestamptz;
+begin
+  if public.drevora_is_trusted_tenant_writer() then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
+  if tg_op = 'INSERT' then
+    new.created_at := transaction_timestamp();
+    v_expected := public.drevora_holiday_request_retention_expires_at(new.created_at);
+    new.retention_expires_at := v_expected;
+  elsif tg_op = 'UPDATE' then
+    if new.created_at is distinct from old.created_at then
+      raise exception 'HOLIDAY_CREATED_AT_IMMUTABLE'
+        using errcode = 'P0001',
+              hint = 'Holiday Request created_at cannot be changed after insert.';
+    end if;
+
+    new.created_at := old.created_at;
+    v_expected := public.drevora_holiday_request_retention_expires_at(old.created_at);
+    new.retention_expires_at := v_expected;
+  end if;
+
+  if new.created_at is null then
+    raise exception 'HOLIDAY_CREATED_AT_REQUIRED'
+      using errcode = 'P0001',
+            hint = 'Holiday Request created_at is required.';
+  end if;
+
+  if new.retention_expires_at is null then
+    raise exception 'HOLIDAY_RETENTION_REQUIRED'
+      using errcode = 'P0001',
+            hint = 'Holiday Request retention_expires_at is required.';
+  end if;
+
+  if new.retention_expires_at <= new.created_at then
+    raise exception 'HOLIDAY_RETENTION_INVALID'
+      using errcode = 'P0001',
+            hint = 'retention_expires_at must be after created_at.';
+  end if;
+
+  if new.retention_expires_at is distinct from
+       public.drevora_holiday_request_retention_expires_at(new.created_at) then
+    raise exception 'HOLIDAY_RETENTION_INVALID'
+      using errcode = 'P0001',
+            hint = 'retention_expires_at must equal created_at plus six calendar years.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists holiday_requests_created_at_retention_guard on public.holiday_requests;
+create trigger holiday_requests_created_at_retention_guard
+  before insert or update
+  on public.holiday_requests
+  for each row
+  execute function public.drevora_holiday_requests_created_at_retention_guard();
+
+revoke all on function public.drevora_holiday_request_retention_expires_at(timestamptz) from public;
+revoke all on function public.drevora_holiday_request_retention_expires_at(timestamptz) from anon;
+grant execute on function public.drevora_holiday_request_retention_expires_at(timestamptz) to authenticated;
+
+revoke all on function public.drevora_holiday_requests_created_at_retention_guard() from public;
+revoke all on function public.drevora_holiday_requests_created_at_retention_guard() from anon;
+revoke all on function public.drevora_holiday_requests_created_at_retention_guard() from authenticated;
+
 alter table public.holiday_requests disable row level security;
 grant select, insert, update, delete on public.holiday_requests to anon, authenticated;
+-- Defense-in-depth only; table GRANT may still confer effective column access.
+-- Authoritative anti-spoofing: holiday_requests_created_at_retention_guard (20260726210000).
+revoke insert (created_at) on table public.holiday_requests from anon;
+revoke update (created_at) on table public.holiday_requests from anon;
+revoke insert (retention_expires_at) on table public.holiday_requests from anon;
+revoke update (retention_expires_at) on table public.holiday_requests from anon;
+revoke insert (created_at) on table public.holiday_requests from authenticated;
+revoke update (created_at) on table public.holiday_requests from authenticated;
+revoke insert (retention_expires_at) on table public.holiday_requests from authenticated;
+revoke update (retention_expires_at) on table public.holiday_requests from authenticated;
 
 -- Vehicle inspections
 create table if not exists public.vehicle_checks (
@@ -2276,6 +2488,109 @@ create trigger drivers_enforce_worker_plan_allowance
   on public.drivers
   for each row
   execute function public.drevora_enforce_worker_plan_allowance();
+
+-- Archived Worker profile retention consistency (see 20260726190000).
+create or replace function public.drevora_drivers_retention_guard()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.archived_at is null then
+    if new.retention_expires_at is not null then
+      raise exception 'WORKER_RETENTION_INVALID'
+        using errcode = 'P0001',
+              hint = 'Active Workers cannot have a retention deadline.';
+    end if;
+    new.retention_expires_at := null;
+  else
+    if new.retention_expires_at is null then
+      raise exception 'WORKER_RETENTION_REQUIRED'
+        using errcode = 'P0001',
+              hint = 'Archived Workers require retention_expires_at.';
+    end if;
+    if new.retention_expires_at <= new.archived_at then
+      raise exception 'WORKER_RETENTION_INVALID'
+        using errcode = 'P0001',
+              hint = 'retention_expires_at must be after archived_at.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists drivers_retention_guard on public.drivers;
+create trigger drivers_retention_guard
+  before insert or update of archived_at, retention_expires_at
+  on public.drivers
+  for each row
+  execute function public.drevora_drivers_retention_guard();
+
+revoke all on function public.drevora_drivers_retention_guard() from public;
+revoke all on function public.drevora_drivers_retention_guard() from anon;
+
+
+-- -----------------------------------------------------------------------------
+-- Vehicle archive / retention lifecycle guard (see 20260726180000)
+-- Single trigger: vehicles_archive_reason_guard
+-- BEFORE INSERT OR UPDATE OF archived_at, archive_reason, retention_expires_at
+-- Archive/Restore RPCs live in the migration (SECURITY DEFINER, search_path = '').
+-- -----------------------------------------------------------------------------
+
+create or replace function public.drevora_vehicles_archive_reason_guard()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.archived_at is null then
+    if new.archive_reason is not null
+      or new.retention_expires_at is not null then
+      raise exception 'VEHICLE_LIFECYCLE_INVALID'
+        using errcode = 'P0001',
+              hint = 'Active Vehicles cannot have archive_reason or retention_expires_at.';
+    end if;
+    new.archive_reason := null;
+    new.retention_expires_at := null;
+  else
+    if new.archive_reason is null
+      or btrim(new.archive_reason) = '' then
+      raise exception 'VEHICLE_ARCHIVE_REASON_REQUIRED'
+        using errcode = 'P0001',
+              hint = 'An archive reason is required when archiving a Vehicle.';
+    end if;
+    if new.retention_expires_at is null then
+      raise exception 'VEHICLE_RETENTION_REQUIRED'
+        using errcode = 'P0001',
+              hint = 'Archived Vehicles require retention_expires_at.';
+    end if;
+    if new.retention_expires_at <= new.archived_at then
+      raise exception 'VEHICLE_RETENTION_INVALID'
+        using errcode = 'P0001',
+              hint = 'retention_expires_at must be after archived_at.';
+    end if;
+    if new.retention_expires_at is distinct from (new.archived_at + interval '6 years') then
+      raise exception 'VEHICLE_RETENTION_INVALID'
+        using errcode = 'P0001',
+              hint = 'retention_expires_at must equal archived_at + 6 calendar years.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists vehicles_archive_reason_guard on public.vehicles;
+drop trigger if exists vehicles_lifecycle_guard on public.vehicles;
+create trigger vehicles_archive_reason_guard
+  before insert or update of archived_at, archive_reason, retention_expires_at
+  on public.vehicles
+  for each row
+  execute function public.drevora_vehicles_archive_reason_guard();
+
+revoke all on function public.drevora_vehicles_archive_reason_guard() from public;
+revoke all on function public.drevora_vehicles_archive_reason_guard() from anon;
 
 
 -- -----------------------------------------------------------------------------

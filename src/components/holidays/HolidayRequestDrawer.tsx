@@ -177,6 +177,14 @@ export function HolidayRequestDrawer({
                 <dt className="text-slate-500">Submitted</dt>
                 <dd className="text-right text-slate-700">{formatDateTime(request.createdAt)}</dd>
               </div>
+              {request.retentionExpiresAt ? (
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="text-slate-500">Retained until</dt>
+                  <dd className="text-right font-medium tabular-nums text-[#2A376F] dark:text-slate-100">
+                    {formatDate(request.retentionExpiresAt.slice(0, 10))}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Last updated</dt>
                 <dd className="text-right text-slate-700">{formatDateTime(request.updatedAt)}</dd>
