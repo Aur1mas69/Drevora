@@ -1445,6 +1445,28 @@ create index if not exists documents_document_type_idx on public.documents (docu
 create index if not exists documents_expiry_date_idx on public.documents (expiry_date);
 create index if not exists documents_status_idx on public.documents (status);
 
+-- Soft-delete lifecycle (20260726120000_documents_soft_delete.sql)
+alter table public.documents
+  add column if not exists deleted_at timestamptz null,
+  add column if not exists deleted_by uuid null,
+  add column if not exists delete_reason text null;
+
+create index if not exists documents_deleted_at_idx
+  on public.documents (deleted_at)
+  where deleted_at is not null;
+
+-- Worker core materialisation provenance (20260726140000_materialise_worker_core_documents.sql)
+alter table public.documents
+  add column if not exists source_kind text null,
+  add column if not exists source_key text null,
+  add column if not exists source_record_id uuid null;
+
+create unique index if not exists documents_company_source_provenance_uidx
+  on public.documents (company_id, source_kind, source_key)
+  where source_kind is not null
+    and source_key is not null
+    and company_id is not null;
+
 drop trigger if exists documents_set_updated_at on public.documents;
 
 create trigger documents_set_updated_at
@@ -1453,8 +1475,106 @@ create trigger documents_set_updated_at
   execute function public.drevora_set_updated_at();
 
 alter table public.documents disable row level security;
-grant select, insert, update, delete on public.documents to anon, authenticated;
+-- Hard DELETE closed for client roles (20260726130000_documents_revoke_hard_delete.sql).
+-- Soft delete / restore use UPDATE of deleted_at / deleted_by / delete_reason.
+-- Live tenant RLS: documents_office_delete is dropped; no replacement DELETE policy.
+grant select, insert, update on public.documents to authenticated;
+revoke delete on table public.documents from authenticated;
+revoke delete on table public.documents from anon;
+revoke delete on table public.documents from public;
 
+
+-- -----------------------------------------------------------------------------
+-- Worker Document Submissions (20260726150000_create_worker_document_submissions.sql)
+-- Live tenant RLS enabled. Authenticated has SELECT only.
+-- Inserts/reviews only via SECURITY DEFINER RPCs in that migration.
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.worker_document_submissions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id),
+  worker_id uuid not null references public.drivers (id),
+  document_type text not null,
+  custom_document_name text null,
+  reference_number text null,
+  notes text null,
+  review_status text not null default 'pending_review',
+  rejection_reason text null,
+  submitted_at timestamptz not null default now(),
+  reviewed_at timestamptz null,
+  reviewed_by uuid null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint worker_document_submissions_type_check check (
+    document_type in (
+      'CMR',
+      'POD / Delivery Note',
+      'Receipt',
+      'Vehicle / Load Document',
+      'Other'
+    )
+  ),
+  constraint worker_document_submissions_other_name_check check (
+    (document_type = 'Other' and nullif(trim(custom_document_name), '') is not null)
+    or (document_type <> 'Other' and custom_document_name is null)
+  ),
+  constraint worker_document_submissions_status_check check (
+    review_status in ('pending_review', 'reviewed', 'rejected')
+  ),
+  constraint worker_document_submissions_rejection_check check (
+    (
+      review_status = 'rejected'
+      and nullif(trim(rejection_reason), '') is not null
+    )
+    or (
+      review_status <> 'rejected'
+      and rejection_reason is null
+    )
+  )
+);
+
+create index if not exists worker_document_submissions_company_id_idx
+  on public.worker_document_submissions (company_id);
+create index if not exists worker_document_submissions_worker_id_idx
+  on public.worker_document_submissions (worker_id);
+create index if not exists worker_document_submissions_status_idx
+  on public.worker_document_submissions (company_id, review_status);
+create index if not exists worker_document_submissions_submitted_at_idx
+  on public.worker_document_submissions (company_id, submitted_at desc);
+
+create table if not exists public.worker_document_submission_attachments (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references public.worker_document_submissions (id) on delete restrict,
+  file_path text not null,
+  original_file_name text not null,
+  mime_type text not null,
+  file_size_bytes bigint not null,
+  sort_order integer not null,
+  created_at timestamptz not null default now(),
+  constraint worker_document_submission_attachments_mime_check check (
+    mime_type in ('application/pdf', 'image/jpeg', 'image/png', 'image/webp')
+  ),
+  constraint worker_document_submission_attachments_size_check check (
+    file_size_bytes > 0 and file_size_bytes <= 10485760
+  ),
+  constraint worker_document_submission_attachments_sort_check check (
+    sort_order >= 1 and sort_order <= 5
+  ),
+  constraint worker_document_submission_attachments_sort_unique
+    unique (submission_id, sort_order),
+  constraint worker_document_submission_attachments_path_unique
+    unique (file_path)
+);
+
+create index if not exists worker_document_submission_attachments_submission_id_idx
+  on public.worker_document_submission_attachments (submission_id);
+
+alter table public.worker_document_submissions enable row level security;
+alter table public.worker_document_submission_attachments enable row level security;
+revoke all on table public.worker_document_submissions from anon, public, authenticated;
+revoke all on table public.worker_document_submission_attachments from anon, public, authenticated;
+grant select on table public.worker_document_submissions to authenticated;
+grant select on table public.worker_document_submission_attachments to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Driver Reports

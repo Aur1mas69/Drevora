@@ -1,61 +1,52 @@
 import { Button } from '@/components/ui/button'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import type { Document } from '@/lib/documentTypes'
-import { AlertTriangle } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
-type DeleteDocumentModalProps = {
+type RestoreDocumentModalProps = {
   record: Document
   errorMessage: string | null
-  isDeleting: boolean
+  isRestoring: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
-function associationLabel(record: Document): string {
-  if (record.appliesTo === 'worker') {
-    return record.workerName?.trim() || 'Unknown worker'
-  }
-  if (record.appliesTo === 'vehicle') {
-    return record.vehicleLabel?.trim() || 'Unknown vehicle'
-  }
-  return 'Company'
-}
-
-export function DeleteDocumentModal({
+export function RestoreDocumentModal({
   record,
   errorMessage,
-  isDeleting,
+  isRestoring,
   onCancel,
   onConfirm,
-}: DeleteDocumentModalProps) {
+}: RestoreDocumentModalProps) {
   useBodyScrollLock(true)
 
   if (typeof window === 'undefined') return null
-
-  const association = associationLabel(record)
 
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[18px] border border-[#D3E9FC] bg-white p-5 shadow-xl dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50">
         <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-            <AlertTriangle className="size-5" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF4FF] text-[#0B68BE]">
+            <RotateCcw className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-[#113C69]">Delete document?</h2>
+            <h2 className="text-lg font-semibold text-[#113C69]">Restore document?</h2>
             <p className="mt-1 text-sm text-[#5499BF]">
-              <strong>{record.documentName}</strong>
-              {record.appliesTo === 'company' ? (
-                <> (Company)</>
-              ) : (
+              This will return <strong>{record.documentName}</strong>
+              {record.workerName ? (
                 <>
                   {' '}
-                  ({record.appliesTo === 'worker' ? 'Worker' : 'Vehicle'}: {association})
+                  (Worker: {record.workerName})
                 </>
-              )}{' '}
-              will be archived and can be restored later. The file and metadata stay recoverable —
-              nothing is permanently removed.
+              ) : record.vehicleLabel ? (
+                <>
+                  {' '}
+                  (Vehicle: {record.vehicleLabel})
+                </>
+              ) : null}{' '}
+              to the active Documents list. The same record ID, metadata, and attachment are
+              preserved.
             </p>
           </div>
         </div>
@@ -65,16 +56,16 @@ export function DeleteDocumentModal({
         ) : null}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isDeleting}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isRestoring}>
             Cancel
           </Button>
           <Button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting}
-            className="bg-rose-600 text-white hover:bg-rose-700"
+            disabled={isRestoring}
+            className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
           >
-            {isDeleting ? 'Deleting…' : 'Delete Document'}
+            {isRestoring ? 'Restoring…' : 'Restore Document'}
           </Button>
         </div>
       </div>

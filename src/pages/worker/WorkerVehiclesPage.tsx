@@ -311,7 +311,11 @@ export default function WorkerVehiclesPage() {
           title="Start Vehicle Check"
           description="Walkaround check for the selected vehicle."
           icon={ClipboardCheck}
-          to="/worker/vehicle-checks"
+          to={
+            selectedVehicle
+              ? `/worker/vehicle-checks?vehicleId=${encodeURIComponent(selectedVehicle.id)}`
+              : '/worker/vehicle-checks'
+          }
         />
         <VehicleActionCard
           title="Start Tyre Check"

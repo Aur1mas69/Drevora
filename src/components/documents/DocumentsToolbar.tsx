@@ -2,8 +2,10 @@ import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
 import type {
   DocumentAppliesToFilter,
+  DocumentLifecycleFilter,
   DocumentStatusFilter,
   DocumentTypeFilter,
+  DocumentWorkerUploadFilter,
 } from '@/lib/documentTypes'
 import { getDocumentTypesForAppliesTo } from '@/lib/documentUtils'
 import type { Driver } from '@/services/driversService'
@@ -21,6 +23,10 @@ type DocumentsToolbarProps = {
   onAppliesToFilterChange: (value: DocumentAppliesToFilter) => void
   statusFilter: DocumentStatusFilter
   onStatusFilterChange: (value: DocumentStatusFilter) => void
+  lifecycleFilter: DocumentLifecycleFilter
+  onLifecycleFilterChange: (value: DocumentLifecycleFilter) => void
+  workerUploadFilter: DocumentWorkerUploadFilter
+  onWorkerUploadFilterChange: (value: DocumentWorkerUploadFilter) => void
   workerFilter: string
   onWorkerFilterChange: (value: string) => void
   vehicleFilter: string
@@ -44,6 +50,10 @@ export function DocumentsToolbar({
   onAppliesToFilterChange,
   statusFilter,
   onStatusFilterChange,
+  lifecycleFilter,
+  onLifecycleFilterChange,
+  workerUploadFilter,
+  onWorkerUploadFilterChange,
   workerFilter,
   onWorkerFilterChange,
   vehicleFilter,
@@ -72,6 +82,8 @@ export function DocumentsToolbar({
     (typeFilter !== 'all' ? 1 : 0) +
     (appliesToFilter !== 'all' ? 1 : 0) +
     (statusFilter !== 'all' ? 1 : 0) +
+    (lifecycleFilter !== 'active' ? 1 : 0) +
+    (workerUploadFilter !== 'all' ? 1 : 0) +
     (workerFilter !== 'all' ? 1 : 0) +
     (vehicleFilter !== 'all' ? 1 : 0)
 
@@ -108,6 +120,21 @@ export function DocumentsToolbar({
         isFiltersOpen ? (
           <div className={filterPanelClass}>
             <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-[#5499BF]">Lifecycle</span>
+              <select
+                value={lifecycleFilter}
+                onChange={(event) =>
+                  onLifecycleFilterChange(event.target.value as DocumentLifecycleFilter)
+                }
+                className={`${documentSelectClass} w-full`}
+              >
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+
+            <label className="mt-3 block space-y-1.5">
               <span className="text-xs font-semibold text-[#5499BF]">Applies to</span>
               <select
                 value={appliesToFilter}
@@ -153,6 +180,25 @@ export function DocumentsToolbar({
                 <option value="expiring_soon">Expiring Soon</option>
                 <option value="expired">Expired</option>
                 <option value="no_expiry">No Expiry</option>
+              </select>
+            </label>
+
+            <label className="mt-3 block space-y-1.5">
+              <span className="text-xs font-semibold text-[#5499BF]">Worker uploads</span>
+              <select
+                value={workerUploadFilter}
+                onChange={(event) =>
+                  onWorkerUploadFilterChange(
+                    event.target.value as DocumentWorkerUploadFilter,
+                  )
+                }
+                className={`${documentSelectClass} w-full`}
+              >
+                <option value="all">All documents</option>
+                <option value="worker_uploads">Worker uploads</option>
+                <option value="pending_review">Pending review</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="rejected">Rejected</option>
               </select>
             </label>
 

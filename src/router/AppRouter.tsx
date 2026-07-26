@@ -60,6 +60,9 @@ const WorkerConsumablesPage = lazy(
 const WorkerDriverReportsPage = lazy(
   () => import('@/pages/worker/WorkerDriverReportsPage'),
 )
+const WorkerDocumentsPage = lazy(
+  () => import('@/pages/worker/WorkerDocumentsPage'),
+)
 const WorkerContactsPage = lazy(
   () => import('@/pages/worker/WorkerContactsPage'),
 )
@@ -460,6 +463,7 @@ function AppRouter() {
             path="/worker/driver-reports"
             element={<WorkerDriverReportsPage />}
           />
+          <Route path="/worker/documents" element={<WorkerDocumentsPage />} />
           <Route path="/worker/contacts" element={<WorkerContactsPage />} />
           <Route path="/worker/settings" element={<WorkerSettingsPage />} />
           <Route

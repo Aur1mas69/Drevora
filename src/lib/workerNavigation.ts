@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ClipboardList,
   Contact,
+  FileText,
   FileWarning,
   Settings,
   Truck,
@@ -54,6 +55,13 @@ export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
     shortLabel: 'Reports',
     to: '/worker/driver-reports',
     icon: FileWarning,
+  },
+  {
+    id: 'documents',
+    label: 'Documents',
+    shortLabel: 'Documents',
+    to: '/worker/documents',
+    icon: FileText,
   },
   {
     id: 'contacts',

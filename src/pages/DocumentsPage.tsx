@@ -1,4 +1,5 @@
 import { DeleteDocumentModal } from '@/components/documents/DeleteDocumentModal'
+import { DocumentDrawer } from '@/components/documents/DocumentDrawer'
 import {
   DocumentFormModal,
   documentFormValuesToInput,
@@ -9,6 +10,8 @@ import { DocumentsEmptyState } from '@/components/documents/DocumentsEmptyState'
 import { DocumentsPagination } from '@/components/documents/DocumentsPagination'
 import { DocumentsSummaryCards } from '@/components/documents/DocumentsSummaryCards'
 import { DocumentsToolbar } from '@/components/documents/DocumentsToolbar'
+import { RejectWorkerSubmissionModal } from '@/components/documents/RejectWorkerSubmissionModal'
+import { RestoreDocumentModal } from '@/components/documents/RestoreDocumentModal'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
 import { ExportMenu } from '@/components/export/ExportMenu'
 import { useAuth } from '@/contexts/AuthContext'
@@ -29,35 +32,43 @@ import type {
   DocumentAppliesTo,
   DocumentAppliesToFilter,
   DocumentFormSubmitPayload,
+  DocumentLifecycleFilter,
   DocumentsCentreTab,
   DocumentStatusFilter,
   DocumentTypeFilter,
+  DocumentWorkerUploadFilter,
 } from '@/lib/documentTypes'
 import { DEFAULT_DOCUMENT_PAGE_SIZE } from '@/lib/documentTypes'
 import { isMedicalDocumentType } from '@/lib/documentTypes'
 import {
+  canEditDocumentRecord,
+  canRestoreDocumentRecord,
   computeDocumentSummaryStats,
   filterDocumentsByQuery,
-  getDocumentViewTarget,
 } from '@/lib/documentUtils'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import {
   applyDocumentFileChanges,
-  deleteDocumentFile,
   DocumentFileStorageError,
   getDocumentFileSignedUrl,
+  uploadDocumentFile,
 } from '@/services/documentFileStorageService'
 import {
   createDocument,
-  deleteDocument,
   DocumentsServiceError,
   fetchDocuments,
+  restoreDocument,
+  softDeleteDocument,
   updateDocument,
 } from '@/services/documentsService'
+import {
+  reviewWorkerDocumentSubmission,
+  WorkerDocumentSubmissionsServiceError,
+} from '@/services/workerDocumentSubmissionsService'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 function parseTab(value: string | null): DocumentsCentreTab {
   if (
@@ -80,9 +91,9 @@ function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
 }
 
 export default function DocumentsPage() {
-  const navigate = useNavigate()
   const {
     formatDate,
+    formatDateTime,
     settings: companySettings,
     companyName,
     weekStarts,
@@ -106,6 +117,9 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState<DocumentTypeFilter>('all')
   const [appliesToFilter, setAppliesToFilter] = useState<DocumentAppliesToFilter>('all')
   const [statusFilter, setStatusFilter] = useState<DocumentStatusFilter>('all')
+  const [lifecycleFilter, setLifecycleFilter] = useState<DocumentLifecycleFilter>('active')
+  const [workerUploadFilter, setWorkerUploadFilter] =
+    useState<DocumentWorkerUploadFilter>('all')
   const [workerFilter, setWorkerFilter] = useState(
     () => searchParams.get('workerId') ?? 'all',
   )
@@ -120,10 +134,16 @@ export default function DocumentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
   const [editRecord, setEditRecord] = useState<Document | null>(null)
+  const [viewRecord, setViewRecord] = useState<Document | null>(null)
   const [deleteRecord, setDeleteRecord] = useState<Document | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [restoreRecord, setRestoreRecord] = useState<Document | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [rejectRecord, setRejectRecord] = useState<Document | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [isReviewing, setIsReviewing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
@@ -133,6 +153,8 @@ export default function DocumentsPage() {
     typeFilter !== 'all' ||
     appliesToFilter !== 'all' ||
     statusFilter !== 'all' ||
+    lifecycleFilter !== 'active' ||
+    workerUploadFilter !== 'all' ||
     workerFilter !== 'all' ||
     vehicleFilter !== 'all'
 
@@ -154,6 +176,8 @@ export default function DocumentsPage() {
     typeFilter,
     appliesToFilter,
     statusFilter,
+    lifecycleFilter,
+    workerUploadFilter,
     workerFilter,
     vehicleFilter,
     pageSize,
@@ -212,6 +236,8 @@ export default function DocumentsPage() {
         type: typeFilter,
         appliesTo: appliesToFilter,
         status: statusFilter,
+        lifecycle: lifecycleFilter,
+        workerUploadFilter,
         workerId: workerFilter,
         vehicleId: vehicleFilter,
       }),
@@ -220,10 +246,12 @@ export default function DocumentsPage() {
       appliesToFilter,
       debouncedSearch,
       items,
+      lifecycleFilter,
       statusFilter,
       typeFilter,
       vehicleFilter,
       workerFilter,
+      workerUploadFilter,
     ],
   )
 
@@ -254,6 +282,19 @@ export default function DocumentsPage() {
   }
 
   function openEditModal(record: Document) {
+    if (!canEditDocumentRecord(record)) {
+      if (record.workerArchivedAt) {
+        showToast('This Worker is archived. Documents cannot be edited until the Worker is restored.')
+        return
+      }
+      if (record.deletedAt) {
+        showToast('Restore this document before editing.')
+        return
+      }
+      showToast('This record is managed on the worker profile and cannot be edited here.')
+      return
+    }
+    setViewRecord(null)
     setFormMode('edit')
     setEditRecord(record)
     setIsFormOpen(true)
@@ -265,8 +306,66 @@ export default function DocumentsPage() {
     setTypeFilter('all')
     setAppliesToFilter('all')
     setStatusFilter('all')
+    setLifecycleFilter('active')
+    setWorkerUploadFilter('all')
     setWorkerFilter('all')
     setVehicleFilter('all')
+  }
+
+  async function handleMarkReviewed(record: Document) {
+    const submissionId = record.submissionId?.trim()
+    if (!submissionId) {
+      showToast('Submission could not be reviewed.')
+      return
+    }
+
+    setIsReviewing(true)
+    try {
+      await reviewWorkerDocumentSubmission({
+        submissionId,
+        reviewStatus: 'reviewed',
+      })
+      showToast('Marked as reviewed')
+      setViewRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      showToast(
+        error instanceof WorkerDocumentSubmissionsServiceError
+          ? error.message
+          : 'Unable to mark as reviewed.',
+      )
+    } finally {
+      setIsReviewing(false)
+    }
+  }
+
+  async function handleRejectConfirm(reason: string) {
+    const submissionId = rejectRecord?.submissionId?.trim()
+    if (!submissionId) {
+      showToast('Submission could not be rejected.')
+      return
+    }
+
+    setIsReviewing(true)
+    try {
+      await reviewWorkerDocumentSubmission({
+        submissionId,
+        reviewStatus: 'rejected',
+        rejectionReason: reason,
+      })
+      showToast('Submission rejected')
+      setRejectRecord(null)
+      setViewRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      showToast(
+        error instanceof WorkerDocumentSubmissionsServiceError
+          ? error.message
+          : 'Unable to reject submission.',
+      )
+    } finally {
+      setIsReviewing(false)
+    }
   }
 
   async function handleOpenFile(record: Document) {
@@ -289,24 +388,21 @@ export default function DocumentsPage() {
   }
 
   function handleView(record: Document) {
-    const target = getDocumentViewTarget(record)
+    setViewRecord(record)
+  }
 
-    if (target.kind === 'file') {
-      void handleOpenFile(record)
+  function openRestoreModal(record: Document) {
+    if (!canRestoreDocumentRecord(record)) {
+      if (record.workerArchivedAt) {
+        showToast(
+          'This document belongs to an archived Worker and cannot be restored until the Worker is restored.',
+        )
+        return
+      }
+      showToast('Only manually deleted documents can be restored.')
       return
     }
-
-    if (target.kind === 'worker') {
-      navigate(`/drivers/${target.workerId}`)
-      return
-    }
-
-    if (target.kind === 'vehicle') {
-      navigate(`/vehicles/${target.vehicleId}?tab=documents`)
-      return
-    }
-
-    showToast('Only the expiry record exists — no file has been uploaded.')
+    setRestoreRecord(record)
   }
 
   async function handleFormSubmit(payload: DocumentFormSubmitPayload) {
@@ -340,16 +436,22 @@ export default function DocumentsPage() {
 
         showToast('Document added')
       } else if (editRecord) {
+        // Persist metadata first, then attachment changes.
         await updateDocument(editRecord.id, input)
 
-        if (companyId && (payload.file || payload.removeFile)) {
+        if (companyId && payload.removeFile && !payload.file) {
           const filePath = await applyDocumentFileChanges({
             companyId,
             documentId: editRecord.id,
             existingFilePath: editRecord.filePath ?? editRecord.fileUrl,
-            file: payload.file,
-            removeFile: payload.removeFile,
+            file: null,
+            removeFile: true,
           })
+          await updateDocument(editRecord.id, { filePath })
+        } else if (companyId && payload.file) {
+          // Upload new file first; only then point the row at it.
+          // Do not delete the previous Storage object in this task.
+          const filePath = await uploadDocumentFile(companyId, editRecord.id, payload.file)
           await updateDocument(editRecord.id, { filePath })
         }
 
@@ -374,27 +476,40 @@ export default function DocumentsPage() {
     setDeleteError(null)
 
     try {
-      const path = getDocumentStoragePath(deleteRecord)
-      if (path) {
-        try {
-          await deleteDocumentFile(path)
-        } catch {
-          /* continue delete */
-        }
-      }
-
-      await deleteDocument(deleteRecord.id, deleteRecord.source ?? 'documents')
-      showToast('Document deleted')
+      await softDeleteDocument(deleteRecord.id, deleteRecord.source ?? 'documents')
+      showToast('Document archived')
       setDeleteRecord(null)
       await loadDocuments()
     } catch (error) {
       setDeleteError(
         error instanceof DocumentsServiceError
           ? error.message
-          : 'Unable to delete document.',
+          : 'Unable to archive document.',
       )
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function handleRestoreConfirm() {
+    if (!restoreRecord) return
+
+    setIsRestoring(true)
+    setRestoreError(null)
+
+    try {
+      await restoreDocument(restoreRecord.id)
+      showToast('Document restored')
+      setRestoreRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      setRestoreError(
+        error instanceof DocumentsServiceError
+          ? error.message
+          : 'Unable to restore document.',
+      )
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -431,6 +546,10 @@ export default function DocumentsPage() {
           onAppliesToFilterChange={setAppliesToFilter}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          lifecycleFilter={lifecycleFilter}
+          onLifecycleFilterChange={setLifecycleFilter}
+          workerUploadFilter={workerUploadFilter}
+          onWorkerUploadFilterChange={setWorkerUploadFilter}
           workerFilter={workerFilter}
           onWorkerFilterChange={setWorkerFilter}
           vehicleFilter={vehicleFilter}
@@ -458,6 +577,7 @@ export default function DocumentsPage() {
                         formatDate,
                       })
                       // Primary list date is Expiry (DocumentsDataTable column).
+                      // Export respects the current lifecycle + other filters via filteredItems.
                       const exportItems = filteredItems.filter((document) =>
                         rowMatchesExportDateRange(document.expiryDate, resolvedRange),
                       )
@@ -468,10 +588,11 @@ export default function DocumentsPage() {
                           logoUrl: companySettings?.logoUrl,
                           generatedBy: session?.user.email ?? null,
                           documentTitle: 'Documents',
-                          filterSummary: `Date ${resolvedRange.label}`,
+                          filterSummary: `Date ${resolvedRange.label}; Lifecycle ${lifecycleFilter}`,
                         }),
                         [
                           activeTab !== 'all' ? activeTab : null,
+                          lifecycleFilter !== 'active' ? lifecycleFilter : null,
                           resolvedRange.dateFrom || null,
                           resolvedRange.dateTo || null,
                           debouncedSearch || null,
@@ -514,10 +635,14 @@ export default function DocumentsPage() {
               documents={paginatedItems}
               tab={activeTab}
               formatDate={formatDate}
+              formatDateTime={formatDateTime}
               onView={handleView}
               onEdit={openEditModal}
               onDelete={setDeleteRecord}
+              onRestore={openRestoreModal}
               onOpenFile={(record) => void handleOpenFile(record)}
+              onMarkReviewed={(record) => void handleMarkReviewed(record)}
+              onReject={setRejectRecord}
             />
             <DocumentsPagination
               page={page}
@@ -545,6 +670,27 @@ export default function DocumentsPage() {
         onSubmit={handleFormSubmit}
       />
 
+      <DocumentDrawer
+        record={viewRecord}
+        isOpen={Boolean(viewRecord)}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        onClose={() => setViewRecord(null)}
+        onEdit={openEditModal}
+        onOpenFile={(record) => void handleOpenFile(record)}
+        onMarkReviewed={(record) => void handleMarkReviewed(record)}
+        onReject={setRejectRecord}
+      />
+
+      <RejectWorkerSubmissionModal
+        key={rejectRecord?.id ?? 'reject-closed'}
+        record={rejectRecord}
+        isOpen={Boolean(rejectRecord)}
+        isSubmitting={isReviewing}
+        onClose={() => setRejectRecord(null)}
+        onConfirm={(reason) => void handleRejectConfirm(reason)}
+      />
+
       {deleteRecord ? (
         <DeleteDocumentModal
           record={deleteRecord}
@@ -555,6 +701,19 @@ export default function DocumentsPage() {
             setDeleteError(null)
           }}
           onConfirm={() => void handleDeleteConfirm()}
+        />
+      ) : null}
+
+      {restoreRecord ? (
+        <RestoreDocumentModal
+          record={restoreRecord}
+          errorMessage={restoreError}
+          isRestoring={isRestoring}
+          onCancel={() => {
+            setRestoreRecord(null)
+            setRestoreError(null)
+          }}
+          onConfirm={() => void handleRestoreConfirm()}
         />
       ) : null}
 

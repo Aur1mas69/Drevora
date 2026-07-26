@@ -60,6 +60,7 @@ import {
 import { fetchTimesheetsByDriverId } from '@/services/timesheetsService'
 import { fetchVehicleChecks } from '@/services/vehicleChecksService'
 import { fetchDocumentsByWorkerId } from '@/services/documentsService'
+import { DrivingLicenceCheckCard } from '@/components/workers/profile/DrivingLicenceCheckCard'
 import {
   WorkerProfileTabShell,
   workerProfileTableHeadClass,
@@ -777,53 +778,56 @@ function WorkerProfileDocumentsTab({ worker }: { worker: Driver }) {
   )
 
   return (
-    <WorkerProfileTabShell
-      isLoading={isLoading}
-      errorMessage={errorMessage}
-      isEmpty={visibleItems.length === 0}
-      emptyMessage="No documents found for this worker."
-      emptyIcon={FileText}
-      viewAllHref={visibleItems.length > 0 ? documentsHref : undefined}
-      viewAllLabel="Manage documents"
-    >
-      <table className="w-full min-w-[820px] border-collapse">
-        <thead>
-          <tr className={workerProfileTableHeadClass}>
-            <th className="px-5 py-3">Document</th>
-            <th className="px-5 py-3">Expiry</th>
-            <th className="px-5 py-3">Status</th>
-            <th className="px-5 py-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleItems.map((item) => (
-            <tr key={item.id} className={workerProfileTableRowClass}>
-              <td className="px-5 py-3.5">
-                <p className="text-sm font-semibold text-[#113C69]">{item.documentName}</p>
-                {item.documentType ? (
-                  <p className="mt-0.5 truncate text-xs font-medium text-[#5499BF]/90">
-                    {item.documentType}
-                  </p>
-                ) : null}
-              </td>
-              <td className="px-5 py-3.5 text-sm font-medium text-[#3D7A9C]">
-                {item.expiryDate ? formatDate(item.expiryDate) : '—'}
-              </td>
-              <td className="px-5 py-3.5">
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${documentStatusClassMap[item.status]}`}
-                >
-                  {getDocumentStatusLabel(item.status)}
-                </span>
-              </td>
-              <td className="px-5 py-3.5 text-right">
-                <ProfileViewLink to={documentsHref} />
-              </td>
+    <div className="space-y-4">
+      <DrivingLicenceCheckCard />
+      <WorkerProfileTabShell
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+        isEmpty={visibleItems.length === 0}
+        emptyMessage="No documents found for this worker."
+        emptyIcon={FileText}
+        viewAllHref={visibleItems.length > 0 ? documentsHref : undefined}
+        viewAllLabel="Manage documents"
+      >
+        <table className="w-full min-w-[820px] border-collapse">
+          <thead>
+            <tr className={workerProfileTableHeadClass}>
+              <th className="px-5 py-3">Document</th>
+              <th className="px-5 py-3">Expiry</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3 text-right">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </WorkerProfileTabShell>
+          </thead>
+          <tbody>
+            {visibleItems.map((item) => (
+              <tr key={item.id} className={workerProfileTableRowClass}>
+                <td className="px-5 py-3.5">
+                  <p className="text-sm font-semibold text-[#113C69]">{item.documentName}</p>
+                  {item.documentType ? (
+                    <p className="mt-0.5 truncate text-xs font-medium text-[#5499BF]/90">
+                      {item.documentType}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="px-5 py-3.5 text-sm font-medium text-[#3D7A9C]">
+                  {item.expiryDate ? formatDate(item.expiryDate) : '—'}
+                </td>
+                <td className="px-5 py-3.5">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${documentStatusClassMap[item.status]}`}
+                  >
+                    {getDocumentStatusLabel(item.status)}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 text-right">
+                  <ProfileViewLink to={documentsHref} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </WorkerProfileTabShell>
+    </div>
   )
 }
 

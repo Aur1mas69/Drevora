@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import type { Document, DocumentAppliesTo, DocumentFormSubmitPayload } from '@/lib/documentTypes'
-import { isMedicalDocumentType } from '@/lib/documentTypes'
+import { isMedicalDocumentType, isWorkerCoreDocumentType } from '@/lib/documentTypes'
 import {
   buildEmptyDocumentFormValues,
   documentFormValuesToInput,
@@ -60,6 +60,8 @@ export function DocumentFormModal({
 
   const isMedicalType = isMedicalDocumentType(values.documentType)
   const canChangeMedicalFile = !isMedicalType || allowMedicalDocumentUploads
+  const lockWorkerCoreIdentity =
+    mode === 'edit' && isWorkerCoreDocumentType(record?.documentType)
 
   const typeOptions = useMemo(() => {
     return getDocumentTypesForAppliesTo(values.appliesTo, {
@@ -156,19 +158,19 @@ export function DocumentFormModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 px-4 py-4 backdrop-blur-sm sm:py-8"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isSaving) onClose()
       }}
     >
       <div
-        className="max-h-[min(92vh,900px)] w-full max-w-2xl overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
+        className="flex max-h-[min(92dvh,100dvh-2rem,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="document-form-title"
       >
-        <div className="flex items-start justify-between border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
+        <div className="flex shrink-0 items-start justify-between border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           <div>
             <h2 id="document-form-title" className="text-lg font-semibold text-[#113C69] dark:text-slate-100">
               {mode === 'create' ? 'Add Document' : 'Edit Document'}
@@ -188,7 +190,11 @@ export function DocumentFormModal({
           </button>
         </div>
 
-        <form onSubmit={(event) => void handleSubmit(event)} className="overflow-y-auto px-5 py-4">
+        <form
+          onSubmit={(event) => void handleSubmit(event)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4">
           {submitError ? (
             <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {submitError}
@@ -202,7 +208,7 @@ export function DocumentFormModal({
                 value={values.appliesTo}
                 onChange={(event) => updateAppliesTo(event.target.value as DocumentAppliesTo)}
                 className={documentFieldClass}
-                disabled={mode === 'edit'}
+                disabled={mode === 'edit' || lockWorkerCoreIdentity}
               >
                 <option value="company">Company</option>
                 <option value="worker">Worker</option>
@@ -217,6 +223,7 @@ export function DocumentFormModal({
                   value={values.workerId}
                   onChange={(event) => setValues((c) => ({ ...c, workerId: event.target.value }))}
                   className={documentFieldClass}
+                  disabled={lockWorkerCoreIdentity}
                 >
                   <option value="">Select worker</option>
                   {sortedWorkers.map((worker) => (
@@ -269,6 +276,7 @@ export function DocumentFormModal({
                   setValues((c) => ({ ...c, documentType: event.target.value }))
                 }
                 className={documentFieldClass}
+                disabled={lockWorkerCoreIdentity}
               >
                 {typeOptions.map((type) => (
                   <option key={type} value={type}>
@@ -353,8 +361,9 @@ export function DocumentFormModal({
               />
             </label>
           </div>
+          </div>
 
-          <div className="mt-5 flex flex-col-reverse gap-2 border-t border-[#D3E9FC] pt-4 sm:flex-row sm:justify-end">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#D3E9FC] bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-slate-900/95 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
