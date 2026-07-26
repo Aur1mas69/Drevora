@@ -4,14 +4,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
-import {
-  type CompanyTheme,
-} from '@/lib/companySettingsTypes'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
   applyResolvedWorkerAppearance,
+  applyWorkerAppearance,
+  DEFAULT_WORKER_APPEARANCE,
   readWorkerAppearancePreference,
   writeWorkerAppearancePreference,
+  type WorkerAppearance,
 } from '@/lib/workerAppearance'
 import { formatWorkerTimesheetSettingsSummary } from '@/lib/workerTimesheetSettingsSummary'
 import { cn } from '@/lib/utils'
@@ -19,48 +19,43 @@ import { ChevronRight, Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-const APPEARANCE_OPTIONS: { value: CompanyTheme; label: string; hint: string }[] =
+const APPEARANCE_OPTIONS: { value: WorkerAppearance; label: string; hint: string }[] =
   [
-    { value: 'light', label: 'Light', hint: 'Always use light mode' },
-    { value: 'dark', label: 'Dark', hint: 'Always use dark mode' },
-    {
-      value: 'system',
-      label: 'System',
-      hint: 'Match your device or browser preference',
-    },
+    { value: 'light', label: 'Light', hint: 'Bright background, dark text' },
+    { value: 'dark', label: 'Dark', hint: 'Dark background, light text' },
   ]
 
 export default function WorkerSettingsPage() {
   const navigate = useNavigate()
   const { signOut, session } = useAuth()
   const { worker, isLoading, error } = useCurrentWorker()
-  const { companyName, theme: companyTheme, companyLoading } = useCompanySettings()
+  const { companyName, companyLoading } = useCompanySettings()
   const userId = session?.user.id ?? null
   const {
     effective,
     isLoading: settingsLoading,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
 
-  const [appearance, setAppearance] = useState<CompanyTheme>('dark')
+  const [appearance, setAppearance] = useState<WorkerAppearance>(
+    DEFAULT_WORKER_APPEARANCE,
+  )
 
   useEffect(() => {
-    if (companyLoading) return
-    const resolved = applyResolvedWorkerAppearance(userId, companyTheme)
-    setAppearance(resolved)
-  }, [companyLoading, companyTheme, userId])
+    setAppearance(applyResolvedWorkerAppearance(userId))
+  }, [userId])
 
   async function handleSignOut() {
     await signOut()
     navigate(LOGIN_PATH, { replace: true })
   }
 
-  function handleAppearanceChange(next: CompanyTheme) {
+  function handleAppearanceChange(next: WorkerAppearance) {
     setAppearance(next)
     if (userId) {
       writeWorkerAppearancePreference(userId, next)
       return
     }
-    applyResolvedWorkerAppearance(null, next)
+    applyWorkerAppearance(next)
   }
 
   if (isLoading || companyLoading) {
@@ -173,16 +168,23 @@ export default function WorkerSettingsPage() {
           Choose how DREVORA looks on this device. This does not change Company
           Settings for your office.
         </p>
-        <div className="mt-4 grid gap-2">
+        <div
+          className="mt-4 grid gap-2"
+          role="radiogroup"
+          aria-label="Appearance"
+        >
           {APPEARANCE_OPTIONS.map((option) => {
             const selected = appearance === option.value
             return (
               <button
                 key={option.value}
                 type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-pressed={selected}
                 onClick={() => handleAppearanceChange(option.value)}
                 className={cn(
-                  'flex min-h-14 flex-col items-start rounded-2xl border px-4 py-3 text-left transition-colors',
+                  'flex min-h-14 flex-col items-start rounded-2xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--worker-bg)]',
                   selected
                     ? 'border-[color:var(--worker-primary)] bg-[color:var(--worker-primary-soft)]'
                     : 'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] hover:bg-[color:var(--worker-input)]',
@@ -199,7 +201,7 @@ export default function WorkerSettingsPage() {
         <p className="mt-3 text-xs text-[color:var(--worker-text-muted)]">
           {hasPersonalAppearance
             ? 'Saved for your Worker account on this browser.'
-            : 'Using the Worker dark theme by default on this device.'}
+            : 'Using Light by default on this device.'}
         </p>
       </section>
 

@@ -1,9 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
   applyResolvedWorkerAppearance,
-  subscribeWorkerSystemAppearance,
+  clearWorkerAppearance,
 } from '@/lib/workerAppearance'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
@@ -15,7 +14,7 @@ import {
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { Home, LogOut, MoreHorizontal, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 function navButtonClass(active: boolean) {
   return cn(
@@ -30,7 +29,6 @@ function MainLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { signOut, session } = useAuth()
-  const { theme: companyTheme, companyLoading } = useCompanySettings()
   const [moreOpen, setMoreOpen] = useState(false)
   const morePanelRef = useRef<HTMLDivElement>(null)
   const userId = session?.user.id ?? null
@@ -42,13 +40,14 @@ function MainLayout() {
     isWorkerNavPathActive(location.pathname, item.to),
   )
 
-  useEffect(() => {
-    if (companyLoading) return
-    const resolved = applyResolvedWorkerAppearance(userId, companyTheme)
-    return subscribeWorkerSystemAppearance(resolved, () => {
-      applyResolvedWorkerAppearance(userId, companyTheme)
-    })
-  }, [companyLoading, companyTheme, userId])
+  // useLayoutEffect (not useEffect) so the resolved theme applies before the
+  // browser paints the Worker shell, avoiding a Light flash on a Dark device.
+  useLayoutEffect(() => {
+    applyResolvedWorkerAppearance(userId)
+    // Leaving the Worker shell (e.g. sign-out redirect to /login) must not
+    // leave worker-dark applied to the shared document.
+    return () => clearWorkerAppearance()
+  }, [userId])
 
   useEffect(() => {
     setMoreOpen(false)

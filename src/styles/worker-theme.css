@@ -25,10 +25,12 @@
   --worker-warning-soft: rgba(217, 119, 6, 0.14);
   --worker-disabled: #475569;
   --worker-nav-inactive: #94a3b8;
+  /* Alias kept for components written against --worker-accent. */
+  --worker-accent: var(--worker-primary);
 }
 
-.dark .worker-mobile-layout,
-.dark .worker-theme-surface {
+.worker-dark .worker-mobile-layout,
+.worker-dark .worker-theme-surface {
   --worker-bg: #080b14;
   --worker-elevated: #0d111c;
   --worker-card: #111522;
@@ -53,7 +55,7 @@
   color: var(--worker-text);
 }
 
-.dark .worker-mobile-layout {
+.worker-dark .worker-mobile-layout {
   background-color: var(--worker-bg);
 }
 
@@ -92,244 +94,321 @@
 
 /* -----------------------------------------------------------------------------
  * Dark remaps for hard-coded Worker light / baby-blue utilities.
- * Scoped under .dark .worker-mobile-layout only.
+ * Scoped under .worker-dark .worker-mobile-layout only.
  * ----------------------------------------------------------------------------- */
 
-.dark .worker-mobile-layout .bg-white,
-.dark .worker-mobile-layout .bg-white\/95,
-.dark .worker-mobile-layout .bg-white\/90,
-.dark .worker-mobile-layout .bg-white\/85,
-.dark .worker-mobile-layout .bg-white\/80,
-.dark .worker-mobile-layout .bg-white\/72,
-.dark .worker-mobile-layout .bg-white\/60 {
+.worker-dark .worker-mobile-layout .bg-white,
+.worker-dark .worker-mobile-layout .bg-white\/95,
+.worker-dark .worker-mobile-layout .bg-white\/90,
+.worker-dark .worker-mobile-layout .bg-white\/85,
+.worker-dark .worker-mobile-layout .bg-white\/80,
+.worker-dark .worker-mobile-layout .bg-white\/72,
+.worker-dark .worker-mobile-layout .bg-white\/60 {
   background-color: var(--worker-card) !important;
 }
 
-.dark .worker-mobile-layout .bg-slate-50,
-.dark .worker-mobile-layout .bg-slate-50\/80,
-.dark .worker-mobile-layout .bg-slate-100,
-.dark .worker-mobile-layout .bg-slate-100\/80,
-.dark .worker-mobile-layout .hover\:bg-slate-50:hover,
-.dark .worker-mobile-layout .hover\:bg-slate-100:hover,
-.dark .worker-mobile-layout .active\:bg-slate-50:active {
+.worker-dark .worker-mobile-layout .bg-slate-50,
+.worker-dark .worker-mobile-layout .bg-slate-50\/80,
+.worker-dark .worker-mobile-layout .bg-slate-100,
+.worker-dark .worker-mobile-layout .bg-slate-100\/80,
+.worker-dark .worker-mobile-layout .hover\:bg-slate-50:hover,
+.worker-dark .worker-mobile-layout .hover\:bg-slate-100:hover,
+.worker-dark .worker-mobile-layout .active\:bg-slate-50:active {
   background-color: var(--worker-input) !important;
 }
 
-.dark .worker-mobile-layout .bg-slate-200,
-.dark .worker-mobile-layout .bg-slate-200\/80 {
+.worker-dark .worker-mobile-layout .bg-slate-200,
+.worker-dark .worker-mobile-layout .bg-slate-200\/80 {
   background-color: var(--worker-border) !important;
 }
 
-.dark .worker-mobile-layout .text-slate-950,
-.dark .worker-mobile-layout .text-slate-900,
-.dark .worker-mobile-layout .text-slate-800,
-.dark .worker-mobile-layout .text-slate-700 {
+.worker-dark .worker-mobile-layout .text-slate-950,
+.worker-dark .worker-mobile-layout .text-slate-900,
+.worker-dark .worker-mobile-layout .text-slate-800,
+.worker-dark .worker-mobile-layout .text-slate-700 {
   color: var(--worker-text) !important;
 }
 
-.dark .worker-mobile-layout .text-slate-600,
-.dark .worker-mobile-layout .text-slate-500 {
+.worker-dark .worker-mobile-layout .text-slate-600,
+.worker-dark .worker-mobile-layout .text-slate-500 {
   color: var(--worker-text-secondary) !important;
 }
 
-.dark .worker-mobile-layout .text-slate-400,
-.dark .worker-mobile-layout .text-slate-300 {
+.worker-dark .worker-mobile-layout .text-slate-400,
+.worker-dark .worker-mobile-layout .text-slate-300 {
   color: var(--worker-text-muted) !important;
 }
 
-.dark .worker-mobile-layout .border-slate-50,
-.dark .worker-mobile-layout .border-slate-100,
-.dark .worker-mobile-layout .border-slate-200,
-.dark .worker-mobile-layout .border-slate-200\/80,
-.dark .worker-mobile-layout .border-slate-300,
-.dark .worker-mobile-layout .hover\:border-slate-200:hover,
-.dark .worker-mobile-layout .hover\:border-slate-300:hover {
+.worker-dark .worker-mobile-layout .border-slate-50,
+.worker-dark .worker-mobile-layout .border-slate-100,
+.worker-dark .worker-mobile-layout .border-slate-200,
+.worker-dark .worker-mobile-layout .border-slate-200\/80,
+.worker-dark .worker-mobile-layout .border-slate-300,
+.worker-dark .worker-mobile-layout .hover\:border-slate-200:hover,
+.worker-dark .worker-mobile-layout .hover\:border-slate-300:hover {
   border-color: var(--worker-border) !important;
 }
 
-.dark .worker-mobile-layout .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-.dark .worker-mobile-layout .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+.worker-dark .worker-mobile-layout .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.worker-dark .worker-mobile-layout .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--worker-border) !important;
 }
 
-.dark .worker-mobile-layout .shadow-sm,
-.dark .worker-mobile-layout .shadow-lg,
-.dark .worker-mobile-layout .shadow-xl,
-.dark .worker-mobile-layout .shadow-\[0_-12px_40px_rgba\(15\,23\,42\,0\.08\)\],
-.dark .worker-mobile-layout .shadow-slate-200\/50,
-.dark .worker-mobile-layout .shadow-slate-200\/60,
-.dark .worker-mobile-layout .shadow-slate-200\/70,
-.dark .worker-mobile-layout .shadow-slate-200\/80,
-.dark .worker-mobile-layout .shadow-blue-200\/70 {
+.worker-dark .worker-mobile-layout .shadow-sm,
+.worker-dark .worker-mobile-layout .shadow-lg,
+.worker-dark .worker-mobile-layout .shadow-xl,
+.worker-dark .worker-mobile-layout .shadow-\[0_-12px_40px_rgba\(15\,23\,42\,0\.08\)\],
+.worker-dark .worker-mobile-layout .shadow-slate-200\/50,
+.worker-dark .worker-mobile-layout .shadow-slate-200\/60,
+.worker-dark .worker-mobile-layout .shadow-slate-200\/70,
+.worker-dark .worker-mobile-layout .shadow-slate-200\/80,
+.worker-dark .worker-mobile-layout .shadow-blue-200\/70 {
   --tw-shadow-color: transparent;
   box-shadow: none !important;
 }
 
 /* Legacy Worker / Admin blues → indigo primary / dark surfaces */
-.dark .worker-mobile-layout [class*='bg-[#2F80ED]'],
-.dark .worker-mobile-layout [class*='bg-[#0B68BE]'],
-.dark .worker-mobile-layout [class*='bg-[#218EE7]'],
-.dark .worker-mobile-layout [class*='bg-[#2569C7]'],
-.dark .worker-mobile-layout [class*='bg-[#095aa5]'] {
+.worker-dark .worker-mobile-layout [class*='bg-[#2F80ED]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#0B68BE]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#218EE7]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#2569C7]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#095aa5]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#2563EB]'] {
   background-color: var(--worker-primary) !important;
   color: #ffffff !important;
 }
 
-.dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
-.dark .worker-mobile-layout [class*='bg-[#F8FBFF]'] {
+.worker-dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F8FBFF]'] {
   background-color: var(--worker-input) !important;
 }
 
-.dark .worker-mobile-layout [class*='hover:bg-[#2569C7]']:hover,
-.dark .worker-mobile-layout [class*='hover:bg-[#095aa5]']:hover,
-.dark .worker-mobile-layout [class*='hover:bg-[#0B68BE]']:hover {
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#2569C7]']:hover,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#095aa5]']:hover,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#0B68BE]']:hover,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#1d4ed8]']:hover {
   background-color: var(--worker-primary-hover) !important;
 }
 
-.dark .worker-mobile-layout [class*='text-[#2F80ED]'],
-.dark .worker-mobile-layout [class*='text-[#0B68BE]'],
-.dark .worker-mobile-layout [class*='text-[#218EE7]'],
-.dark .worker-mobile-layout [class*='text-[#1B4F8A]'],
-.dark .worker-mobile-layout [class*='text-[#113C69]'],
-.dark .worker-mobile-layout [class*='text-[#163A63]'],
-.dark .worker-mobile-layout [class*='text-[#0D477F]'] {
+.worker-dark .worker-mobile-layout [class*='text-[#2F80ED]'],
+.worker-dark .worker-mobile-layout [class*='text-[#0B68BE]'],
+.worker-dark .worker-mobile-layout [class*='text-[#218EE7]'],
+.worker-dark .worker-mobile-layout [class*='text-[#1B4F8A]'],
+.worker-dark .worker-mobile-layout [class*='text-[#113C69]'],
+.worker-dark .worker-mobile-layout [class*='text-[#163A63]'],
+.worker-dark .worker-mobile-layout [class*='text-[#0D477F]'],
+.worker-dark .worker-mobile-layout [class*='text-[#0B477F]'] {
   color: var(--worker-primary) !important;
 }
 
-.dark .worker-mobile-layout [class*='text-[#5499BF]'],
-.dark .worker-mobile-layout [class*='text-[#5D7C9D]'] {
+.worker-dark .worker-mobile-layout [class*='text-[#5499BF]'],
+.worker-dark .worker-mobile-layout [class*='text-[#5D7C9D]'],
+.worker-dark .worker-mobile-layout [class*='text-[#3D7A9C]'],
+.worker-dark .worker-mobile-layout [class*='placeholder:text-[#7FAFCC]'] {
   color: var(--worker-text-secondary) !important;
 }
 
-.dark .worker-mobile-layout [class*='bg-[#EAF4FF]'],
-.dark .worker-mobile-layout [class*='bg-[#F8FBFF]'],
-.dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
-.dark .worker-mobile-layout [class*='bg-[#E8F3FE]'],
-.dark .worker-mobile-layout [class*='bg-[#F6F9FF]'],
-.dark .worker-mobile-layout [class*='active:bg-[#EAF4FF]']:active,
-.dark .worker-mobile-layout [class*='hover:bg-[#F8FBFF]']:hover,
-.dark .worker-mobile-layout [class*='hover:bg-[#EAF4FF]']:hover {
+.worker-dark .worker-mobile-layout [class*='bg-[#EAF4FF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F8FBFF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#E8F3FE]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F6F9FF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#EEF6FF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#FAFCFF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F4FAFF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#F3F8FF]'],
+.worker-dark .worker-mobile-layout [class*='bg-[#DDF0FF]'],
+.worker-dark .worker-mobile-layout [class*='from-[#F4FAFF]'],
+.worker-dark .worker-mobile-layout [class*='to-[#E8F3FE]'],
+.worker-dark .worker-mobile-layout [class*='from-[#F3F8FF]'],
+.worker-dark .worker-mobile-layout [class*='to-[#EAF4FF]'],
+.worker-dark .worker-mobile-layout [class*='active:bg-[#EAF4FF]']:active,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#F8FBFF]']:hover,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#EAF4FF]']:hover,
+.worker-dark .worker-mobile-layout [class*='hover:bg-[#F5FAFF]']:hover {
   background-color: var(--worker-primary-soft) !important;
+  background-image: none !important;
 }
 
-.dark .worker-mobile-layout [class*='border-[#BFDFFF]'],
-.dark .worker-mobile-layout [class*='border-[#C5DFFB]'],
-.dark .worker-mobile-layout [class*='border-[#D3E9FC]'],
-.dark .worker-mobile-layout [class*='border-[#D2E5F5]'],
-.dark .worker-mobile-layout [class*='border-[#2F80ED]'],
-.dark .worker-mobile-layout [class*='hover:border-[#BFDFFF]']:hover,
-.dark .worker-mobile-layout [class*='focus:border-[#2F80ED]']:focus {
+.worker-dark .worker-mobile-layout [class*='bg-[#2A376F]'] {
+  background-color: var(--worker-elevated) !important;
+}
+
+.worker-dark .worker-mobile-layout [class*='border-[#BFDFFF]'],
+.worker-dark .worker-mobile-layout [class*='border-[#C5DFFB]'],
+.worker-dark .worker-mobile-layout [class*='border-[#D3E9FC]'],
+.worker-dark .worker-mobile-layout [class*='border-[#D2E5F5]'],
+.worker-dark .worker-mobile-layout [class*='border-[#89CFF0]'],
+.worker-dark .worker-mobile-layout [class*='border-[#BFE3F5]'],
+.worker-dark .worker-mobile-layout [class*='hover:border-[#BFDFFF]']:hover,
+.worker-dark .worker-mobile-layout [class*='focus:border-[#2F80ED]']:focus,
+.worker-dark .worker-mobile-layout [class*='focus:border-[#2563EB]']:focus {
   border-color: var(--worker-border) !important;
 }
 
-.dark .worker-mobile-layout [class*='border-[#2F80ED]'],
-.dark .worker-mobile-layout [class*='border-[#0B68BE]'] {
+.worker-dark .worker-mobile-layout [class*='border-[#2F80ED]'],
+.worker-dark .worker-mobile-layout [class*='border-[#0B68BE]'] {
   border-color: var(--worker-primary) !important;
 }
 
-.dark .worker-mobile-layout [class*='ring-[#2F80ED]'],
-.dark .worker-mobile-layout [class*='focus:ring-[#2F80ED]']:focus {
+.worker-dark .worker-mobile-layout [class*='ring-[#2F80ED]'],
+.worker-dark .worker-mobile-layout [class*='focus:ring-[#2F80ED]']:focus,
+.worker-dark .worker-mobile-layout [class*='ring-[#89CFF0]'],
+.worker-dark .worker-mobile-layout [class*='focus:ring-[#89CFF0]']:focus,
+.worker-dark .worker-mobile-layout .ring-blue-100,
+.worker-dark .worker-mobile-layout .focus\:ring-blue-100:focus {
   --tw-ring-color: rgba(67, 68, 246, 0.35) !important;
 }
 
 /* Soft success greens → mint (not defects) */
-.dark .worker-mobile-layout .bg-emerald-50,
-.dark .worker-mobile-layout .bg-emerald-50\/80,
-.dark .worker-mobile-layout .bg-green-50 {
+.worker-dark .worker-mobile-layout .bg-emerald-50,
+.worker-dark .worker-mobile-layout .bg-emerald-50\/80,
+.worker-dark .worker-mobile-layout .bg-green-50 {
   background-color: var(--worker-success-soft) !important;
 }
 
-.dark .worker-mobile-layout .text-emerald-700,
-.dark .worker-mobile-layout .text-emerald-800,
-.dark .worker-mobile-layout .text-emerald-600,
-.dark .worker-mobile-layout .text-green-700 {
+.worker-dark .worker-mobile-layout .text-emerald-700,
+.worker-dark .worker-mobile-layout .text-emerald-800,
+.worker-dark .worker-mobile-layout .text-emerald-600,
+.worker-dark .worker-mobile-layout .text-green-700 {
   color: var(--worker-success) !important;
 }
 
-.dark .worker-mobile-layout .ring-emerald-200,
-.dark .worker-mobile-layout .border-emerald-100,
-.dark .worker-mobile-layout .border-emerald-200 {
+.worker-dark .worker-mobile-layout .ring-emerald-200,
+.worker-dark .worker-mobile-layout .border-emerald-100,
+.worker-dark .worker-mobile-layout .border-emerald-200 {
   border-color: rgba(163, 241, 171, 0.35) !important;
   --tw-ring-color: rgba(163, 241, 171, 0.35) !important;
 }
 
 /* Pending / warning keep amber readability */
-.dark .worker-mobile-layout .bg-amber-50 {
+.worker-dark .worker-mobile-layout .bg-amber-50 {
   background-color: var(--worker-warning-soft) !important;
 }
 
-.dark .worker-mobile-layout .text-amber-700,
-.dark .worker-mobile-layout .text-amber-800 {
+.worker-dark .worker-mobile-layout .text-amber-700,
+.worker-dark .worker-mobile-layout .text-amber-800 {
   color: var(--worker-warning) !important;
 }
 
-.dark .worker-mobile-layout .ring-amber-200,
-.dark .worker-mobile-layout .border-amber-100,
-.dark .worker-mobile-layout .border-amber-200 {
+.worker-dark .worker-mobile-layout .ring-amber-200,
+.worker-dark .worker-mobile-layout .border-amber-100,
+.worker-dark .worker-mobile-layout .border-amber-200 {
   border-color: rgba(251, 191, 36, 0.35) !important;
   --tw-ring-color: rgba(251, 191, 36, 0.35) !important;
 }
 
 /* Defect / rejected keep red */
-.dark .worker-mobile-layout .bg-rose-50,
-.dark .worker-mobile-layout .bg-red-50 {
+.worker-dark .worker-mobile-layout .bg-rose-50,
+.worker-dark .worker-mobile-layout .bg-red-50 {
   background-color: var(--worker-danger-soft) !important;
 }
 
-.dark .worker-mobile-layout .text-rose-600,
-.dark .worker-mobile-layout .text-rose-700,
-.dark .worker-mobile-layout .text-rose-800,
-.dark .worker-mobile-layout .text-red-600,
-.dark .worker-mobile-layout .text-red-700 {
+.worker-dark .worker-mobile-layout .text-rose-600,
+.worker-dark .worker-mobile-layout .text-rose-700,
+.worker-dark .worker-mobile-layout .text-rose-800,
+.worker-dark .worker-mobile-layout .text-red-600,
+.worker-dark .worker-mobile-layout .text-red-700 {
   color: var(--worker-danger) !important;
 }
 
-.dark .worker-mobile-layout .border-rose-100,
-.dark .worker-mobile-layout .border-rose-200,
-.dark .worker-mobile-layout .ring-rose-200 {
+.worker-dark .worker-mobile-layout .border-rose-100,
+.worker-dark .worker-mobile-layout .border-rose-200,
+.worker-dark .worker-mobile-layout .ring-rose-200 {
   border-color: rgba(251, 113, 133, 0.35) !important;
   --tw-ring-color: rgba(251, 113, 133, 0.35) !important;
 }
 
 /* Inputs / selects / textareas */
-.dark .worker-mobile-layout input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
-.dark .worker-mobile-layout select,
-.dark .worker-mobile-layout textarea {
+.worker-dark .worker-mobile-layout input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.worker-dark .worker-mobile-layout select,
+.worker-dark .worker-mobile-layout textarea {
   background-color: var(--worker-input);
   border-color: var(--worker-border);
   color: var(--worker-text);
 }
 
-.dark .worker-mobile-layout input::placeholder,
-.dark .worker-mobile-layout textarea::placeholder {
+.worker-dark .worker-mobile-layout input::placeholder,
+.worker-dark .worker-mobile-layout textarea::placeholder {
   color: var(--worker-text-muted);
 }
 
-.dark .worker-mobile-layout input:disabled,
-.dark .worker-mobile-layout select:disabled,
-.dark .worker-mobile-layout textarea:disabled,
-.dark .worker-mobile-layout button:disabled {
+.worker-dark .worker-mobile-layout input:disabled,
+.worker-dark .worker-mobile-layout select:disabled,
+.worker-dark .worker-mobile-layout textarea:disabled,
+.worker-dark .worker-mobile-layout button:disabled {
   opacity: 0.55;
 }
 
 /* shadcn Card inside Worker shell */
-.dark .worker-mobile-layout [data-slot='card'] {
+.worker-dark .worker-mobile-layout [data-slot='card'] {
   background-color: var(--worker-card) !important;
   color: var(--worker-text) !important;
   --tw-ring-color: var(--worker-border);
   box-shadow: none !important;
 }
 
-.dark .worker-mobile-layout [data-slot='card-description'] {
+.worker-dark .worker-mobile-layout [data-slot='card-description'] {
   color: var(--worker-text-secondary) !important;
 }
 
-/* Dialogs / sheets rendered in Worker flow (portaled under body still get dark via html.dark;
-   Worker-owned panels inside layout are covered above.) */
-.dark .worker-mobile-layout [role='menu'],
-.dark .worker-mobile-layout [role='dialog'] {
+/* Dialogs / sheets rendered in Worker flow (document.documentElement carries
+   worker-dark, so fixed/portaled panels still resolve tokens correctly). */
+.worker-dark .worker-mobile-layout [role='menu'],
+.worker-dark .worker-mobile-layout [role='dialog'] {
   background-color: var(--worker-card);
   border-color: var(--worker-border);
   color: var(--worker-text);
   box-shadow: none;
+}
+
+/* -----------------------------------------------------------------------------
+ * Worker Home Dashboard — Dark-mode robot hero (Home page only).
+ * Rendered only while .worker-dark is active; no effect on Light mode.
+ * ----------------------------------------------------------------------------- */
+
+.worker-mobile-layout .worker-robot-hero {
+  background-color: #0a0e1c;
+}
+
+.worker-mobile-layout .worker-robot-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(67, 68, 246, 0.35), transparent 60%),
+    radial-gradient(90% 120% at 100% 100%, rgba(163, 241, 171, 0.16), transparent 65%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .worker-mobile-layout .worker-robot-hero__image {
+    animation: worker-robot-float 5s ease-in-out infinite;
+  }
+}
+
+@keyframes worker-robot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.worker-mobile-layout .worker-quick-action-mint {
+  background-color: #a3f1ab;
+}
+
+.worker-mobile-layout .worker-quick-action-indigo {
+  background-color: var(--worker-primary);
+}
+
+.worker-mobile-layout .worker-cta-gradient {
+  background: linear-gradient(135deg, #4344f6 0%, #3536d4 65%, #2f30b8 100%);
+  box-shadow:
+    0 16px 32px -18px rgba(67, 68, 246, 0.65),
+    inset 0 1px 0 rgba(163, 241, 171, 0.35);
 }

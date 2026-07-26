@@ -1,68 +1,80 @@
-import type { CompanyTheme } from '@/lib/companySettingsTypes'
-import { applyDocumentTheme, subscribeToSystemTheme } from '@/lib/theme'
+/**
+ * Worker mobile appearance (Light / Dark).
+ *
+ * Intentionally independent from `src/lib/theme.ts` / `CompanySettingsContext`,
+ * which manage the Office/Admin theme via a global `dark` class on
+ * `document.documentElement`. Reusing that class here would mean a Worker's
+ * personal preference could be silently overwritten by Office theme updates
+ * (or vice versa) any time both run in the same document/session.
+ *
+ * Instead, Worker dark mode toggles a distinct `worker-dark` class on
+ * `document.documentElement`. `src/styles/worker-theme.css` only reads that
+ * class scoped under `.worker-mobile-layout` / `.worker-theme-surface`, so it
+ * has zero effect on Admin (`.drevora-app-shell`) styling.
+ */
+
+export type WorkerAppearance = 'light' | 'dark'
 
 const STORAGE_PREFIX = 'drevora.worker.appearance:'
+const WORKER_DARK_CLASS = 'worker-dark'
+
+export const DEFAULT_WORKER_APPEARANCE: WorkerAppearance = 'light'
 
 function storageKey(userId: string): string {
   return `${STORAGE_PREFIX}${userId}`
 }
 
-function isCompanyTheme(value: string | null): value is CompanyTheme {
-  return value === 'light' || value === 'dark' || value === 'system'
+function isWorkerAppearance(value: string | null): value is WorkerAppearance {
+  return value === 'light' || value === 'dark'
 }
 
-/**
- * Personal Worker appearance preference for this browser/account.
- * Uses the same applyDocumentTheme / system subscription as Company Settings.
- * Not written to companies.theme (company-wide, office-managed).
- */
+/** Personal Worker appearance preference saved for this browser/account. */
 export function readWorkerAppearancePreference(
   userId: string | null | undefined,
-): CompanyTheme | null {
+): WorkerAppearance | null {
   if (!userId || typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(storageKey(userId))
-    return isCompanyTheme(raw) ? raw : null
+    return isWorkerAppearance(raw) ? raw : null
   } catch {
     return null
   }
 }
 
+/** Applies Worker Light/Dark appearance by toggling the scoped `worker-dark` class. */
+export function applyWorkerAppearance(theme: WorkerAppearance): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle(WORKER_DARK_CLASS, theme === 'dark')
+}
+
+/** Removes the Worker theme class from the document (call on Worker shell unmount). */
+export function clearWorkerAppearance(): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.remove(WORKER_DARK_CLASS)
+}
+
 export function writeWorkerAppearancePreference(
   userId: string,
-  theme: CompanyTheme,
+  theme: WorkerAppearance,
 ): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(storageKey(userId), theme)
-  } catch {
-    // Persistence is best-effort; still apply in-session below.
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(storageKey(userId), theme)
+    } catch {
+      // Persistence is best-effort; still apply in-session below.
+    }
   }
-  applyDocumentTheme(theme)
+  applyWorkerAppearance(theme)
 }
 
 /**
- * Resolve Worker appearance for this browser/account.
- * Personal preference wins; otherwise default to dark (Worker mobile / Capacitor).
- * `companyTheme` is retained for call-site compatibility but is not the Worker default.
+ * Resolve and apply the Worker appearance for this browser/account.
+ * Personal preference wins; otherwise defaults to Light.
  */
 export function applyResolvedWorkerAppearance(
   userId: string | null | undefined,
-  companyTheme: CompanyTheme,
-): CompanyTheme {
-  void companyTheme
-  const preferred = readWorkerAppearancePreference(userId)
-  const resolved = preferred ?? 'dark'
-  applyDocumentTheme(resolved)
+): WorkerAppearance {
+  const resolved = readWorkerAppearancePreference(userId) ?? DEFAULT_WORKER_APPEARANCE
+  applyWorkerAppearance(resolved)
   return resolved
-}
-
-export function subscribeWorkerSystemAppearance(
-  theme: CompanyTheme,
-  onSystemChange: () => void,
-): () => void {
-  if (theme !== 'system') {
-    return () => {}
-  }
-  return subscribeToSystemTheme(onSystemChange)
 }
