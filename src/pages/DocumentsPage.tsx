@@ -20,7 +20,6 @@ import { RestoreWorkerSubmissionModal } from '@/components/documents/RestoreWork
 import { SoftDeleteWorkerSubmissionModal } from '@/components/documents/SoftDeleteWorkerSubmissionModal'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
 import { ExportMenu } from '@/components/export/ExportMenu'
-import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import {
@@ -30,10 +29,14 @@ import {
   type ExportDateRangeSelection,
 } from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
-import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
-  exportDocumentsExcel,
-  exportWorkerUploadsExcel,
+  countDownloadableDocumentFiles,
+  downloadFilteredDocumentsZip,
+  downloadManagedDocumentOriginalFile,
+  downloadWorkerSubmissionOriginalFile,
+  downloadWorkerSubmissionZip,
+  exportManagedDocumentsCsv,
+  exportWorkerUploadsCsv,
 } from '@/lib/export/modules/documentsExport'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
@@ -78,10 +81,6 @@ import {
   softDeleteDocument,
   updateDocument,
 } from '@/services/documentsService'
-import {
-  downloadWorkerSubmissionFile,
-  WorkerDocumentSubmissionStorageError,
-} from '@/services/workerDocumentSubmissionStorageService'
 import {
   restoreWorkerDocumentSubmission,
   reviewWorkerDocumentSubmission,
@@ -129,11 +128,9 @@ export default function DocumentsPage() {
     formatDate,
     formatDateTime,
     settings: companySettings,
-    companyName,
     weekStarts,
     timezone,
   } = useCompanySettings()
-  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -504,16 +501,34 @@ export default function DocumentsPage() {
     }
 
     try {
-      await downloadWorkerSubmissionFile(
-        attachment.filePath,
-        attachment.originalFileName,
-      )
+      await downloadWorkerSubmissionOriginalFile({
+        filePath: attachment.filePath,
+        originalFileName: attachment.originalFileName,
+        mimeType: attachment.mimeType,
+      })
     } catch (error) {
-      showToast(
-        error instanceof WorkerDocumentSubmissionStorageError
-          ? error.message
-          : 'Unable to download file.',
-      )
+      showToast(toExportUserMessage(error, 'Unable to download file.'))
+    }
+  }
+
+  async function handleDownloadSubmissionZip(record: Document) {
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      await downloadWorkerSubmissionZip(record)
+      showToast('Downloaded files as ZIP')
+    } catch (error) {
+      showToast(toExportUserMessage(error, 'Unable to download files.'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  async function handleDownloadManagedFile(record: Document) {
+    try {
+      await downloadManagedDocumentOriginalFile(record)
+    } catch (error) {
+      showToast(toExportUserMessage(error, 'Unable to download file.'))
     }
   }
 
@@ -833,31 +848,40 @@ export default function DocumentsPage() {
             isWorkerUploads ? (
               <ExportMenu
                 busy={isExporting}
+                busyLabel="Preparing download…"
                 disabled={isLoading}
                 actions={[
                   {
-                    id: 'excel',
-                    label: 'Export filtered results to Excel',
+                    id: 'csv',
+                    label: 'Export list (.csv)',
                     onSelect: async () => {
                       setIsExporting(true)
                       try {
-                        await exportWorkerUploadsExcel(
+                        exportWorkerUploadsCsv(filteredItems)
+                        showToast('Exported Worker uploads list')
+                      } catch (error) {
+                        showToast(toExportUserMessage(error))
+                      } finally {
+                        setIsExporting(false)
+                      }
+                    },
+                  },
+                  {
+                    id: 'zip',
+                    label: 'Download files (.zip)',
+                    disabled: countDownloadableDocumentFiles(filteredItems) === 0,
+                    onSelect: async () => {
+                      if (countDownloadableDocumentFiles(filteredItems) === 0) {
+                        showToast('No files available to download')
+                        return
+                      }
+                      setIsExporting(true)
+                      try {
+                        await downloadFilteredDocumentsZip(
                           filteredItems,
-                          resolveExportMeta({
-                            companyName,
-                            logoUrl: companySettings?.logoUrl,
-                            generatedBy: session?.user.email ?? null,
-                            documentTitle: 'Worker Uploads',
-                            filterSummary: `Status ${workerUploadStatusFilter}`,
-                          }),
-                          [
-                            workerUploadStatusFilter !== 'all'
-                              ? workerUploadStatusFilter
-                              : null,
-                            debouncedSearch || null,
-                          ],
+                          'worker_uploads',
                         )
-                        showToast('Exported Worker uploads to Excel')
+                        showToast('Downloaded Worker upload files')
                       } catch (error) {
                         showToast(toExportUserMessage(error))
                       } finally {
@@ -870,13 +894,14 @@ export default function DocumentsPage() {
             ) : (
               <ExportMenu
                 busy={isExporting}
+                busyLabel="Preparing download…"
                 disabled={isLoading}
                 dateRange={exportDateRange}
                 onDateRangeChange={setExportDateRange}
                 actions={[
                   {
-                    id: 'excel',
-                    label: 'Export filtered results to Excel',
+                    id: 'csv',
+                    label: 'Export list (.csv)',
                     onSelect: async () => {
                       setIsExporting(true)
                       try {
@@ -885,29 +910,49 @@ export default function DocumentsPage() {
                           timeZone: timezone,
                           formatDate,
                         })
-                        // Primary list date is Expiry (DocumentsDataTable column).
-                        // Export respects the current lifecycle + other filters via filteredItems.
                         const exportItems = filteredItems.filter((document) =>
                           rowMatchesExportDateRange(document.expiryDate, resolvedRange),
                         )
-                        await exportDocumentsExcel(
-                          exportItems,
-                          resolveExportMeta({
-                            companyName,
-                            logoUrl: companySettings?.logoUrl,
-                            generatedBy: session?.user.email ?? null,
-                            documentTitle: 'Documents',
-                            filterSummary: `Date ${resolvedRange.label}; Lifecycle ${lifecycleFilter}`,
-                          }),
-                          [
-                            activeTab !== 'all' ? activeTab : null,
-                            lifecycleFilter !== 'active' ? lifecycleFilter : null,
-                            resolvedRange.dateFrom || null,
-                            resolvedRange.dateTo || null,
-                            debouncedSearch || null,
-                          ],
-                        )
-                        showToast('Exported documents to Excel')
+                        exportManagedDocumentsCsv(exportItems)
+                        showToast('Exported Managed Documents list')
+                      } catch (error) {
+                        showToast(toExportUserMessage(error))
+                      } finally {
+                        setIsExporting(false)
+                      }
+                    },
+                  },
+                  {
+                    id: 'zip',
+                    label: 'Download files (.zip)',
+                    disabled: (() => {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
+                      const exportItems = filteredItems.filter((document) =>
+                        rowMatchesExportDateRange(document.expiryDate, resolvedRange),
+                      )
+                      return countDownloadableDocumentFiles(exportItems) === 0
+                    })(),
+                    onSelect: async () => {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
+                      const exportItems = filteredItems.filter((document) =>
+                        rowMatchesExportDateRange(document.expiryDate, resolvedRange),
+                      )
+                      if (countDownloadableDocumentFiles(exportItems) === 0) {
+                        showToast('No files available to download')
+                        return
+                      }
+                      setIsExporting(true)
+                      try {
+                        await downloadFilteredDocumentsZip(exportItems, 'managed')
+                        showToast('Downloaded Managed Document files')
                       } catch (error) {
                         showToast(toExportUserMessage(error))
                       } finally {
@@ -960,6 +1005,12 @@ export default function DocumentsPage() {
               onOpenFile={(record) => void handleOpenFile(record)}
               onDownloadSubmissionFile={(record) =>
                 void handleDownloadSubmissionFile(record)
+              }
+              onDownloadSubmissionZip={(record) =>
+                void handleDownloadSubmissionZip(record)
+              }
+              onDownloadManagedFile={(record) =>
+                void handleDownloadManagedFile(record)
               }
               onMarkReviewed={(record) => void handleMarkReviewed(record)}
               onReject={setRejectRecord}

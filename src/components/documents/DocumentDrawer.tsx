@@ -107,11 +107,12 @@ export function DocumentDrawer({
     filePath: string,
     originalFileName: string,
     attachmentId: string,
+    mimeType?: string | null,
   ) {
     setAttachmentError(null)
     setBusyAttachmentId(attachmentId)
     try {
-      await downloadWorkerSubmissionFile(filePath, originalFileName)
+      await downloadWorkerSubmissionFile(filePath, originalFileName, mimeType)
     } catch (error) {
       setAttachmentError(
         error instanceof WorkerDocumentSubmissionStorageError
@@ -274,6 +275,7 @@ export function DocumentDrawer({
                                 attachment.filePath,
                                 attachment.originalFileName,
                                 attachment.id,
+                                attachment.mimeType,
                               )
                             }
                             className="text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"

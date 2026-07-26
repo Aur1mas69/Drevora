@@ -64,6 +64,8 @@ type DocumentsDataTableProps = {
   onRestore: (document: Document) => void
   onOpenFile: (document: Document) => void
   onDownloadSubmissionFile: (document: Document) => void
+  onDownloadSubmissionZip: (document: Document) => void
+  onDownloadManagedFile: (document: Document) => void
   onMarkReviewed: (document: Document) => void
   onReject: (document: Document) => void
 }
@@ -154,6 +156,8 @@ function DocumentActionsMenu({
   onRestore,
   onOpenFile,
   onDownloadSubmissionFile,
+  onDownloadSubmissionZip,
+  onDownloadManagedFile,
   onMarkReviewed,
   onReject,
 }: {
@@ -164,6 +168,8 @@ function DocumentActionsMenu({
   onRestore: () => void
   onOpenFile: () => void
   onDownloadSubmissionFile: () => void
+  onDownloadSubmissionZip: () => void
+  onDownloadManagedFile: () => void
   onMarkReviewed: () => void
   onReject: () => void
 }) {
@@ -188,10 +194,10 @@ function DocumentActionsMenu({
       })
     } else if (fileCount > 1) {
       actions.push({
-        id: 'view-download',
-        label: 'View & download files',
+        id: 'download-zip',
+        label: 'Download files (.zip)',
         icon: Files,
-        onClick: onView,
+        onClick: onDownloadSubmissionZip,
       })
     }
     if (softDeleted) {
@@ -242,12 +248,18 @@ function DocumentActionsMenu({
     return <RowActionsMenu actions={actions} align="end" />
   }
 
-  if (hasDocumentFile(document)) {
+  if (hasDocumentFile(document) && document.filePath?.trim()) {
     actions.push({
       id: 'file',
       label: 'Open file',
       icon: ExternalLink,
       onClick: onOpenFile,
+    })
+    actions.push({
+      id: 'download',
+      label: 'Download file',
+      icon: Download,
+      onClick: onDownloadManagedFile,
     })
   }
 
@@ -297,6 +309,8 @@ export function DocumentsDataTable({
   onRestore,
   onOpenFile,
   onDownloadSubmissionFile,
+  onDownloadSubmissionZip,
+  onDownloadManagedFile,
   onMarkReviewed,
   onReject,
 }: DocumentsDataTableProps) {
@@ -313,6 +327,8 @@ export function DocumentsDataTable({
         onRestore={() => onRestore(document)}
         onOpenFile={() => onOpenFile(document)}
         onDownloadSubmissionFile={() => onDownloadSubmissionFile(document)}
+        onDownloadSubmissionZip={() => onDownloadSubmissionZip(document)}
+        onDownloadManagedFile={() => onDownloadManagedFile(document)}
         onMarkReviewed={() => onMarkReviewed(document)}
         onReject={() => onReject(document)}
       />

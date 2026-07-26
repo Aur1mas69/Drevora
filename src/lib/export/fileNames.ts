@@ -12,7 +12,7 @@ export function sanitizeFileNamePart(value: string, maxLength = 60): string {
 type BuildExportFileNameInput = {
   module: string
   parts?: Array<string | null | undefined>
-  extension: 'xlsx' | 'pdf' | 'zip'
+  extension: 'xlsx' | 'pdf' | 'zip' | 'csv'
 }
 
 /** Build a predictable DREVORA_* file name without database IDs. */

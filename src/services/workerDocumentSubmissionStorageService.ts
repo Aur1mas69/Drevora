@@ -1,5 +1,10 @@
 import { sanitizeDocumentFileName } from '@/lib/documentFileStorage'
 import {
+  downloadFileFromSignedUrl,
+  resolveDownloadFileName,
+} from '@/lib/export/downloadFiles'
+import { ExportUserError } from '@/lib/export/exportErrors'
+import {
   buildWorkerSubmissionFilePath,
   DOCUMENT_FILES_BUCKET,
   resolveWorkerSubmissionMimeType,
@@ -154,26 +159,29 @@ export async function getWorkerSubmissionFileSignedUrl(
 }
 
 /**
- * Downloads a private Worker submission attachment via a short-lived signed URL
- * with Content-Disposition download, using a safe original file name.
+ * Downloads a private Worker submission attachment via a short-lived signed URL,
+ * fetching the Blob so the browser preserves the original filename and extension.
  */
 export async function downloadWorkerSubmissionFile(
   storagePath: string | null | undefined,
   originalFileName: string,
+  mimeType?: string | null,
 ): Promise<void> {
-  const safeName = sanitizeDocumentFileName(originalFileName)
-  const url = await getWorkerSubmissionFileSignedUrl(storagePath, {
-    downloadFileName: safeName,
-  })
+  const safeName = resolveDownloadFileName(
+    originalFileName || sanitizeDocumentFileName(originalFileName || 'file'),
+    mimeType,
+  )
+  const url = await getWorkerSubmissionFileSignedUrl(storagePath)
   if (!url) {
     throw new WorkerDocumentSubmissionStorageError('Unable to create download link.')
   }
 
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.rel = 'noopener'
-  anchor.download = safeName
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
+  try {
+    await downloadFileFromSignedUrl(url, safeName)
+  } catch (error) {
+    if (error instanceof ExportUserError) {
+      throw new WorkerDocumentSubmissionStorageError(error.message)
+    }
+    throw new WorkerDocumentSubmissionStorageError('Unable to download file.')
+  }
 }

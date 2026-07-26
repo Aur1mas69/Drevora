@@ -1,13 +1,51 @@
+import { downloadCsvFile } from '@/lib/export/csvExport'
+import {
+  downloadFileFromSignedUrl,
+  downloadZipArchive,
+  fetchBlobFromUrl,
+  resolveDownloadFileName,
+  type ZipFileEntry,
+} from '@/lib/export/downloadFiles'
 import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
+import { ExportUserError } from '@/lib/export/exportErrors'
 import type { ExportMeta } from '@/lib/export/exportMeta'
 import { assertExportNotEmpty } from '@/lib/export/fetchAllFiltered'
-import { buildExportFileName } from '@/lib/export/fileNames'
+import { buildExportFileName, sanitizeFileNamePart } from '@/lib/export/fileNames'
 import { formatDateFromIso, formatDateTimeFromIso } from '@/lib/dateTimeFormat'
 import type { Document } from '@/lib/documentTypes'
 import {
   getWorkerSubmissionReviewLabel,
+  hasDocumentFile,
+  isWorkerSubmissionDocument,
   isWorkerSubmissionSoftDeleted,
 } from '@/lib/documentUtils'
+import { getDocumentFileDisplayName } from '@/lib/documentFileStorage'
+import {
+  getDocumentFileSignedUrl,
+  DocumentFileStorageError,
+} from '@/services/documentFileStorageService'
+import {
+  getWorkerSubmissionFileSignedUrl,
+  WorkerDocumentSubmissionStorageError,
+} from '@/services/workerDocumentSubmissionStorageService'
+
+function todayStamp(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function submittedDateStamp(iso: string | null | undefined): string {
+  if (!iso?.trim()) return todayStamp()
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return todayStamp()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export async function exportDocumentsExcel(
   documents: Document[],
@@ -56,7 +94,7 @@ export async function exportDocumentsExcel(
   )
 }
 
-/** Metadata-only Worker Uploads export — no Storage paths, UUIDs or signed URLs. */
+/** Metadata-only Worker Uploads Excel export — retained for compatibility. */
 export async function exportWorkerUploadsExcel(
   documents: Document[],
   _meta: ExportMeta,
@@ -109,6 +147,293 @@ export async function exportWorkerUploadsExcel(
       module: 'WorkerUploads',
       parts: filterParts,
       extension: 'xlsx',
+    }),
+  )
+}
+
+/** Filtered Worker Uploads metadata as a real CSV (no binary / paths / URLs). */
+export function exportWorkerUploadsCsv(documents: Document[]): void {
+  const rows = assertExportNotEmpty(documents)
+  const includesArchived = rows.some((row) => isWorkerSubmissionSoftDeleted(row))
+
+  const headers = [
+    'Worker',
+    'Document',
+    'Reference',
+    'Submitted At',
+    'File Count',
+    'Status',
+    'Rejection Reason',
+    ...(includesArchived ? ['Archived At', 'Delete Reason'] : []),
+  ]
+
+  downloadCsvFile(
+    headers,
+    rows.map((row) => [
+      row.workerName ?? '',
+      row.documentName || row.documentType || '',
+      row.referenceNumber ?? '',
+      row.submittedAt ? formatDateTimeFromIso(row.submittedAt) : '',
+      String(row.attachmentCount ?? row.attachments?.length ?? 0),
+      getWorkerSubmissionReviewLabel(row.reviewStatus),
+      row.rejectionReason ?? '',
+      ...(includesArchived
+        ? [
+            row.deletedAt ? formatDateTimeFromIso(row.deletedAt) : '',
+            row.deleteReason ?? '',
+          ]
+        : []),
+    ]),
+    buildExportFileName({
+      module: 'Documents_Worker-Uploads',
+      parts: [todayStamp()],
+      extension: 'csv',
+    }),
+  )
+}
+
+/** Filtered Managed Documents metadata as a real CSV. */
+export function exportManagedDocumentsCsv(documents: Document[]): void {
+  const rows = assertExportNotEmpty(documents)
+
+  downloadCsvFile(
+    [
+      'Document Name',
+      'Type',
+      'Applies To',
+      'Worker',
+      'Vehicle',
+      'Reference',
+      'Issue Date',
+      'Expiry Date',
+      'Status',
+      'Created At',
+      'Notes',
+      'Has File',
+    ],
+    rows.map((row) => [
+      row.documentName ?? '',
+      row.documentType ?? '',
+      row.appliesTo ?? '',
+      row.workerName ?? '',
+      row.vehicleLabel ?? '',
+      row.referenceNumber ?? '',
+      row.issueDate ? formatDateFromIso(row.issueDate) : '',
+      row.expiryDate ? formatDateFromIso(row.expiryDate) : '',
+      row.status ?? '',
+      formatDateTimeFromIso(row.createdAt),
+      row.notes ?? '',
+      hasDocumentFile(row) ? 'Yes' : 'No',
+    ]),
+    buildExportFileName({
+      module: 'Documents_Managed',
+      parts: [todayStamp()],
+      extension: 'csv',
+    }),
+  )
+}
+
+export function buildWorkerSubmissionZipFileName(document: Document): string {
+  return buildExportFileName({
+    module: sanitizeFileNamePart(document.workerName || 'Worker', 40),
+    parts: [
+      document.documentName || document.documentType || 'Document',
+      submittedDateStamp(document.submittedAt),
+    ],
+    extension: 'zip',
+  })
+}
+
+/** Count downloadable private files in a filtered Documents result set. */
+export function countDownloadableDocumentFiles(documents: Document[]): number {
+  let count = 0
+  for (const document of documents) {
+    if (isWorkerSubmissionDocument(document)) {
+      count += document.attachments?.length ?? 0
+      continue
+    }
+    if (document.filePath?.trim()) count += 1
+  }
+  return count
+}
+
+async function fetchWorkerAttachmentEntry(input: {
+  filePath: string
+  originalFileName: string
+  mimeType?: string | null
+  namePrefix?: string
+}): Promise<ZipFileEntry> {
+  const fileName = resolveDownloadFileName(input.originalFileName, input.mimeType)
+  const entryName = input.namePrefix
+    ? `${sanitizeFileNamePart(input.namePrefix, 50)}_${fileName}`
+    : fileName
+
+  const url = await getWorkerSubmissionFileSignedUrl(input.filePath)
+  if (!url) {
+    throw new ExportUserError('Unable to download one or more files.')
+  }
+
+  const blob = await fetchBlobFromUrl(url)
+  return { fileName: entryName, blob }
+}
+
+/** Download every attachment for one Worker submission as a single ZIP. */
+export async function downloadWorkerSubmissionZip(document: Document): Promise<void> {
+  if (!isWorkerSubmissionDocument(document)) {
+    throw new ExportUserError('Only Worker uploads can be downloaded as a submission ZIP.')
+  }
+
+  const attachments = [...(document.attachments ?? [])].sort(
+    (left, right) => left.sortOrder - right.sortOrder,
+  )
+  if (attachments.length === 0) {
+    throw new ExportUserError('No files available to download.')
+  }
+
+  const entries: ZipFileEntry[] = []
+  for (const attachment of attachments) {
+    try {
+      entries.push(
+        await fetchWorkerAttachmentEntry({
+          filePath: attachment.filePath,
+          originalFileName: attachment.originalFileName,
+          mimeType: attachment.mimeType,
+        }),
+      )
+    } catch (error) {
+      if (error instanceof ExportUserError) throw error
+      if (error instanceof WorkerDocumentSubmissionStorageError) {
+        throw new ExportUserError(error.message)
+      }
+      throw new ExportUserError(
+        'One or more files could not be downloaded. The archive was not created.',
+      )
+    }
+  }
+
+  await downloadZipArchive(entries, buildWorkerSubmissionZipFileName(document))
+}
+
+/** Download one Worker submission attachment as the original file. */
+export async function downloadWorkerSubmissionOriginalFile(input: {
+  filePath: string
+  originalFileName: string
+  mimeType?: string | null
+}): Promise<void> {
+  const fileName = resolveDownloadFileName(input.originalFileName, input.mimeType)
+  const url = await getWorkerSubmissionFileSignedUrl(input.filePath)
+  if (!url) {
+    throw new ExportUserError('Unable to download file.')
+  }
+  await downloadFileFromSignedUrl(url, fileName)
+}
+
+/** Download one Managed Document private file as the original file. */
+export async function downloadManagedDocumentOriginalFile(
+  document: Document,
+): Promise<void> {
+  const path = document.filePath?.trim()
+  if (!path) {
+    throw new ExportUserError('No file is available to download.')
+  }
+
+  const fileName = resolveDownloadFileName(
+    getDocumentFileDisplayName(path),
+    null,
+  )
+
+  try {
+    const url = await getDocumentFileSignedUrl(path)
+    if (!url) {
+      throw new ExportUserError('Unable to download file.')
+    }
+    await downloadFileFromSignedUrl(url, fileName)
+  } catch (error) {
+    if (error instanceof ExportUserError) throw error
+    if (error instanceof DocumentFileStorageError) {
+      throw new ExportUserError(error.message)
+    }
+    throw new ExportUserError('Unable to download file.')
+  }
+}
+
+/** Bulk ZIP of all available attachments from the filtered Documents result set. */
+export async function downloadFilteredDocumentsZip(
+  documents: Document[],
+  pageMode: 'worker_uploads' | 'managed',
+): Promise<void> {
+  const entries: ZipFileEntry[] = []
+
+  for (const document of documents) {
+    if (isWorkerSubmissionDocument(document)) {
+      const attachments = [...(document.attachments ?? [])].sort(
+        (left, right) => left.sortOrder - right.sortOrder,
+      )
+      const prefix = [
+        document.workerName || 'Worker',
+        document.documentName || document.documentType || 'Document',
+      ].join('_')
+
+      for (const attachment of attachments) {
+        try {
+          entries.push(
+            await fetchWorkerAttachmentEntry({
+              filePath: attachment.filePath,
+              originalFileName: attachment.originalFileName,
+              mimeType: attachment.mimeType,
+              namePrefix: prefix,
+            }),
+          )
+        } catch (error) {
+          if (error instanceof ExportUserError) throw error
+          throw new ExportUserError(
+            'One or more files could not be downloaded. The archive was not created.',
+          )
+        }
+      }
+      continue
+    }
+
+    const path = document.filePath?.trim()
+    if (!path) continue
+
+    try {
+      const url = await getDocumentFileSignedUrl(path)
+      if (!url) {
+        throw new ExportUserError(
+          'One or more files could not be downloaded. The archive was not created.',
+        )
+      }
+      const blob = await fetchBlobFromUrl(url)
+      const fileName = resolveDownloadFileName(getDocumentFileDisplayName(path), null)
+      const prefix = sanitizeFileNamePart(
+        document.documentName || document.documentType || 'Document',
+        50,
+      )
+      entries.push({ fileName: `${prefix}_${fileName}`, blob })
+    } catch (error) {
+      if (error instanceof ExportUserError) throw error
+      throw new ExportUserError(
+        'One or more files could not be downloaded. The archive was not created.',
+      )
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError('No files available to download.')
+  }
+
+  const moduleName =
+    pageMode === 'worker_uploads'
+      ? 'Documents_Worker-Uploads'
+      : 'Documents_Managed'
+
+  await downloadZipArchive(
+    entries,
+    buildExportFileName({
+      module: moduleName,
+      parts: [todayStamp()],
+      extension: 'zip',
     }),
   )
 }
