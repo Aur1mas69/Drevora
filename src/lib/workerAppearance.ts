@@ -41,12 +41,18 @@ export function writeWorkerAppearancePreference(
   applyDocumentTheme(theme)
 }
 
+/**
+ * Resolve Worker appearance for this browser/account.
+ * Personal preference wins; otherwise default to dark (Worker mobile / Capacitor).
+ * `companyTheme` is retained for call-site compatibility but is not the Worker default.
+ */
 export function applyResolvedWorkerAppearance(
   userId: string | null | undefined,
   companyTheme: CompanyTheme,
 ): CompanyTheme {
+  void companyTheme
   const preferred = readWorkerAppearancePreference(userId)
-  const resolved = preferred ?? companyTheme
+  const resolved = preferred ?? 'dark'
   applyDocumentTheme(resolved)
   return resolved
 }

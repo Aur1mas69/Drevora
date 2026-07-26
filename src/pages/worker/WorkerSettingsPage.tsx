@@ -41,7 +41,7 @@ export default function WorkerSettingsPage() {
     isLoading: settingsLoading,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
 
-  const [appearance, setAppearance] = useState<CompanyTheme>('light')
+  const [appearance, setAppearance] = useState<CompanyTheme>('dark')
 
   useEffect(() => {
     if (companyLoading) return
@@ -66,7 +66,7 @@ export default function WorkerSettingsPage() {
   if (isLoading || companyLoading) {
     return (
       <div
-        className="min-h-[40vh] rounded-[1.75rem] bg-white/60"
+        className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
         aria-label="Loading settings"
         role="status"
       />
@@ -75,9 +75,9 @@ export default function WorkerSettingsPage() {
 
   if (error || !worker) {
     return (
-      <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-950">Settings</h1>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="worker-card rounded-[1.75rem] p-5">
+        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Settings</h1>
+        <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {error ??
             'We could not find a worker profile linked to your account.'}
         </p>
@@ -101,15 +101,15 @@ export default function WorkerSettingsPage() {
   return (
     <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+        <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
           Your Worker profile and preferences.
         </p>
       </header>
 
-      <section className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900">
+      <section className="worker-card rounded-[1.75rem] p-5">
         <div className="flex items-center gap-4">
           <WorkerAvatar
             firstName={worker.firstName}
@@ -118,18 +118,18 @@ export default function WorkerSettingsPage() {
             size="md"
           />
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-slate-950 dark:text-white">
+            <p className="truncate text-lg font-semibold text-[color:var(--worker-text)]">
               {fullName || 'Worker'}
             </p>
-            <p className="truncate text-sm text-slate-500">{email}</p>
-            <p className="mt-1 truncate text-xs font-medium text-slate-400">
+            <p className="truncate text-sm text-[color:var(--worker-text-secondary)]">{email}</p>
+            <p className="mt-1 truncate text-xs font-medium text-[color:var(--worker-text-muted)]">
               {companyName?.trim() || worker.company || 'Company'}
             </p>
           </div>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="worker-card overflow-hidden rounded-[1.75rem]">
         <SettingsRow label="Phone" value={worker.phone?.trim() || 'Not set'} />
         <SettingsRow
           label="Default vehicle"
@@ -142,34 +142,34 @@ export default function WorkerSettingsPage() {
         />
       </section>
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="worker-card overflow-hidden rounded-[1.75rem]">
         <Link
           to="/worker/settings/timesheet"
-          className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+          className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[color:var(--worker-input)]"
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#2F80ED] dark:bg-[#12365C]">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
             <Clock className="size-5" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-semibold text-slate-950 dark:text-white">
+            <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
               Timesheet settings
             </span>
-            <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
+            <span className="mt-0.5 block truncate text-xs font-medium text-[color:var(--worker-text-secondary)]">
               {timesheetSummary}
             </span>
           </span>
           <ChevronRight
-            className="size-5 shrink-0 text-slate-400"
+            className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
             aria-hidden
           />
         </Link>
       </section>
 
-      <section className="rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+      <section className="worker-card rounded-[1.75rem] p-4">
+        <h2 className="text-base font-semibold text-[color:var(--worker-text)]">
           Appearance
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
           Choose how DREVORA looks on this device. This does not change Company
           Settings for your office.
         </p>
@@ -184,26 +184,26 @@ export default function WorkerSettingsPage() {
                 className={cn(
                   'flex min-h-14 flex-col items-start rounded-2xl border px-4 py-3 text-left transition-colors',
                   selected
-                    ? 'border-[#2F80ED] bg-[#EAF4FF] dark:bg-[#12365C]'
-                    : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800',
+                    ? 'border-[color:var(--worker-primary)] bg-[color:var(--worker-primary-soft)]'
+                    : 'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] hover:bg-[color:var(--worker-input)]',
                 )}
               >
-                <span className="text-sm font-semibold text-slate-950 dark:text-white">
+                <span className="text-sm font-semibold text-[color:var(--worker-text)]">
                   {option.label}
                 </span>
-                <span className="text-xs text-slate-500">{option.hint}</span>
+                <span className="text-xs text-[color:var(--worker-text-secondary)]">{option.hint}</span>
               </button>
             )
           })}
         </div>
-        <p className="mt-3 text-xs text-slate-400">
+        <p className="mt-3 text-xs text-[color:var(--worker-text-muted)]">
           {hasPersonalAppearance
             ? 'Saved for your Worker account on this browser.'
-            : `Currently following company default (${companyTheme}).`}
+            : 'Using the Worker dark theme by default on this device.'}
         </p>
       </section>
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="worker-card overflow-hidden rounded-[1.75rem]">
         <SettingsRow
           label="Password & security"
           value="Managed in your sign-in account"
@@ -211,7 +211,7 @@ export default function WorkerSettingsPage() {
         />
       </section>
 
-      <p className="px-1 text-xs text-slate-400">
+      <p className="px-1 text-xs text-[color:var(--worker-text-muted)]">
         Profile photo, phone and vehicle defaults are managed by your office.
         Company Settings and admin tools are not available in the Worker app.
       </p>
@@ -242,11 +242,11 @@ function SettingsRow({
       className={
         isLast
           ? 'flex items-start justify-between gap-4 px-4 py-4'
-          : 'flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-4 dark:border-slate-800'
+          : 'flex items-start justify-between gap-4 border-b border-[color:var(--worker-border)] px-4 py-4'
       }
     >
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="max-w-[60%] text-right text-sm font-semibold text-slate-950 dark:text-white">
+      <p className="text-sm font-medium text-[color:var(--worker-text-secondary)]">{label}</p>
+      <p className="max-w-[60%] text-right text-sm font-semibold text-[color:var(--worker-text)]">
         {value}
       </p>
     </div>

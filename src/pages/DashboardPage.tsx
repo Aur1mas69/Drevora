@@ -71,16 +71,16 @@ function WorkerHomeHeader({
 
   return (
     <header ref={headerRef} className="worker-home-header w-full min-w-0 max-w-full space-y-1">
-      <h1 className="max-w-full text-3xl font-semibold tracking-tight break-words text-slate-950">
+      <h1 className="max-w-full text-3xl font-semibold tracking-tight break-words text-[color:var(--worker-text)]">
         {greeting}
       </h1>
       {companyName ? (
-        <p className="max-w-full text-sm font-medium break-words text-slate-500">
+        <p className="max-w-full text-sm font-medium break-words text-[color:var(--worker-text-secondary)]">
           {companyName}
         </p>
       ) : (
         <div
-          className="h-4 w-36 max-w-full animate-pulse rounded-full bg-slate-200/80"
+          className="h-4 w-36 max-w-full animate-pulse rounded-full bg-[color:var(--worker-border)]"
           aria-hidden
         />
       )}
@@ -98,9 +98,9 @@ function DashboardPage() {
 
   if (!isLoading && (error || !worker)) {
     return (
-      <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-950">Worker profile</h1>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="worker-card rounded-[1.75rem] p-5">
+        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Worker profile</h1>
+        <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {error ??
             'We could not find a worker profile linked to your account. Please contact your manager.'}
         </p>
@@ -123,22 +123,22 @@ function DashboardPage() {
 
       {isLoading || companyLoading ? (
         <div
-          className="min-h-[40vh] rounded-[1.75rem] bg-white/60"
+          className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
           aria-label="Loading worker home"
           role="status"
         />
       ) : (
         <>
           {defaultVehicleLabel ? (
-            <div className="flex items-center gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-3 shadow-sm shadow-slate-200/50">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-[#EAF4FF]">
-                <Truck className="size-5 text-[#2F80ED]" />
+            <div className="flex items-center gap-3 rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)]">
+                <Truck className="size-5 text-[color:var(--worker-primary)]" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
                   Default vehicle
                 </p>
-                <p className="truncate text-sm font-semibold text-slate-950">
+                <p className="truncate text-sm font-semibold text-[color:var(--worker-text)]">
                   {defaultVehicleLabel}
                 </p>
               </div>
@@ -146,7 +146,7 @@ function DashboardPage() {
           ) : null}
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--worker-text-muted)]">
               Quick actions
             </h2>
             <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
@@ -157,14 +157,14 @@ function DashboardPage() {
                     key={item.id}
                     to={item.to}
                     className={cn(
-                      'flex min-h-[6.5rem] flex-col justify-between rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-lg shadow-slate-200/60 transition-colors',
-                      'hover:border-[#BFDFFF] hover:bg-[#F8FBFF] active:bg-[#EAF4FF]',
+                      'flex min-h-[6.5rem] flex-col justify-between rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 transition-colors',
+                      'hover:border-[color:var(--worker-primary)] hover:bg-[color:var(--worker-primary-soft)] active:bg-[color:var(--worker-primary-soft)]',
                     )}
                   >
-                    <div className="flex size-11 items-center justify-center rounded-2xl bg-[#EAF4FF]">
-                      <Icon className="size-5 text-[#2F80ED]" />
+                    <div className="flex size-11 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)]">
+                      <Icon className="size-5 text-[color:var(--worker-primary)]" />
                     </div>
-                    <p className="text-base font-semibold text-slate-950">{item.label}</p>
+                    <p className="text-base font-semibold text-[color:var(--worker-text)]">{item.label}</p>
                   </Link>
                 )
               })}
@@ -173,7 +173,7 @@ function DashboardPage() {
 
           <Link
             to="/worker/vehicles"
-            className="flex min-h-14 items-center justify-center rounded-[1.5rem] bg-[#2F80ED] px-4 text-base font-semibold text-white shadow-lg shadow-blue-200/70 transition-colors hover:bg-[#2569C7]"
+            className="worker-btn-primary flex min-h-14 items-center justify-center rounded-[1.5rem] px-4 text-base font-semibold transition-colors"
           >
             Start Vehicle Check
           </Link>

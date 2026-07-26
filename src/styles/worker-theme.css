@@ -1,0 +1,335 @@
+/* =============================================================================
+ * Worker mobile theme tokens — scoped to .worker-mobile-layout only.
+ * Admin (.drevora-app-shell) is intentionally untouched.
+ * ============================================================================= */
+
+/* Shared token defaults (layout + portaled Worker surfaces). */
+.worker-mobile-layout,
+.worker-theme-surface {
+  --worker-bg: #f6f9ff;
+  --worker-elevated: #ffffff;
+  --worker-card: #ffffff;
+  --worker-input: #ffffff;
+  --worker-border: #e2e8f0;
+  --worker-primary: #4344f6;
+  --worker-primary-hover: #3536d4;
+  --worker-primary-soft: rgba(67, 68, 246, 0.14);
+  --worker-success: #16a34a;
+  --worker-success-soft: rgba(22, 163, 74, 0.12);
+  --worker-text: #0f172a;
+  --worker-text-secondary: #64748b;
+  --worker-text-muted: #94a3b8;
+  --worker-danger: #e11d48;
+  --worker-danger-soft: rgba(225, 29, 72, 0.12);
+  --worker-warning: #d97706;
+  --worker-warning-soft: rgba(217, 119, 6, 0.14);
+  --worker-disabled: #475569;
+  --worker-nav-inactive: #94a3b8;
+}
+
+.dark .worker-mobile-layout,
+.dark .worker-theme-surface {
+  --worker-bg: #080b14;
+  --worker-elevated: #0d111c;
+  --worker-card: #111522;
+  --worker-input: #171c2a;
+  --worker-border: #252c3d;
+  --worker-primary: #4344f6;
+  --worker-primary-hover: #3536d4;
+  --worker-primary-soft: rgba(67, 68, 246, 0.22);
+  --worker-success: #a3f1ab;
+  --worker-success-soft: rgba(163, 241, 171, 0.14);
+  --worker-text: #f8fafc;
+  --worker-text-secondary: #94a3b8;
+  --worker-text-muted: #64748b;
+  --worker-danger: #fb7185;
+  --worker-danger-soft: rgba(251, 113, 133, 0.14);
+  --worker-warning: #fbbf24;
+  --worker-warning-soft: rgba(251, 191, 36, 0.14);
+  --worker-disabled: #475569;
+  --worker-nav-inactive: #64748b;
+
+  color-scheme: dark;
+  color: var(--worker-text);
+}
+
+.dark .worker-mobile-layout {
+  background-color: var(--worker-bg);
+}
+
+/* Helpers for Capacitor / future Worker surfaces */
+.worker-mobile-layout .worker-card {
+  background-color: var(--worker-card);
+  border: 1px solid var(--worker-border);
+  color: var(--worker-text);
+}
+
+.worker-mobile-layout .worker-input {
+  background-color: var(--worker-input);
+  border: 1px solid var(--worker-border);
+  color: var(--worker-text);
+}
+
+.worker-mobile-layout .worker-btn-primary {
+  background-color: var(--worker-primary);
+  color: #ffffff;
+}
+
+.worker-mobile-layout .worker-btn-primary:hover:not(:disabled) {
+  background-color: var(--worker-primary-hover);
+}
+
+.worker-mobile-layout .worker-btn-primary:disabled {
+  background-color: var(--worker-disabled);
+  color: var(--worker-text-muted);
+  opacity: 0.7;
+}
+
+.worker-mobile-layout .worker-nav-active {
+  background-color: var(--worker-primary-soft);
+  color: var(--worker-primary);
+}
+
+/* -----------------------------------------------------------------------------
+ * Dark remaps for hard-coded Worker light / baby-blue utilities.
+ * Scoped under .dark .worker-mobile-layout only.
+ * ----------------------------------------------------------------------------- */
+
+.dark .worker-mobile-layout .bg-white,
+.dark .worker-mobile-layout .bg-white\/95,
+.dark .worker-mobile-layout .bg-white\/90,
+.dark .worker-mobile-layout .bg-white\/85,
+.dark .worker-mobile-layout .bg-white\/80,
+.dark .worker-mobile-layout .bg-white\/72,
+.dark .worker-mobile-layout .bg-white\/60 {
+  background-color: var(--worker-card) !important;
+}
+
+.dark .worker-mobile-layout .bg-slate-50,
+.dark .worker-mobile-layout .bg-slate-50\/80,
+.dark .worker-mobile-layout .bg-slate-100,
+.dark .worker-mobile-layout .bg-slate-100\/80,
+.dark .worker-mobile-layout .hover\:bg-slate-50:hover,
+.dark .worker-mobile-layout .hover\:bg-slate-100:hover,
+.dark .worker-mobile-layout .active\:bg-slate-50:active {
+  background-color: var(--worker-input) !important;
+}
+
+.dark .worker-mobile-layout .bg-slate-200,
+.dark .worker-mobile-layout .bg-slate-200\/80 {
+  background-color: var(--worker-border) !important;
+}
+
+.dark .worker-mobile-layout .text-slate-950,
+.dark .worker-mobile-layout .text-slate-900,
+.dark .worker-mobile-layout .text-slate-800,
+.dark .worker-mobile-layout .text-slate-700 {
+  color: var(--worker-text) !important;
+}
+
+.dark .worker-mobile-layout .text-slate-600,
+.dark .worker-mobile-layout .text-slate-500 {
+  color: var(--worker-text-secondary) !important;
+}
+
+.dark .worker-mobile-layout .text-slate-400,
+.dark .worker-mobile-layout .text-slate-300 {
+  color: var(--worker-text-muted) !important;
+}
+
+.dark .worker-mobile-layout .border-slate-50,
+.dark .worker-mobile-layout .border-slate-100,
+.dark .worker-mobile-layout .border-slate-200,
+.dark .worker-mobile-layout .border-slate-200\/80,
+.dark .worker-mobile-layout .border-slate-300,
+.dark .worker-mobile-layout .hover\:border-slate-200:hover,
+.dark .worker-mobile-layout .hover\:border-slate-300:hover {
+  border-color: var(--worker-border) !important;
+}
+
+.dark .worker-mobile-layout .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .worker-mobile-layout .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--worker-border) !important;
+}
+
+.dark .worker-mobile-layout .shadow-sm,
+.dark .worker-mobile-layout .shadow-lg,
+.dark .worker-mobile-layout .shadow-xl,
+.dark .worker-mobile-layout .shadow-\[0_-12px_40px_rgba\(15\,23\,42\,0\.08\)\],
+.dark .worker-mobile-layout .shadow-slate-200\/50,
+.dark .worker-mobile-layout .shadow-slate-200\/60,
+.dark .worker-mobile-layout .shadow-slate-200\/70,
+.dark .worker-mobile-layout .shadow-slate-200\/80,
+.dark .worker-mobile-layout .shadow-blue-200\/70 {
+  --tw-shadow-color: transparent;
+  box-shadow: none !important;
+}
+
+/* Legacy Worker / Admin blues → indigo primary / dark surfaces */
+.dark .worker-mobile-layout [class*='bg-[#2F80ED]'],
+.dark .worker-mobile-layout [class*='bg-[#0B68BE]'],
+.dark .worker-mobile-layout [class*='bg-[#218EE7]'],
+.dark .worker-mobile-layout [class*='bg-[#2569C7]'],
+.dark .worker-mobile-layout [class*='bg-[#095aa5]'] {
+  background-color: var(--worker-primary) !important;
+  color: #ffffff !important;
+}
+
+.dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
+.dark .worker-mobile-layout [class*='bg-[#F8FBFF]'] {
+  background-color: var(--worker-input) !important;
+}
+
+.dark .worker-mobile-layout [class*='hover:bg-[#2569C7]']:hover,
+.dark .worker-mobile-layout [class*='hover:bg-[#095aa5]']:hover,
+.dark .worker-mobile-layout [class*='hover:bg-[#0B68BE]']:hover {
+  background-color: var(--worker-primary-hover) !important;
+}
+
+.dark .worker-mobile-layout [class*='text-[#2F80ED]'],
+.dark .worker-mobile-layout [class*='text-[#0B68BE]'],
+.dark .worker-mobile-layout [class*='text-[#218EE7]'],
+.dark .worker-mobile-layout [class*='text-[#1B4F8A]'],
+.dark .worker-mobile-layout [class*='text-[#113C69]'],
+.dark .worker-mobile-layout [class*='text-[#163A63]'],
+.dark .worker-mobile-layout [class*='text-[#0D477F]'] {
+  color: var(--worker-primary) !important;
+}
+
+.dark .worker-mobile-layout [class*='text-[#5499BF]'],
+.dark .worker-mobile-layout [class*='text-[#5D7C9D]'] {
+  color: var(--worker-text-secondary) !important;
+}
+
+.dark .worker-mobile-layout [class*='bg-[#EAF4FF]'],
+.dark .worker-mobile-layout [class*='bg-[#F8FBFF]'],
+.dark .worker-mobile-layout [class*='bg-[#F5FAFF]'],
+.dark .worker-mobile-layout [class*='bg-[#E8F3FE]'],
+.dark .worker-mobile-layout [class*='bg-[#F6F9FF]'],
+.dark .worker-mobile-layout [class*='active:bg-[#EAF4FF]']:active,
+.dark .worker-mobile-layout [class*='hover:bg-[#F8FBFF]']:hover,
+.dark .worker-mobile-layout [class*='hover:bg-[#EAF4FF]']:hover {
+  background-color: var(--worker-primary-soft) !important;
+}
+
+.dark .worker-mobile-layout [class*='border-[#BFDFFF]'],
+.dark .worker-mobile-layout [class*='border-[#C5DFFB]'],
+.dark .worker-mobile-layout [class*='border-[#D3E9FC]'],
+.dark .worker-mobile-layout [class*='border-[#D2E5F5]'],
+.dark .worker-mobile-layout [class*='border-[#2F80ED]'],
+.dark .worker-mobile-layout [class*='hover:border-[#BFDFFF]']:hover,
+.dark .worker-mobile-layout [class*='focus:border-[#2F80ED]']:focus {
+  border-color: var(--worker-border) !important;
+}
+
+.dark .worker-mobile-layout [class*='border-[#2F80ED]'],
+.dark .worker-mobile-layout [class*='border-[#0B68BE]'] {
+  border-color: var(--worker-primary) !important;
+}
+
+.dark .worker-mobile-layout [class*='ring-[#2F80ED]'],
+.dark .worker-mobile-layout [class*='focus:ring-[#2F80ED]']:focus {
+  --tw-ring-color: rgba(67, 68, 246, 0.35) !important;
+}
+
+/* Soft success greens → mint (not defects) */
+.dark .worker-mobile-layout .bg-emerald-50,
+.dark .worker-mobile-layout .bg-emerald-50\/80,
+.dark .worker-mobile-layout .bg-green-50 {
+  background-color: var(--worker-success-soft) !important;
+}
+
+.dark .worker-mobile-layout .text-emerald-700,
+.dark .worker-mobile-layout .text-emerald-800,
+.dark .worker-mobile-layout .text-emerald-600,
+.dark .worker-mobile-layout .text-green-700 {
+  color: var(--worker-success) !important;
+}
+
+.dark .worker-mobile-layout .ring-emerald-200,
+.dark .worker-mobile-layout .border-emerald-100,
+.dark .worker-mobile-layout .border-emerald-200 {
+  border-color: rgba(163, 241, 171, 0.35) !important;
+  --tw-ring-color: rgba(163, 241, 171, 0.35) !important;
+}
+
+/* Pending / warning keep amber readability */
+.dark .worker-mobile-layout .bg-amber-50 {
+  background-color: var(--worker-warning-soft) !important;
+}
+
+.dark .worker-mobile-layout .text-amber-700,
+.dark .worker-mobile-layout .text-amber-800 {
+  color: var(--worker-warning) !important;
+}
+
+.dark .worker-mobile-layout .ring-amber-200,
+.dark .worker-mobile-layout .border-amber-100,
+.dark .worker-mobile-layout .border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  --tw-ring-color: rgba(251, 191, 36, 0.35) !important;
+}
+
+/* Defect / rejected keep red */
+.dark .worker-mobile-layout .bg-rose-50,
+.dark .worker-mobile-layout .bg-red-50 {
+  background-color: var(--worker-danger-soft) !important;
+}
+
+.dark .worker-mobile-layout .text-rose-600,
+.dark .worker-mobile-layout .text-rose-700,
+.dark .worker-mobile-layout .text-rose-800,
+.dark .worker-mobile-layout .text-red-600,
+.dark .worker-mobile-layout .text-red-700 {
+  color: var(--worker-danger) !important;
+}
+
+.dark .worker-mobile-layout .border-rose-100,
+.dark .worker-mobile-layout .border-rose-200,
+.dark .worker-mobile-layout .ring-rose-200 {
+  border-color: rgba(251, 113, 133, 0.35) !important;
+  --tw-ring-color: rgba(251, 113, 133, 0.35) !important;
+}
+
+/* Inputs / selects / textareas */
+.dark .worker-mobile-layout input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.dark .worker-mobile-layout select,
+.dark .worker-mobile-layout textarea {
+  background-color: var(--worker-input);
+  border-color: var(--worker-border);
+  color: var(--worker-text);
+}
+
+.dark .worker-mobile-layout input::placeholder,
+.dark .worker-mobile-layout textarea::placeholder {
+  color: var(--worker-text-muted);
+}
+
+.dark .worker-mobile-layout input:disabled,
+.dark .worker-mobile-layout select:disabled,
+.dark .worker-mobile-layout textarea:disabled,
+.dark .worker-mobile-layout button:disabled {
+  opacity: 0.55;
+}
+
+/* shadcn Card inside Worker shell */
+.dark .worker-mobile-layout [data-slot='card'] {
+  background-color: var(--worker-card) !important;
+  color: var(--worker-text) !important;
+  --tw-ring-color: var(--worker-border);
+  box-shadow: none !important;
+}
+
+.dark .worker-mobile-layout [data-slot='card-description'] {
+  color: var(--worker-text-secondary) !important;
+}
+
+/* Dialogs / sheets rendered in Worker flow (portaled under body still get dark via html.dark;
+   Worker-owned panels inside layout are covered above.) */
+.dark .worker-mobile-layout [role='menu'],
+.dark .worker-mobile-layout [role='dialog'] {
+  background-color: var(--worker-card);
+  border-color: var(--worker-border);
+  color: var(--worker-text);
+  box-shadow: none;
+}

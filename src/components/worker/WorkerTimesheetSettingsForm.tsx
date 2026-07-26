@@ -149,8 +149,8 @@ export function WorkerTimesheetSettingsForm({
         className={cn(
           'rounded-2xl border px-4 py-3 text-sm font-medium',
           hasOverride
-            ? 'border-[#2F80ED]/40 bg-[#EAF4FF] text-[#1B4F8A]'
-            : 'border-slate-200 bg-slate-50 text-slate-700',
+            ? 'border-[color:var(--worker-primary)] bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-text)]'
+            : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-[color:var(--worker-text)]',
         )}
       >
         {hasOverride ? 'Using personal settings' : 'Using company defaults'}
@@ -390,7 +390,7 @@ export function WorkerTimesheetSettingsForm({
       <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] z-20">
         <Button
           type="button"
-          className="h-12 w-full rounded-2xl bg-[#2F80ED] text-base font-semibold hover:bg-[#2569C7]"
+          className="worker-btn-primary h-12 w-full rounded-2xl text-base font-semibold"
           disabled={!canSave}
           onClick={() => void handleSave()}
         >
@@ -411,9 +411,11 @@ function SettingsCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-      {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
+    <section className="worker-card rounded-[1.75rem] p-4">
+      <h2 className="text-base font-semibold text-[color:var(--worker-text)]">{title}</h2>
+      {hint ? (
+        <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">{hint}</p>
+      ) : null}
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -444,8 +446,8 @@ function Segmented({
             className={cn(
               'min-h-12 rounded-2xl border px-3 py-2 text-sm font-semibold transition-colors',
               selected
-                ? 'border-[#2F80ED] bg-[#EAF4FF] text-[#1B4F8A]'
-                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                ? 'border-[color:var(--worker-primary)] bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-text)]'
+                : 'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] text-[color:var(--worker-text)] hover:bg-[color:var(--worker-input)]',
             )}
           >
             {option.label}
@@ -474,12 +476,12 @@ function Switch({
       onClick={() => onChange(!checked)}
       className={cn(
         'relative h-8 w-14 shrink-0 rounded-full transition-colors',
-        checked ? 'bg-[#2F80ED]' : 'bg-slate-300',
+        checked ? 'bg-[color:var(--worker-primary)]' : 'bg-[color:var(--worker-border)]',
       )}
     >
       <span
         className={cn(
-          'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform',
+          'absolute top-1 h-6 w-6 rounded-full bg-[color:var(--worker-text)] shadow transition-transform',
           checked ? 'left-7' : 'left-1',
         )}
       />
@@ -512,7 +514,7 @@ function NumberInput({
         const next = Number.parseFloat(event.target.value)
         onChange(Number.isFinite(next) ? next : Number.NaN)
       }}
-      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-950 outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
+      className="worker-input h-12 w-full rounded-2xl px-4 text-base font-semibold outline-none focus:border-[color:var(--worker-primary)] focus:ring-2 focus:ring-[color:var(--worker-primary-soft)]"
     />
   )
 }

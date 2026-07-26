@@ -26,7 +26,7 @@ export default function WorkerTimesheetSettingsPage() {
   if (isLoading) {
     return (
       <div
-        className="min-h-[40vh] rounded-[1.75rem] bg-white/60"
+        className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
         aria-label="Loading Timesheet settings"
         role="status"
       />
@@ -37,9 +37,9 @@ export default function WorkerTimesheetSettingsPage() {
     return (
       <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
         <BackToSettingsLink />
-        <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-950">Timesheet settings</h1>
-          <p className="mt-2 text-sm text-slate-600">
+        <div className="worker-card rounded-[1.75rem] p-5">
+          <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Timesheet settings</h1>
+          <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
             {error ??
               'We could not find a worker profile linked to your account.'}
           </p>
@@ -60,10 +60,10 @@ export default function WorkerTimesheetSettingsPage() {
       <header className="space-y-3">
         <BackToSettingsLink />
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+          <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
             Timesheet settings
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
             Configure your own payroll and overtime rules. Company settings are the
             starting defaults.
           </p>
@@ -72,7 +72,7 @@ export default function WorkerTimesheetSettingsPage() {
 
       {settingsLoading || !effective ? (
         <div
-          className="min-h-40 rounded-[1.75rem] bg-white/60"
+          className="min-h-40 rounded-[1.75rem] bg-[color:var(--worker-card)]"
           aria-label="Loading Timesheet settings"
           role="status"
         />
@@ -102,7 +102,7 @@ function BackToSettingsLink() {
   return (
     <Link
       to="/worker/settings"
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-[#2F80ED] transition-colors hover:text-[#2569C7]"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-[color:var(--worker-primary)] transition-colors hover:text-[color:var(--worker-primary-hover)]"
     >
       <ChevronLeft className="size-5 shrink-0" aria-hidden />
       Settings

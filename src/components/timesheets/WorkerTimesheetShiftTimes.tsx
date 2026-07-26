@@ -252,10 +252,10 @@ export function WorkerTimesheetShiftTimes({
   }
 
   const panelInputClass =
-    'h-12 w-full min-w-0 rounded-[12px] border border-slate-200 bg-[#F8FBFF] px-1 text-center text-lg font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-300 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/25'
+    'h-12 w-full min-w-0 rounded-[12px] border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-1 text-center text-lg font-semibold tabular-nums text-[color:var(--worker-text)] outline-none placeholder:text-[color:var(--worker-text-muted)] focus:border-[color:var(--worker-primary)] focus:ring-2 focus:ring-[color:var(--worker-primary-soft)]'
 
   const triggerClass = cn(
-    'flex h-12 w-full min-w-0 max-w-full items-center justify-center truncate rounded-2xl border border-slate-200 bg-[#F8FBFF] px-2 text-sm font-semibold tabular-nums text-slate-950 outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20',
+    'flex h-12 w-full min-w-0 max-w-full items-center justify-center truncate rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-2 text-sm font-semibold tabular-nums text-[color:var(--worker-text)] outline-none focus:border-[color:var(--worker-primary)] focus:ring-2 focus:ring-[color:var(--worker-primary-soft)]',
     className,
   )
 
@@ -280,7 +280,7 @@ export function WorkerTimesheetShiftTimes({
               triggerClass,
               !startDisplay && 'text-slate-400',
               startInvalid && 'ring-2 ring-rose-200',
-              mode === 'start' && 'border-[#2F80ED] ring-2 ring-[#2F80ED]/20',
+              mode === 'start' && 'border-[color:var(--worker-primary)] ring-2 ring-[color:var(--worker-primary-soft)]',
             )}
           >
             {startDisplay || 'HH:MM'}
@@ -300,7 +300,7 @@ export function WorkerTimesheetShiftTimes({
               triggerClass,
               !finishDisplay && 'text-slate-400',
               finishInvalid && 'ring-2 ring-rose-200',
-              mode === 'finish' && 'border-[#2F80ED] ring-2 ring-[#2F80ED]/20',
+              mode === 'finish' && 'border-[color:var(--worker-primary)] ring-2 ring-[color:var(--worker-primary-soft)]',
             )}
           >
             {finishDisplay || 'HH:MM'}
@@ -324,7 +324,7 @@ export function WorkerTimesheetShiftTimes({
           ref={panelRef}
           role="dialog"
           aria-label={headerLabel}
-          className="fixed z-[90] w-auto max-w-[calc(100vw-24px)] rounded-[16px] border border-[rgba(75,120,220,0.16)] bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-900"
+          className="worker-theme-surface fixed z-[90] w-auto max-w-[calc(100vw-24px)] rounded-[16px] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-3"
           style={{
             left: 12,
             right: 12,
