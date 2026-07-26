@@ -1485,9 +1485,9 @@ revoke delete on table public.documents from public;
 
 
 -- -----------------------------------------------------------------------------
--- Worker Document Submissions (20260726150000_create_worker_document_submissions.sql)
+-- Worker Document Submissions (20260726150000 + 20260726160000 lifecycle)
 -- Live tenant RLS enabled. Authenticated has SELECT only.
--- Inserts/reviews only via SECURITY DEFINER RPCs in that migration.
+-- Create/review/edit/soft-delete/restore only via SECURITY DEFINER RPCs.
 -- -----------------------------------------------------------------------------
 
 create table if not exists public.worker_document_submissions (
@@ -1505,6 +1505,9 @@ create table if not exists public.worker_document_submissions (
   reviewed_by uuid null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  deleted_at timestamptz null,
+  deleted_by uuid null,
+  delete_reason text null,
   constraint worker_document_submissions_type_check check (
     document_type in (
       'CMR',
@@ -1541,6 +1544,11 @@ create index if not exists worker_document_submissions_status_idx
   on public.worker_document_submissions (company_id, review_status);
 create index if not exists worker_document_submissions_submitted_at_idx
   on public.worker_document_submissions (company_id, submitted_at desc);
+create index if not exists worker_document_submissions_company_id_deleted_at_idx
+  on public.worker_document_submissions (company_id, deleted_at);
+create index if not exists worker_document_submissions_deleted_at_idx
+  on public.worker_document_submissions (deleted_at)
+  where deleted_at is not null;
 
 create table if not exists public.worker_document_submission_attachments (
   id uuid primary key default gen_random_uuid(),

@@ -337,6 +337,9 @@ function mapWorkerSubmissionToDocument(
     submittedAt: string
     createdAt: string
     updatedAt: string
+    deletedAt?: string | null
+    deletedBy?: string | null
+    deleteReason?: string | null
     attachments: Array<{
       id: string
       filePath: string
@@ -377,6 +380,9 @@ function mapWorkerSubmissionToDocument(
     status: 'no_expiry',
     createdAt: submission.createdAt,
     updatedAt: submission.updatedAt,
+    deletedAt: submission.deletedAt?.trim() || null,
+    deletedBy: submission.deletedBy?.trim() || null,
+    deleteReason: submission.deleteReason?.trim() || null,
     workerArchivedAt,
     source: 'worker_submission',
     reviewStatus: submission.reviewStatus,

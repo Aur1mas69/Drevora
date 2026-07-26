@@ -113,6 +113,24 @@ export type DocumentSource =
   | 'legacy_worker'
   | 'worker_submission'
 
+/** Top-level Admin Documents page views (not URL routes). */
+export const DOCUMENTS_PAGE_MODES = ['worker_uploads', 'managed'] as const
+
+export type DocumentsPageMode = (typeof DOCUMENTS_PAGE_MODES)[number]
+
+/** Status / lifecycle filter used inside the Worker Uploads view. */
+export const WORKER_UPLOAD_STATUS_FILTERS = [
+  'all',
+  'pending_review',
+  'reviewed',
+  'rejected',
+  'archived',
+] as const
+
+export type DocumentWorkerUploadStatusFilter =
+  (typeof WORKER_UPLOAD_STATUS_FILTERS)[number]
+
+/** @deprecated Prefer DocumentsPageMode + DocumentWorkerUploadStatusFilter */
 export const WORKER_SUBMISSION_REVIEW_FILTERS = [
   'all',
   'worker_uploads',
@@ -121,6 +139,7 @@ export const WORKER_SUBMISSION_REVIEW_FILTERS = [
   'rejected',
 ] as const
 
+/** @deprecated Prefer DocumentWorkerUploadStatusFilter */
 export type DocumentWorkerUploadFilter =
   (typeof WORKER_SUBMISSION_REVIEW_FILTERS)[number]
 
@@ -250,10 +269,14 @@ export type DocumentsQuery = {
   type?: DocumentTypeFilter
   status?: DocumentStatusFilter
   lifecycle?: DocumentLifecycleFilter
+  /** @deprecated Managed view excludes submissions at the page layer. */
   workerUploadFilter?: DocumentWorkerUploadFilter
+  workerUploadStatusFilter?: DocumentWorkerUploadStatusFilter
   workerId?: string | 'all'
   vehicleId?: string | 'all'
   tab?: DocumentsCentreTab
+  /** When set, restricts rows by canonical Documents Centre source. */
+  pageMode?: DocumentsPageMode
 }
 
 export type CreateDocumentInput = {

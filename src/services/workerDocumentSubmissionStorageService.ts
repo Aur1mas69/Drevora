@@ -1,3 +1,4 @@
+import { sanitizeDocumentFileName } from '@/lib/documentFileStorage'
 import {
   buildWorkerSubmissionFilePath,
   DOCUMENT_FILES_BUCKET,
@@ -7,7 +8,9 @@ import {
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
-const SIGNED_URL_EXPIRY_SECONDS = 3600
+/** Short-lived private signed URL lifetime (1 hour). */
+export const WORKER_SUBMISSION_SIGNED_URL_EXPIRY_SECONDS = 3600
+const SIGNED_URL_EXPIRY_SECONDS = WORKER_SUBMISSION_SIGNED_URL_EXPIRY_SECONDS
 
 export class WorkerDocumentSubmissionStorageError extends Error {
   constructor(message: string) {
@@ -116,13 +119,25 @@ export async function cleanupWorkerSubmissionStagingFiles(
 
 export async function getWorkerSubmissionFileSignedUrl(
   storagePath: string | null | undefined,
+  options?: { downloadFileName?: string | boolean },
 ): Promise<string | null> {
   const trimmed = storagePath?.trim()
   if (!trimmed) return null
 
+  const downloadOption =
+    options?.downloadFileName === undefined
+      ? undefined
+      : options.downloadFileName === true
+        ? true
+        : sanitizeDocumentFileName(String(options.downloadFileName))
+
   const { data, error } = await requireSupabase()
     .storage.from(DOCUMENT_FILES_BUCKET)
-    .createSignedUrl(trimmed, SIGNED_URL_EXPIRY_SECONDS)
+    .createSignedUrl(
+      trimmed,
+      SIGNED_URL_EXPIRY_SECONDS,
+      downloadOption !== undefined ? { download: downloadOption } : undefined,
+    )
 
   logSupabaseQuery({
     service: 'workerDocumentSubmissionStorageService.signedUrl',
@@ -136,4 +151,29 @@ export async function getWorkerSubmissionFileSignedUrl(
   }
 
   return data?.signedUrl ?? null
+}
+
+/**
+ * Downloads a private Worker submission attachment via a short-lived signed URL
+ * with Content-Disposition download, using a safe original file name.
+ */
+export async function downloadWorkerSubmissionFile(
+  storagePath: string | null | undefined,
+  originalFileName: string,
+): Promise<void> {
+  const safeName = sanitizeDocumentFileName(originalFileName)
+  const url = await getWorkerSubmissionFileSignedUrl(storagePath, {
+    downloadFileName: safeName,
+  })
+  if (!url) {
+    throw new WorkerDocumentSubmissionStorageError('Unable to create download link.')
+  }
+
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.rel = 'noopener'
+  anchor.download = safeName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
 }

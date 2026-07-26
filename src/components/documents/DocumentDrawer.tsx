@@ -17,9 +17,14 @@ import {
   getWorkerSubmissionReviewLabel,
   hasDocumentFile,
   isWorkerSubmissionDocument,
+  isWorkerSubmissionSoftDeleted,
   workerSubmissionReviewClassMap,
 } from '@/lib/documentUtils'
-import { getWorkerSubmissionFileSignedUrl } from '@/services/workerDocumentSubmissionStorageService'
+import {
+  downloadWorkerSubmissionFile,
+  getWorkerSubmissionFileSignedUrl,
+  WorkerDocumentSubmissionStorageError,
+} from '@/services/workerDocumentSubmissionStorageService'
 import { Check, ExternalLink, Pencil, X, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -57,7 +62,7 @@ export function DocumentDrawer({
   onReject,
 }: DocumentDrawerProps) {
   useBodyScrollLock(isOpen)
-  const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null)
+  const [busyAttachmentId, setBusyAttachmentId] = useState<string | null>(null)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   if (!isOpen || !record || typeof window === 'undefined') return null
@@ -70,6 +75,7 @@ export function DocumentDrawer({
       : null
   const canEdit = canEditDocumentRecord(record)
   const isSubmission = isWorkerSubmissionDocument(record)
+  const isSubmissionArchived = isWorkerSubmissionSoftDeleted(record)
   const canReview = canReviewWorkerSubmission(record)
   const secondaryType = getDocumentSecondaryType(record)
   const attachments = [...(record.attachments ?? [])].sort(
@@ -78,14 +84,42 @@ export function DocumentDrawer({
 
   async function openAttachment(filePath: string, attachmentId: string) {
     setAttachmentError(null)
-    setOpeningAttachmentId(attachmentId)
+    setBusyAttachmentId(attachmentId)
     try {
       const url = await getWorkerSubmissionFileSignedUrl(filePath)
-      if (url) window.open(url, '_blank', 'noopener,noreferrer')
-    } catch {
-      setAttachmentError('Unable to open that file.')
+      if (!url) {
+        setAttachmentError('Unable to open that file.')
+        return
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (error) {
+      setAttachmentError(
+        error instanceof WorkerDocumentSubmissionStorageError
+          ? error.message
+          : 'Unable to open that file.',
+      )
     } finally {
-      setOpeningAttachmentId(null)
+      setBusyAttachmentId(null)
+    }
+  }
+
+  async function downloadAttachment(
+    filePath: string,
+    originalFileName: string,
+    attachmentId: string,
+  ) {
+    setAttachmentError(null)
+    setBusyAttachmentId(attachmentId)
+    try {
+      await downloadWorkerSubmissionFile(filePath, originalFileName)
+    } catch (error) {
+      setAttachmentError(
+        error instanceof WorkerDocumentSubmissionStorageError
+          ? error.message
+          : 'Unable to download that file.',
+      )
+    } finally {
+      setBusyAttachmentId(null)
     }
   }
 
@@ -117,6 +151,11 @@ export function DocumentDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-wrap gap-2">
+            {isSubmissionArchived ? (
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
+                Archived
+              </span>
+            ) : null}
             {isSubmission && record.reviewStatus ? (
               <span
                 className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${workerSubmissionReviewClassMap[record.reviewStatus]}`}
@@ -169,7 +208,16 @@ export function DocumentDrawer({
             {retentionUntil ? (
               <DetailRow label="Retention until" value={retentionUntil} />
             ) : null}
-            {record.deletedAt ? (
+            {isSubmission && isSubmissionArchived && record.deletedAt ? (
+              <DetailRow label="Archived" value={formatDateTime(record.deletedAt)} />
+            ) : null}
+            {isSubmission && isSubmissionArchived ? (
+              <DetailRow
+                label="Delete reason"
+                value={record.deleteReason?.trim() || '—'}
+              />
+            ) : null}
+            {!isSubmission && record.deletedAt ? (
               <DetailRow label="Deleted" value={formatDate(record.deletedAt.slice(0, 10))} />
             ) : null}
             <DetailRow label="Notes" value={record.notes?.trim() || '—'} />
@@ -207,10 +255,10 @@ export function DocumentDrawer({
                         {isImage ? (
                           <AttachmentImagePreview filePath={attachment.filePath} />
                         ) : null}
-                        <div className="mt-2 flex gap-3">
+                        <div className="mt-2 flex flex-wrap gap-3">
                           <button
                             type="button"
-                            disabled={openingAttachmentId === attachment.id}
+                            disabled={busyAttachmentId === attachment.id}
                             onClick={() =>
                               void openAttachment(attachment.filePath, attachment.id)
                             }
@@ -220,9 +268,13 @@ export function DocumentDrawer({
                           </button>
                           <button
                             type="button"
-                            disabled={openingAttachmentId === attachment.id}
+                            disabled={busyAttachmentId === attachment.id}
                             onClick={() =>
-                              void openAttachment(attachment.filePath, attachment.id)
+                              void downloadAttachment(
+                                attachment.filePath,
+                                attachment.originalFileName,
+                                attachment.id,
+                              )
                             }
                             className="text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                           >

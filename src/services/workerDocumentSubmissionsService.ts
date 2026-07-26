@@ -5,6 +5,7 @@ import {
   getWorkerSubmissionDisplayName,
   isWorkerSubmissionDocumentType,
   type CreateWorkerDocumentSubmissionInput,
+  type UpdateWorkerDocumentSubmissionMetadataInput,
   type WorkerDocumentSubmission,
   type WorkerDocumentSubmissionAttachment,
   type WorkerSubmissionDocumentType,
@@ -38,6 +39,9 @@ type SubmissionRow = {
   reviewed_by: string | null
   created_at: string
   updated_at: string
+  deleted_at?: string | null
+  deleted_by?: string | null
+  delete_reason?: string | null
 }
 
 type AttachmentRow = {
@@ -51,6 +55,12 @@ type AttachmentRow = {
   created_at: string
 }
 
+const SUBMISSION_SELECT_BASE =
+  'id, company_id, worker_id, document_type, custom_document_name, reference_number, notes, review_status, rejection_reason, submitted_at, reviewed_at, reviewed_by, created_at, updated_at'
+
+const SUBMISSION_SELECT_WITH_LIFECYCLE =
+  `${SUBMISSION_SELECT_BASE}, deleted_at, deleted_by, delete_reason`
+
 function isMissingTableError(message: string | undefined): boolean {
   const normalized = message?.toLowerCase() ?? ''
   return (
@@ -58,6 +68,16 @@ function isMissingTableError(message: string | undefined): boolean {
     normalized.includes('worker_document_submission_attachments') ||
     normalized.includes('could not find the table') ||
     normalized.includes('schema cache')
+  )
+}
+
+function isMissingLifecycleColumnError(message: string | undefined): boolean {
+  const normalized = message?.toLowerCase() ?? ''
+  return (
+    normalized.includes('deleted_at') ||
+    normalized.includes('deleted_by') ||
+    normalized.includes('delete_reason') ||
+    normalized.includes('does not exist')
   )
 }
 
@@ -101,6 +121,9 @@ function mapSubmission(
     reviewedBy: row.reviewed_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    deletedAt: row.deleted_at?.trim() || null,
+    deletedBy: row.deleted_by?.trim() || null,
+    deleteReason: row.delete_reason?.trim() || null,
     attachments: [...attachments].sort((a, b) => a.sortOrder - b.sortOrder),
   }
 }
@@ -144,16 +167,43 @@ async function fetchAttachmentsForSubmissions(
   return map
 }
 
+async function queryCompanySubmissions(selectClause: string) {
+  const companyId = requireVerifiedCompanyId()
+  return requireSupabase()
+    .from('worker_document_submissions')
+    .select(selectClause)
+    .eq('company_id', companyId)
+    .order('submitted_at', { ascending: false })
+}
+
+async function loadMappedSubmissions(
+  rows: SubmissionRow[],
+): Promise<WorkerDocumentSubmission[]> {
+  const attachmentsBySubmission = await fetchAttachmentsForSubmissions(
+    rows.map((row) => row.id),
+  )
+  return rows.map((row) => mapSubmission(row, attachmentsBySubmission.get(row.id) ?? []))
+}
+
 export async function fetchMyWorkerDocumentSubmissions(): Promise<WorkerDocumentSubmission[]> {
   const companyId = requireVerifiedCompanyId()
 
-  const { data, error } = await requireSupabase()
+  let selectClause = SUBMISSION_SELECT_WITH_LIFECYCLE
+  let { data, error } = await requireSupabase()
     .from('worker_document_submissions')
-    .select(
-      'id, company_id, worker_id, document_type, custom_document_name, reference_number, notes, review_status, rejection_reason, submitted_at, reviewed_at, reviewed_by, created_at, updated_at',
-    )
+    .select(selectClause)
     .eq('company_id', companyId)
+    .is('deleted_at', null)
     .order('submitted_at', { ascending: false })
+
+  if (error && isMissingLifecycleColumnError(error.message)) {
+    selectClause = SUBMISSION_SELECT_BASE
+    ;({ data, error } = await requireSupabase()
+      .from('worker_document_submissions')
+      .select(selectClause)
+      .eq('company_id', companyId)
+      .order('submitted_at', { ascending: false }))
+  }
 
   logSupabaseQuery({
     service: 'workerDocumentSubmissionsService.fetchMine',
@@ -171,24 +221,19 @@ export async function fetchMyWorkerDocumentSubmissions(): Promise<WorkerDocument
     throw new WorkerDocumentSubmissionsServiceError(error.message)
   }
 
-  const rows = (data ?? []) as SubmissionRow[]
-  const attachmentsBySubmission = await fetchAttachmentsForSubmissions(rows.map((row) => row.id))
-
-  return rows.map((row) => mapSubmission(row, attachmentsBySubmission.get(row.id) ?? []))
+  return loadMappedSubmissions((data ?? []) as unknown as SubmissionRow[])
 }
 
 export async function fetchCompanyWorkerDocumentSubmissions(): Promise<
   WorkerDocumentSubmission[]
 > {
-  const companyId = requireVerifiedCompanyId()
+  let selectClause = SUBMISSION_SELECT_WITH_LIFECYCLE
+  let { data, error } = await queryCompanySubmissions(selectClause)
 
-  const { data, error } = await requireSupabase()
-    .from('worker_document_submissions')
-    .select(
-      'id, company_id, worker_id, document_type, custom_document_name, reference_number, notes, review_status, rejection_reason, submitted_at, reviewed_at, reviewed_by, created_at, updated_at',
-    )
-    .eq('company_id', companyId)
-    .order('submitted_at', { ascending: false })
+  if (error && isMissingLifecycleColumnError(error.message)) {
+    selectClause = SUBMISSION_SELECT_BASE
+    ;({ data, error } = await queryCompanySubmissions(selectClause))
+  }
 
   logSupabaseQuery({
     service: 'workerDocumentSubmissionsService.fetchCompany',
@@ -205,10 +250,7 @@ export async function fetchCompanyWorkerDocumentSubmissions(): Promise<
     throw new WorkerDocumentSubmissionsServiceError(error.message)
   }
 
-  const rows = (data ?? []) as SubmissionRow[]
-  const attachmentsBySubmission = await fetchAttachmentsForSubmissions(rows.map((row) => row.id))
-
-  return rows.map((row) => mapSubmission(row, attachmentsBySubmission.get(row.id) ?? []))
+  return loadMappedSubmissions((data ?? []) as unknown as SubmissionRow[])
 }
 
 export async function createWorkerDocumentSubmission(
@@ -337,6 +379,114 @@ export async function reviewWorkerDocumentSubmission(input: {
   logSupabaseQuery({
     service: 'workerDocumentSubmissionsService.review',
     table: 'rpc:drevora_review_worker_document_submission',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) {
+    throw new WorkerDocumentSubmissionsServiceError(error.message)
+  }
+
+  const row = data as SubmissionRow
+  const attachments = await fetchAttachmentsForSubmissions([row.id])
+  return mapSubmission(row, attachments.get(row.id) ?? [])
+}
+
+export async function updateWorkerDocumentSubmissionMetadata(input: {
+  submissionId: string
+  values: UpdateWorkerDocumentSubmissionMetadataInput
+}): Promise<WorkerDocumentSubmission> {
+  const companyId = requireVerifiedCompanyId()
+
+  if (!isWorkerSubmissionDocumentType(input.values.documentType)) {
+    throw new WorkerDocumentSubmissionsServiceError('Select a valid document type.')
+  }
+
+  const customName =
+    input.values.documentType === 'Other'
+      ? input.values.customDocumentName?.trim() || ''
+      : null
+  if (input.values.documentType === 'Other' && !customName) {
+    throw new WorkerDocumentSubmissionsServiceError(
+      'Enter a document name when type is Other.',
+    )
+  }
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_update_worker_document_submission_metadata',
+    {
+      p_submission_id: input.submissionId,
+      p_company_id: companyId,
+      p_document_type: input.values.documentType,
+      p_custom_document_name: customName,
+      p_reference_number: input.values.referenceNumber?.trim() || null,
+      p_notes: input.values.notes?.trim() || null,
+    },
+  )
+
+  logSupabaseQuery({
+    service: 'workerDocumentSubmissionsService.updateMetadata',
+    table: 'rpc:drevora_update_worker_document_submission_metadata',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) {
+    throw new WorkerDocumentSubmissionsServiceError(error.message)
+  }
+
+  const row = data as SubmissionRow
+  const attachments = await fetchAttachmentsForSubmissions([row.id])
+  return mapSubmission(row, attachments.get(row.id) ?? [])
+}
+
+export async function softDeleteWorkerDocumentSubmission(input: {
+  submissionId: string
+  deleteReason?: string | null
+}): Promise<WorkerDocumentSubmission> {
+  const companyId = requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_soft_delete_worker_document_submission',
+    {
+      p_submission_id: input.submissionId,
+      p_company_id: companyId,
+      p_delete_reason: input.deleteReason?.trim() || null,
+    },
+  )
+
+  logSupabaseQuery({
+    service: 'workerDocumentSubmissionsService.softDelete',
+    table: 'rpc:drevora_soft_delete_worker_document_submission',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) {
+    throw new WorkerDocumentSubmissionsServiceError(error.message)
+  }
+
+  const row = data as SubmissionRow
+  const attachments = await fetchAttachmentsForSubmissions([row.id])
+  return mapSubmission(row, attachments.get(row.id) ?? [])
+}
+
+export async function restoreWorkerDocumentSubmission(
+  submissionId: string,
+): Promise<WorkerDocumentSubmission> {
+  const companyId = requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_restore_worker_document_submission',
+    {
+      p_submission_id: submissionId,
+      p_company_id: companyId,
+    },
+  )
+
+  logSupabaseQuery({
+    service: 'workerDocumentSubmissionsService.restore',
+    table: 'rpc:drevora_restore_worker_document_submission',
     data: data ? [data] : [],
     error,
   })

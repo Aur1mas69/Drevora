@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button'
 import type {
   DocumentAppliesToFilter,
   DocumentLifecycleFilter,
+  DocumentsPageMode,
   DocumentStatusFilter,
   DocumentTypeFilter,
-  DocumentWorkerUploadFilter,
+  DocumentWorkerUploadStatusFilter,
 } from '@/lib/documentTypes'
 import { getDocumentTypesForAppliesTo } from '@/lib/documentUtils'
 import type { Driver } from '@/services/driversService'
@@ -15,6 +16,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { documentSelectClass } from './documentUiStyles'
 
 type DocumentsToolbarProps = {
+  pageMode: DocumentsPageMode
   searchTerm: string
   onSearchTermChange: (value: string) => void
   typeFilter: DocumentTypeFilter
@@ -25,8 +27,8 @@ type DocumentsToolbarProps = {
   onStatusFilterChange: (value: DocumentStatusFilter) => void
   lifecycleFilter: DocumentLifecycleFilter
   onLifecycleFilterChange: (value: DocumentLifecycleFilter) => void
-  workerUploadFilter: DocumentWorkerUploadFilter
-  onWorkerUploadFilterChange: (value: DocumentWorkerUploadFilter) => void
+  workerUploadStatusFilter: DocumentWorkerUploadStatusFilter
+  onWorkerUploadStatusFilterChange: (value: DocumentWorkerUploadStatusFilter) => void
   workerFilter: string
   onWorkerFilterChange: (value: string) => void
   vehicleFilter: string
@@ -42,6 +44,7 @@ const filterPanelClass =
   'absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(100vw-2rem,22rem)] rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white to-[#F5FAFF] p-4 shadow-[0_16px_40px_rgba(33,142,231,0.12)] ring-1 ring-[#D3E9FC]/60'
 
 export function DocumentsToolbar({
+  pageMode,
   searchTerm,
   onSearchTermChange,
   typeFilter,
@@ -52,8 +55,8 @@ export function DocumentsToolbar({
   onStatusFilterChange,
   lifecycleFilter,
   onLifecycleFilterChange,
-  workerUploadFilter,
-  onWorkerUploadFilterChange,
+  workerUploadStatusFilter,
+  onWorkerUploadStatusFilterChange,
   workerFilter,
   onWorkerFilterChange,
   vehicleFilter,
@@ -66,6 +69,7 @@ export function DocumentsToolbar({
 }: DocumentsToolbarProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
+  const isWorkerUploads = pageMode === 'worker_uploads'
 
   const typeOptions = useMemo(() => {
     if (appliesToFilter !== 'all') {
@@ -78,14 +82,16 @@ export function DocumentsToolbar({
     ].filter((value, index, array) => array.indexOf(value) === index)
   }, [appliesToFilter])
 
-  const activeFilterCount =
-    (typeFilter !== 'all' ? 1 : 0) +
-    (appliesToFilter !== 'all' ? 1 : 0) +
-    (statusFilter !== 'all' ? 1 : 0) +
-    (lifecycleFilter !== 'active' ? 1 : 0) +
-    (workerUploadFilter !== 'all' ? 1 : 0) +
-    (workerFilter !== 'all' ? 1 : 0) +
-    (vehicleFilter !== 'all' ? 1 : 0)
+  const activeFilterCount = isWorkerUploads
+    ? workerUploadStatusFilter !== 'pending_review'
+      ? 1
+      : 0
+    : (typeFilter !== 'all' ? 1 : 0) +
+      (appliesToFilter !== 'all' ? 1 : 0) +
+      (statusFilter !== 'all' ? 1 : 0) +
+      (lifecycleFilter !== 'active' ? 1 : 0) +
+      (workerFilter !== 'all' ? 1 : 0) +
+      (vehicleFilter !== 'all' ? 1 : 0)
 
   useEffect(() => {
     if (!isFiltersOpen) return
@@ -109,9 +115,12 @@ export function DocumentsToolbar({
     <ModuleListToolbar
       primaryActionLabel="Add Document"
       onPrimaryAction={onAddDocument}
+      hidePrimaryAction={isWorkerUploads}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
-      searchPlaceholder="Search documents..."
+      searchPlaceholder={
+        isWorkerUploads ? 'Search Worker uploads...' : 'Search documents...'
+      }
       onFilterToggle={() => setIsFiltersOpen((current) => !current)}
       filterOpen={isFiltersOpen}
       activeFilterCount={activeFilterCount}
@@ -119,135 +128,156 @@ export function DocumentsToolbar({
       filterPanel={
         isFiltersOpen ? (
           <div className={filterPanelClass}>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Lifecycle</span>
-              <select
-                value={lifecycleFilter}
-                onChange={(event) =>
-                  onLifecycleFilterChange(event.target.value as DocumentLifecycleFilter)
-                }
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-                <option value="all">All</option>
-              </select>
-            </label>
+            {isWorkerUploads ? (
+              <>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Status</span>
+                  <select
+                    value={workerUploadStatusFilter}
+                    onChange={(event) =>
+                      onWorkerUploadStatusFilterChange(
+                        event.target.value as DocumentWorkerUploadStatusFilter,
+                      )
+                    }
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All</option>
+                    <option value="pending_review">Pending</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Applies to</span>
-              <select
-                value={appliesToFilter}
-                onChange={(event) =>
-                  onAppliesToFilterChange(event.target.value as DocumentAppliesToFilter)
-                }
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All scopes</option>
-                <option value="company">Company</option>
-                <option value="worker">Worker</option>
-                <option value="vehicle">Vehicle</option>
-              </select>
-            </label>
+                {activeFilterCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      onClearFilters()
+                      setIsFiltersOpen(false)
+                    }}
+                    className="mt-4 h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Clear filters
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Lifecycle</span>
+                  <select
+                    value={lifecycleFilter}
+                    onChange={(event) =>
+                      onLifecycleFilterChange(event.target.value as DocumentLifecycleFilter)
+                    }
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="active">Active</option>
+                    <option value="archived">Archived</option>
+                    <option value="all">All</option>
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Document type</span>
-              <select
-                value={typeFilter}
-                onChange={(event) => onTypeFilterChange(event.target.value)}
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All types</option>
-                {typeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label className="mt-3 block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Applies to</span>
+                  <select
+                    value={appliesToFilter}
+                    onChange={(event) =>
+                      onAppliesToFilterChange(event.target.value as DocumentAppliesToFilter)
+                    }
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All scopes</option>
+                    <option value="company">Company</option>
+                    <option value="worker">Worker</option>
+                    <option value="vehicle">Vehicle</option>
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Status</span>
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  onStatusFilterChange(event.target.value as DocumentStatusFilter)
-                }
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All statuses</option>
-                <option value="valid">Valid</option>
-                <option value="expiring_soon">Expiring Soon</option>
-                <option value="expired">Expired</option>
-                <option value="no_expiry">No Expiry</option>
-              </select>
-            </label>
+                <label className="mt-3 block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Document type</span>
+                  <select
+                    value={typeFilter}
+                    onChange={(event) => onTypeFilterChange(event.target.value)}
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All types</option>
+                    {typeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Worker uploads</span>
-              <select
-                value={workerUploadFilter}
-                onChange={(event) =>
-                  onWorkerUploadFilterChange(
-                    event.target.value as DocumentWorkerUploadFilter,
-                  )
-                }
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All documents</option>
-                <option value="worker_uploads">Worker uploads</option>
-                <option value="pending_review">Pending review</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </label>
+                <label className="mt-3 block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) =>
+                      onStatusFilterChange(event.target.value as DocumentStatusFilter)
+                    }
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="valid">Valid</option>
+                    <option value="expiring_soon">Expiring Soon</option>
+                    <option value="expired">Expired</option>
+                    <option value="no_expiry">No Expiry</option>
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Worker</span>
-              <select
-                value={workerFilter}
-                onChange={(event) => onWorkerFilterChange(event.target.value)}
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All workers</option>
-                {sortedWorkers.map((worker) => (
-                  <option key={worker.id} value={worker.id}>
-                    {worker.firstName} {worker.lastName}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label className="mt-3 block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Worker</span>
+                  <select
+                    value={workerFilter}
+                    onChange={(event) => onWorkerFilterChange(event.target.value)}
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All workers</option>
+                    {sortedWorkers.map((worker) => (
+                      <option key={worker.id} value={worker.id}>
+                        {worker.firstName} {worker.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-xs font-semibold text-[#5499BF]">Vehicle</span>
-              <select
-                value={vehicleFilter}
-                onChange={(event) => onVehicleFilterChange(event.target.value)}
-                className={`${documentSelectClass} w-full`}
-              >
-                <option value="all">All vehicles</option>
-                {sortedVehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.registration}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label className="mt-3 block space-y-1.5">
+                  <span className="text-xs font-semibold text-[#5499BF]">Vehicle</span>
+                  <select
+                    value={vehicleFilter}
+                    onChange={(event) => onVehicleFilterChange(event.target.value)}
+                    className={`${documentSelectClass} w-full`}
+                  >
+                    <option value="all">All vehicles</option>
+                    {sortedVehicles.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id}>
+                        {vehicle.registration}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            {activeFilterCount > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  onClearFilters()
-                  setIsFiltersOpen(false)
-                }}
-                className="mt-4 h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
-              >
-                <X className="mr-1.5 size-4" />
-                Clear filters
-              </Button>
-            ) : null}
+                {activeFilterCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      onClearFilters()
+                      setIsFiltersOpen(false)
+                    }}
+                    className="mt-4 h-9 w-full rounded-[12px] text-sm font-semibold text-[#0B68BE] hover:bg-[#EEF6FF]"
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Clear filters
+                  </Button>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null
       }

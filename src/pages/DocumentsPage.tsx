@@ -8,10 +8,16 @@ import { getDocumentStoragePath } from '@/components/documents/DocumentFileField
 import { DocumentsDataTable } from '@/components/documents/DocumentsDataTable'
 import { DocumentsEmptyState } from '@/components/documents/DocumentsEmptyState'
 import { DocumentsPagination } from '@/components/documents/DocumentsPagination'
-import { DocumentsSummaryCards } from '@/components/documents/DocumentsSummaryCards'
+import {
+  DocumentsSummaryCards,
+  WorkerUploadSummaryCards,
+} from '@/components/documents/DocumentsSummaryCards'
 import { DocumentsToolbar } from '@/components/documents/DocumentsToolbar'
+import { EditWorkerSubmissionModal } from '@/components/documents/EditWorkerSubmissionModal'
 import { RejectWorkerSubmissionModal } from '@/components/documents/RejectWorkerSubmissionModal'
 import { RestoreDocumentModal } from '@/components/documents/RestoreDocumentModal'
+import { RestoreWorkerSubmissionModal } from '@/components/documents/RestoreWorkerSubmissionModal'
+import { SoftDeleteWorkerSubmissionModal } from '@/components/documents/SoftDeleteWorkerSubmissionModal'
 import { documentPageCardClass } from '@/components/documents/documentUiStyles'
 import { ExportMenu } from '@/components/export/ExportMenu'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,7 +31,10 @@ import {
 } from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
-import { exportDocumentsExcel } from '@/lib/export/modules/documentsExport'
+import {
+  exportDocumentsExcel,
+  exportWorkerUploadsExcel,
+} from '@/lib/export/modules/documentsExport'
 import AdminLayout from '@/layouts/AdminLayout'
 import type {
   Document,
@@ -34,17 +43,25 @@ import type {
   DocumentFormSubmitPayload,
   DocumentLifecycleFilter,
   DocumentsCentreTab,
+  DocumentsPageMode,
   DocumentStatusFilter,
   DocumentTypeFilter,
-  DocumentWorkerUploadFilter,
+  DocumentWorkerUploadStatusFilter,
 } from '@/lib/documentTypes'
+import type { WorkerSubmissionDocumentType } from '@/lib/workerDocumentSubmissionTypes'
 import { DEFAULT_DOCUMENT_PAGE_SIZE } from '@/lib/documentTypes'
 import { isMedicalDocumentType } from '@/lib/documentTypes'
 import {
   canEditDocumentRecord,
+  canEditWorkerSubmission,
   canRestoreDocumentRecord,
+  canRestoreWorkerSubmission,
+  canSoftDeleteWorkerSubmission,
   computeDocumentSummaryStats,
+  computeWorkerUploadSummaryStats,
+  countPendingWorkerUploads,
   filterDocumentsByQuery,
+  isWorkerSubmissionDocument,
 } from '@/lib/documentUtils'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import {
@@ -62,7 +79,14 @@ import {
   updateDocument,
 } from '@/services/documentsService'
 import {
+  downloadWorkerSubmissionFile,
+  WorkerDocumentSubmissionStorageError,
+} from '@/services/workerDocumentSubmissionStorageService'
+import {
+  restoreWorkerDocumentSubmission,
   reviewWorkerDocumentSubmission,
+  softDeleteWorkerDocumentSubmission,
+  updateWorkerDocumentSubmissionMetadata,
   WorkerDocumentSubmissionsServiceError,
 } from '@/services/workerDocumentSubmissionsService'
 import { fetchDrivers, type Driver } from '@/services/driversService'
@@ -90,6 +114,16 @@ function defaultAppliesToForTab(tab: DocumentsCentreTab): DocumentAppliesTo {
   return 'company'
 }
 
+function pageModeTabClass(active: boolean): string {
+  return [
+    'inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/40',
+    active
+      ? 'bg-white text-[#0B68BE] shadow-sm ring-1 ring-[#C5DFFB]'
+      : 'text-[#5499BF] hover:bg-white/70 hover:text-[#0B68BE]',
+  ].join(' ')
+}
+
 export default function DocumentsPage() {
   const {
     formatDate,
@@ -109,6 +143,7 @@ export default function DocumentsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  const [pageMode, setPageMode] = useState<DocumentsPageMode>('worker_uploads')
   const [activeTab, setActiveTab] = useState<DocumentsCentreTab>(() =>
     parseTab(searchParams.get('tab')),
   )
@@ -118,8 +153,8 @@ export default function DocumentsPage() {
   const [appliesToFilter, setAppliesToFilter] = useState<DocumentAppliesToFilter>('all')
   const [statusFilter, setStatusFilter] = useState<DocumentStatusFilter>('all')
   const [lifecycleFilter, setLifecycleFilter] = useState<DocumentLifecycleFilter>('active')
-  const [workerUploadFilter, setWorkerUploadFilter] =
-    useState<DocumentWorkerUploadFilter>('all')
+  const [workerUploadStatusFilter, setWorkerUploadStatusFilter] =
+    useState<DocumentWorkerUploadStatusFilter>('pending_review')
   const [workerFilter, setWorkerFilter] = useState(
     () => searchParams.get('workerId') ?? 'all',
   )
@@ -140,23 +175,39 @@ export default function DocumentsPage() {
   const [restoreRecord, setRestoreRecord] = useState<Document | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [rejectRecord, setRejectRecord] = useState<Document | null>(null)
+  const [editSubmissionRecord, setEditSubmissionRecord] = useState<Document | null>(null)
+  const [editSubmissionError, setEditSubmissionError] = useState<string | null>(null)
+  const [softDeleteSubmissionRecord, setSoftDeleteSubmissionRecord] =
+    useState<Document | null>(null)
+  const [softDeleteSubmissionError, setSoftDeleteSubmissionError] = useState<string | null>(
+    null,
+  )
+  const [restoreSubmissionRecord, setRestoreSubmissionRecord] = useState<Document | null>(
+    null,
+  )
+  const [restoreSubmissionError, setRestoreSubmissionError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingSubmission, setIsSavingSubmission] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeletingSubmission, setIsDeletingSubmission] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [isRestoringSubmission, setIsRestoringSubmission] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const hasActiveFilters =
-    activeTab !== 'all' ||
-    debouncedSearch.trim().length > 0 ||
-    typeFilter !== 'all' ||
-    appliesToFilter !== 'all' ||
-    statusFilter !== 'all' ||
-    lifecycleFilter !== 'active' ||
-    workerUploadFilter !== 'all' ||
-    workerFilter !== 'all' ||
-    vehicleFilter !== 'all'
+  const isWorkerUploads = pageMode === 'worker_uploads'
+
+  const hasActiveFilters = isWorkerUploads
+    ? debouncedSearch.trim().length > 0 || workerUploadStatusFilter !== 'all'
+    : activeTab !== 'all' ||
+      debouncedSearch.trim().length > 0 ||
+      typeFilter !== 'all' ||
+      appliesToFilter !== 'all' ||
+      statusFilter !== 'all' ||
+      lifecycleFilter !== 'active' ||
+      workerFilter !== 'all' ||
+      vehicleFilter !== 'all'
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -171,13 +222,14 @@ export default function DocumentsPage() {
   useEffect(() => {
     setPage(1)
   }, [
+    pageMode,
     activeTab,
     debouncedSearch,
     typeFilter,
     appliesToFilter,
     statusFilter,
     lifecycleFilter,
-    workerUploadFilter,
+    workerUploadStatusFilter,
     workerFilter,
     vehicleFilter,
     pageSize,
@@ -228,30 +280,39 @@ export default function DocumentsPage() {
     void loadDocuments()
   }, [companyReady, companyId, companyLoading, membershipError, loadDocuments, loadLookups])
 
+  const pendingUploadCount = useMemo(() => countPendingWorkerUploads(items), [items])
+  const workerUploadSummaryStats = useMemo(
+    () => computeWorkerUploadSummaryStats(items),
+    [items],
+  )
+
   const filteredItems = useMemo(
     () =>
       filterDocumentsByQuery(items, {
-        tab: activeTab,
+        pageMode,
+        tab: isWorkerUploads ? undefined : activeTab,
         search: debouncedSearch,
-        type: typeFilter,
-        appliesTo: appliesToFilter,
-        status: statusFilter,
-        lifecycle: lifecycleFilter,
-        workerUploadFilter,
-        workerId: workerFilter,
-        vehicleId: vehicleFilter,
+        type: isWorkerUploads ? undefined : typeFilter,
+        appliesTo: isWorkerUploads ? undefined : appliesToFilter,
+        status: isWorkerUploads ? undefined : statusFilter,
+        lifecycle: isWorkerUploads ? undefined : lifecycleFilter,
+        workerUploadStatusFilter: isWorkerUploads ? workerUploadStatusFilter : undefined,
+        workerId: isWorkerUploads ? undefined : workerFilter,
+        vehicleId: isWorkerUploads ? undefined : vehicleFilter,
       }),
     [
       activeTab,
       appliesToFilter,
       debouncedSearch,
+      isWorkerUploads,
       items,
       lifecycleFilter,
+      pageMode,
       statusFilter,
       typeFilter,
       vehicleFilter,
       workerFilter,
-      workerUploadFilter,
+      workerUploadStatusFilter,
     ],
   )
 
@@ -261,6 +322,13 @@ export default function DocumentsPage() {
     const start = (page - 1) * pageSize
     return filteredItems.slice(start, start + pageSize)
   }, [filteredItems, page, pageSize])
+
+  function handlePageModeChange(mode: DocumentsPageMode) {
+    if (mode === pageMode) return
+    setPageMode(mode)
+    setSearchTerm('')
+    setDebouncedSearch('')
+  }
 
   function handleTabChange(tab: DocumentsCentreTab) {
     setActiveTab(tab)
@@ -282,6 +350,17 @@ export default function DocumentsPage() {
   }
 
   function openEditModal(record: Document) {
+    if (isWorkerSubmissionDocument(record)) {
+      if (!canEditWorkerSubmission(record)) {
+        showToast('Restore this submission before editing.')
+        return
+      }
+      setViewRecord(null)
+      setEditSubmissionError(null)
+      setEditSubmissionRecord(record)
+      return
+    }
+
     if (!canEditDocumentRecord(record)) {
       if (record.workerArchivedAt) {
         showToast('This Worker is archived. Documents cannot be edited until the Worker is restored.')
@@ -300,6 +379,33 @@ export default function DocumentsPage() {
     setIsFormOpen(true)
   }
 
+  function openDeleteModal(record: Document) {
+    if (isWorkerSubmissionDocument(record)) {
+      if (!canSoftDeleteWorkerSubmission(record)) {
+        showToast('This submission cannot be deleted.')
+        return
+      }
+      setSoftDeleteSubmissionError(null)
+      setSoftDeleteSubmissionRecord(record)
+      return
+    }
+    setDeleteError(null)
+    setDeleteRecord(record)
+  }
+
+  function openRestoreRequest(record: Document) {
+    if (isWorkerSubmissionDocument(record)) {
+      if (!canRestoreWorkerSubmission(record)) {
+        showToast('Only archived Worker uploads can be restored.')
+        return
+      }
+      setRestoreSubmissionError(null)
+      setRestoreSubmissionRecord(record)
+      return
+    }
+    openRestoreModal(record)
+  }
+
   function clearFilters() {
     setSearchTerm('')
     setDebouncedSearch('')
@@ -307,7 +413,7 @@ export default function DocumentsPage() {
     setAppliesToFilter('all')
     setStatusFilter('all')
     setLifecycleFilter('active')
-    setWorkerUploadFilter('all')
+    setWorkerUploadStatusFilter('pending_review')
     setWorkerFilter('all')
     setVehicleFilter('all')
   }
@@ -383,6 +489,30 @@ export default function DocumentsPage() {
         error instanceof DocumentFileStorageError
           ? error.message
           : 'Unable to open file.',
+      )
+    }
+  }
+
+  async function handleDownloadSubmissionFile(record: Document) {
+    const attachments = [...(record.attachments ?? [])].sort(
+      (left, right) => left.sortOrder - right.sortOrder,
+    )
+    const attachment = attachments[0]
+    if (!attachment) {
+      showToast('No file is available to download.')
+      return
+    }
+
+    try {
+      await downloadWorkerSubmissionFile(
+        attachment.filePath,
+        attachment.originalFileName,
+      )
+    } catch (error) {
+      showToast(
+        error instanceof WorkerDocumentSubmissionStorageError
+          ? error.message
+          : 'Unable to download file.',
       )
     }
   }
@@ -513,7 +643,105 @@ export default function DocumentsPage() {
     }
   }
 
-  const showEmptyState = !isLoading && !loadError && items.length === 0 && !hasActiveFilters
+  async function handleEditSubmissionSubmit(values: {
+    documentType: WorkerSubmissionDocumentType
+    customDocumentName: string
+    referenceNumber: string
+    notes: string
+  }) {
+    const submissionId = editSubmissionRecord?.submissionId?.trim()
+    if (!submissionId) {
+      setEditSubmissionError('Submission could not be updated.')
+      return
+    }
+
+    setIsSavingSubmission(true)
+    setEditSubmissionError(null)
+    try {
+      await updateWorkerDocumentSubmissionMetadata({
+        submissionId,
+        values: {
+          documentType: values.documentType,
+          customDocumentName: values.customDocumentName,
+          referenceNumber: values.referenceNumber,
+          notes: values.notes,
+        },
+      })
+      showToast('Worker upload updated')
+      setEditSubmissionRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      setEditSubmissionError(
+        error instanceof WorkerDocumentSubmissionsServiceError
+          ? error.message
+          : 'Unable to update submission.',
+      )
+    } finally {
+      setIsSavingSubmission(false)
+    }
+  }
+
+  async function handleSoftDeleteSubmissionConfirm(reason: string) {
+    const submissionId = softDeleteSubmissionRecord?.submissionId?.trim()
+    if (!submissionId) {
+      setSoftDeleteSubmissionError('Submission could not be archived.')
+      return
+    }
+
+    setIsDeletingSubmission(true)
+    setSoftDeleteSubmissionError(null)
+    try {
+      await softDeleteWorkerDocumentSubmission({
+        submissionId,
+        deleteReason: reason,
+      })
+      showToast('Worker upload archived')
+      setSoftDeleteSubmissionRecord(null)
+      setViewRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      setSoftDeleteSubmissionError(
+        error instanceof WorkerDocumentSubmissionsServiceError
+          ? error.message
+          : 'Unable to archive submission.',
+      )
+    } finally {
+      setIsDeletingSubmission(false)
+    }
+  }
+
+  async function handleRestoreSubmissionConfirm() {
+    const submissionId = restoreSubmissionRecord?.submissionId?.trim()
+    if (!submissionId) {
+      setRestoreSubmissionError('Submission could not be restored.')
+      return
+    }
+
+    setIsRestoringSubmission(true)
+    setRestoreSubmissionError(null)
+    try {
+      await restoreWorkerDocumentSubmission(submissionId)
+      showToast('Worker upload restored')
+      setRestoreSubmissionRecord(null)
+      setViewRecord(null)
+      await loadDocuments()
+    } catch (error) {
+      setRestoreSubmissionError(
+        error instanceof WorkerDocumentSubmissionsServiceError
+          ? error.message
+          : 'Unable to restore submission.',
+      )
+    } finally {
+      setIsRestoringSubmission(false)
+    }
+  }
+
+  const showEmptyState =
+    !isLoading &&
+    !loadError &&
+    !isWorkerUploads &&
+    items.filter((doc) => doc.source !== 'worker_submission').length === 0 &&
+    !hasActiveFilters
 
   return (
     <AdminLayout premiumBackground wideContent>
@@ -526,18 +754,61 @@ export default function DocumentsPage() {
             Documents
           </h1>
           <p className={`mt-2 max-w-3xl text-sm leading-6 ${adminTextMuted}`}>
-            Manage company, worker and vehicle documents in one place.
+            Review Worker uploads and manage company, worker and vehicle compliance documents.
           </p>
         </div>
 
-        <DocumentsSummaryCards
-          stats={summaryStats}
-          isLoading={isLoading}
-          activeTab={activeTab}
-          onSelect={handleTabChange}
-        />
+        <div
+          role="tablist"
+          aria-label="Documents views"
+          className="inline-flex max-w-full flex-wrap gap-1 rounded-2xl border border-[#C5DFFB] bg-[#E8F3FE]/90 p-1"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={isWorkerUploads}
+            id="documents-tab-worker-uploads"
+            onClick={() => handlePageModeChange('worker_uploads')}
+            className={pageModeTabClass(isWorkerUploads)}
+          >
+            Worker Uploads
+            {pendingUploadCount > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                {pendingUploadCount} Pending
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!isWorkerUploads}
+            id="documents-tab-managed"
+            onClick={() => handlePageModeChange('managed')}
+            className={pageModeTabClass(!isWorkerUploads)}
+          >
+            Managed Documents
+          </button>
+        </div>
+
+        {isWorkerUploads ? (
+          <WorkerUploadSummaryCards
+            stats={workerUploadSummaryStats}
+            isLoading={isLoading}
+            activeFilter={workerUploadStatusFilter}
+            onSelect={setWorkerUploadStatusFilter}
+          />
+        ) : (
+          <DocumentsSummaryCards
+            stats={summaryStats}
+            isLoading={isLoading}
+            activeTab={activeTab}
+            onSelect={handleTabChange}
+          />
+        )}
 
         <DocumentsToolbar
+          key={pageMode}
+          pageMode={pageMode}
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
           typeFilter={typeFilter}
@@ -548,8 +819,8 @@ export default function DocumentsPage() {
           onStatusFilterChange={setStatusFilter}
           lifecycleFilter={lifecycleFilter}
           onLifecycleFilterChange={setLifecycleFilter}
-          workerUploadFilter={workerUploadFilter}
-          onWorkerUploadFilterChange={setWorkerUploadFilter}
+          workerUploadStatusFilter={workerUploadStatusFilter}
+          onWorkerUploadStatusFilterChange={setWorkerUploadStatusFilter}
           workerFilter={workerFilter}
           onWorkerFilterChange={setWorkerFilter}
           vehicleFilter={vehicleFilter}
@@ -559,55 +830,94 @@ export default function DocumentsPage() {
           onClearFilters={clearFilters}
           onAddDocument={openCreateModal}
           secondaryActions={
-            <ExportMenu
-              busy={isExporting}
-              disabled={isLoading}
-              dateRange={exportDateRange}
-              onDateRangeChange={setExportDateRange}
-              actions={[
-                {
-                  id: 'excel',
-                  label: 'Export filtered results to Excel',
-                  onSelect: async () => {
-                    setIsExporting(true)
-                    try {
-                      const resolvedRange = resolveExportDateRange(exportDateRange, {
-                        weekStarts,
-                        timeZone: timezone,
-                        formatDate,
-                      })
-                      // Primary list date is Expiry (DocumentsDataTable column).
-                      // Export respects the current lifecycle + other filters via filteredItems.
-                      const exportItems = filteredItems.filter((document) =>
-                        rowMatchesExportDateRange(document.expiryDate, resolvedRange),
-                      )
-                      await exportDocumentsExcel(
-                        exportItems,
-                        resolveExportMeta({
-                          companyName,
-                          logoUrl: companySettings?.logoUrl,
-                          generatedBy: session?.user.email ?? null,
-                          documentTitle: 'Documents',
-                          filterSummary: `Date ${resolvedRange.label}; Lifecycle ${lifecycleFilter}`,
-                        }),
-                        [
-                          activeTab !== 'all' ? activeTab : null,
-                          lifecycleFilter !== 'active' ? lifecycleFilter : null,
-                          resolvedRange.dateFrom || null,
-                          resolvedRange.dateTo || null,
-                          debouncedSearch || null,
-                        ],
-                      )
-                      showToast('Exported documents to Excel')
-                    } catch (error) {
-                      showToast(toExportUserMessage(error))
-                    } finally {
-                      setIsExporting(false)
-                    }
+            isWorkerUploads ? (
+              <ExportMenu
+                busy={isExporting}
+                disabled={isLoading}
+                actions={[
+                  {
+                    id: 'excel',
+                    label: 'Export filtered results to Excel',
+                    onSelect: async () => {
+                      setIsExporting(true)
+                      try {
+                        await exportWorkerUploadsExcel(
+                          filteredItems,
+                          resolveExportMeta({
+                            companyName,
+                            logoUrl: companySettings?.logoUrl,
+                            generatedBy: session?.user.email ?? null,
+                            documentTitle: 'Worker Uploads',
+                            filterSummary: `Status ${workerUploadStatusFilter}`,
+                          }),
+                          [
+                            workerUploadStatusFilter !== 'all'
+                              ? workerUploadStatusFilter
+                              : null,
+                            debouncedSearch || null,
+                          ],
+                        )
+                        showToast('Exported Worker uploads to Excel')
+                      } catch (error) {
+                        showToast(toExportUserMessage(error))
+                      } finally {
+                        setIsExporting(false)
+                      }
+                    },
                   },
-                },
-              ]}
-            />
+                ]}
+              />
+            ) : (
+              <ExportMenu
+                busy={isExporting}
+                disabled={isLoading}
+                dateRange={exportDateRange}
+                onDateRangeChange={setExportDateRange}
+                actions={[
+                  {
+                    id: 'excel',
+                    label: 'Export filtered results to Excel',
+                    onSelect: async () => {
+                      setIsExporting(true)
+                      try {
+                        const resolvedRange = resolveExportDateRange(exportDateRange, {
+                          weekStarts,
+                          timeZone: timezone,
+                          formatDate,
+                        })
+                        // Primary list date is Expiry (DocumentsDataTable column).
+                        // Export respects the current lifecycle + other filters via filteredItems.
+                        const exportItems = filteredItems.filter((document) =>
+                          rowMatchesExportDateRange(document.expiryDate, resolvedRange),
+                        )
+                        await exportDocumentsExcel(
+                          exportItems,
+                          resolveExportMeta({
+                            companyName,
+                            logoUrl: companySettings?.logoUrl,
+                            generatedBy: session?.user.email ?? null,
+                            documentTitle: 'Documents',
+                            filterSummary: `Date ${resolvedRange.label}; Lifecycle ${lifecycleFilter}`,
+                          }),
+                          [
+                            activeTab !== 'all' ? activeTab : null,
+                            lifecycleFilter !== 'active' ? lifecycleFilter : null,
+                            resolvedRange.dateFrom || null,
+                            resolvedRange.dateTo || null,
+                            debouncedSearch || null,
+                          ],
+                        )
+                        showToast('Exported documents to Excel')
+                      } catch (error) {
+                        showToast(toExportUserMessage(error))
+                      } finally {
+                        setIsExporting(false)
+                      }
+                    },
+                  },
+                ]}
+              />
+            )
           }
         />
 
@@ -622,25 +932,35 @@ export default function DocumentsPage() {
             Loading documents…
           </div>
         ) : showEmptyState ? (
-          <DocumentsEmptyState hasActiveFilters={false} onAddFirst={openCreateModal} />
+          <DocumentsEmptyState
+            hasActiveFilters={false}
+            pageMode={pageMode}
+            onAddFirst={openCreateModal}
+          />
         ) : filteredItems.length === 0 ? (
           <DocumentsEmptyState
             hasActiveFilters={hasActiveFilters}
             activeTab={activeTab}
+            pageMode={pageMode}
+            workerUploadStatusFilter={workerUploadStatusFilter}
             onAddFirst={openCreateModal}
           />
         ) : (
           <div className={documentPageCardClass}>
             <DocumentsDataTable
               documents={paginatedItems}
+              pageMode={pageMode}
               tab={activeTab}
               formatDate={formatDate}
               formatDateTime={formatDateTime}
               onView={handleView}
               onEdit={openEditModal}
-              onDelete={setDeleteRecord}
-              onRestore={openRestoreModal}
+              onDelete={openDeleteModal}
+              onRestore={openRestoreRequest}
               onOpenFile={(record) => void handleOpenFile(record)}
+              onDownloadSubmissionFile={(record) =>
+                void handleDownloadSubmissionFile(record)
+              }
               onMarkReviewed={(record) => void handleMarkReviewed(record)}
               onReject={setRejectRecord}
             />
@@ -689,6 +1009,46 @@ export default function DocumentsPage() {
         isSubmitting={isReviewing}
         onClose={() => setRejectRecord(null)}
         onConfirm={(reason) => void handleRejectConfirm(reason)}
+      />
+
+      <EditWorkerSubmissionModal
+        key={editSubmissionRecord?.id ?? 'edit-submission-closed'}
+        record={editSubmissionRecord}
+        isOpen={Boolean(editSubmissionRecord)}
+        isSaving={isSavingSubmission}
+        errorMessage={editSubmissionError}
+        formatDateTime={formatDateTime}
+        onClose={() => {
+          setEditSubmissionRecord(null)
+          setEditSubmissionError(null)
+        }}
+        onSubmit={(values) => void handleEditSubmissionSubmit(values)}
+      />
+
+      <SoftDeleteWorkerSubmissionModal
+        key={softDeleteSubmissionRecord?.id ?? 'soft-delete-closed'}
+        record={softDeleteSubmissionRecord}
+        isOpen={Boolean(softDeleteSubmissionRecord)}
+        isDeleting={isDeletingSubmission}
+        errorMessage={softDeleteSubmissionError}
+        onCancel={() => {
+          setSoftDeleteSubmissionRecord(null)
+          setSoftDeleteSubmissionError(null)
+        }}
+        onConfirm={(reason) => void handleSoftDeleteSubmissionConfirm(reason)}
+      />
+
+      <RestoreWorkerSubmissionModal
+        key={restoreSubmissionRecord?.id ?? 'restore-submission-closed'}
+        record={restoreSubmissionRecord}
+        isOpen={Boolean(restoreSubmissionRecord)}
+        isRestoring={isRestoringSubmission}
+        errorMessage={restoreSubmissionError}
+        onCancel={() => {
+          setRestoreSubmissionRecord(null)
+          setRestoreSubmissionError(null)
+        }}
+        onConfirm={() => void handleRestoreSubmissionConfirm()}
       />
 
       {deleteRecord ? (

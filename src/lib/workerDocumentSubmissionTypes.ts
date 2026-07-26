@@ -60,6 +60,9 @@ export type WorkerDocumentSubmission = {
   reviewedBy: string | null
   createdAt: string
   updatedAt: string
+  deletedAt: string | null
+  deletedBy: string | null
+  deleteReason: string | null
   attachments: WorkerDocumentSubmissionAttachment[]
 }
 
@@ -69,6 +72,13 @@ export type CreateWorkerDocumentSubmissionInput = {
   referenceNumber?: string | null
   notes?: string | null
   files: File[]
+}
+
+export type UpdateWorkerDocumentSubmissionMetadataInput = {
+  documentType: WorkerSubmissionDocumentType
+  customDocumentName?: string | null
+  referenceNumber?: string | null
+  notes?: string | null
 }
 
 export function getWorkerSubmissionDisplayName(
@@ -99,4 +109,10 @@ export function isWorkerSubmissionDocumentType(
   value: string,
 ): value is WorkerSubmissionDocumentType {
   return (WORKER_SUBMISSION_DOCUMENT_TYPES as readonly string[]).includes(value)
+}
+
+export function isWorkerSubmissionSoftDeleted(
+  submission: Pick<WorkerDocumentSubmission, 'deletedAt'>,
+): boolean {
+  return Boolean(submission.deletedAt?.trim())
 }

@@ -5,6 +5,7 @@ import type {
   DocumentStatus,
   DocumentsCentreTab,
   DocumentsQuery,
+  DocumentWorkerUploadStatusFilter,
   WorkerSubmissionReviewStatus,
 } from '@/lib/documentTypes'
 import {
@@ -359,12 +360,28 @@ export function isWorkerSubmissionDocument(document: Document): boolean {
   return document.source === 'worker_submission'
 }
 
+export function isWorkerSubmissionSoftDeleted(document: Document): boolean {
+  return isWorkerSubmissionDocument(document) && Boolean(document.deletedAt?.trim())
+}
+
 export function canReviewWorkerSubmission(document: Document): boolean {
   return (
     isWorkerSubmissionDocument(document) &&
     document.reviewStatus === 'pending_review' &&
-    !isDocumentInArchivedLifecycle(document)
+    !isWorkerSubmissionSoftDeleted(document)
   )
+}
+
+export function canEditWorkerSubmission(document: Document): boolean {
+  return isWorkerSubmissionDocument(document) && !isWorkerSubmissionSoftDeleted(document)
+}
+
+export function canSoftDeleteWorkerSubmission(document: Document): boolean {
+  return canEditWorkerSubmission(document)
+}
+
+export function canRestoreWorkerSubmission(document: Document): boolean {
+  return isWorkerSubmissionSoftDeleted(document)
 }
 
 export type DocumentSummaryStats = {
@@ -377,7 +394,8 @@ export type DocumentSummaryStats = {
 
 /**
  * Counts from the full documents list (not the filtered table rows).
- * Excludes manually soft-deleted docs and docs for archived Workers.
+ * Excludes manually soft-deleted docs, archived-Worker docs, and Worker submissions.
+ * Worker uploads are counted separately via the Worker Uploads pending badge.
  */
 export function computeDocumentSummaryStats(documents: Document[]): DocumentSummaryStats {
   let company = 0
@@ -387,12 +405,8 @@ export function computeDocumentSummaryStats(documents: Document[]): DocumentSumm
   let expired = 0
 
   for (const doc of documents) {
+    if (doc.source === 'worker_submission') continue
     if (isDocumentInArchivedLifecycle(doc)) continue
-    if (doc.source === 'worker_submission') {
-      // Worker uploads count under Workers; they are not expiry documents.
-      workers += 1
-      continue
-    }
     if (doc.appliesTo === 'company') company += 1
     if (doc.appliesTo === 'worker') workers += 1
     if (doc.appliesTo === 'vehicle') vehicles += 1
@@ -403,8 +417,134 @@ export function computeDocumentSummaryStats(documents: Document[]): DocumentSumm
   return { company, workers, vehicles, expiringSoon, expired }
 }
 
+export function isManagedDocument(document: Document): boolean {
+  return document.source !== 'worker_submission'
+}
+
+export function partitionDocumentsByPageMode(documents: Document[]): {
+  workerUploads: Document[]
+  managedDocuments: Document[]
+} {
+  const workerUploads: Document[] = []
+  const managedDocuments: Document[] = []
+  for (const doc of documents) {
+    if (isWorkerSubmissionDocument(doc)) workerUploads.push(doc)
+    else managedDocuments.push(doc)
+  }
+  return { workerUploads, managedDocuments }
+}
+
+/** Real pending Worker uploads for the Worker Uploads tab badge (active only). */
+export function countPendingWorkerUploads(documents: Document[]): number {
+  return documents.filter(
+    (doc) =>
+      isWorkerSubmissionDocument(doc) &&
+      !isWorkerSubmissionSoftDeleted(doc) &&
+      doc.reviewStatus === 'pending_review',
+  ).length
+}
+
+export type WorkerUploadSummaryStats = {
+  total: number
+  pending: number
+  reviewed: number
+  rejected: number
+  archived: number
+}
+
+/**
+ * Counts from the full Worker submission list (not search/pagination).
+ * Used by Worker Uploads summary cards.
+ */
+export function computeWorkerUploadSummaryStats(
+  documents: Document[],
+): WorkerUploadSummaryStats {
+  let total = 0
+  let pending = 0
+  let reviewed = 0
+  let rejected = 0
+  let archived = 0
+
+  for (const doc of documents) {
+    if (!isWorkerSubmissionDocument(doc)) continue
+    if (isWorkerSubmissionSoftDeleted(doc)) {
+      archived += 1
+      continue
+    }
+    total += 1
+    if (doc.reviewStatus === 'pending_review') pending += 1
+    else if (doc.reviewStatus === 'reviewed') reviewed += 1
+    else if (doc.reviewStatus === 'rejected') rejected += 1
+  }
+
+  return { total, pending, reviewed, rejected, archived }
+}
+
+export function sortWorkerUploadsBySubmittedAtDesc(documents: Document[]): Document[] {
+  return [...documents].sort((left, right) => {
+    const leftAt = left.submittedAt?.trim() || left.createdAt || ''
+    const rightAt = right.submittedAt?.trim() || right.createdAt || ''
+    if (leftAt !== rightAt) return rightAt.localeCompare(leftAt)
+    return (right.id || '').localeCompare(left.id || '')
+  })
+}
+
+function documentMatchesSearch(doc: Document, search: string): boolean {
+  const haystack = [
+    doc.documentName,
+    doc.documentType,
+    doc.referenceNumber,
+    doc.workerName,
+    doc.vehicleLabel,
+    doc.notes,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(search)
+}
+
+/** Filter + newest-first sort for the Worker Uploads view. */
+export function filterWorkerUploadsByQuery(
+  documents: Document[],
+  query: {
+    search?: string
+    statusFilter?: DocumentWorkerUploadStatusFilter
+  },
+): Document[] {
+  let result = documents.filter((doc) => isWorkerSubmissionDocument(doc))
+  const statusFilter = query.statusFilter ?? 'all'
+
+  if (statusFilter === 'archived') {
+    result = result.filter((doc) => isWorkerSubmissionSoftDeleted(doc))
+  } else {
+    result = result.filter((doc) => !isWorkerSubmissionSoftDeleted(doc))
+    if (statusFilter !== 'all') {
+      result = result.filter((doc) => doc.reviewStatus === statusFilter)
+    }
+  }
+
+  const search = query.search?.trim().toLowerCase()
+  if (search) {
+    result = result.filter((doc) => documentMatchesSearch(doc, search))
+  }
+
+  return sortWorkerUploadsBySubmittedAtDesc(result)
+}
+
 export function filterDocumentsByQuery(documents: Document[], query: DocumentsQuery): Document[] {
   let result = documents
+
+  if (query.pageMode === 'worker_uploads') {
+    return filterWorkerUploadsByQuery(result, {
+      search: query.search,
+      statusFilter: query.workerUploadStatusFilter ?? 'all',
+    })
+  }
+
+  if (query.pageMode === 'managed') {
+    result = result.filter((doc) => isManagedDocument(doc))
+  }
 
   const lifecycle = query.lifecycle ?? 'active'
   if (lifecycle === 'active') {
@@ -426,9 +566,7 @@ export function filterDocumentsByQuery(documents: Document[], query: DocumentsQu
   }
 
   if (query.status && query.status !== 'all') {
-    result = result.filter(
-      (doc) => doc.source !== 'worker_submission' && doc.status === query.status,
-    )
+    result = result.filter((doc) => doc.status === query.status)
   }
 
   if (query.workerUploadFilter && query.workerUploadFilter !== 'all') {
@@ -453,20 +591,7 @@ export function filterDocumentsByQuery(documents: Document[], query: DocumentsQu
 
   const search = query.search?.trim().toLowerCase()
   if (search) {
-    result = result.filter((doc) => {
-      const haystack = [
-        doc.documentName,
-        doc.documentType,
-        doc.referenceNumber,
-        doc.workerName,
-        doc.vehicleLabel,
-        doc.notes,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(search)
-    })
+    result = result.filter((doc) => documentMatchesSearch(doc, search))
   }
 
   return result

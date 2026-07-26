@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { MoreHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
 export type RowActionTone = 'default' | 'danger' | 'success' | 'warning'
@@ -14,9 +15,10 @@ export type RowAction = {
   tone?: RowActionTone
 }
 
-type MenuPlacement = {
-  vertical: 'top' | 'bottom'
-  horizontal: 'left' | 'right'
+type MenuCoords = {
+  top: number
+  left: number
+  transformOrigin: string
 }
 
 type RowActionsMenuProps = {
@@ -88,9 +90,10 @@ export function RowActionsMenu({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(false)
-  const [placement, setPlacement] = useState<MenuPlacement>({
-    vertical: 'bottom',
-    horizontal: 'right',
+  const [coords, setCoords] = useState<MenuCoords>({
+    top: 0,
+    left: 0,
+    transformOrigin: 'top right',
   })
   const [focusedIndex, setFocusedIndex] = useState(-1)
 
@@ -111,17 +114,44 @@ export function RowActionsMenu({
     const menuWidth = menu.offsetWidth || 168
     const menuHeight = menu.offsetHeight || visibleActions.length * 36 + 8
     const padding = 8
+    const gap = 4
 
     const spaceBelow = window.innerHeight - rect.bottom
     const spaceAbove = rect.top
-    const vertical: MenuPlacement['vertical'] =
-      spaceBelow < menuHeight + padding && spaceAbove > spaceBelow ? 'top' : 'bottom'
+    const openUpward =
+      spaceBelow < menuHeight + padding && spaceAbove > spaceBelow
 
-    const overflowRight = rect.right - menuWidth < padding
-    const horizontal: MenuPlacement['horizontal'] = overflowRight ? 'left' : 'right'
+    let top = openUpward ? rect.top - gap - menuHeight : rect.bottom + gap
+    if (top < padding) top = padding
+    if (top + menuHeight > window.innerHeight - padding) {
+      top = Math.max(padding, window.innerHeight - padding - menuHeight)
+    }
 
-    setPlacement({ vertical, horizontal })
-  }, [visibleActions.length])
+    // Prefer aligning the menu's right edge with the trigger when align=end.
+    let left =
+      align === 'start'
+        ? rect.left
+        : align === 'center'
+          ? rect.left + rect.width / 2 - menuWidth / 2
+          : rect.right - menuWidth
+
+    if (left < padding) left = padding
+    if (left + menuWidth > window.innerWidth - padding) {
+      left = Math.max(padding, window.innerWidth - padding - menuWidth)
+    }
+
+    setCoords({
+      top,
+      left,
+      transformOrigin: openUpward
+        ? align === 'start'
+          ? 'bottom left'
+          : 'bottom right'
+        : align === 'start'
+          ? 'top left'
+          : 'top right',
+    })
+  }, [align, visibleActions.length])
 
   useLayoutEffect(() => {
     if (!isOpen) return
@@ -132,9 +162,11 @@ export function RowActionsMenu({
     if (!isOpen) return
 
     function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        closeMenu()
+      const target = event.target as Node
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return
       }
+      closeMenu()
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -202,14 +234,6 @@ export function RowActionsMenu({
   const wrapperAlign =
     align === 'end' ? 'justify-end' : align === 'start' ? 'justify-start' : 'justify-center'
 
-  const menuPositionClass =
-    placement.vertical === 'top'
-      ? 'bottom-full mb-1'
-      : 'top-full mt-1'
-
-  const menuHorizontalClass =
-    placement.horizontal === 'left' ? 'left-0' : 'right-0'
-
   function handleSelect(action: RowAction) {
     closeMenu()
     action.onClick?.()
@@ -257,8 +281,8 @@ export function RowActionsMenu({
 
   const menuPanelClass =
     appearance === 'workers'
-      ? `absolute z-[60] min-w-[160px] overflow-hidden rounded-2xl border border-[rgba(147,197,253,0.45)] bg-gradient-to-br from-white/98 to-[#F8FBFF]/98 p-1.5 shadow-[0_8px_24px_rgba(33,142,231,0.12)] backdrop-blur-sm dark:border-white/10 dark:from-slate-900/98 dark:to-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`
-      : `absolute z-50 min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/30 ${menuPositionClass} ${menuHorizontalClass}`
+      ? 'fixed z-[120] min-w-[160px] overflow-hidden rounded-2xl border border-[rgba(147,197,253,0.45)] bg-gradient-to-br from-white/98 to-[#F8FBFF]/98 p-1.5 shadow-[0_8px_24px_rgba(33,142,231,0.12)] backdrop-blur-sm dark:border-white/10 dark:from-slate-900/98 dark:to-slate-900/95 dark:shadow-black/30'
+      : 'fixed z-[120] min-w-[148px] overflow-hidden rounded-[12px] border border-[rgba(75,120,220,0.12)] bg-white/95 p-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/30'
 
   const triggerClassName =
     appearance === 'workers'
@@ -286,17 +310,25 @@ export function RowActionsMenu({
         <MoreHorizontal className="size-4" aria-hidden="true" />
       </button>
 
-      {isOpen ? (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          aria-label="Row actions"
-          className={menuPanelClass}
-        >
-          {visibleActions.map((action, index) => renderAction(action, index))}
-        </div>
-      ) : null}
+      {isOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={menuRef}
+              id={menuId}
+              role="menu"
+              aria-label="Row actions"
+              className={menuPanelClass}
+              style={{
+                top: coords.top,
+                left: coords.left,
+                transformOrigin: coords.transformOrigin,
+              }}
+            >
+              {visibleActions.map((action, index) => renderAction(action, index))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
