@@ -45,23 +45,37 @@ export function resolveWorkerSubmissionMimeType(file: File): string | null {
   return EXTENSION_TO_MIME[extension] ?? null
 }
 
+export function isWorkerSubmissionPdfMime(mimeType: string): boolean {
+  return mimeType === WORKER_SUBMISSION_PDF_MIME_TYPE
+}
+
+export function isWorkerSubmissionImageMime(mimeType: string): boolean {
+  return (WORKER_SUBMISSION_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType)
+}
+
 export function formatFileSizeBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function sameSelectedFile(a: File, b: File): boolean {
+  return (
+    a.name === b.name &&
+    a.size === b.size &&
+    a.lastModified === b.lastModified &&
+    a.type === b.type
+  )
+}
+
 /** Client-side attachment set rules before any Storage upload. */
 export function validateWorkerSubmissionFiles(files: File[]): string | null {
   if (files.length < 1) {
-    return 'Attach one PDF or one to five images.'
+    return 'Attach at least one PDF or image file.'
   }
   if (files.length > WORKER_SUBMISSION_MAX_FILES) {
     return `You can attach at most ${WORKER_SUBMISSION_MAX_FILES} files.`
   }
-
-  let pdfCount = 0
-  let imageCount = 0
 
   for (const file of files) {
     if (file.size > WORKER_SUBMISSION_MAX_BYTES) {
@@ -72,25 +86,50 @@ export function validateWorkerSubmissionFiles(files: File[]): string | null {
     if (!mimeType) {
       return `"${file.name}" is not a supported file type. Use PDF, JPG, PNG or WEBP.`
     }
-
-    if (mimeType === WORKER_SUBMISSION_PDF_MIME_TYPE) {
-      pdfCount += 1
-    } else if ((WORKER_SUBMISSION_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType)) {
-      imageCount += 1
-    } else {
-      return `"${file.name}" is not a supported file type.`
-    }
-  }
-
-  if (pdfCount > 0 && imageCount > 0) {
-    return 'Send either one PDF or images — not both in the same submission.'
-  }
-  if (pdfCount > 1) {
-    return 'Only one PDF can be sent per submission.'
-  }
-  if (pdfCount === 0 && imageCount === 0) {
-    return 'Attach one PDF or one to five images.'
   }
 
   return null
+}
+
+/**
+ * Merge newly picked files into the current selection.
+ * Rejects only the invalid/new extras while keeping already-valid files.
+ */
+export function mergeWorkerSubmissionFiles(
+  current: File[],
+  incoming: File[],
+): { files: File[]; error: string | null } {
+  if (incoming.length === 0) {
+    return { files: current, error: null }
+  }
+
+  const next = [...current]
+  let error: string | null = null
+
+  for (const file of incoming) {
+    if (next.some((existing) => sameSelectedFile(existing, file))) {
+      error = `"${file.name}" is already selected.`
+      continue
+    }
+
+    if (next.length >= WORKER_SUBMISSION_MAX_FILES) {
+      error = `You can attach at most ${WORKER_SUBMISSION_MAX_FILES} files.`
+      break
+    }
+
+    if (file.size > WORKER_SUBMISSION_MAX_BYTES) {
+      error = `"${file.name}" must be 10 MB or smaller.`
+      continue
+    }
+
+    const mimeType = resolveWorkerSubmissionMimeType(file)
+    if (!mimeType) {
+      error = `"${file.name}" is not a supported file type. Use PDF, JPG, PNG or WEBP.`
+      continue
+    }
+
+    next.push(file)
+  }
+
+  return { files: next, error }
 }

@@ -10,6 +10,9 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import {
   formatFileSizeBytes,
+  isWorkerSubmissionPdfMime,
+  mergeWorkerSubmissionFiles,
+  resolveWorkerSubmissionMimeType,
   validateWorkerSubmissionFiles,
 } from '@/lib/workerDocumentSubmissionStorage'
 import {
@@ -122,13 +125,12 @@ export default function WorkerDocumentsPage() {
     setFormError(null)
     if (!fileList || fileList.length === 0) return
 
-    const next = [...files, ...Array.from(fileList)]
-    const validationError = validateWorkerSubmissionFiles(next)
-    if (validationError) {
-      setFormError(validationError)
-      return
-    }
+    const { files: next, error } = mergeWorkerSubmissionFiles(
+      files,
+      Array.from(fileList),
+    )
     setFiles(next)
+    if (error) setFormError(error)
   }
 
   function removeFile(index: number) {
@@ -215,7 +217,7 @@ export default function WorkerDocumentsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Documents</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Send a PDF or photos to your office and track review status.
+          Send PDF or image files to your office and track review status.
         </p>
       </header>
 
@@ -223,7 +225,8 @@ export default function WorkerDocumentsPage() {
         <CardHeader className="px-5 pt-5 pb-2">
           <CardTitle className="text-lg font-semibold text-slate-950">Send Document</CardTitle>
           <CardDescription className="text-slate-500">
-            One PDF, or up to five images. Do not mix PDF and images.
+            Upload up to 5 PDF or image files. PDFs and photos can be combined.
+            Maximum 10 MB per file.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-5 pb-5">
@@ -288,12 +291,19 @@ export default function WorkerDocumentsPage() {
             <div className="space-y-2">
               <span className="text-xs font-semibold text-slate-600">Attachments</span>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <label className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
+                <label
+                  className={`inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-700 ${
+                    files.length >= WORKER_SUBMISSION_MAX_FILES
+                      ? 'cursor-not-allowed opacity-60'
+                      : 'cursor-pointer'
+                  }`}
+                >
                   Choose files
                   <input
                     type="file"
-                    accept="application/pdf,image/jpeg,image/png,image/webp"
+                    accept=".pdf,image/jpeg,image/png,image/webp,application/pdf"
                     multiple
+                    disabled={files.length >= WORKER_SUBMISSION_MAX_FILES}
                     className="sr-only"
                     onChange={(event) => {
                       onFilesSelected(event.target.files)
@@ -301,12 +311,19 @@ export default function WorkerDocumentsPage() {
                     }}
                   />
                 </label>
-                <label className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
+                <label
+                  className={`inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-700 ${
+                    files.length >= WORKER_SUBMISSION_MAX_FILES
+                      ? 'cursor-not-allowed opacity-60'
+                      : 'cursor-pointer'
+                  }`}
+                >
                   Take photo
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     capture="environment"
+                    disabled={files.length >= WORKER_SUBMISSION_MAX_FILES}
                     className="sr-only"
                     onChange={(event) => {
                       onFilesSelected(event.target.files)
@@ -316,30 +333,43 @@ export default function WorkerDocumentsPage() {
                 </label>
               </div>
               <p className="text-xs text-slate-500">
-                Max {WORKER_SUBMISSION_MAX_FILES} files, 10 MB each.
+                Up to {WORKER_SUBMISSION_MAX_FILES} PDF or image files. PDFs and
+                photos can be combined. Maximum 10 MB per file.
               </p>
 
               {files.length > 0 ? (
                 <ul className="space-y-2">
-                  {files.map((file, index) => (
-                    <li
-                      key={`${file.name}-${file.size}-${index}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-                        <p className="text-xs text-slate-500">{formatFileSizeBytes(file.size)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50"
-                        aria-label={`Remove ${file.name}`}
+                  {files.map((file, index) => {
+                    const mimeType = resolveWorkerSubmissionMimeType(file)
+                    const kindLabel = mimeType
+                      ? isWorkerSubmissionPdfMime(mimeType)
+                        ? 'PDF'
+                        : 'Image'
+                      : 'File'
+                    return (
+                      <li
+                        key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
                       >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </li>
-                  ))}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {kindLabel} · {formatFileSizeBytes(file.size)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50"
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : null}
             </div>
