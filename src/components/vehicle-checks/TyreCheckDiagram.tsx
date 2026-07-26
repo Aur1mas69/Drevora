@@ -1,5 +1,9 @@
 import type { TyreMeasurement, TyreStatus, TyreUnit } from '@/lib/tyreCheckTypes'
-import { tyreStatusClasses, tyreStatusLabel } from '@/lib/tyreCheckTypes'
+import {
+  compareTyrePositions,
+  tyreStatusClasses,
+  tyreStatusLabel,
+} from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import { TriangleAlert } from 'lucide-react'
 
@@ -110,8 +114,15 @@ function AxleRow({
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
 }) {
-  const leftTyres = tyres.filter((tyre) => tyre.position.toLowerCase().includes('left'))
-  const rightTyres = tyres.filter((tyre) => tyre.position.toLowerCase().includes('right'))
+  // Outer → Inner on each side so dual axles render outermost wheels first.
+  const leftTyres = tyres
+    .filter((tyre) => tyre.position.toLowerCase().includes('left'))
+    .slice()
+    .sort((a, b) => compareTyrePositions(a.position, b.position))
+  const rightTyres = tyres
+    .filter((tyre) => tyre.position.toLowerCase().includes('right'))
+    .slice()
+    .sort((a, b) => compareTyrePositions(a.position, b.position))
 
   return (
     <div className="space-y-2.5">

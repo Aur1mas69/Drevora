@@ -4,7 +4,9 @@ import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
   buildTyreLayout,
+  compareTyrePositions,
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
+  findExtraneousTyreMeasurements,
   formatTyreSummaryLabel,
   parseTyreTreadDepthMm,
   treadDepthToStatus,
@@ -267,11 +269,6 @@ function mapItemStatus(row: TyreCheckItemRow): TyreStatus {
 function mapDetailMeasurements(items: TyreCheckItemRow[]): TyreMeasurement[] {
   return items
     .slice()
-    .sort((a, b) => {
-      if (a.unit !== b.unit) return a.unit === 'vehicle' ? -1 : 1
-      if (a.axle_number !== b.axle_number) return a.axle_number - b.axle_number
-      return a.position.localeCompare(b.position)
-    })
     .map((item) => {
       const unit = (item.unit === 'trailer' ? 'trailer' : 'vehicle') as TyreUnit
       const position = tyrePositionFromDb(item.position)
@@ -296,6 +293,74 @@ function mapDetailMeasurements(items: TyreCheckItemRow[]): TyreMeasurement[] {
         notes: item.notes?.trim() || '',
       }
     })
+    .sort((a, b) => {
+      if (a.unit !== b.unit) return a.unit === 'vehicle' ? -1 : 1
+      if (a.axleNumber !== b.axleNumber) return a.axleNumber - b.axleNumber
+      return compareTyrePositions(a.position, b.position)
+    })
+}
+
+/**
+ * For editable draft / in_progress checks only: delete tyre_check_items that
+ * do not belong to the resolved per-axle layout (phantom positions).
+ * Never rewrites submitted historical checks.
+ */
+async function correctEditableDraftLayout(
+  draft: WorkerTyreCheckDraft,
+): Promise<WorkerTyreCheckDraft> {
+  if (draft.status === 'submitted') return draft
+
+  const extras = findExtraneousTyreMeasurements(
+    draft.items,
+    draft.truckAxleCount,
+    draft.trailerAxleCount,
+  )
+  const extraIds = extras
+    .map((item) => item.dbItemId)
+    .filter((id): id is string => Boolean(id))
+
+  if (extraIds.length === 0) return draft
+
+  const companyId = requireVerifiedCompanyId()
+  const { data: parent, error: parentError } = await requireSupabase()
+    .from('tyre_checks')
+    .select('id, status')
+    .eq('company_id', companyId)
+    .eq('id', draft.checkId)
+    .in('status', ['draft', 'in_progress'])
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.correctEditableDraftLayout.parent',
+    table: 'tyre_checks',
+    data: parent ? [parent] : [],
+    error: parentError,
+  })
+
+  if (parentError) throw new TyreChecksServiceError(parentError.message)
+  if (!parent) return draft
+
+  const { error: deleteError } = await requireSupabase()
+    .from('tyre_check_items')
+    .delete()
+    .eq('tyre_check_id', draft.checkId)
+    .in('id', extraIds)
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.correctEditableDraftLayout.delete',
+    table: 'tyre_check_items',
+    data: extraIds.map((id) => ({ id })),
+    error: deleteError,
+  })
+
+  if (deleteError) {
+    throw new TyreChecksServiceError(
+      deleteError.message || 'Unable to remove invalid tyre positions.',
+    )
+  }
+
+  const reloaded = await fetchWorkerTyreCheckDraftRaw(draft.checkId)
+  return reloaded ?? draft
 }
 
 function mapWorkerDraft(
@@ -760,7 +825,7 @@ export async function createWorkerTyreCheck(
   return draft
 }
 
-export async function fetchWorkerTyreCheckDraft(
+async function fetchWorkerTyreCheckDraftRaw(
   checkId: string,
 ): Promise<WorkerTyreCheckDraft | null> {
   const companyId = requireVerifiedCompanyId()
@@ -797,6 +862,14 @@ export async function fetchWorkerTyreCheckDraft(
       row.inspection_started_at || row.created_at || new Date().toISOString(),
     durationSeconds: row.duration_seconds,
   })
+}
+
+export async function fetchWorkerTyreCheckDraft(
+  checkId: string,
+): Promise<WorkerTyreCheckDraft | null> {
+  const draft = await fetchWorkerTyreCheckDraftRaw(checkId)
+  if (!draft) return null
+  return correctEditableDraftLayout(draft)
 }
 
 export async function updateWorkerTyreCheckItem(

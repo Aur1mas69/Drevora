@@ -346,23 +346,127 @@ export function tyreStatusClasses(status: TyreStatus): {
   }
 }
 
+/** Per-axle wheel layout. Single = 2 tyres; Dual = 4 tyres. */
+export type AxleWheelLayout = 'single' | 'dual'
+
+const SINGLE_AXLE_POSITIONS: readonly TyrePosition[] = ['Left', 'Right']
+
+const DUAL_AXLE_POSITIONS: readonly TyrePosition[] = [
+  'Outer Left',
+  'Inner Left',
+  'Inner Right',
+  'Outer Right',
+]
+
+/** Canonical left-to-right / outer-to-inner display order. */
+const TYRE_POSITION_SORT_ORDER: Record<TyrePosition, number> = {
+  'Outer Left': 0,
+  Left: 1,
+  'Inner Left': 2,
+  'Inner Right': 3,
+  Right: 4,
+  'Outer Right': 5,
+}
+
+function clampAxleCount(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+export function compareTyrePositions(a: TyrePosition, b: TyrePosition): number {
+  return TYRE_POSITION_SORT_ORDER[a] - TYRE_POSITION_SORT_ORDER[b]
+}
+
+export function positionsForWheelLayout(layout: AxleWheelLayout): TyrePosition[] {
+  return layout === 'single' ? [...SINGLE_AXLE_POSITIONS] : [...DUAL_AXLE_POSITIONS]
+}
+
+/**
+ * FALLBACK truck per-axle wheel layouts until Admin configuration is persisted.
+ *
+ * Default UK rigid/tractor assumption:
+ * - first truck axle (steer) = single
+ * - remaining truck drive axles = dual
+ *
+ * Replace this helper when vehicle/type axle layouts are stored in Supabase.
+ * Do not infer trailer layouts from this function.
+ */
+export function resolveFallbackTruckAxleWheelLayouts(
+  truckAxleCount: number,
+): AxleWheelLayout[] {
+  const count = clampAxleCount(truckAxleCount, 1, MAX_COMBINED_TYRE_AXLES)
+  return Array.from({ length: count }, (_, index) =>
+    index === 0 ? 'single' : 'dual',
+  )
+}
+
+/**
+ * FALLBACK trailer per-axle wheel layouts until Admin configuration is persisted.
+ * Trailer defaults stay separate from the truck layout and are not guessed from it.
+ * Current safe default: every trailer axle is dual.
+ */
+export function resolveFallbackTrailerAxleWheelLayouts(
+  trailerAxleCount: number,
+): AxleWheelLayout[] {
+  const count = clampAxleCount(trailerAxleCount, 1, MAX_COMBINED_TYRE_AXLES)
+  return Array.from({ length: count }, () => 'dual' as AxleWheelLayout)
+}
+
+export function tyreLayoutPositionKey(
+  unit: TyreUnit,
+  axleNumber: number,
+  position: TyrePosition,
+): string {
+  return `${unit}:${axleNumber}:${tyrePositionToDb(position)}`
+}
+
+/** Expected tyre position keys for the resolved fallback layout. */
+export function expectedTyreLayoutKeys(
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): Set<string> {
+  const keys = new Set<string>()
+  const truckLayouts = resolveFallbackTruckAxleWheelLayouts(truckAxleCount)
+  truckLayouts.forEach((layout, index) => {
+    const axleNumber = index + 1
+    for (const position of positionsForWheelLayout(layout)) {
+      keys.add(tyreLayoutPositionKey('vehicle', axleNumber, position))
+    }
+  })
+
+  if (trailerAxleCount != null) {
+    const trailerLayouts = resolveFallbackTrailerAxleWheelLayouts(trailerAxleCount)
+    trailerLayouts.forEach((layout, index) => {
+      const axleNumber = index + 1
+      for (const position of positionsForWheelLayout(layout)) {
+        keys.add(tyreLayoutPositionKey('trailer', axleNumber, position))
+      }
+    })
+  }
+
+  return keys
+}
+
+/**
+ * Items that do not belong to the resolved layout (phantom positions).
+ * Used to correct editable draft / in_progress checks only.
+ */
+export function findExtraneousTyreMeasurements(
+  items: TyreMeasurement[],
+  truckAxleCount: number,
+  trailerAxleCount: number | null,
+): TyreMeasurement[] {
+  const expected = expectedTyreLayoutKeys(truckAxleCount, trailerAxleCount)
+  return items.filter(
+    (item) => !expected.has(tyreLayoutPositionKey(item.unit, item.axleNumber, item.position)),
+  )
+}
+
 function axleLabel(unit: TyreUnit, axleNumber: number): string {
   if (unit === 'trailer') {
     return `Trailer Axle ${axleNumber}`
   }
   if (axleNumber === 1) return 'Steer Axle 1'
   return `Drive Axle ${axleNumber}`
-}
-
-function positionsForAxle(unit: TyreUnit, axleNumber: number): TyrePosition[] {
-  if (unit === 'vehicle' && axleNumber === 1) {
-    return ['Left', 'Right']
-  }
-  return ['Outer Left', 'Inner Left', 'Inner Right', 'Outer Right']
-}
-
-function clampAxleCount(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, Math.round(value)))
 }
 
 /** Allowed Truck axle values for the current Trailer selection. */
@@ -428,8 +532,10 @@ export function totalAxleCount(
 
 /**
  * Build the active Truck (+ optional Trailer) tyre layout.
- * Truck and Trailer axle counts are independent; Trailer numbering restarts at 1
- * but tyre ids remain unique via unit + axle + position.
+ *
+ * Each axle uses its own wheel layout from the fallback resolvers
+ * (first truck axle single, remaining truck axles dual; trailer axles dual).
+ * Truck and Trailer counts are independent; Trailer numbering restarts at 1.
  */
 export function buildTyreLayout(
   truckAxleCount: number,
@@ -441,9 +547,11 @@ export function buildTyreLayout(
     trailerAxleCount == null ? MAX_COMBINED_TYRE_AXLES : MAX_COMBINED_TYRE_AXLES - 1,
   )
   const rows: TyreMeasurement[] = []
+  const truckLayouts = resolveFallbackTruckAxleWheelLayouts(truckAxles)
 
-  for (let axleNumber = 1; axleNumber <= truckAxles; axleNumber += 1) {
-    for (const position of positionsForAxle('vehicle', axleNumber)) {
+  truckLayouts.forEach((layout, index) => {
+    const axleNumber = index + 1
+    for (const position of positionsForWheelLayout(layout)) {
       rows.push({
         id: `vehicle-${axleNumber}-${position}`,
         unit: 'vehicle',
@@ -454,7 +562,7 @@ export function buildTyreLayout(
         status: 'not_checked',
       })
     }
-  }
+  })
 
   if (trailerAxleCount != null) {
     const trailerAxles = clampAxleCount(
@@ -462,8 +570,10 @@ export function buildTyreLayout(
       1,
       MAX_COMBINED_TYRE_AXLES - truckAxles,
     )
-    for (let axleNumber = 1; axleNumber <= trailerAxles; axleNumber += 1) {
-      for (const position of positionsForAxle('trailer', axleNumber)) {
+    const trailerLayouts = resolveFallbackTrailerAxleWheelLayouts(trailerAxles)
+    trailerLayouts.forEach((layout, index) => {
+      const axleNumber = index + 1
+      for (const position of positionsForWheelLayout(layout)) {
         rows.push({
           id: `trailer-${axleNumber}-${position}`,
           unit: 'trailer',
@@ -474,7 +584,7 @@ export function buildTyreLayout(
           status: 'not_checked',
         })
       }
-    }
+    })
   }
 
   return rows
