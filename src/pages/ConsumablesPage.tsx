@@ -16,17 +16,16 @@ import {
 import { DeleteConsumableModal } from '@/components/consumables/DeleteConsumableModal'
 import { ExportMenu } from '@/components/export/ExportMenu'
 import AdminLayout from '@/layouts/AdminLayout'
-import { useAuth } from '@/contexts/AuthContext'
 import {
   DEFAULT_EXPORT_DATE_RANGE,
   resolveExportDateRange,
   type ExportDateRangeSelection,
 } from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
-import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
-  exportConsumablesExcel,
-  exportConsumablesPdfSummary,
+  downloadConsumableReceiptOriginalFile,
+  downloadFilteredConsumableReceiptsZip,
+  exportConsumablesCsv,
 } from '@/lib/export/modules/consumablesExport'
 import type { Consumable, ConsumableFormSubmitPayload } from '@/lib/consumableTypes'
 import { DEFAULT_CONSUMABLE_PAGE_SIZE } from '@/lib/consumableTypes'
@@ -66,13 +65,11 @@ function filtersAreDefault(filters: ConsumablesFilterValues): boolean {
 export default function ConsumablesPage() {
   const [searchParams] = useSearchParams()
   const {
-    companyName,
     settings: companySettings,
     weekStarts,
     timezone,
     formatDate,
   } = useCompanySettings()
-  const { session } = useAuth()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const [items, setItems] = useState<Consumable[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -96,6 +93,9 @@ export default function ConsumablesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [downloadingConsumableId, setDownloadingConsumableId] = useState<string | null>(
+    null,
+  )
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [summaryRefreshToken, setSummaryRefreshToken] = useState(0)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
@@ -412,8 +412,8 @@ export default function ConsumablesPage() {
               onDateRangeChange={setExportDateRange}
               actions={[
                 {
-                  id: 'excel',
-                  label: 'Export filtered results to Excel',
+                  id: 'csv',
+                  label: 'Export list (.csv)',
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
@@ -422,24 +422,15 @@ export default function ConsumablesPage() {
                         timeZone: timezone,
                         formatDate,
                       })
-                      await exportConsumablesExcel(
-                        {
-                          search: debouncedSearch || undefined,
-                          type: 'all',
-                          vehicleId: filters.vehicleId,
-                          dateFrom: resolvedRange.dateFrom,
-                          dateTo: resolvedRange.dateTo,
-                          viewMode: filters.viewMode,
-                        },
-                        resolveExportMeta({
-                          companyName,
-                          logoUrl: companySettings?.logoUrl,
-                          generatedBy: session?.user.email ?? null,
-                          documentTitle: 'Consumables',
-                          filterSummary: `Date ${resolvedRange.label}`,
-                        }),
-                      )
-                      showToast('Exported consumables to Excel')
+                      await exportConsumablesCsv({
+                        search: debouncedSearch || undefined,
+                        type: 'all',
+                        vehicleId: filters.vehicleId,
+                        dateFrom: resolvedRange.dateFrom,
+                        dateTo: resolvedRange.dateTo,
+                        viewMode: filters.viewMode,
+                      })
+                      showToast('Exported consumables list')
                     } catch (error) {
                       showToast(toExportUserMessage(error))
                     } finally {
@@ -448,8 +439,8 @@ export default function ConsumablesPage() {
                   },
                 },
                 {
-                  id: 'pdf-summary',
-                  label: 'Export PDF summary',
+                  id: 'zip',
+                  label: 'Download files (.zip)',
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
@@ -458,31 +449,15 @@ export default function ConsumablesPage() {
                         timeZone: timezone,
                         formatDate,
                       })
-                      await exportConsumablesPdfSummary(
-                        {
-                          search: debouncedSearch || undefined,
-                          type: 'all',
-                          vehicleId: filters.vehicleId,
-                          dateFrom: resolvedRange.dateFrom,
-                          dateTo: resolvedRange.dateTo,
-                          viewMode: filters.viewMode,
-                        },
-                        resolveExportMeta({
-                          companyName,
-                          logoUrl: companySettings?.logoUrl,
-                          generatedBy: session?.user.email ?? null,
-                          documentTitle: 'Consumables Summary',
-                          filterSummary: [
-                            `Date ${resolvedRange.label}`,
-                            filters.vehicleId !== 'all' ? 'Vehicle filter' : null,
-                            filters.viewMode !== 'current' ? `View ${filters.viewMode}` : null,
-                            debouncedSearch ? `Search ${debouncedSearch}` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · '),
-                        }),
-                      )
-                      showToast('Exported consumables PDF summary')
+                      await downloadFilteredConsumableReceiptsZip({
+                        search: debouncedSearch || undefined,
+                        type: 'all',
+                        vehicleId: filters.vehicleId,
+                        dateFrom: resolvedRange.dateFrom,
+                        dateTo: resolvedRange.dateTo,
+                        viewMode: filters.viewMode,
+                      })
+                      showToast('Downloaded consumable receipts')
                     } catch (error) {
                       showToast(toExportUserMessage(error))
                     } finally {
@@ -519,9 +494,18 @@ export default function ConsumablesPage() {
           <div className="overflow-hidden rounded-2xl border border-[#D3E9FC] bg-white/80 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
             <ConsumablesDataTable
               items={items}
+              downloadingConsumableId={downloadingConsumableId}
               onView={setViewRecord}
               onEdit={openEditForm}
               onDelete={setDeleteRecord}
+              onDownloadFile={(record) => {
+                if (downloadingConsumableId) return
+                setDownloadingConsumableId(record.id)
+                void downloadConsumableReceiptOriginalFile(record)
+                  .then(() => showToast('Downloaded receipt'))
+                  .catch((error) => showToast(toExportUserMessage(error)))
+                  .finally(() => setDownloadingConsumableId(null))
+              }}
             />
             <ConsumablesPagination
               page={page}
@@ -554,8 +538,19 @@ export default function ConsumablesPage() {
       <ConsumableDrawer
         record={viewRecord}
         isOpen={Boolean(viewRecord)}
+        isDownloadingFile={
+          Boolean(viewRecord && downloadingConsumableId === viewRecord.id)
+        }
         onClose={() => setViewRecord(null)}
         onEdit={openEditForm}
+        onDownloadFile={(record) => {
+          if (downloadingConsumableId) return
+          setDownloadingConsumableId(record.id)
+          void downloadConsumableReceiptOriginalFile(record)
+            .then(() => showToast('Downloaded receipt'))
+            .catch((error) => showToast(toExportUserMessage(error)))
+            .finally(() => setDownloadingConsumableId(null))
+        }}
       />
 
       {deleteRecord ? (

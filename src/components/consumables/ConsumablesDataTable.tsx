@@ -14,6 +14,7 @@ import {
   formatQuantityWithUnit,
   formatSupplierSite,
   getConsumableTypeBadgeClass,
+  hasReceiptAttached,
 } from '@/lib/consumableUtils'
 import {
   adminHeading,
@@ -23,29 +24,50 @@ import {
   adminText,
   adminTextStrong,
 } from '@/lib/adminUiStyles'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Download, Eye, Pencil, Trash2 } from 'lucide-react'
 
 type ConsumablesDataTableProps = {
   items: Consumable[]
+  downloadingConsumableId?: string | null
   onView: (item: Consumable) => void
   onEdit: (item: Consumable) => void
   onDelete: (item: Consumable) => void
+  onDownloadFile?: (item: Consumable) => void
 }
 
 function ConsumableRowActions({
+  hasReceipt,
+  isDownloading,
   onView,
   onEdit,
   onDelete,
+  onDownloadFile,
 }: {
+  hasReceipt: boolean
+  isDownloading: boolean
   onView: () => void
   onEdit: () => void
   onDelete: () => void
+  onDownloadFile?: () => void
 }) {
   const actions: RowAction[] = [
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
+  ]
+
+  if (hasReceipt && onDownloadFile) {
+    actions.push({
+      id: 'download',
+      label: isDownloading ? 'Downloading…' : 'Download file',
+      icon: Download,
+      disabled: isDownloading,
+      onClick: onDownloadFile,
+    })
+  }
+
+  actions.push(
     { id: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
     { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
-  ]
+  )
 
   return <RowActionsMenu actions={actions} />
 }
@@ -53,15 +75,19 @@ function ConsumableRowActions({
 function ConsumableMobileCard({
   item,
   defaultPrices,
+  isDownloading,
   onView,
   onEdit,
   onDelete,
+  onDownloadFile,
 }: {
   item: Consumable
   defaultPrices: ConsumableDefaultPricesMap
+  isDownloading: boolean
   onView: () => void
   onEdit: () => void
   onDelete: () => void
+  onDownloadFile?: () => void
 }) {
   const { formatDate, formatTime } = useCompanySettings()
 
@@ -79,7 +105,14 @@ function ConsumableMobileCard({
           </p>
           <p className="mt-1 text-sm text-[#3D7A9C]">{item.vehicleLabel ?? '—'}</p>
         </div>
-        <ConsumableRowActions onView={onView} onEdit={onEdit} onDelete={onDelete} />
+        <ConsumableRowActions
+          hasReceipt={hasReceiptAttached(item.receiptUrl)}
+          isDownloading={isDownloading}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onDownloadFile={onDownloadFile}
+        />
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
@@ -114,9 +147,11 @@ function ConsumableMobileCard({
 
 export function ConsumablesDataTable({
   items,
+  downloadingConsumableId = null,
   onView,
   onEdit,
   onDelete,
+  onDownloadFile,
 }: ConsumablesDataTableProps) {
   const { formatDate, formatTime, settings } = useCompanySettings()
   const defaultPrices = settings?.consumableDefaultPrices ?? {}
@@ -195,9 +230,14 @@ export function ConsumablesDataTable({
                   </td>
                   <TableActionsCell className={rowPadding}>
                     <ConsumableRowActions
+                      hasReceipt={hasReceiptAttached(item.receiptUrl)}
+                      isDownloading={downloadingConsumableId === item.id}
                       onView={() => onView(item)}
                       onEdit={() => onEdit(item)}
                       onDelete={() => onDelete(item)}
+                      onDownloadFile={
+                        onDownloadFile ? () => onDownloadFile(item) : undefined
+                      }
                     />
                   </TableActionsCell>
                 </tr>
@@ -213,9 +253,13 @@ export function ConsumablesDataTable({
             key={item.id}
             item={item}
             defaultPrices={defaultPrices}
+            isDownloading={downloadingConsumableId === item.id}
             onView={() => onView(item)}
             onEdit={() => onEdit(item)}
             onDelete={() => onDelete(item)}
+            onDownloadFile={
+              onDownloadFile ? () => onDownloadFile(item) : undefined
+            }
           />
         ))}
       </div>

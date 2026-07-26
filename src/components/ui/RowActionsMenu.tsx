@@ -13,6 +13,7 @@ export type RowAction = {
   onClick?: () => void
   to?: string
   tone?: RowActionTone
+  disabled?: boolean
 }
 
 type MenuCoords = {
@@ -235,6 +236,7 @@ export function RowActionsMenu({
     align === 'end' ? 'justify-end' : align === 'start' ? 'justify-start' : 'justify-center'
 
   function handleSelect(action: RowAction) {
+    if (action.disabled) return
     closeMenu()
     action.onClick?.()
   }
@@ -245,6 +247,7 @@ export function RowActionsMenu({
       appearance === 'workers'
         ? `flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold outline-none ${getToneClass(action.tone, appearance)}`
         : `flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-xs font-semibold outline-none transition-colors ${getToneClass(action.tone, appearance)}`
+    const disabledClass = action.disabled ? ' pointer-events-none opacity-50' : ''
 
     if (action.to) {
       return (
@@ -254,8 +257,15 @@ export function RowActionsMenu({
           role="menuitem"
           data-menu-index={index}
           tabIndex={focusedIndex === index ? 0 : -1}
-          className={itemClassName}
-          onClick={() => closeMenu()}
+          aria-disabled={action.disabled || undefined}
+          className={`${itemClassName}${disabledClass}`}
+          onClick={(event) => {
+            if (action.disabled) {
+              event.preventDefault()
+              return
+            }
+            closeMenu()
+          }}
         >
           {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
           {action.label}
@@ -270,7 +280,8 @@ export function RowActionsMenu({
         role="menuitem"
         data-menu-index={index}
         tabIndex={focusedIndex === index ? 0 : -1}
-        className={itemClassName}
+        disabled={action.disabled}
+        className={`${itemClassName}${disabledClass}`}
         onClick={() => handleSelect(action)}
       >
         {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}

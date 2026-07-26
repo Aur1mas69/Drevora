@@ -10,9 +10,10 @@ import {
   driverReportStatusClassMap,
   getDriverReportStatusLabel,
   getReportDescriptionSnippet,
+  hasDriverReportAttachment,
 } from '@/lib/driverReportUtils'
 import { adminTableEntityName } from '@/lib/adminUiStyles'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Download, Eye, Pencil, Trash2 } from 'lucide-react'
 import {
   driverReportMobileCardClass,
   driverReportTableHeadClass,
@@ -24,9 +25,11 @@ type DriverReportsDataTableProps = {
   reports: DriverReport[]
   formatDate: (value: string) => string
   formatDateTime: (value: string) => string
+  downloadingReportId?: string | null
   onView: (report: DriverReport) => void
   onEdit: (report: DriverReport) => void
   onDelete: (report: DriverReport) => void
+  onDownloadFile?: (report: DriverReport) => void
 }
 
 function StatusBadge({ status }: { status: DriverReport['status'] }) {
@@ -50,19 +53,38 @@ function PriorityBadge({ priority }: { priority: DriverReport['priority'] }) {
 }
 
 function ReportActionsMenu({
+  hasAttachment,
+  isDownloading,
   onView,
   onEdit,
   onDelete,
+  onDownloadFile,
 }: {
+  hasAttachment: boolean
+  isDownloading: boolean
   onView: () => void
   onEdit: () => void
   onDelete: () => void
+  onDownloadFile?: () => void
 }) {
   const actions: RowAction[] = [
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
+  ]
+
+  if (hasAttachment && onDownloadFile) {
+    actions.push({
+      id: 'download',
+      label: isDownloading ? 'Downloading…' : 'Download file',
+      icon: Download,
+      disabled: isDownloading,
+      onClick: onDownloadFile,
+    })
+  }
+
+  actions.push(
     { id: 'edit', label: 'Edit / Update status', icon: Pencil, onClick: onEdit },
     { id: 'delete', label: 'Delete', icon: Trash2, tone: 'danger', onClick: onDelete },
-  ]
+  )
 
   return <RowActionsMenu actions={actions} align="end" />
 }
@@ -71,9 +93,11 @@ export function DriverReportsDataTable({
   reports,
   formatDate,
   formatDateTime,
+  downloadingReportId = null,
   onView,
   onEdit,
   onDelete,
+  onDownloadFile,
 }: DriverReportsDataTableProps) {
   return (
     <>
@@ -121,9 +145,14 @@ export function DriverReportsDataTable({
                   </td>
                   <TableActionsCell className="px-2 py-3">
                     <ReportActionsMenu
+                      hasAttachment={hasDriverReportAttachment(report)}
+                      isDownloading={downloadingReportId === report.id}
                       onView={() => onView(report)}
                       onEdit={() => onEdit(report)}
                       onDelete={() => onDelete(report)}
+                      onDownloadFile={
+                        onDownloadFile ? () => onDownloadFile(report) : undefined
+                      }
                     />
                   </TableActionsCell>
                 </tr>
@@ -144,9 +173,14 @@ export function DriverReportsDataTable({
                 </p>
               </div>
               <ReportActionsMenu
+                hasAttachment={hasDriverReportAttachment(report)}
+                isDownloading={downloadingReportId === report.id}
                 onView={() => onView(report)}
                 onEdit={() => onEdit(report)}
                 onDelete={() => onDelete(report)}
+                onDownloadFile={
+                  onDownloadFile ? () => onDownloadFile(report) : undefined
+                }
               />
             </div>
 

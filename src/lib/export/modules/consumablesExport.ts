@@ -1,8 +1,17 @@
+import { downloadCsvFile } from '@/lib/export/csvExport'
 import { downloadBlob } from '@/lib/export/downloadBlob'
+import {
+  downloadFileFromSignedUrl,
+  downloadZipArchive,
+  fetchBlobFromUrl,
+  resolveDownloadFileName,
+  type ZipFileEntry,
+} from '@/lib/export/downloadFiles'
 import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
+import { ExportUserError } from '@/lib/export/exportErrors'
 import type { ExportMeta } from '@/lib/export/exportMeta'
 import { fetchAllFilteredRows } from '@/lib/export/fetchAllFiltered'
-import { buildExportFileName } from '@/lib/export/fileNames'
+import { buildExportFileName, sanitizeFileNamePart } from '@/lib/export/fileNames'
 import {
   addBrandedFooters,
   createBrandedPdf,
@@ -13,21 +22,37 @@ import {
   renderSectionTitle,
 } from '@/lib/export/pdfDocument'
 import { formatDateFromIso, formatDateTimeFromIso } from '@/lib/dateTimeFormat'
+import { getReceiptDisplayName } from '@/lib/consumableReceiptStorage'
 import type { Consumable, ConsumablesQuery } from '@/lib/consumableTypes'
-import { formatConsumableCost, formatSummaryQuantity } from '@/lib/consumableUtils'
+import {
+  formatConsumableCost,
+  formatSummaryQuantity,
+  hasReceiptAttached,
+} from '@/lib/consumableUtils'
 import { fetchConsumables } from '@/services/consumablesService'
+import {
+  ConsumableReceiptStorageError,
+  getConsumableReceiptSignedUrl,
+} from '@/services/consumableReceiptStorageService'
+
+function todayStamp(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 function receiptFileName(url: string | null): string {
   if (!url?.trim()) return '—'
-  const trimmed = url.trim()
-  const parts = trimmed.split('/')
-  return parts[parts.length - 1] || '—'
+  return getReceiptDisplayName(url)
 }
 
 export async function exportConsumablesExcel(
   query: Omit<ConsumablesQuery, 'page' | 'pageSize'>,
-  _meta: ExportMeta,
+  meta: ExportMeta,
 ): Promise<void> {
+  void meta
   const rows = await fetchAllFilteredRows<Consumable, typeof query>({
     baseQuery: query,
     fetchPage: async (pageQuery) => {
@@ -85,6 +110,153 @@ export async function exportConsumablesExcel(
       module: 'Consumables',
       parts: [query.dateFrom, query.dateTo],
       extension: 'xlsx',
+    }),
+  )
+}
+
+/** Filtered Consumables metadata as a real CSV (no binary / paths / URLs). */
+export async function exportConsumablesCsv(
+  query: Omit<ConsumablesQuery, 'page' | 'pageSize'>,
+): Promise<void> {
+  const rows = await fetchAllFilteredRows<Consumable, typeof query>({
+    baseQuery: query,
+    fetchPage: async (pageQuery) => {
+      const result = await fetchConsumables(pageQuery)
+      return {
+        items: result.items,
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
+      }
+    },
+  })
+
+  downloadCsvFile(
+    [
+      'Date',
+      'Time',
+      'Vehicle',
+      'Worker',
+      'Type',
+      'Item / Fluid',
+      'Quantity',
+      'Unit',
+      'Total Cost',
+      'Supplier / Site',
+      'Odometer',
+      'Receipt Available',
+      'Notes',
+      'Created At',
+    ],
+    rows.map((row) => [
+      formatDateFromIso(row.entryDate),
+      row.entryTime ?? '',
+      row.vehicleLabel ?? '',
+      row.workerName ?? '',
+      row.consumableType,
+      row.itemName ?? '',
+      formatSummaryQuantity(row.quantity),
+      row.unit,
+      formatConsumableCost(row.cost),
+      [row.supplier, row.site].filter(Boolean).join(' · '),
+      row.odometer == null ? '' : String(row.odometer),
+      hasReceiptAttached(row.receiptUrl) ? 'Yes' : 'No',
+      row.notes ?? '',
+      formatDateTimeFromIso(row.createdAt),
+    ]),
+    buildExportFileName({
+      module: 'Consumables',
+      parts: [todayStamp()],
+      extension: 'csv',
+    }),
+  )
+}
+
+export function countDownloadableConsumableReceipts(items: Consumable[]): number {
+  return items.filter((item) => hasReceiptAttached(item.receiptUrl)).length
+}
+
+/** Download one Consumable receipt as the original private file. */
+export async function downloadConsumableReceiptOriginalFile(
+  consumable: Consumable,
+): Promise<void> {
+  const path = consumable.receiptUrl?.trim()
+  if (!path || !hasReceiptAttached(path)) {
+    throw new ExportUserError('No file is available to download.')
+  }
+
+  const fileName = resolveDownloadFileName(getReceiptDisplayName(path), null)
+
+  try {
+    const url = await getConsumableReceiptSignedUrl(path)
+    if (!url) {
+      throw new ExportUserError('Unable to download file.')
+    }
+    await downloadFileFromSignedUrl(url, fileName)
+  } catch (error) {
+    if (error instanceof ExportUserError) throw error
+    if (error instanceof ConsumableReceiptStorageError) {
+      throw new ExportUserError(error.message)
+    }
+    throw new ExportUserError('Unable to download file.')
+  }
+}
+
+/** Bulk ZIP of receipts from the full filtered Consumables result set. */
+export async function downloadFilteredConsumableReceiptsZip(
+  query: Omit<ConsumablesQuery, 'page' | 'pageSize'>,
+): Promise<void> {
+  const rows = await fetchAllFilteredRows<Consumable, typeof query>({
+    baseQuery: query,
+    fetchPage: async (pageQuery) => {
+      const result = await fetchConsumables(pageQuery)
+      return {
+        items: result.items,
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
+      }
+    },
+  })
+
+  const entries: ZipFileEntry[] = []
+
+  for (const row of rows) {
+    const path = row.receiptUrl?.trim()
+    if (!path || !hasReceiptAttached(path)) continue
+
+    try {
+      const url = await getConsumableReceiptSignedUrl(path)
+      if (!url) {
+        throw new ExportUserError(
+          'One or more files could not be downloaded. The archive was not created.',
+        )
+      }
+      const blob = await fetchBlobFromUrl(url)
+      const fileName = resolveDownloadFileName(getReceiptDisplayName(path), null)
+      const prefix = sanitizeFileNamePart(
+        [row.vehicleLabel || 'Vehicle', row.entryDate || todayStamp()].join('_'),
+        50,
+      )
+      entries.push({ fileName: `${prefix}_${fileName}`, blob })
+    } catch (error) {
+      if (error instanceof ExportUserError) throw error
+      throw new ExportUserError(
+        'One or more files could not be downloaded. The archive was not created.',
+      )
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError('No files available to download.')
+  }
+
+  await downloadZipArchive(
+    entries,
+    buildExportFileName({
+      module: 'Consumables',
+      parts: [todayStamp()],
+      extension: 'zip',
     }),
   )
 }

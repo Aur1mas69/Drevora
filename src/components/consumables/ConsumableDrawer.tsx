@@ -12,14 +12,16 @@ import {
 } from '@/lib/consumableUtils'
 import { isImageReceiptPath } from '@/lib/consumableReceiptStorage'
 import { getConsumableReceiptSignedUrl } from '@/services/consumableReceiptStorageService'
-import { Pencil, X } from 'lucide-react'
+import { Download, Loader2, Pencil, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type ConsumableDrawerProps = {
   record: Consumable | null
   isOpen: boolean
+  isDownloadingFile?: boolean
   onClose: () => void
   onEdit?: (record: Consumable) => void
+  onDownloadFile?: (record: Consumable) => void
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -36,8 +38,10 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export function ConsumableDrawer({
   record,
   isOpen,
+  isDownloadingFile = false,
   onClose,
   onEdit,
+  onDownloadFile,
 }: ConsumableDrawerProps) {
   const { formatDate, formatTime, settings } = useCompanySettings()
   const defaultPrices = settings?.consumableDefaultPrices ?? {}
@@ -166,7 +170,29 @@ export function ConsumableDrawer({
                     className="max-h-48 w-full rounded-lg border border-[#D3E9FC] object-contain bg-white dark:border-white/10 dark:bg-slate-800/60"
                   />
                 ) : null}
-                <ConsumableReceiptViewButton receiptUrl={record.receiptUrl} />
+                <div className="flex flex-wrap gap-2">
+                  <ConsumableReceiptViewButton
+                    receiptUrl={record.receiptUrl}
+                    label="View"
+                  />
+                  {onDownloadFile ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isDownloadingFile}
+                      onClick={() => onDownloadFile(record)}
+                      className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] hover:bg-[#E8F3FE]"
+                    >
+                      {isDownloadingFile ? (
+                        <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Download className="mr-1.5 size-3.5" aria-hidden="true" />
+                      )}
+                      {isDownloadingFile ? 'Downloading…' : 'Download file'}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ) : (
               <p className="mt-2 text-sm font-medium text-[#3D7A9C]">No receipt attached</p>

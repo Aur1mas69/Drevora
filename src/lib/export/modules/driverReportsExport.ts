@@ -1,8 +1,17 @@
+import { downloadCsvFile } from '@/lib/export/csvExport'
 import { downloadBlob } from '@/lib/export/downloadBlob'
+import {
+  downloadFileFromSignedUrl,
+  downloadZipArchive,
+  fetchBlobFromUrl,
+  resolveDownloadFileName,
+  type ZipFileEntry,
+} from '@/lib/export/downloadFiles'
 import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
+import { ExportUserError } from '@/lib/export/exportErrors'
 import type { ExportMeta } from '@/lib/export/exportMeta'
 import { assertExportNotEmpty } from '@/lib/export/fetchAllFiltered'
-import { buildExportFileName } from '@/lib/export/fileNames'
+import { buildExportFileName, sanitizeFileNamePart } from '@/lib/export/fileNames'
 import {
   addBrandedFooters,
   createBrandedPdf,
@@ -13,14 +22,33 @@ import {
   renderSectionTitle,
 } from '@/lib/export/pdfDocument'
 import { formatDateTimeFromIso } from '@/lib/dateTimeFormat'
+import { getDriverReportFileDisplayName } from '@/lib/driverReportFileStorage'
 import type { DriverReport } from '@/lib/driverReportTypes'
-import { getDriverReportFileSignedUrl } from '@/services/driverReportFileStorageService'
+import { hasDriverReportAttachment } from '@/lib/driverReportUtils'
+import {
+  DriverReportFileStorageError,
+  getDriverReportFileSignedUrl,
+} from '@/services/driverReportFileStorageService'
+
+function todayStamp(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getReportAttachmentPath(report: DriverReport): string | null {
+  const path = report.attachmentPath?.trim() || report.attachmentUrl?.trim() || null
+  return path || null
+}
 
 export async function exportDriverReportsExcel(
   filteredReports: DriverReport[],
-  _meta: ExportMeta,
+  meta: ExportMeta,
   filterParts?: Array<string | null | undefined>,
 ): Promise<void> {
+  void meta
   const rows = assertExportNotEmpty(filteredReports)
 
   await downloadExcelWorkbook(
@@ -59,6 +87,125 @@ export async function exportDriverReportsExcel(
       module: 'Driver-Reports',
       parts: filterParts,
       extension: 'xlsx',
+    }),
+  )
+}
+
+/** Filtered Driver Reports metadata as a real CSV (no binary / paths / URLs). */
+export function exportDriverReportsCsv(reports: DriverReport[]): void {
+  const rows = assertExportNotEmpty(reports)
+
+  downloadCsvFile(
+    [
+      'Date / Time',
+      'Worker',
+      'Vehicle',
+      'Category',
+      'Title',
+      'Status',
+      'Priority',
+      'Location',
+      'Created At',
+      'Updated At',
+      'Has Attachment',
+    ],
+    rows.map((row) => [
+      row.issueDatetime
+        ? formatDateTimeFromIso(row.issueDatetime)
+        : formatDateTimeFromIso(row.createdAt),
+      row.workerName ?? '',
+      row.vehicleLabel ?? '',
+      row.reportType ?? '',
+      row.title ?? '',
+      row.status,
+      row.priority,
+      row.location ?? '',
+      formatDateTimeFromIso(row.createdAt),
+      formatDateTimeFromIso(row.updatedAt),
+      hasDriverReportAttachment(row) ? 'Yes' : 'No',
+    ]),
+    buildExportFileName({
+      module: 'Driver-Reports',
+      parts: [todayStamp()],
+      extension: 'csv',
+    }),
+  )
+}
+
+export function countDownloadableDriverReportFiles(reports: DriverReport[]): number {
+  return reports.filter((report) => hasDriverReportAttachment(report)).length
+}
+
+/** Download one Driver Report attachment as the original private file. */
+export async function downloadDriverReportOriginalFile(
+  report: DriverReport,
+): Promise<void> {
+  const path = getReportAttachmentPath(report)
+  if (!path) {
+    throw new ExportUserError('No file is available to download.')
+  }
+
+  const fileName = resolveDownloadFileName(getDriverReportFileDisplayName(path), null)
+
+  try {
+    const url = await getDriverReportFileSignedUrl(path)
+    if (!url) {
+      throw new ExportUserError('Unable to download file.')
+    }
+    await downloadFileFromSignedUrl(url, fileName)
+  } catch (error) {
+    if (error instanceof ExportUserError) throw error
+    if (error instanceof DriverReportFileStorageError) {
+      throw new ExportUserError(error.message)
+    }
+    throw new ExportUserError('Unable to download file.')
+  }
+}
+
+/** Bulk ZIP of all available attachments from the filtered Driver Reports set. */
+export async function downloadFilteredDriverReportsZip(
+  reports: DriverReport[],
+): Promise<void> {
+  const entries: ZipFileEntry[] = []
+
+  for (const report of reports) {
+    const path = getReportAttachmentPath(report)
+    if (!path) continue
+
+    try {
+      const url = await getDriverReportFileSignedUrl(path)
+      if (!url) {
+        throw new ExportUserError(
+          'One or more files could not be downloaded. The archive was not created.',
+        )
+      }
+      const blob = await fetchBlobFromUrl(url)
+      const fileName = resolveDownloadFileName(getDriverReportFileDisplayName(path), null)
+      const prefix = sanitizeFileNamePart(
+        [report.workerName || 'Worker', report.title || report.reportType || 'Report'].join(
+          '_',
+        ),
+        50,
+      )
+      entries.push({ fileName: `${prefix}_${fileName}`, blob })
+    } catch (error) {
+      if (error instanceof ExportUserError) throw error
+      throw new ExportUserError(
+        'One or more files could not be downloaded. The archive was not created.',
+      )
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError('No files available to download.')
+  }
+
+  await downloadZipArchive(
+    entries,
+    buildExportFileName({
+      module: 'Driver-Reports',
+      parts: [todayStamp()],
+      extension: 'zip',
     }),
   )
 }

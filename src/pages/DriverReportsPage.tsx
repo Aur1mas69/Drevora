@@ -24,8 +24,11 @@ import {
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
+  countDownloadableDriverReportFiles,
+  downloadDriverReportOriginalFile,
   downloadDriverReportPdf,
-  exportDriverReportsExcel,
+  downloadFilteredDriverReportsZip,
+  exportDriverReportsCsv,
 } from '@/lib/export/modules/driverReportsExport'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -116,6 +119,7 @@ export default function DriverReportsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
+  const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isCleanCurrentViewOpen, setIsCleanCurrentViewOpen] = useState(false)
   const [isCleaningCurrentView, setIsCleaningCurrentView] = useState(false)
@@ -340,6 +344,26 @@ export default function DriverReportsPage() {
     }
   }
 
+  function getExportItems(): DriverReport[] {
+    const resolvedRange = resolveExportDateRange(exportDateRange, {
+      weekStarts,
+      timeZone: timezone,
+      formatDate,
+    })
+    const visibleItems = filterDriverReportsByVisibility(items, visibilityMode)
+    return filterDriverReports(visibleItems, {
+      search: debouncedSearch || undefined,
+      kpiFilter,
+      status: statusFilter,
+      reportType: typeFilter,
+      priority: priorityFilter,
+      workerId: workerFilter,
+      vehicleId: vehicleFilter,
+      dateFrom: resolvedRange.dateFrom,
+      dateTo: resolvedRange.dateTo,
+    })
+  }
+
   async function handleOpenAttachment(record: DriverReport) {
     const path = getDriverReportStoragePath(record)
     if (!path) return
@@ -353,6 +377,19 @@ export default function DriverReportsPage() {
           ? error.message
           : 'Unable to open attachment.',
       )
+    }
+  }
+
+  async function handleDownloadAttachment(record: DriverReport) {
+    if (downloadingReportId) return
+    setDownloadingReportId(record.id)
+    try {
+      await downloadDriverReportOriginalFile(record)
+      showToast('Downloaded attachment')
+    } catch (error) {
+      showToast(toExportUserMessage(error))
+    } finally {
+      setDownloadingReportId(null)
     }
   }
 
@@ -510,47 +547,34 @@ export default function DriverReportsPage() {
               onDateRangeChange={setExportDateRange}
               actions={[
                 {
-                  id: 'excel',
-                  label: 'Export filtered results to Excel',
+                  id: 'csv',
+                  label: 'Export list (.csv)',
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
-                      const resolvedRange = resolveExportDateRange(exportDateRange, {
-                        weekStarts,
-                        timeZone: timezone,
-                        formatDate,
-                      })
-                      const visibleItems = filterDriverReportsByVisibility(items, visibilityMode)
-                      const exportItems = filterDriverReports(visibleItems, {
-                        search: debouncedSearch || undefined,
-                        kpiFilter,
-                        status: statusFilter,
-                        reportType: typeFilter,
-                        priority: priorityFilter,
-                        workerId: workerFilter,
-                        vehicleId: vehicleFilter,
-                        dateFrom: resolvedRange.dateFrom,
-                        dateTo: resolvedRange.dateTo,
-                      })
-                      await exportDriverReportsExcel(
-                        exportItems,
-                        resolveExportMeta({
-                          companyName,
-                          logoUrl: companySettings?.logoUrl,
-                          generatedBy: session?.user.email ?? null,
-                          documentTitle: 'Driver Reports',
-                          filterSummary: `Date ${resolvedRange.label}`,
-                        }),
-                        [
-                          statusFilter !== 'all' ? statusFilter : null,
-                          typeFilter !== 'all' ? typeFilter : null,
-                          priorityFilter !== 'all' ? priorityFilter : null,
-                          resolvedRange.dateFrom || null,
-                          resolvedRange.dateTo || null,
-                          debouncedSearch || null,
-                        ],
-                      )
-                      showToast('Exported driver reports to Excel')
+                      exportDriverReportsCsv(getExportItems())
+                      showToast('Exported driver reports list')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+                {
+                  id: 'zip',
+                  label: 'Download files (.zip)',
+                  disabled: countDownloadableDriverReportFiles(getExportItems()) === 0,
+                  onSelect: async () => {
+                    const exportItems = getExportItems()
+                    if (countDownloadableDriverReportFiles(exportItems) === 0) {
+                      showToast('No files available to download')
+                      return
+                    }
+                    setIsExporting(true)
+                    try {
+                      await downloadFilteredDriverReportsZip(exportItems)
+                      showToast('Downloaded driver report files')
                     } catch (error) {
                       showToast(toExportUserMessage(error))
                     } finally {
@@ -583,9 +607,11 @@ export default function DriverReportsPage() {
               reports={paginatedItems}
               formatDate={formatDate}
               formatDateTime={formatDateTime}
+              downloadingReportId={downloadingReportId}
               onView={setViewRecord}
               onEdit={openEditModal}
               onDelete={setDeleteRecord}
+              onDownloadFile={(report) => void handleDownloadAttachment(report)}
             />
             <DriverReportsPagination
               page={page}
@@ -617,9 +643,13 @@ export default function DriverReportsPage() {
         isOpen={Boolean(viewRecord)}
         formatDateTime={formatDateTime}
         isDownloadingPdf={isDownloadingPdf}
+        isDownloadingFile={
+          Boolean(viewRecord && downloadingReportId === viewRecord.id)
+        }
         onClose={() => setViewRecord(null)}
         onEdit={openEditModal}
         onOpenAttachment={(record) => void handleOpenAttachment(record)}
+        onDownloadFile={(record) => void handleDownloadAttachment(record)}
         onDownloadPdf={() => {
           if (!viewRecord) return
           setIsDownloadingPdf(true)

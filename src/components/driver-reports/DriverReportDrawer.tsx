@@ -15,9 +15,11 @@ type DriverReportDrawerProps = {
   isOpen: boolean
   formatDateTime: (value: string) => string
   isDownloadingPdf?: boolean
+  isDownloadingFile?: boolean
   onClose: () => void
   onEdit: (report: DriverReport) => void
   onOpenAttachment: (report: DriverReport) => void
+  onDownloadFile?: (report: DriverReport) => void
   onDownloadPdf?: () => void
 }
 
@@ -35,9 +37,11 @@ export function DriverReportDrawer({
   isOpen,
   formatDateTime,
   isDownloadingPdf = false,
+  isDownloadingFile = false,
   onClose,
   onEdit,
   onOpenAttachment,
+  onDownloadFile,
   onDownloadPdf,
 }: DriverReportDrawerProps) {
   useBodyScrollLock(isOpen)
@@ -125,15 +129,33 @@ export function DriverReportDrawer({
 
         <div className="flex flex-col gap-2 border-t border-[#D3E9FC] px-5 py-4 dark:border-white/10">
           {hasDriverReportAttachment(record) ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenAttachment(record)}
-              className="h-10 rounded-[12px] border-[#C5DFFB] text-[#0B68BE]"
-            >
-              <ExternalLink className="mr-1.5 size-4" />
-              Open attachment
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenAttachment(record)}
+                className="h-10 rounded-[12px] border-[#C5DFFB] text-[#0B68BE]"
+              >
+                <ExternalLink className="mr-1.5 size-4" />
+                View
+              </Button>
+              {onDownloadFile ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isDownloadingFile}
+                  onClick={() => onDownloadFile(record)}
+                  className="h-10 rounded-[12px] border-[#C5DFFB] text-[#0B68BE]"
+                >
+                  {isDownloadingFile ? (
+                    <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="mr-1.5 size-4" />
+                  )}
+                  {isDownloadingFile ? 'Downloading…' : 'Download file'}
+                </Button>
+              ) : null}
+            </>
           ) : null}
           <Button
             type="button"

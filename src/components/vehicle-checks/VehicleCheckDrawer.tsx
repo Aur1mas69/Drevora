@@ -22,6 +22,9 @@ import {
   vehicleCheckSemanticBadge,
 } from '@/lib/vehicleCheckUtils'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
+import {
+  collectVehicleCheckDownloadableFiles,
+} from '@/lib/export/modules/vehicleChecksExport'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
 import { Download, Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -30,6 +33,7 @@ type VehicleCheckDrawerProps = {
   check: VehicleCheck | null
   isOpen: boolean
   isDownloadingPdf?: boolean
+  isDownloadingFiles?: boolean
   corrections?: VehicleCheckListItem[]
   onClose: () => void
   onEdit?: () => void
@@ -37,6 +41,7 @@ type VehicleCheckDrawerProps = {
   onViewCorrection?: (correctionId: string) => void
   onViewOriginal?: (originalCheckId: string) => void
   onDownloadPdf?: () => void
+  onDownloadFiles?: () => void
 }
 
 function VehicleCheckPhotoThumb({ item }: { item: VehicleCheckItem }) {
@@ -91,6 +96,7 @@ export function VehicleCheckDrawer({
   check,
   isOpen,
   isDownloadingPdf = false,
+  isDownloadingFiles = false,
   corrections = [],
   onClose,
   onEdit,
@@ -98,6 +104,7 @@ export function VehicleCheckDrawer({
   onViewCorrection,
   onViewOriginal,
   onDownloadPdf,
+  onDownloadFiles,
 }: VehicleCheckDrawerProps) {
   const { formatDate } = useCompanySettings()
 
@@ -135,6 +142,9 @@ export function VehicleCheckDrawer({
   const photoItems = check.items.filter(
     (item) => item.photoUrl && item.result === 'Advisory',
   )
+  const downloadableFiles = collectVehicleCheckDownloadableFiles(check)
+  const downloadFilesLabel =
+    downloadableFiles.length > 1 ? 'Download files (.zip)' : 'Download file'
   const submittedAt = new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
@@ -176,6 +186,24 @@ export function VehicleCheckDrawer({
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
+              {onDownloadFiles && downloadableFiles.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloadingFiles}
+                  onClick={onDownloadFiles}
+                  className="h-8 rounded-[10px] px-2.5 text-xs font-semibold"
+                  aria-label={downloadFilesLabel}
+                >
+                  {isDownloadingFiles ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-3.5" aria-hidden="true" />
+                  )}
+                  {downloadableFiles.length > 1 ? 'Files' : 'File'}
+                </Button>
+              ) : null}
               {onDownloadPdf ? (
                 <Button
                   type="button"
