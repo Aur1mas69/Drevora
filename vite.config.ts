@@ -42,8 +42,12 @@ export default defineConfig({
           'Fleet and workforce management platform for modern transport businesses.',
         lang: 'en-GB',
         dir: 'ltr',
-        theme_color: '#2563EB',
-        background_color: '#0B1023',
+        // Matches the approved Light AuthSplashScreen background exactly, so
+        // the native Android splash (built from these two values) is visually
+        // continuous with the in-app Light loader instead of flashing dark
+        // navy before the app icon/UI appears.
+        theme_color: '#F6F9FF',
+        background_color: '#F6F9FF',
         display: 'standalone',
         orientation: 'any',
         start_url: '/login',

@@ -11,7 +11,9 @@
       name="description"
       content="Fleet and workforce management platform for modern transport businesses."
     />
-    <meta name="theme-color" content="#2563EB" />
+    <!-- Matches the approved Light AuthSplashScreen background so the OS/
+         browser chrome tint is continuous with the loader at cold launch. -->
+    <meta name="theme-color" content="#F6F9FF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -30,22 +32,34 @@
       *::after {
         box-sizing: border-box;
       }
+      /* Force the Light boot background before the main CSS bundle (and
+         React) loads, matching the approved AuthSplashScreen background
+         exactly. Without this, an unstyled html/body can render with the
+         OS's dark UA default on a device in system Dark mode, producing a
+         black/dark flash between the native splash and the Light loader.
+         `src/index.css` re-asserts the correct dark background on body/#root
+         once `.dark`/`.worker-dark` is present AND the real themed shell has
+         mounted, so this never leaks into the actual Worker/Admin Dark UI. */
       html {
         width: 100%;
         max-width: 100%;
         overflow-x: clip;
+        background-color: #f6f9ff;
+        color-scheme: light;
       }
       body {
         margin: 0;
         width: 100%;
         max-width: 100%;
         overflow-x: clip;
+        background-color: #f6f9ff;
       }
       #root {
         width: 100%;
         max-width: 100%;
         min-width: 0;
         overflow-x: clip;
+        background-color: #f6f9ff;
       }
       img:not(.drevora-brand-logo),
       svg,

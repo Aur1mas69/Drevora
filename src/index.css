@@ -803,9 +803,15 @@ img.drevora-brand-logo {
 
 /* =============================================================================
  * DREVORA full-page loading experience (AuthSplashScreen) — shared by Worker
- * mobile and Admin/Office desktop. Theme reacts purely via CSS ancestor
- * classes: `.dark` (Admin/Office, src/lib/theme.ts) and `.worker-dark`
- * (Worker, src/lib/workerAppearance.ts). No JS theme detection lives here.
+ * mobile and Admin/Office desktop, and by the PWA cold-boot sequence.
+ *
+ * Always Light by design, deliberately isolated from theme selectors: no
+ * rule below is ever qualified by `.dark` or `.worker-dark`, so a saved
+ * Worker/Admin Dark preference (or `prefers-color-scheme: dark`) can never
+ * recolour the loader. See index.html for the matching Light boot
+ * background/`color-scheme` and the manifest `background_color`/
+ * `theme_color`, which keep the native Android splash visually continuous
+ * with this component.
  * ============================================================================= */
 .auth-splash {
   background: linear-gradient(160deg, #ffffff 0%, #f4f9ff 48%, #eaf4ff 100%);
@@ -834,28 +840,25 @@ img.drevora-brand-logo {
   background-size: 220% 100%;
 }
 
-:where(.dark, .worker-dark) .auth-splash {
-  background:
-    radial-gradient(120% 140% at 12% 0%, rgba(67, 68, 246, 0.28), transparent 55%),
-    radial-gradient(120% 120% at 100% 100%, rgba(163, 241, 171, 0.16), transparent 60%),
-    linear-gradient(160deg, #05060c 0%, #080b14 55%, #0a0e1c 100%);
+/* Boot-background handoff: index.html forces Light on html/body/#root so
+   there is never a black/dark frame before this stylesheet loads. Once
+   `.dark` (Admin) or `.worker-dark` (Worker) is present — meaning the real
+   page has resolved its saved theme — restore the matching dark background
+   on body/#root so no light gap can show behind the loader/short pages.
+   `.auth-splash` itself is never targeted here: it stays Light always. */
+html.dark body,
+html.dark #root {
+  background-color: #0f172a;
+  color-scheme: dark;
 }
 
-:where(.dark, .worker-dark) .auth-splash-halo {
-  background: radial-gradient(
-    ellipse,
-    rgba(163, 241, 171, 0.3) 0%,
-    rgba(67, 68, 246, 0.32) 55%,
-    transparent 75%
-  );
-}
-
-:where(.dark, .worker-dark) .auth-splash-message {
-  color: #94a3b8;
-}
-
-:where(.dark, .worker-dark) .auth-splash-progress {
-  background: rgba(255, 255, 255, 0.08);
+html.worker-dark body,
+html.worker-dark #root {
+  /* Matches --worker-bg dark value (src/styles/worker-theme.css). Hardcoded
+     here because that custom property only resolves inside
+     .worker-mobile-layout/.worker-theme-surface, not on body/#root. */
+  background-color: #080b14;
+  color-scheme: dark;
 }
 
 /* Calm, continuous motion — opt-in only when the user has no motion

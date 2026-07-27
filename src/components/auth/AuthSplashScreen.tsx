@@ -6,18 +6,21 @@ type AuthSplashScreenProps = {
 }
 
 /**
- * Full-screen, theme-aware DREVORA loading experience.
+ * Full-screen, always-Light DREVORA loading experience.
  *
  * Shown while auth/session/membership state resolves and as the Suspense
  * fallback for lazy-loaded routes (see RouteLoadingFallback, AuthBootstrapGate,
  * MembershipLoadingScreen, CompanyOnboardingPage — all render this single
  * component). Controlled entirely by caller readiness, never a timed intro.
  *
- * Theme reactivity is pure CSS: Admin/Office resolves via Tailwind's `.dark`
- * class (see src/lib/theme.ts) and Worker resolves via `.worker-dark` (see
- * src/lib/workerAppearance.ts) — both are ancestor classes on <html>, so the
- * `:where(.dark, .worker-dark) .auth-splash*` rules in src/index.css apply
- * immediately with no JS theme detection needed here.
+ * Always renders the approved Light appearance, on every platform, on
+ * every cold PWA launch — this is intentional and matches the native
+ * Android/iOS splash background (see index.html and vite.config.ts's PWA
+ * manifest). The `.auth-splash*` rules in src/index.css are never qualified
+ * by `.dark`/`.worker-dark`, so a saved Worker/Admin Dark preference (or
+ * `prefers-color-scheme: dark`) cannot recolour this component. Only the
+ * real page — rendered after this screen unmounts — resolves and applies
+ * the saved Light/Dark theme.
  *
  * The mark rendered here is the exact, unmodified official DREVORA asset
  * (`/drevora-logo-DNa5g0Qw.png`) already used by the Admin sidebar header —
