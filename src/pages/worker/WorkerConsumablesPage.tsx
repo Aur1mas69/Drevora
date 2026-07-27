@@ -28,11 +28,14 @@ import {
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { Loader2, Pencil, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 export default function WorkerConsumablesPage() {
   const { formatDate, formatTime, settings } = useCompanySettings()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
+  const [searchParams] = useSearchParams()
+  const preselectedVehicleId = searchParams.get('vehicleId')?.trim() || null
 
   const [items, setItems] = useState<Consumable[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -354,6 +357,17 @@ export default function WorkerConsumablesPage() {
         workers={worker ? [worker] : []}
         lockedWorkerId={worker.id}
         lockedWorkerName={workerName}
+        initialVehicleId={
+          formMode === 'create'
+            ? preselectedVehicleId &&
+              vehicles.some((vehicle) => vehicle.id === preselectedVehicleId)
+              ? preselectedVehicleId
+              : worker.defaultVehicleId &&
+                  vehicles.some((vehicle) => vehicle.id === worker.defaultVehicleId)
+                ? worker.defaultVehicleId
+                : null
+            : null
+        }
         isSaving={isSaving}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleFormSubmit}

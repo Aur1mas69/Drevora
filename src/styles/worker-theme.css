@@ -363,15 +363,21 @@
 }
 
 /* -----------------------------------------------------------------------------
- * Worker Home Dashboard — Dark-mode robot hero (Home page only).
- * Rendered only while .worker-dark is active; no effect on Light mode.
+ * Worker Home Dashboard — robot hero card (Home page only). Rendered in both
+ * Light and Dark; the surface colour/glow below is theme-scoped so Light
+ * keeps the existing card surface token (no new colours) and Dark keeps its
+ * unchanged navy + indigo/mint glow.
  * ----------------------------------------------------------------------------- */
 
 .worker-mobile-layout .worker-robot-hero {
+  background-color: var(--worker-card);
+}
+
+.worker-dark .worker-mobile-layout .worker-robot-hero {
   background-color: #0a0e1c;
 }
 
-.worker-mobile-layout .worker-robot-hero::before {
+.worker-dark .worker-mobile-layout .worker-robot-hero::before {
   content: '';
   position: absolute;
   inset: 0;

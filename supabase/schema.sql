@@ -2717,4 +2717,6 @@ create trigger vehicles_enforce_vehicle_plan_allowance
 -- Next steps
 -- 1. Run policies.sql  — RLS configuration (MVP: disabled)
 -- 2. Run seed.sql      — optional demo data (local/dev only)
+-- Worker default-vehicle RPC: apply migration
+--   20260727200000_worker_set_default_vehicle_rpc.sql
 -- -----------------------------------------------------------------------------

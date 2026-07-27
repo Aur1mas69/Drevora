@@ -1,6 +1,7 @@
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import {
@@ -8,6 +9,7 @@ import {
   DEFAULT_TRUCK_AXLE_COUNT,
   MAX_COMBINED_TYRE_AXLES,
   parseTyreTreadDepthMm,
+  sortTyresForClockwiseWalk,
   totalAxleCount,
   trailerAxleOptions,
   treadDepthBand,
@@ -51,6 +53,14 @@ function vehicleLabel(vehicle: Vehicle): string {
     vehicle.fleetNumber?.trim() ||
     vehicle.id.slice(0, 8)
   )
+}
+
+/** Apply clockwise walk order so Next/Previous follow the physical walkaround. */
+function withClockwiseWalkItems(draft: WorkerTyreCheckDraft): WorkerTyreCheckDraft {
+  return {
+    ...draft,
+    items: sortTyresForClockwiseWalk(draft.items),
+  }
 }
 
 function formatStartedAt(value: string): string {
@@ -268,7 +278,7 @@ export default function WorkerTyreCheckPage() {
         odometer: odometerValue,
         odometerUnit,
       })
-      setDraft(created)
+      setDraft(withClockwiseWalkItems(created))
       setTyreIndex(0)
       setStep('inspect')
     } catch (startError) {
@@ -356,7 +366,7 @@ export default function WorkerTyreCheckPage() {
     setError(null)
     try {
       const submitted = await submitWorkerTyreCheck(draft.checkId)
-      setDraft(submitted)
+      setDraft(withClockwiseWalkItems(submitted))
       setStep('done')
     } catch (submitError) {
       setError(
@@ -437,24 +447,15 @@ export default function WorkerTyreCheckPage() {
 
       {step === 'setup' ? (
         <section className="space-y-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Vehicle
-            </span>
-            <select
-              value={vehicleId}
-              onChange={(event) => setVehicleId(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900"
-            >
-              <option value="">Select vehicle</option>
-              {tractorVehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicleLabel(vehicle)}
-                  {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+          <WorkerVehicleCombobox
+            id="worker-tyre-check-vehicle"
+            vehicles={tractorVehicles}
+            selectedVehicleId={vehicleId || null}
+            onSelect={(vehicle) => setVehicleId(vehicle?.id ?? '')}
+            label="Vehicle"
+            required
+            showAllWhenEmpty
+          />
 
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -591,14 +592,15 @@ export default function WorkerTyreCheckPage() {
             <p className="mt-1 text-sm font-semibold text-slate-900">
               Tyre {tyreIndex + 1} of {draft.items.length} · {currentTyre.axleLabel}
             </p>
-            <div className="mt-3 overflow-x-auto pb-1">
-              <div className="min-w-[18rem]">
+            <div className="mt-3 overflow-x-auto pb-2">
+              <div className="min-w-[18rem] px-1.5 py-2">
                 <TyreCheckDiagram
                   measurements={draft.items.map((item) => ({
                     ...item,
                     status: treadDepthToStatus(item.treadDepthMm, Boolean(item.isDirty)),
                   }))}
                   selectedTyreId={currentTyre.id}
+                  emphasizeSelection
                   onSelectTyre={(tyreId) => {
                     const nextIndex = draft.items.findIndex((item) => item.id === tyreId)
                     if (nextIndex >= 0) setTyreIndex(nextIndex)

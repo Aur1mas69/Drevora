@@ -11,6 +11,19 @@ export function vehicleMatchesRegistrationQuery(vehicle: Vehicle, query: string)
   return normalizeRegistrationForSearch(vehicle.registration).includes(normalizedQuery)
 }
 
+/** Registration-first Worker search; also matches fleet / make / model. */
+export function vehicleMatchesWorkerVehicleQuery(vehicle: Vehicle, query: string): boolean {
+  const trimmed = query.trim()
+  if (!trimmed) return true
+  if (vehicleMatchesRegistrationQuery(vehicle, trimmed)) return true
+
+  const lower = trimmed.toLowerCase()
+  const fleet = vehicle.fleetNumber?.toLowerCase() ?? ''
+  const make = vehicle.make?.toLowerCase() ?? ''
+  const model = vehicle.model?.toLowerCase() ?? ''
+  return fleet.includes(lower) || make.includes(lower) || model.includes(lower)
+}
+
 export function findVehicleByRegistrationQuery(
   vehicles: Vehicle[],
   query: string,

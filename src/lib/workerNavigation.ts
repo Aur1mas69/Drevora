@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Contact,
   FileText,
-  FileWarning,
   Settings,
   Truck,
 } from 'lucide-react'
@@ -48,13 +47,6 @@ export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
     shortLabel: 'Vehicles',
     to: '/worker/vehicles',
     icon: Truck,
-  },
-  {
-    id: 'driver-reports',
-    label: 'Driver Reports',
-    shortLabel: 'Reports',
-    to: '/worker/driver-reports',
-    icon: FileWarning,
   },
   {
     id: 'documents',

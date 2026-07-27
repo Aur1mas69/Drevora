@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { DriverReportFileField } from './DriverReportFileField'
 import { driverReportFieldClass, driverReportTextareaClass } from './driverReportUiStyles'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 
 export type DriverReportFormContext = 'admin' | 'worker'
 
@@ -33,6 +34,8 @@ type DriverReportFormModalProps = {
   vehicles: Vehicle[]
   currentWorkerId?: string | null
   currentWorkerName?: string | null
+  /** Preselects the Vehicle field when opening a new (create-mode) report. */
+  initialVehicleId?: string | null
   isSaving?: boolean
   onClose: () => void
   onSubmit: (payload: DriverReportFormSubmitPayload) => Promise<void>
@@ -52,6 +55,7 @@ export function DriverReportFormModal({
   vehicles,
   currentWorkerId,
   currentWorkerName,
+  initialVehicleId,
   isSaving = false,
   onClose,
   onSubmit,
@@ -91,6 +95,7 @@ export function DriverReportFormModal({
       setValues({
         ...base,
         workerId: isAdminForm ? '' : currentWorkerId ?? '',
+        vehicleId: initialVehicleId?.trim() || base.vehicleId,
         status: 'New',
         priority: 'Medium',
       })
@@ -100,7 +105,7 @@ export function DriverReportFormModal({
     setRemoveFile(false)
     setErrors({})
     setSubmitError(null)
-  }, [currentWorkerId, isAdminForm, record, isOpen])
+  }, [currentWorkerId, initialVehicleId, isAdminForm, record, isOpen])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -244,22 +249,33 @@ export function DriverReportFormModal({
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold text-[#113C69]">
-                Vehicle <span className="font-normal text-[#5499BF]">(optional)</span>
-                <select
-                  value={values.vehicleId}
-                  onChange={(event) => updateField('vehicleId', event.target.value)}
-                  className={driverReportFieldClass}
-                >
-                  <option value="">No vehicle</option>
-                  {sortedVehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.registration}
-                      {vehicle.fleetNumber ? ` · ${vehicle.fleetNumber}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {isAdminForm ? (
+                <label className="block text-sm font-semibold text-[#113C69]">
+                  Vehicle <span className="font-normal text-[#5499BF]">(optional)</span>
+                  <select
+                    value={values.vehicleId}
+                    onChange={(event) => updateField('vehicleId', event.target.value)}
+                    className={driverReportFieldClass}
+                  >
+                    <option value="">No vehicle</option>
+                    {sortedVehicles.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id}>
+                        {vehicle.registration}
+                        {vehicle.fleetNumber ? ` · ${vehicle.fleetNumber}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <WorkerVehicleCombobox
+                  id="driver-report-worker-vehicle"
+                  vehicles={sortedVehicles}
+                  selectedVehicleId={values.vehicleId || null}
+                  onSelect={(vehicle) => updateField('vehicleId', vehicle?.id ?? '')}
+                  label="Vehicle (optional)"
+                  showAllWhenEmpty
+                />
+              )}
 
               <label className="block text-sm font-semibold text-[#113C69]">
                 Priority

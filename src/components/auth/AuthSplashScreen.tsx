@@ -26,8 +26,9 @@ type AuthSplashScreenProps = {
  * (`/drevora-logo-DNa5g0Qw.png`) already used by the Admin sidebar header —
  * not a recreated/approximate logo. It already contains the "DREVORA"
  * wordmark and "FLEET & TEAM MANAGEMENT" tagline, so no separate text is
- * rendered for those. Only the wrapping frame/halo animates; the image
- * itself is never rotated, recoloured or distorted.
+ * rendered for those. Only the wrapping frame/shadow animates; the image
+ * itself is never rotated, recoloured or distorted. The shadow beneath it is
+ * a neutral tone only (no purple/blue colour spill behind the wordmark).
  */
 export function AuthSplashScreen({
   className,
@@ -46,12 +47,19 @@ export function AuthSplashScreen({
     >
       <div className="relative flex w-full max-w-[22rem] flex-col items-center px-2">
         <div className="relative flex items-center justify-center">
-          <span className="auth-splash-halo absolute inset-[-1.25rem] rounded-[2rem]" aria-hidden="true" />
+          {/* Subtle neutral shadow directly beneath the logo — no colour
+              spill behind the text. Sits below the mark (lower z-index,
+              rendered first) and only spans the lower portion of the frame,
+              never the full halo/frame area. */}
+          <span
+            className="auth-splash-halo absolute inset-x-[14%] bottom-[-0.35rem] h-5 rounded-full sm:h-6"
+            aria-hidden="true"
+          />
 
           {/* Official DREVORA mark + wordmark — identical asset used by the
               Admin sidebar header (see SidebarBrand in AdminLayout.tsx). The
               image itself is never animated, recoloured or distorted; only
-              the wrapping frame/halo below it moves. */}
+              the wrapping frame/shadow below it moves. */}
           <div className="auth-splash-mark-frame relative z-[1]">
             <img
               src="/drevora-logo-DNa5g0Qw.png"
@@ -65,7 +73,7 @@ export function AuthSplashScreen({
         </div>
 
         <div
-          className="auth-splash-progress mt-8 h-1 w-28 overflow-hidden rounded-full"
+          className="auth-splash-progress mt-8 h-1 w-[8.5rem] overflow-hidden rounded-full"
           aria-hidden="true"
         >
           <div className="auth-splash-progress-bar h-full w-full rounded-full" />

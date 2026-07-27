@@ -1603,6 +1603,36 @@ export type WorkerAccessStatus = 'active' | 'archived' | 'none'
  * Worker-app gate: active | archived | none for the signed-in auth user.
  * Falls back to `none` when the RPC is unavailable.
  */
+export async function setWorkerDefaultVehicle(
+  vehicleId: string | null,
+): Promise<string | null> {
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_worker_set_default_vehicle',
+    { p_vehicle_id: vehicleId },
+  )
+
+  logSupabaseQuery({
+    service: 'driversService.setWorkerDefaultVehicle',
+    table: 'rpc:drevora_worker_set_default_vehicle',
+    data: data != null ? [{ default_vehicle_id: data }] : [],
+    error,
+  })
+
+  if (error) {
+    if (/function .*drevora_worker_set_default_vehicle/i.test(error.message ?? '')) {
+      throw new DriversServiceError(
+        'Saving a default vehicle is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    throw new DriversServiceError(
+      error.message || 'Unable to save your default vehicle.',
+      error.code ?? null,
+    )
+  }
+
+  return typeof data === 'string' ? data : data ?? null
+}
+
 export async function getWorkerAccessStatus(): Promise<WorkerAccessStatus> {
   const { data, error } = await requireSupabase().rpc(
     'drevora_auth_worker_access_status',
@@ -1636,5 +1666,6 @@ export const driversService = {
   restoreDriver,
   reactivateDriver,
   getWorkerAccessStatus,
+  setWorkerDefaultVehicle,
   getDriverFormValues,
 }

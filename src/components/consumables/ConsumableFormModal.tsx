@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { CompanyTimeInput } from '@/components/ui/CompanyTimeInput'
 import { Input } from '@/components/ui/input'
 import { ConsumableReceiptField } from '@/components/consumables/ConsumableReceiptField'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type {
   Consumable,
@@ -40,6 +41,8 @@ type ConsumableFormModalProps = {
   /** When set, locks Worker to this id and hides the Worker picker. */
   lockedWorkerId?: string | null
   lockedWorkerName?: string | null
+  /** Prefills vehicle on create (Worker Vehicles → Consumables). */
+  initialVehicleId?: string | null
   isSaving?: boolean
   onClose: () => void
   onSubmit: (payload: ConsumableFormSubmitPayload) => Promise<void>
@@ -83,6 +86,7 @@ function buildInitialValues(
   record: Consumable | null,
   defaultPrices: ConsumableDefaultPricesMap,
   lockedWorkerId?: string | null,
+  initialVehicleId?: string | null,
 ): ConsumableFormValues {
   if (!record) {
     const dieselDefault = resolveDefaultUnitPrice(defaultPrices, 'Diesel')
@@ -91,7 +95,7 @@ function buildInitialValues(
       {
         entryDate: new Date().toISOString().slice(0, 10),
         entryTime: '',
-        vehicleId: '',
+        vehicleId: initialVehicleId?.trim() || '',
         workerId: lockedWorkerId?.trim() || '',
         consumableType: 'Diesel',
         itemName: '',
@@ -167,6 +171,7 @@ export function ConsumableFormModal({
   workers,
   lockedWorkerId = null,
   lockedWorkerName = null,
+  initialVehicleId = null,
   isSaving = false,
   onClose,
   onSubmit,
@@ -175,7 +180,7 @@ export function ConsumableFormModal({
   const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const currency = settings?.currency ?? DEFAULT_CURRENCY
   const [values, setValues] = useState<ConsumableFormValues>(() =>
-    buildInitialValues(record, defaultPrices, lockedWorkerId),
+    buildInitialValues(record, defaultPrices, lockedWorkerId, initialVehicleId),
   )
   const [error, setError] = useState<string | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
@@ -205,11 +210,11 @@ export function ConsumableFormModal({
 
   useEffect(() => {
     if (!isOpen) return
-    setValues(buildInitialValues(record, defaultPrices, lockedWorkerId))
+    setValues(buildInitialValues(record, defaultPrices, lockedWorkerId, initialVehicleId))
     setError(null)
     setReceiptFile(null)
     setRemoveReceipt(false)
-  }, [defaultPrices, isOpen, lockedWorkerId, record])
+  }, [defaultPrices, initialVehicleId, isOpen, lockedWorkerId, record])
 
   useEffect(() => {
     if (!isOpen) return
@@ -341,25 +346,39 @@ export function ConsumableFormModal({
               />
             </label>
 
-            <label className="block text-sm font-medium text-[#113C69] sm:col-span-2">
-              Vehicle <span className="text-rose-500">*</span>
-              <select
-                required
-                value={values.vehicleId}
-                onChange={(event) => updateField('vehicleId', event.target.value)}
-                className={fieldClassName}
-              >
-                <option value="">Select vehicle</option>
-                {sortedVehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.registration}
-                    {vehicle.make || vehicle.model
-                      ? ` · ${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}`
-                      : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="sm:col-span-2">
+              {isWorkerForm ? (
+                <WorkerVehicleCombobox
+                  id="consumable-worker-vehicle"
+                  vehicles={sortedVehicles}
+                  selectedVehicleId={values.vehicleId || null}
+                  onSelect={(vehicle) => updateField('vehicleId', vehicle?.id ?? '')}
+                  label="Vehicle"
+                  required
+                  showAllWhenEmpty
+                />
+              ) : (
+                <label className="block text-sm font-medium text-[#113C69]">
+                  Vehicle <span className="text-rose-500">*</span>
+                  <select
+                    required
+                    value={values.vehicleId}
+                    onChange={(event) => updateField('vehicleId', event.target.value)}
+                    className={fieldClassName}
+                  >
+                    <option value="">Select vehicle</option>
+                    {sortedVehicles.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id}>
+                        {vehicle.registration}
+                        {vehicle.make || vehicle.model
+                          ? ` · ${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
 
             <label className="block text-sm font-medium text-[#113C69]">
               Type <span className="text-rose-500">*</span>

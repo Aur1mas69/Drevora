@@ -1,6 +1,11 @@
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { cn } from '@/lib/utils'
+import {
+  DriversServiceError,
+  setWorkerDefaultVehicle,
+} from '@/services/driversService'
 import {
   fetchVehicles,
   type Vehicle,
@@ -10,10 +15,10 @@ import {
   CircleDot,
   FileWarning,
   Fuel,
-  Search,
+  Loader2,
   Truck,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function VehicleActionCard({
@@ -23,6 +28,7 @@ function VehicleActionCard({
   to,
   disabled,
   comingSoon,
+  activeClassName,
 }: {
   title: string
   description: string
@@ -30,12 +36,14 @@ function VehicleActionCard({
   to?: string
   disabled?: boolean
   comingSoon?: boolean
+  activeClassName?: string
 }) {
   const className = cn(
     'flex min-h-[5.5rem] w-full flex-col justify-between rounded-[1.5rem] border p-4 text-left shadow-sm transition-colors',
     disabled
       ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400'
       : 'border-slate-100 bg-white text-slate-950 shadow-slate-200/60 hover:border-[#BFDFFF] hover:bg-[#F8FBFF]',
+    !disabled && activeClassName,
   )
 
   const body = (
@@ -81,14 +89,27 @@ function VehicleActionCard({
   )
 }
 
+function vehicleHref(path: string, vehicleId: string | null): string {
+  if (!vehicleId) return path
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}vehicleId=${encodeURIComponent(vehicleId)}`
+}
+
 export default function WorkerVehiclesPage() {
-  const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
+  const {
+    worker,
+    isLoading: workerLoading,
+    error: workerError,
+    reload: reloadWorker,
+  } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(true)
-  const [search, setSearch] = useState('')
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
+  const [isSavingDefault, setIsSavingDefault] = useState(false)
+  const [defaultMessage, setDefaultMessage] = useState<string | null>(null)
+  const [defaultError, setDefaultError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -116,7 +137,10 @@ export default function WorkerVehiclesPage() {
           rows.some((vehicle) => vehicle.id === worker.defaultVehicleId)
             ? worker.defaultVehicleId
             : null
-        setSelectedVehicleId((current) => current ?? preferredId)
+        setSelectedVehicleId((current) => {
+          if (current && rows.some((vehicle) => vehicle.id === current)) return current
+          return preferredId
+        })
       } catch (error) {
         if (cancelled) return
         setVehicles([])
@@ -141,32 +165,45 @@ export default function WorkerVehiclesPage() {
     workerLoading,
   ])
 
-  const filteredVehicles = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return vehicles
-    return vehicles.filter((vehicle) => {
-      const registration = vehicle.registration?.toLowerCase() ?? ''
-      const fleet = vehicle.fleetNumber?.toLowerCase() ?? ''
-      const make = vehicle.make?.toLowerCase() ?? ''
-      const model = vehicle.model?.toLowerCase() ?? ''
-      return (
-        registration.includes(term) ||
-        fleet.includes(term) ||
-        make.includes(term) ||
-        model.includes(term)
-      )
-    })
-  }, [search, vehicles])
-
   const selectedVehicle =
-    filteredVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ??
-    vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ??
-    null
+    vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null
 
   const defaultVehicle =
     (worker?.defaultVehicleId
       ? vehicles.find((vehicle) => vehicle.id === worker.defaultVehicleId)
       : null) ?? null
+
+  const isSelectedDefault =
+    Boolean(selectedVehicle) &&
+    selectedVehicle?.id === worker?.defaultVehicleId
+
+  async function handleSaveDefault() {
+    if (!selectedVehicle) {
+      setDefaultError('Select an active company vehicle first.')
+      return
+    }
+
+    setIsSavingDefault(true)
+    setDefaultError(null)
+    setDefaultMessage(null)
+    try {
+      await setWorkerDefaultVehicle(selectedVehicle.id)
+      reloadWorker()
+      setDefaultMessage(
+        `${selectedVehicle.registration || 'Vehicle'} saved as your default.`,
+      )
+    } catch (error) {
+      setDefaultError(
+        error instanceof DriversServiceError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Unable to save your default vehicle.',
+      )
+    } finally {
+      setIsSavingDefault(false)
+    }
+  }
 
   if (workerLoading || companyLoading || isLoadingVehicles) {
     return (
@@ -197,7 +234,7 @@ export default function WorkerVehiclesPage() {
           Vehicles
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Choose a vehicle, then start a check or related action.
+          Choose an active company vehicle, then start a check or related action.
         </p>
       </header>
 
@@ -218,7 +255,10 @@ export default function WorkerVehiclesPage() {
           </p>
           <button
             type="button"
-            onClick={() => setSelectedVehicleId(defaultVehicle.id)}
+            onClick={() => {
+              setSelectedVehicleId(defaultVehicle.id)
+              setDefaultError(null)
+            }}
             className="mt-3 text-sm font-semibold text-[#2F80ED]"
           >
             Use this vehicle
@@ -226,70 +266,23 @@ export default function WorkerVehiclesPage() {
         </section>
       ) : null}
 
-      <label className="block space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-          Search registration
-        </span>
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Enter registration"
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white pr-3 pl-10 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
-          />
-        </div>
-      </label>
-
       {loadError ? (
         <p className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {loadError}
         </p>
       ) : null}
 
-      <section className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-          Select vehicle
-        </p>
-        <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-          {filteredVehicles.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-              No vehicles match this search.
-            </div>
-          ) : (
-            filteredVehicles.map((vehicle) => {
-              const selected = vehicle.id === selectedVehicleId
-              return (
-                <button
-                  key={vehicle.id}
-                  type="button"
-                  onClick={() => setSelectedVehicleId(vehicle.id)}
-                  className={cn(
-                    'flex min-h-14 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors',
-                    selected
-                      ? 'border-[#2F80ED] bg-[#EAF4FF]'
-                      : 'border-slate-100 bg-white hover:bg-slate-50',
-                  )}
-                >
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-[#EAF4FF]">
-                    <Truck className="size-4 text-[#2F80ED]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-950">
-                      {vehicle.registration || 'No registration'}
-                    </p>
-                    <p className="truncate text-xs text-slate-500">
-                      {[vehicle.make, vehicle.model].filter(Boolean).join(' ') ||
-                        'Vehicle'}
-                    </p>
-                  </div>
-                </button>
-              )
-            })
-          )}
-        </div>
-      </section>
+      <WorkerVehicleCombobox
+        vehicles={vehicles}
+        selectedVehicleId={selectedVehicleId}
+        onSelect={(vehicle) => {
+          setSelectedVehicleId(vehicle?.id ?? null)
+          setDefaultError(null)
+          setDefaultMessage(null)
+        }}
+        label="Search registration"
+        showAllWhenEmpty
+      />
 
       {selectedVehicle ? (
         <section className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
@@ -303,41 +296,65 @@ export default function WorkerVehiclesPage() {
             {[selectedVehicle.make, selectedVehicle.model].filter(Boolean).join(' ') ||
               'Vehicle'}
           </p>
+
+          <button
+            type="button"
+            disabled={isSavingDefault || isSelectedDefault}
+            onClick={() => void handleSaveDefault()}
+            className={cn(
+              'mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-colors',
+              isSelectedDefault
+                ? 'cursor-default bg-emerald-50 text-emerald-700'
+                : 'bg-[#2F80ED] text-white hover:bg-[#2563EB] disabled:opacity-60',
+            )}
+          >
+            {isSavingDefault ? <Loader2 className="size-4 animate-spin" /> : null}
+            {isSelectedDefault ? 'Saved as your default' : 'Save as my default vehicle'}
+          </button>
+
+          {defaultMessage ? (
+            <p className="mt-2 text-sm font-medium text-emerald-700">{defaultMessage}</p>
+          ) : null}
+          {defaultError ? (
+            <p className="mt-2 text-sm font-medium text-rose-600">{defaultError}</p>
+          ) : null}
         </section>
-      ) : null}
+      ) : (
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+          Select a vehicle from the search results to continue. Typed registrations that
+          are not in your company fleet cannot be used.
+        </p>
+      )}
 
       <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
         <VehicleActionCard
           title="Start Vehicle Check"
           description="Walkaround check for the selected vehicle."
           icon={ClipboardCheck}
-          to={
-            selectedVehicle
-              ? `/worker/vehicle-checks?vehicleId=${encodeURIComponent(selectedVehicle.id)}`
-              : '/worker/vehicle-checks'
-          }
+          disabled={!selectedVehicle}
+          to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
         />
         <VehicleActionCard
           title="Start Tyre Check"
           description="Tyre inspection workflow."
           icon={CircleDot}
-          to={
-            selectedVehicle
-              ? `/worker/tyre-checks/new?vehicleId=${encodeURIComponent(selectedVehicle.id)}`
-              : '/worker/tyre-checks/new'
-          }
+          disabled={!selectedVehicle}
+          to={vehicleHref('/worker/tyre-checks/new', selectedVehicleId)}
         />
         <VehicleActionCard
           title="Add Consumable"
           description="Record fuel, AdBlue or other consumables."
           icon={Fuel}
-          to="/worker/consumables"
+          disabled={!selectedVehicle}
+          to={vehicleHref('/worker/consumables', selectedVehicleId)}
         />
         <VehicleActionCard
           title="Create Driver Report"
           description="Report a defect or operational issue."
           icon={FileWarning}
-          to="/worker/driver-reports"
+          disabled={!selectedVehicle}
+          to={vehicleHref('/worker/driver-reports', selectedVehicleId)}
+          activeClassName="active:border-[#BFDFFF] active:bg-[#F8FBFF]"
         />
       </section>
     </div>

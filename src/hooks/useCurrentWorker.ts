@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchDriverByEmail, type Driver } from '@/services/driversService'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export const WORKER_ACCOUNT_ARCHIVED_MESSAGE =
   'Your Worker account has been archived. Contact your company administrator.'
@@ -9,6 +9,8 @@ type UseCurrentWorkerResult = {
   worker: Driver | null
   isLoading: boolean
   error: string | null
+  /** Re-fetch the Worker profile (e.g. after updating default_vehicle_id). */
+  reload: () => void
 }
 
 export function useCurrentWorker(): UseCurrentWorkerResult {
@@ -16,6 +18,11 @@ export function useCurrentWorker(): UseCurrentWorkerResult {
   const [worker, setWorker] = useState<Driver | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
+
+  const reload = useCallback(() => {
+    setReloadToken((token) => token + 1)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -69,7 +76,7 @@ export function useCurrentWorker(): UseCurrentWorkerResult {
     return () => {
       cancelled = true
     }
-  }, [session?.user.email])
+  }, [reloadToken, session?.user.email])
 
-  return { worker, isLoading, error }
+  return { worker, isLoading, error, reload }
 }

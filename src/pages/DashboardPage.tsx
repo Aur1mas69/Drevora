@@ -5,29 +5,15 @@ import {
   formatPersonalTimeGreeting,
   getSentenceTimeGreeting,
 } from '@/lib/greeting'
-import { WORKER_NAV_ITEMS, type WorkerNavItem } from '@/lib/workerNavigation'
+import { getWorkerPrimaryNavItems } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { ChevronRight, Truck } from 'lucide-react'
 import { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 
-/** Existing 51 KB WebP asset — rendered directly, never duplicated or inlined. */
-const WORKER_ROBOT_DARK_SRC = '/assets/worker/drevora-worker-robot-dark.webp'
-const WORKER_ROBOT_DARK_SIZE = 256
-
-/**
- * Curated Dark-mode Quick Actions order. Uses the same `WORKER_NAV_ITEMS`
- * route/permission source as Light mode — no duplicated route logic, this
- * only selects which existing items surface here (Settings stays reachable
- * from the bottom nav "More" menu instead of duplicating it as a tile).
- */
-const DARK_QUICK_ACTION_IDS = [
-  'timesheets',
-  'holidays',
-  'vehicles',
-  'documents',
-  'driver-reports',
-  'contacts',
-] as const
+/** Existing 51 KB WebP asset — rendered directly, never duplicated or inlined,
+ * shown in both Light and Dark mode. */
+const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-dark.webp'
+const WORKER_ROBOT_SIZE = 256
 
 function subscribeWorkerDarkMode(onChange: () => void): () => void {
   const root = document.documentElement
@@ -135,30 +121,62 @@ function WorkerHomeHeader({
   )
 }
 
-/** Dark-mode only premium hero. Robot is decorative — empty alt, aria-hidden. */
-function WorkerHomeRobotHero() {
+/**
+ * Premium hero shown on Worker Home in both Light and Dark mode. Robot is
+ * decorative — empty alt, aria-hidden.
+ *
+ * The coloured "card" (gradient border in Dark, existing border token in
+ * Light) is a background layer sized shorter than the row via `min-h-*`, so
+ * the robot — a normal, bottom-aligned flex child — has its head/raised hand
+ * extend ~20px above the card's own top edge without ever exceeding this
+ * section's own padding box (no `overflow: visible` hacks needed). The text
+ * column keeps `min-w-0 flex-1` and the robot `shrink-0`, so on narrow
+ * screens the copy wraps instead of the row overflowing horizontally.
+ */
+function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
-    <section className="rounded-[1.75rem] bg-gradient-to-br from-[#A3F1AB]/60 to-[#4344F6]/60 p-px">
-      <div className="worker-robot-hero relative isolate flex items-center gap-3 overflow-hidden rounded-[calc(1.75rem-1px)] px-5 py-5 sm:gap-5 sm:px-6 sm:py-6">
-        <div className="relative z-10 min-w-0 flex-1 space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            Let's get things done!
-          </h2>
-          <p className="text-sm leading-snug text-white/70">
-            Here's what's happening with your work today.
-          </p>
-        </div>
-        <img
-          src={WORKER_ROBOT_DARK_SRC}
-          alt=""
-          aria-hidden="true"
-          width={WORKER_ROBOT_DARK_SIZE}
-          height={WORKER_ROBOT_DARK_SIZE}
-          loading="eager"
-          decoding="async"
-          className="worker-robot-hero__image relative z-10 aspect-square w-[clamp(5.5rem,26vw,8.5rem)] shrink-0 select-none"
-        />
+    <section className="relative isolate flex items-end gap-3 px-5 pt-5 pb-5 sm:gap-5 sm:px-6 sm:pt-6 sm:pb-6">
+      <div
+        aria-hidden="true"
+        className={cn(
+          'absolute inset-x-0 bottom-0 z-0 min-h-[5.75rem] rounded-[1.75rem] p-px min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]',
+          isDark
+            ? 'bg-gradient-to-br from-[#A3F1AB]/60 to-[#4344F6]/60'
+            : 'bg-[color:var(--worker-border)]',
+        )}
+      >
+        <div className="worker-robot-hero relative h-full w-full overflow-hidden rounded-[calc(1.75rem-1px)]" />
       </div>
+
+      <div className="relative z-10 min-w-0 flex-1 space-y-1.5 pb-1">
+        <h2
+          className={cn(
+            'text-xl font-semibold tracking-tight sm:text-2xl',
+            isDark ? 'text-white' : 'text-[color:var(--worker-text)]',
+          )}
+        >
+          Let's get things done!
+        </h2>
+        <p
+          className={cn(
+            'text-sm leading-snug',
+            isDark ? 'text-white/70' : 'text-[color:var(--worker-text-secondary)]',
+          )}
+        >
+          Here's what's happening with your work today.
+        </p>
+      </div>
+
+      <img
+        src={WORKER_ROBOT_SRC}
+        alt=""
+        aria-hidden="true"
+        width={WORKER_ROBOT_SIZE}
+        height={WORKER_ROBOT_SIZE}
+        loading="eager"
+        decoding="async"
+        className="worker-robot-hero__image relative z-10 aspect-square w-[7rem] shrink-0 select-none min-[380px]:w-[9rem] sm:w-[11rem] lg:w-[13.5rem]"
+      />
     </section>
   )
 }
@@ -189,11 +207,10 @@ function DashboardPage() {
     worker?.assignment?.trim() ||
     null
 
-  const quickActionItems: readonly WorkerNavItem[] = isDark
-    ? DARK_QUICK_ACTION_IDS.map((id) =>
-        WORKER_NAV_ITEMS.find((item) => item.id === id),
-      ).filter((item): item is WorkerNavItem => Boolean(item))
-    : WORKER_NAV_ITEMS
+  // Same 3 items, same route/permission source, in both Light and Dark —
+  // Documents/Contacts/Settings remain reachable via the bottom nav "More"
+  // menu instead of duplicating them as Home tiles.
+  const quickActionItems = getWorkerPrimaryNavItems()
 
   return (
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
@@ -211,7 +228,7 @@ function DashboardPage() {
         />
       ) : (
         <>
-          {isDark ? <WorkerHomeRobotHero /> : null}
+          <WorkerHomeRobotHero isDark={isDark} />
 
           {defaultVehicleLabel ? (
             <div className="flex items-center gap-3 rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-3">

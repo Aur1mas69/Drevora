@@ -7,13 +7,14 @@ import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
+import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesheetHistoryList'
 import type { Timesheet, TimesheetEntryInput, TimesheetStatus } from '@/lib/timesheetTypes'
 import {
   buildTimesheetOvertimeRules,
   decimalHoursToMinutes,
+  entryHasStartAndFinish,
   formatDayLabel,
   formatHours,
-  formatHoursFromMinutes,
   formatLocalDateString,
   formatTotalHours,
   getDefaultWeekStartMonday,
@@ -39,7 +40,14 @@ import {
   TimesheetsServiceError,
   upsertTimesheetEntries,
 } from '@/services/timesheetsService'
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const BREAK_OPTIONS = [0, 15, 30, 45, 60] as const
@@ -136,19 +144,78 @@ function pickDefaultDayDate(entries: TimesheetEntryInput[]): string {
   return entries[0].dayDate
 }
 
-function dayHasEnteredValues(entry: TimesheetEntryInput): boolean {
-  return Boolean(
-    entry.startTime ||
-      entry.finishTime ||
-      entry.totalMinutes > 0 ||
-      entry.overtimeMinutes > 0 ||
-      entry.additionalHours > 0 ||
-      entry.dailyComment.trim(),
+type DayIndicatorState = 'empty' | 'partial' | 'valid' | 'error'
+
+/**
+ * Day indicator rule (Worker Timesheets redesign):
+ * - error: existing Manual "Additional Hours requires a comment" validation
+ *   (same rule `validateManualAdditional` blocks on Save/Submit).
+ * - partial: exactly one of Start/Finish is filled (`isIncompleteTimePair`).
+ * - valid: both Start and Finish are saved/entered (`entryHasStartAndFinish`).
+ * - empty: nothing meaningful entered yet.
+ * A day never shows "valid" merely because one time field has a value.
+ */
+function getDayIndicatorState(entry: TimesheetEntryInput): DayIndicatorState {
+  if (entry.additionalHours > 0 && !entry.dailyComment.trim()) return 'error'
+  if (isIncompleteTimePair(entry)) return 'partial'
+  if (entryHasStartAndFinish(entry)) return 'valid'
+  return 'empty'
+}
+
+const DAY_INDICATOR_DOT_CLASS: Record<DayIndicatorState, string> = {
+  empty: 'border-slate-200 bg-slate-100 text-slate-400',
+  partial: 'border-amber-200 bg-amber-50 text-amber-700',
+  valid: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  error: 'border-rose-200 bg-rose-50 text-rose-700',
+}
+
+function DayIndicatorDot({ state }: { state: DayIndicatorState }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-8 shrink-0 items-center justify-center rounded-full border',
+        DAY_INDICATOR_DOT_CLASS[state],
+      )}
+    >
+      {state === 'valid' ? <Check className="size-4" /> : null}
+      {state === 'partial' ? <span className="size-1.5 rounded-full bg-current" /> : null}
+      {state === 'error' ? <AlertTriangle className="size-4" /> : null}
+    </span>
   )
 }
 
-function dayShortLabel(dayDate: string): string {
-  return parseLocalDate(dayDate).toLocaleDateString('en-GB', { weekday: 'short' })
+function dayIndicatorAriaLabel(state: DayIndicatorState): string {
+  switch (state) {
+    case 'valid':
+      return 'complete'
+    case 'partial':
+      return 'partially completed'
+    case 'error':
+      return 'needs attention'
+    default:
+      return 'no entry'
+  }
+}
+
+/** Collapsed-row preview text — only shows entered times/total for completed days. */
+function collapsedDaySummary(
+  entry: TimesheetEntryInput,
+  state: DayIndicatorState,
+): string {
+  if (state === 'valid') {
+    const start = entry.startTime?.slice(0, 5) ?? '—'
+    const finish = entry.finishTime?.slice(0, 5) ?? '—'
+    return `${start}–${finish}`
+  }
+  if (state === 'partial') {
+    const missing = getMissingTimePairField(entry)
+    return missing === 'finish' ? 'Finish time missing' : 'Start time missing'
+  }
+  if (state === 'error') {
+    return 'Comment required for Additional Hours'
+  }
+  return 'No entry yet'
 }
 
 const workerFieldClass =
@@ -180,7 +247,8 @@ type DayFormProps = {
   ) => void
 }
 
-function WorkerDayForm({
+/** Form body only — the accordion row supplies the day header/indicator/total. */
+function WorkerDayFormFields({
   entry,
   editable,
   isManualMode,
@@ -196,20 +264,10 @@ function WorkerDayForm({
   })
   const incompletePair = isIncompleteTimePair(entry)
   const missingField = getMissingTimePairField(entry)
-  const showPayableTotal = !incompletePair && payable.totalPaidHours > 0
 
   return (
-    <article className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-base font-semibold text-slate-950">
-          {formatDayLabel(entry.dayDate)}
-        </h2>
-        <p className="text-xs font-medium tabular-nums text-slate-400">
-          {showPayableTotal ? formatTotalHours(payable.totalPaidHours) : '—'}
-        </p>
-      </div>
-
-      <div className="mt-4">
+    <div>
+      <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
           Shift
         </p>
@@ -426,6 +484,119 @@ function WorkerDayForm({
           </p>
         )}
       </label>
+    </div>
+  )
+}
+
+type WorkerDayAccordionRowProps = DayFormProps & {
+  entry: TimesheetEntryInput
+  isExpanded: boolean
+  isToday: boolean
+  onToggle: () => void
+  onSaveDay: () => void
+  isSavingDay: boolean
+  daySaveState: DaySaveState
+}
+
+/**
+ * Current Week — one accordion row per day. Today/selected expands by
+ * default; other days stay collapsed, showing their entered times/total via
+ * `collapsedDaySummary`. Save Day applies to the expanded day only.
+ */
+function WorkerDayAccordionRow({
+  entry,
+  isExpanded,
+  isToday,
+  onToggle,
+  onSaveDay,
+  isSavingDay,
+  daySaveState,
+  editable,
+  ...dayFormProps
+}: WorkerDayAccordionRowProps) {
+  const state = getDayIndicatorState(entry)
+  const payable = getEntryPayableDisplayResult(entry, {
+    overtimeRules: dayFormProps.overtimeRules,
+    paidBreaks: dayFormProps.paidBreaks,
+    overtimeMode: dayFormProps.overtimeMode,
+  })
+  const showHighlight = isExpanded || isToday
+
+  return (
+    <article
+      className={cn(
+        'rounded-[1.5rem] border bg-white shadow-sm shadow-slate-200/50 transition-shadow',
+        state === 'error' ? 'border-rose-200' : 'border-slate-100',
+        showHighlight && 'ring-2 ring-[#2F80ED]/70',
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        className="flex w-full items-center gap-3 rounded-[1.5rem] p-4 text-left"
+      >
+        <DayIndicatorDot state={state} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-950">
+              {formatDayLabel(entry.dayDate)}
+            </h2>
+            {isToday ? (
+              <span className="rounded-full bg-[#F6F9FF] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2F80ED]">
+                Today
+              </span>
+            ) : null}
+          </div>
+          {!isExpanded ? (
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {collapsedDaySummary(entry, state)}
+            </p>
+          ) : (
+            <span className="sr-only">{dayIndicatorAriaLabel(state)}</span>
+          )}
+        </div>
+        {!isExpanded && state === 'valid' ? (
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-950">
+            {formatTotalHours(payable.totalPaidHours)}
+          </p>
+        ) : null}
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'size-4 shrink-0 text-slate-400 transition-transform',
+            isExpanded && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {isExpanded ? (
+        <div className="border-t border-slate-100 p-4">
+          <WorkerDayFormFields entry={entry} editable={editable} {...dayFormProps} />
+
+          {editable ? (
+            <div className="mt-4 space-y-2">
+              <Button
+                type="button"
+                disabled={isSavingDay}
+                className="h-12 w-full rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
+                onClick={onSaveDay}
+              >
+                {daySaveState === 'saving' || isSavingDay
+                  ? 'Saving…'
+                  : daySaveState === 'saved'
+                    ? 'Saved'
+                    : 'Save Day'}
+              </Button>
+              {daySaveState === 'error' ? (
+                <p className="text-center text-xs font-medium text-rose-600">
+                  Could not save day. Try again.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   )
 }
@@ -469,8 +640,11 @@ export default function WorkerTimesheetsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
   const loadGenerationRef = useRef(0)
   const submitLockRef = useRef(false)
+
+  const todayDateString = useMemo(() => formatLocalDateString(new Date()), [])
 
   const editable = timesheet ? canWorkerEditTimesheet(timesheet.status) : false
   const isDirty = editable && entriesSnapshot(entries) !== savedSnapshot
@@ -1097,126 +1271,108 @@ export default function WorkerTimesheetsPage() {
         </p>
       ) : null}
 
-      {/* Mobile: compact day selector + one day form */}
-      <div className="space-y-3 lg:hidden">
-        <nav
-          aria-label="Select day"
-          className="grid grid-cols-7 gap-1 rounded-[1.25rem] border border-slate-100 bg-white p-1.5 shadow-sm"
+      <div
+        role="tablist"
+        aria-label="Timesheet view"
+        className="grid grid-cols-2 gap-1 rounded-[1.25rem] border border-slate-100 bg-white p-1.5 shadow-sm"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'current'}
+          onClick={() => setActiveTab('current')}
+          className={cn(
+            'h-10 rounded-2xl text-sm font-semibold transition-colors',
+            activeTab === 'current'
+              ? 'bg-[#2F80ED] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50',
+          )}
         >
-          {entries.map((entry) => {
-            const selected = entry.dayDate === (selectedEntry?.dayDate ?? selectedDayDate)
-            const hasValues = dayHasEnteredValues(entry)
-            return (
-              <button
-                key={entry.dayDate}
-                type="button"
-                aria-pressed={selected}
-                aria-label={`${formatDayLabel(entry.dayDate)}${hasValues ? ', has saved values' : ''}`}
-                onClick={() => setSelectedDayDate(entry.dayDate)}
-                className={cn(
-                  'relative flex min-h-11 flex-col items-center justify-center rounded-xl px-0.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  selected
-                    ? 'bg-[#2F80ED] text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-50',
-                )}
-              >
-                <span>{dayShortLabel(entry.dayDate)}</span>
-                {hasValues ? (
-                  <span
-                    className={cn(
-                      'mt-1 size-1.5 rounded-full',
-                      selected ? 'bg-white' : 'bg-[#2F80ED]',
-                    )}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <span className="mt-1 size-1.5" aria-hidden="true" />
-                )}
-              </button>
-            )
-          })}
-        </nav>
-
-        {selectedEntry ? (
-          <WorkerDayForm entry={selectedEntry} {...dayFormProps} />
-        ) : null}
-
-        {editable ? (
-          <div className="space-y-2">
-            <Button
-              type="button"
-              disabled={busy}
-              className="h-12 w-full rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
-              onClick={() => void handleSaveDay()}
-            >
-              {daySaveState === 'saving' || isSavingDay
-                ? 'Saving…'
-                : daySaveState === 'saved'
-                  ? 'Saved'
-                  : 'Save Day'}
-            </Button>
-            {daySaveState === 'error' ? (
-              <p className="text-center text-xs font-medium text-rose-600">
-                Could not save day. Try again.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+          Current Week
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'history'}
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            'h-10 rounded-2xl text-sm font-semibold transition-colors',
+            activeTab === 'history'
+              ? 'bg-[#2F80ED] text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50',
+          )}
+        >
+          History
+        </button>
       </div>
 
-      {/* Desktop: full week */}
-      <section className="hidden space-y-3 lg:block">
-        {entries.map((entry) => (
-          <WorkerDayForm key={entry.dayDate} entry={entry} {...dayFormProps} />
-        ))}
-      </section>
-
-      <section className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
-          Weekly summary
-        </h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
-          <SummaryStat label="Basic Hours" value={formatHours(summary.workedHours)} />
-          <SummaryStat label="Break" value={formatHoursFromMinutes(summary.breakMinutes)} />
-          <SummaryStat label="Overtime" value={formatHours(summary.overtimeHours)} />
-          <SummaryStat
-            label="Additional Hours"
-            value={formatHours(summary.additionalHours)}
-          />
-          <SummaryStat label="Total Hours" value={formatTotalHours(summary.totalHours)} />
-          <SummaryStat label="Status" value={getStatusLabel(status)} />
-        </div>
-      </section>
-
-      {editable ? (
-        <div className="grid gap-3 pb-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            className="h-12 rounded-2xl"
-            onClick={() => void handleSaveDraft()}
+      {activeTab === 'current' ? (
+        <>
+          <section
+            aria-label="Week summary"
+            className="grid grid-cols-3 gap-2"
           >
-            {isSaving
-              ? 'Saving…'
-              : status === 'Rejected'
-                ? 'Save Changes'
-                : 'Save Draft'}
-          </Button>
-          <Button
-            type="button"
-            disabled={busy}
-            className="h-12 rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
-            onClick={handleSubmitClick}
-          >
-            {status === 'Rejected' ? 'Resubmit' : 'Submit'}
-          </Button>
-        </div>
-      ) : null}
+            <SummaryStat label="Worked" value={formatHours(summary.workedHours)} />
+            <SummaryStat label="Overtime" value={formatHours(summary.overtimeHours)} />
+            <SummaryStat label="Total" value={formatTotalHours(summary.totalHours)} />
+          </section>
 
-      <p className="px-1 pb-2 text-center text-xs text-slate-400">
-        Company Timesheet rules are shown in Worker Settings.
-      </p>
+          <div role="list" aria-label="Days this week" className="space-y-2">
+            {entries.map((entry) => {
+              const isExpanded = entry.dayDate === (selectedEntry?.dayDate ?? selectedDayDate)
+              return (
+                <WorkerDayAccordionRow
+                  key={entry.dayDate}
+                  entry={entry}
+                  isExpanded={isExpanded}
+                  isToday={entry.dayDate === todayDateString}
+                  onToggle={() =>
+                    setSelectedDayDate((current) =>
+                      current === entry.dayDate ? current : entry.dayDate,
+                    )
+                  }
+                  onSaveDay={() => void handleSaveDay()}
+                  isSavingDay={isSavingDay}
+                  daySaveState={isExpanded ? daySaveState : 'idle'}
+                  {...dayFormProps}
+                />
+              )
+            })}
+          </div>
+
+          {editable ? (
+            <div className="grid gap-3 pb-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                className="h-12 rounded-2xl"
+                onClick={() => void handleSaveDraft()}
+              >
+                {isSaving
+                  ? 'Saving…'
+                  : status === 'Rejected'
+                    ? 'Save Changes'
+                    : 'Save Draft'}
+              </Button>
+              <Button
+                type="button"
+                disabled={busy}
+                className="h-12 rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
+                onClick={handleSubmitClick}
+              >
+                {status === 'Rejected' ? 'Resubmit' : 'Submit'}
+              </Button>
+            </div>
+          ) : null}
+
+          <p className="px-1 pb-2 text-center text-xs text-slate-400">
+            Company Timesheet rules are shown in Worker Settings.
+          </p>
+        </>
+      ) : (
+        <WorkerTimesheetHistoryList workerId={worker.id} />
+      )}
 
       <WorkerSubmitTimesheetDialog
         open={submitConfirmOpen}

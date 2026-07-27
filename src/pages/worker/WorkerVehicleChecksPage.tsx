@@ -5,6 +5,7 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import {
@@ -29,10 +30,6 @@ import type {
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { computeOverallResult, isChecklistFullyAnswered, todayIsoDate } from '@/lib/vehicleCheckUtils'
 import {
-  findVehicleByRegistrationQuery,
-  vehicleMatchesRegistrationQuery,
-} from '@/lib/vehicleRegistrationSearch'
-import {
   createVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
@@ -43,7 +40,6 @@ import {
   ChevronLeft,
   CircleDot,
   Loader2,
-  Search,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -91,8 +87,6 @@ export default function WorkerVehicleChecksPage() {
   const [vehiclesError, setVehiclesError] = useState<string | null>(null)
 
   const [vehicleId, setVehicleId] = useState(searchParams.get('vehicleId')?.trim() || '')
-  const [vehicleSearch, setVehicleSearch] = useState('')
-  const [showVehicleResults, setShowVehicleResults] = useState(false)
   const [rememberVehicle, setRememberVehicle] = useState(false)
   const [odometer, setOdometer] = useState('')
   const [odometerUnit, setOdometerUnit] = useState<VehicleCheckOdometerUnit>(
@@ -114,7 +108,6 @@ export default function WorkerVehicleChecksPage() {
   const [showChecklistValidation, setShowChecklistValidation] = useState(false)
   const [showCompletionValidation, setShowCompletionValidation] = useState(false)
   const [completedResult, setCompletedResult] = useState<VehicleCheckResult | null>(null)
-  const vehicleSearchRef = useRef<HTMLDivElement>(null)
   const submitLockRef = useRef(false)
   const prefilledVehicleRef = useRef(false)
 
@@ -128,13 +121,6 @@ export default function WorkerVehicleChecksPage() {
     if (!rememberedId) return null
     return vehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
   }, [vehicles])
-
-  const filteredVehicles = useMemo(() => {
-    const matches = vehicles.filter((vehicle) =>
-      vehicleMatchesRegistrationQuery(vehicle, vehicleSearch),
-    )
-    return [...matches].sort((a, b) => a.registration.localeCompare(b.registration))
-  }, [vehicleSearch, vehicles])
 
   const overallResult = useMemo(() => computeOverallResult(items), [items])
 
@@ -166,8 +152,6 @@ export default function WorkerVehicleChecksPage() {
 
   function selectVehicle(vehicle: Vehicle) {
     setVehicleId(vehicle.id)
-    setVehicleSearch(vehicle.registration)
-    setShowVehicleResults(false)
     setError(null)
   }
 
@@ -220,7 +204,6 @@ export default function WorkerVehicleChecksPage() {
 
     if (preferred) {
       setVehicleId(preferred.id)
-      setVehicleSearch(preferred.registration)
       setRememberVehicle(Boolean(getRememberedVehicleCheckId() === preferred.id))
     } else {
       setRememberVehicle(Boolean(rememberedVehicle))
@@ -256,19 +239,6 @@ export default function WorkerVehicleChecksPage() {
     return () => window.clearInterval(intervalId)
   }, [step, inspectionStartedAt])
 
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!vehicleSearchRef.current?.contains(event.target as Node)) {
-        setShowVehicleResults(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handlePointerDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-    }
-  }, [])
-
   async function handleContinue(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
@@ -278,17 +248,10 @@ export default function WorkerVehicleChecksPage() {
       return
     }
 
-    const exactMatch = findVehicleByRegistrationQuery(vehicles, vehicleSearch)
-    const vehicle = selectedVehicle ?? exactMatch
-
+    const vehicle = selectedVehicle
     if (!vehicle) {
-      setError('Search and select a vehicle by number plate.')
+      setError('Search and select a vehicle from your company fleet.')
       return
-    }
-
-    if (vehicle.id !== vehicleId) {
-      setVehicleId(vehicle.id)
-      setVehicleSearch(vehicle.registration)
     }
 
     if (!inspectionDate) {
@@ -516,62 +479,21 @@ export default function WorkerVehicleChecksPage() {
               </div>
             ) : null}
 
-            <div ref={vehicleSearchRef} className="relative">
-              <label
-                className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-400"
-                htmlFor="worker-vehicle-check-search"
-              >
-                Number plate
-              </label>
-              <div className="relative mt-1.5">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5499BF]"
-                  aria-hidden="true"
-                />
-                <Input
-                  id="worker-vehicle-check-search"
-                  type="search"
-                  value={vehicleSearch}
-                  onChange={(event) => {
-                    setVehicleSearch(event.target.value)
-                    setVehicleId('')
-                    setShowVehicleResults(true)
-                    setError(null)
-                  }}
-                  onFocus={() => setShowVehicleResults(true)}
-                  placeholder="Search registration, e.g. PN23 JUF"
-                  autoComplete="off"
-                  className="h-12 rounded-2xl border-slate-200 bg-slate-50 pl-9"
-                />
-              </div>
-
-              {showVehicleResults && vehicleSearch.trim() ? (
-                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-2xl border border-[#C5DFFB] bg-white py-1 shadow-lg">
-                  {filteredVehicles.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-slate-500">
-                      No vehicles match that number plate.
-                    </p>
-                  ) : (
-                    filteredVehicles.map((vehicle) => (
-                      <button
-                        key={vehicle.id}
-                        type="button"
-                        onClick={() => selectVehicle(vehicle)}
-                        className={`flex w-full flex-col items-start px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F5FAFF] ${
-                          vehicle.id === vehicleId ? 'bg-[#EEF6FF]' : ''
-                        }`}
-                      >
-                        <span className="font-semibold text-[#113C69]">{vehicle.registration}</span>
-                        <span className="text-xs text-[#5499BF]">
-                          {getVehicleMakeModelLabel(vehicle)}
-                          {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : null}
-            </div>
+            <WorkerVehicleCombobox
+              id="worker-vehicle-check-search"
+              vehicles={vehicles}
+              selectedVehicleId={vehicleId || null}
+              onSelect={(vehicle) => {
+                if (vehicle) selectVehicle(vehicle)
+                else {
+                  setVehicleId('')
+                  setError(null)
+                }
+              }}
+              label="Number plate"
+              required
+              showAllWhenEmpty
+            />
 
             {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
 

@@ -817,14 +817,12 @@ img.drevora-brand-logo {
   background: linear-gradient(160deg, #ffffff 0%, #f4f9ff 48%, #eaf4ff 100%);
 }
 
+/* Neutral shadow only, directly beneath the logo — deliberately not a
+   coloured (purple/blue) glow, so there is no colour spill behind the
+   wordmark text. */
 .auth-splash-halo {
-  background: radial-gradient(
-    ellipse,
-    rgba(56, 189, 248, 0.24) 0%,
-    rgba(124, 58, 237, 0.14) 55%,
-    transparent 75%
-  );
-  filter: blur(1px);
+  background: radial-gradient(ellipse, rgba(15, 23, 42, 0.14) 0%, transparent 78%);
+  filter: blur(4px);
 }
 
 .auth-splash-message {

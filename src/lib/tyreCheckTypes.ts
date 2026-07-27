@@ -376,6 +376,77 @@ export function compareTyrePositions(a: TyrePosition, b: TyrePosition): number {
   return TYRE_POSITION_SORT_ORDER[a] - TYRE_POSITION_SORT_ORDER[b]
 }
 
+/** True when the tyre sits on the vehicle's left side (near or outer/inner left). */
+function isLeftSideTyrePosition(position: TyrePosition): boolean {
+  return (
+    position === 'Left' ||
+    position === 'Outer Left' ||
+    position === 'Inner Left'
+  )
+}
+
+/**
+ * Within one axle on the left side: outer first, then inner.
+ * Single-tyre `Left` shares the outer slot.
+ */
+const LEFT_SIDE_WALK_ORDER: Record<TyrePosition, number> = {
+  'Outer Left': 0,
+  Left: 0,
+  'Inner Left': 1,
+  'Inner Right': 2,
+  Right: 2,
+  'Outer Right': 2,
+}
+
+/**
+ * Within one axle on the right side (rear → front walk): outer first, then inner.
+ * Single-tyre `Right` shares the outer slot.
+ */
+const RIGHT_SIDE_WALK_ORDER: Record<TyrePosition, number> = {
+  'Outer Right': 0,
+  Right: 0,
+  'Inner Right': 1,
+  'Inner Left': 2,
+  Left: 2,
+  'Outer Left': 2,
+}
+
+/**
+ * Compare tyres for a physical clockwise walkaround:
+ * front-left → left side front-to-rear (incl. trailer left) →
+ * cross behind → right side rear-to-front → finish front-right.
+ * Duals: outer tyre before inner at each position.
+ *
+ * Does not change tyre IDs — only visit sequence for Worker Next/Previous.
+ */
+export function compareTyresForClockwiseWalk(
+  a: Pick<TyreMeasurement, 'unit' | 'axleNumber' | 'position'>,
+  b: Pick<TyreMeasurement, 'unit' | 'axleNumber' | 'position'>,
+): number {
+  const aLeft = isLeftSideTyrePosition(a.position)
+  const bLeft = isLeftSideTyrePosition(b.position)
+  if (aLeft !== bLeft) return aLeft ? -1 : 1
+
+  if (aLeft) {
+    // Left side: vehicle before trailer, axles ascending (front → rear).
+    if (a.unit !== b.unit) return a.unit === 'vehicle' ? -1 : 1
+    if (a.axleNumber !== b.axleNumber) return a.axleNumber - b.axleNumber
+    return LEFT_SIDE_WALK_ORDER[a.position] - LEFT_SIDE_WALK_ORDER[b.position]
+  }
+
+  // Right side: trailer before vehicle, axles descending (rear → front).
+  if (a.unit !== b.unit) return a.unit === 'trailer' ? -1 : 1
+  if (a.axleNumber !== b.axleNumber) return b.axleNumber - a.axleNumber
+  return RIGHT_SIDE_WALK_ORDER[a.position] - RIGHT_SIDE_WALK_ORDER[b.position]
+}
+
+/** Stable copy sorted into the Worker clockwise walkaround sequence. */
+export function sortTyresForClockwiseWalk<T extends Pick<TyreMeasurement, 'unit' | 'axleNumber' | 'position'>>(
+  tyres: readonly T[],
+): T[] {
+  return tyres.slice().sort(compareTyresForClockwiseWalk)
+}
+
 export function positionsForWheelLayout(layout: AxleWheelLayout): TyrePosition[] {
   return layout === 'single' ? [...SINGLE_AXLE_POSITIONS] : [...DUAL_AXLE_POSITIONS]
 }

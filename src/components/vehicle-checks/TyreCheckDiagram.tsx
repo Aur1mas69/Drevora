@@ -11,6 +11,12 @@ type TyreCheckDiagramProps = {
   measurements: TyreMeasurement[]
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
+  /**
+   * Stronger cyan selection treatment for Worker mobile inspection.
+   * Keeps status rings (e.g. green completed) and adds an outer selection ring.
+   * Admin preview leaves this unset to preserve its existing selected look.
+   */
+  emphasizeSelection?: boolean
 }
 
 const STATUS_RING: Record<TyreStatus, string> = {
@@ -29,14 +35,20 @@ const STATUS_GLOW: Record<TyreStatus, string> = {
   not_checked: 'shadow-[0_0_0_3px_rgba(148,163,184,0.22)]',
 }
 
+/** Worker selected tyre: 3px cyan outline + restrained glow (does not replace status ring). */
+const WORKER_SELECTED_OUTLINE =
+  'outline outline-[3px] outline-[#38BDF8] outline-offset-[3px] shadow-[0_0_0_3px_rgba(56,189,248,0.22),0_0_14px_rgba(56,189,248,0.42)]'
+
 function TyreShape({
   tyre,
   selected,
   onSelect,
+  emphasizeSelection,
 }: {
   tyre: TyreMeasurement
   selected: boolean
   onSelect: () => void
+  emphasizeSelection: boolean
 }) {
   const colours = tyreStatusClasses(tyre.status)
   const depthLabel =
@@ -47,22 +59,48 @@ function TyreShape({
       type="button"
       onClick={onSelect}
       aria-label={`${tyre.axleLabel} ${tyre.position}, ${depthLabel}, ${tyreStatusLabel(tyre.status)}`}
+      aria-pressed={selected}
       className={cn(
         'group flex w-[4.6rem] flex-col items-center gap-1.5 rounded-[16px] p-1 transition-all sm:w-[5.25rem]',
         selected ? 'scale-[1.03]' : 'hover:scale-[1.02]',
+        emphasizeSelection &&
+          selected &&
+          'bg-[#E0F2FE]/75 ring-1 ring-[#38BDF8]/35 dark:bg-sky-950/40 dark:ring-sky-400/30',
       )}
     >
       <div
         className={cn(
           'relative flex h-[5.75rem] w-[2.85rem] items-center justify-center rounded-[999px] border-[3px] transition-all sm:h-[6.5rem] sm:w-[3.15rem]',
+          // Black tyre body — never recoloured by selection.
           'border-[#2C3548] bg-gradient-to-b from-[#4B5568] via-[#2F3645] to-[#1F2430]',
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_10px_rgba(33,62,110,0.16)]',
-          STATUS_GLOW[tyre.status],
-          selected
-            ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF] dark:ring-offset-slate-900'
-            : cn('ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900', STATUS_RING[tyre.status]),
+          emphasizeSelection
+            ? cn(
+                // Status ring always stays (green completed remains visible when selected).
+                'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900',
+                STATUS_RING[tyre.status],
+                STATUS_GLOW[tyre.status],
+                selected && WORKER_SELECTED_OUTLINE,
+              )
+            : cn(
+                STATUS_GLOW[tyre.status],
+                selected
+                  ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF] dark:ring-offset-slate-900'
+                  : cn(
+                      'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900',
+                      STATUS_RING[tyre.status],
+                    ),
+              ),
         )}
       >
+        {/* Soft cyan wash over the black tyre when selected (Worker only). */}
+        {emphasizeSelection && selected ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[999px] bg-[#38BDF8]/18"
+          />
+        ) : null}
+
         {/* Tread grooves */}
         <div className="pointer-events-none absolute inset-[5px] flex justify-between rounded-[999px] px-[3px]">
           {[0, 1, 2, 3].map((groove) => (
@@ -108,11 +146,13 @@ function AxleRow({
   tyres,
   selectedTyreId,
   onSelectTyre,
+  emphasizeSelection,
 }: {
   label: string
   tyres: TyreMeasurement[]
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
+  emphasizeSelection: boolean
 }) {
   // Outer → Inner on each side so dual axles render outermost wheels first.
   const leftTyres = tyres
@@ -145,6 +185,7 @@ function AxleRow({
               tyre={tyre}
               selected={selectedTyreId === tyre.id}
               onSelect={() => onSelectTyre(tyre.id)}
+              emphasizeSelection={emphasizeSelection}
             />
           ))}
         </div>
@@ -158,6 +199,7 @@ function AxleRow({
               tyre={tyre}
               selected={selectedTyreId === tyre.id}
               onSelect={() => onSelectTyre(tyre.id)}
+              emphasizeSelection={emphasizeSelection}
             />
           ))}
         </div>
@@ -172,12 +214,14 @@ function UnitDiagram({
   measurements,
   selectedTyreId,
   onSelectTyre,
+  emphasizeSelection,
 }: {
   unit: TyreUnit
   title: string
   measurements: TyreMeasurement[]
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
+  emphasizeSelection: boolean
 }) {
   const unitTyres = measurements.filter((tyre) => tyre.unit === unit)
   if (unitTyres.length === 0) return null
@@ -211,6 +255,7 @@ function UnitDiagram({
               tyres={tyres}
               selectedTyreId={selectedTyreId}
               onSelectTyre={onSelectTyre}
+              emphasizeSelection={emphasizeSelection}
             />
           )
         })}
@@ -338,6 +383,7 @@ export function TyreCheckDiagram({
   measurements,
   selectedTyreId,
   onSelectTyre,
+  emphasizeSelection = false,
 }: TyreCheckDiagramProps) {
   return (
     <div className="space-y-4">
@@ -348,6 +394,7 @@ export function TyreCheckDiagram({
         measurements={measurements}
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}
+        emphasizeSelection={emphasizeSelection}
       />
       <UnitDiagram
         unit="trailer"
@@ -355,6 +402,7 @@ export function TyreCheckDiagram({
         measurements={measurements}
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}
+        emphasizeSelection={emphasizeSelection}
       />
     </div>
   )
