@@ -298,8 +298,11 @@ export function tyreStatusLabel(status: TyreStatus): string {
   }
 }
 
-/** Outdoor-readable status colours for tyre tiles (Worker + Admin). */
-export function tyreStatusClasses(status: TyreStatus): {
+/** Colour intensity for tyre status tiles/badges/dots. */
+export type TyreStatusPalette = 'vivid' | 'pastel'
+
+/** Outdoor-readable status colours for tyre tiles (Worker mobile — always vivid). */
+function tyreStatusClassesVivid(status: TyreStatus): {
   tile: string
   badge: string
   dot: string
@@ -344,6 +347,72 @@ export function tyreStatusClasses(status: TyreStatus): {
         dot: 'bg-slate-500 dark:bg-slate-300',
       }
   }
+}
+
+/** Softer semantic colours for Admin Configuration / History (readable, still on-brand). */
+function tyreStatusClassesPastel(status: TyreStatus): {
+  tile: string
+  badge: string
+  dot: string
+} {
+  switch (status) {
+    case 'good':
+      return {
+        tile:
+          'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-200',
+        badge:
+          'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 ring-1 ring-emerald-200 dark:ring-emerald-800/60',
+        dot: 'bg-emerald-500 dark:bg-emerald-400',
+      }
+    case 'attention':
+      return {
+        tile:
+          'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200',
+        badge:
+          'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 ring-1 ring-amber-200 dark:ring-amber-800/60',
+        dot: 'bg-amber-500 dark:bg-amber-400',
+      }
+    case 'critical':
+      return {
+        tile:
+          'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-200',
+        badge:
+          'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200 ring-1 ring-rose-200 dark:ring-rose-800/60',
+        dot: 'bg-rose-500 dark:bg-rose-400',
+      }
+    case 'dirty':
+      return {
+        tile:
+          'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800/50 dark:bg-yellow-950/30 dark:text-yellow-200',
+        badge:
+          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 ring-1 ring-yellow-200 dark:ring-yellow-800/60',
+        dot: 'bg-yellow-400 dark:bg-yellow-300',
+      }
+    case 'not_checked':
+      return {
+        tile:
+          'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-slate-800/40 dark:text-slate-300',
+        badge:
+          'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-white/10',
+        dot: 'bg-slate-400 dark:bg-slate-400',
+      }
+  }
+}
+
+/**
+ * Semantic status colours for tyre tiles/badges/dots.
+ * palette 'vivid' (default) is outdoor-readable for Worker mobile.
+ * palette 'pastel' is the softer tone used on Admin Configuration / History.
+ */
+export function tyreStatusClasses(
+  status: TyreStatus,
+  palette: TyreStatusPalette = 'vivid',
+): {
+  tile: string
+  badge: string
+  dot: string
+} {
+  return palette === 'pastel' ? tyreStatusClassesPastel(status) : tyreStatusClassesVivid(status)
 }
 
 /** Per-axle wheel layout. Single = 2 tyres; Dual = 4 tyres. */
@@ -451,6 +520,30 @@ export function positionsForWheelLayout(layout: AxleWheelLayout): TyrePosition[]
   return layout === 'single' ? [...SINGLE_AXLE_POSITIONS] : [...DUAL_AXLE_POSITIONS]
 }
 
+/** Persisted default per-axle Single/Dual layout for one Vehicle (vehicle_tyre_layouts). */
+export type VehicleTyreLayout = {
+  vehicleId: string
+  axleCount: number
+  axleLayouts: AxleWheelLayout[]
+}
+
+/**
+ * Resize a per-axle layout array to `targetCount`, keeping existing choices
+ * for retained axles and filling any newly added axles from `fallback`.
+ * Used when a Worker/Admin changes the axle count after loading a saved
+ * (or fallback) layout, so earlier axle choices are never silently discarded.
+ */
+export function resizeAxleWheelLayouts(
+  current: readonly AxleWheelLayout[],
+  targetCount: number,
+  fallback: (count: number) => AxleWheelLayout[],
+): AxleWheelLayout[] {
+  const count = clampAxleCount(targetCount, 1, MAX_COMBINED_TYRE_AXLES)
+  if (count <= current.length) return current.slice(0, count)
+  const filled = fallback(count)
+  return [...current, ...filled.slice(current.length)]
+}
+
 /**
  * FALLBACK truck per-axle wheel layouts until Admin configuration is persisted.
  *
@@ -518,7 +611,11 @@ export function expectedTyreLayoutKeys(
 }
 
 /**
- * Items that do not belong to the resolved layout (phantom positions).
+ * Items whose axle number falls outside the parent's current axle counts
+ * (e.g. a stale row left over from an axle count change on an editable
+ * draft). Single/Dual is a free per-axle choice recorded directly on each
+ * item, so this only checks axle-number bounds — it never second-guesses a
+ * Worker's chosen position set for an in-bounds axle.
  * Used to correct editable draft / in_progress checks only.
  */
 export function findExtraneousTyreMeasurements(
@@ -526,10 +623,46 @@ export function findExtraneousTyreMeasurements(
   truckAxleCount: number,
   trailerAxleCount: number | null,
 ): TyreMeasurement[] {
-  const expected = expectedTyreLayoutKeys(truckAxleCount, trailerAxleCount)
-  return items.filter(
-    (item) => !expected.has(tyreLayoutPositionKey(item.unit, item.axleNumber, item.position)),
-  )
+  return items.filter((item) => {
+    if (item.unit === 'vehicle') return item.axleNumber > truckAxleCount
+    return trailerAxleCount == null || item.axleNumber > trailerAxleCount
+  })
+}
+
+/**
+ * Derive a human-readable per-axle Single/Dual summary directly from a
+ * check's own recorded tyre_check_items positions (2 rows = Single, 4 rows
+ * = Dual). This reads only the historical measurements of one check, never
+ * the Vehicle's current saved default, so it stays accurate for old checks
+ * even after later Vehicle configuration edits.
+ */
+export function summarizeAxleLayoutFromMeasurements(measurements: TyreMeasurement[]): string {
+  const axleCounts = new Map<string, { unit: TyreUnit; axleNumber: number; count: number }>()
+  for (const item of measurements) {
+    const key = `${item.unit}:${item.axleNumber}`
+    const existing = axleCounts.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      axleCounts.set(key, { unit: item.unit, axleNumber: item.axleNumber, count: 1 })
+    }
+  }
+
+  const sorted = [...axleCounts.values()].sort((a, b) => {
+    if (a.unit !== b.unit) return a.unit === 'vehicle' ? -1 : 1
+    return a.axleNumber - b.axleNumber
+  })
+
+  const describe = (axle: { axleNumber: number; count: number }) =>
+    `Axle ${axle.axleNumber} ${axle.count >= 4 ? 'Dual' : 'Single'}`
+
+  const truckParts = sorted.filter((axle) => axle.unit === 'vehicle').map(describe)
+  const trailerParts = sorted.filter((axle) => axle.unit === 'trailer').map(describe)
+
+  const parts: string[] = []
+  if (truckParts.length > 0) parts.push(`Truck: ${truckParts.join(', ')}`)
+  if (trailerParts.length > 0) parts.push(`Trailer: ${trailerParts.join(', ')}`)
+  return parts.join(' · ') || 'No axle layout recorded'
 }
 
 function axleLabel(unit: TyreUnit, axleNumber: number): string {
@@ -604,13 +737,20 @@ export function totalAxleCount(
 /**
  * Build the active Truck (+ optional Trailer) tyre layout.
  *
- * Each axle uses its own wheel layout from the fallback resolvers
- * (first truck axle single, remaining truck axles dual; trailer axles dual).
- * Truck and Trailer counts are independent; Trailer numbering restarts at 1.
+ * Each axle uses its own wheel layout: `overrides.truckAxleLayouts` /
+ * `overrides.trailerAxleLayouts` when provided and matching the resolved
+ * axle count (the Worker/Admin's chosen or saved-default layout), otherwise
+ * the fallback resolvers (first truck axle single, remaining truck axles
+ * dual; trailer axles dual). Truck and Trailer counts are independent;
+ * Trailer numbering restarts at 1.
  */
 export function buildTyreLayout(
   truckAxleCount: number,
   trailerAxleCount: number | null,
+  overrides?: {
+    truckAxleLayouts?: readonly AxleWheelLayout[]
+    trailerAxleLayouts?: readonly AxleWheelLayout[]
+  },
 ): TyreMeasurement[] {
   const truckAxles = clampAxleCount(
     truckAxleCount,
@@ -618,7 +758,10 @@ export function buildTyreLayout(
     trailerAxleCount == null ? MAX_COMBINED_TYRE_AXLES : MAX_COMBINED_TYRE_AXLES - 1,
   )
   const rows: TyreMeasurement[] = []
-  const truckLayouts = resolveFallbackTruckAxleWheelLayouts(truckAxles)
+  const truckLayouts =
+    overrides?.truckAxleLayouts && overrides.truckAxleLayouts.length === truckAxles
+      ? overrides.truckAxleLayouts
+      : resolveFallbackTruckAxleWheelLayouts(truckAxles)
 
   truckLayouts.forEach((layout, index) => {
     const axleNumber = index + 1
@@ -641,7 +784,10 @@ export function buildTyreLayout(
       1,
       MAX_COMBINED_TYRE_AXLES - truckAxles,
     )
-    const trailerLayouts = resolveFallbackTrailerAxleWheelLayouts(trailerAxles)
+    const trailerLayouts =
+      overrides?.trailerAxleLayouts && overrides.trailerAxleLayouts.length === trailerAxles
+        ? overrides.trailerAxleLayouts
+        : resolveFallbackTrailerAxleWheelLayouts(trailerAxles)
     trailerLayouts.forEach((layout, index) => {
       const axleNumber = index + 1
       for (const position of positionsForWheelLayout(layout)) {

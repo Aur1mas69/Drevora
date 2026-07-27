@@ -40,6 +40,7 @@ import {
   ChevronLeft,
   CircleDot,
   Loader2,
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -51,15 +52,36 @@ function getVehicleMakeModelLabel(vehicle: Vehicle): string {
   return label || 'Make/model not set'
 }
 
-function VehicleSummaryCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleSummaryCard({
+  vehicle,
+  onClear,
+}: {
+  vehicle: Vehicle
+  /** Omit to render a read-only summary (e.g. once the checklist is in progress). */
+  onClear?: () => void
+}) {
   return (
     <div className="rounded-[1.25rem] border border-[#C5DFFB]/80 bg-[#F5FAFF] px-3.5 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#5499BF]">
-        Selected vehicle
-      </p>
-      <p className="mt-1 text-base font-bold tracking-[0.04em] text-[#113C69]">
-        {vehicle.registration}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#5499BF]">
+            Selected vehicle
+          </p>
+          <p className="mt-1 text-base font-bold tracking-[0.04em] text-[#113C69]">
+            {vehicle.registration}
+          </p>
+        </div>
+        {onClear ? (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label="Clear selected vehicle"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#5499BF] transition-colors hover:bg-[#E3F0FF] hover:text-[#113C69]"
+          >
+            <X className="size-4" />
+          </button>
+        ) : null}
+      </div>
       <p className="mt-1 text-sm font-medium text-[#3D7A9C]">{getVehicleMakeModelLabel(vehicle)}</p>
       <p className="mt-0.5 text-sm text-[#5499BF]">
         Type: {vehicle.vehicleType?.trim() || 'Not set on vehicle record'}
@@ -122,6 +144,19 @@ export default function WorkerVehicleChecksPage() {
     return vehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
   }, [vehicles])
 
+  // A remembered vehicle id that no longer matches an active company vehicle
+  // (archived, deleted, or from another company) is stale local storage —
+  // drop it so it never resurfaces as a Quick select suggestion.
+  useEffect(() => {
+    if (vehicles.length === 0) return
+    const rememberedId = getRememberedVehicleCheckId()
+    if (!rememberedId) return
+    const stillValid = vehicles.some((vehicle) => vehicle.id === rememberedId)
+    if (!stillValid) {
+      setRememberedVehicleCheckId(null)
+    }
+  }, [vehicles])
+
   const overallResult = useMemo(() => computeOverallResult(items), [items])
 
   const isChecklistReady = useMemo(
@@ -152,6 +187,17 @@ export default function WorkerVehicleChecksPage() {
 
   function selectVehicle(vehicle: Vehicle) {
     setVehicleId(vehicle.id)
+    setError(null)
+  }
+
+  /**
+   * Clears the selected vehicle back to the search/list state. A remembered
+   * default is a convenience only — clearing here never re-locks the Worker
+   * into it; it must be re-selected (from Quick select or search) to apply.
+   */
+  function clearSelectedVehicle() {
+    setVehicleId('')
+    setRememberVehicle(false)
     setError(null)
   }
 
@@ -495,7 +541,9 @@ export default function WorkerVehicleChecksPage() {
               showAllWhenEmpty
             />
 
-            {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
+            {selectedVehicle ? (
+              <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
+            ) : null}
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
               <input
@@ -522,8 +570,8 @@ export default function WorkerVehicleChecksPage() {
 
             <Button
               type="submit"
-              disabled={isLoadingChecklist || vehicles.length === 0}
-              className="h-12 w-full rounded-2xl bg-[#2563EB] text-base font-semibold text-white hover:bg-[#1d4ed8]"
+              disabled={isLoadingChecklist || vehicles.length === 0 || !selectedVehicle}
+              className="h-12 w-full rounded-2xl bg-[#2563EB] text-base font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
             >
               {isLoadingChecklist ? <Loader2 className="size-4 animate-spin" /> : null}
               {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}

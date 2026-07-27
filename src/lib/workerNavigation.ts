@@ -74,18 +74,25 @@ export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
 /** Internal route used by Vehicles → Add Consumable (not a main menu item). */
 export const WORKER_CONSUMABLES_PATH = '/worker/consumables'
 
-export function getWorkerPrimaryNavItems(): WorkerNavItem[] {
-  return WORKER_NAV_ITEMS.filter((item) =>
-    item.id === 'timesheets' || item.id === 'holidays' || item.id === 'vehicles',
+/** Worker Home "Quick actions" — exactly 4 cards in a 2x2 grid. */
+export function getWorkerHomeQuickActionItems(): WorkerNavItem[] {
+  return WORKER_NAV_ITEMS.filter(
+    (item) =>
+      item.id === 'timesheets' ||
+      item.id === 'holidays' ||
+      item.id === 'vehicles' ||
+      item.id === 'documents',
   )
 }
 
-export function getWorkerMoreNavItems(): WorkerNavItem[] {
+/**
+ * Persistent bottom navigation items between Home and Sign out.
+ * Home and Sign out are rendered directly by MainLayout (not data-driven),
+ * so the bottom bar has exactly 4 items: Home, Contacts, Settings, Sign out.
+ */
+export function getWorkerBottomNavItems(): WorkerNavItem[] {
   return WORKER_NAV_ITEMS.filter(
-    (item) =>
-      item.id !== 'timesheets' &&
-      item.id !== 'holidays' &&
-      item.id !== 'vehicles',
+    (item) => item.id === 'contacts' || item.id === 'settings',
   )
 }
 

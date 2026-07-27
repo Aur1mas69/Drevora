@@ -1,4 +1,9 @@
-import type { TyreMeasurement, TyreStatus, TyreUnit } from '@/lib/tyreCheckTypes'
+import type {
+  TyreMeasurement,
+  TyreStatus,
+  TyreStatusPalette,
+  TyreUnit,
+} from '@/lib/tyreCheckTypes'
 import {
   compareTyrePositions,
   tyreStatusClasses,
@@ -17,6 +22,13 @@ type TyreCheckDiagramProps = {
    * Admin preview leaves this unset to preserve its existing selected look.
    */
   emphasizeSelection?: boolean
+  /**
+   * 'vivid' (default) is the outdoor-readable Worker mobile palette.
+   * 'pastel' is the softer tone used on Admin Configuration / History.
+   */
+  palette?: TyreStatusPalette
+  /** Overrides the "Truck · top view" heading (e.g. for a single-vehicle Admin preview). */
+  vehicleUnitTitle?: string
 }
 
 const STATUS_RING: Record<TyreStatus, string> = {
@@ -44,13 +56,15 @@ function TyreShape({
   selected,
   onSelect,
   emphasizeSelection,
+  palette,
 }: {
   tyre: TyreMeasurement
   selected: boolean
   onSelect: () => void
   emphasizeSelection: boolean
+  palette: TyreStatusPalette
 }) {
-  const colours = tyreStatusClasses(tyre.status)
+  const colours = tyreStatusClasses(tyre.status, palette)
   const depthLabel =
     tyre.treadDepthMm == null ? '—' : `${tyre.treadDepthMm.toFixed(1)} mm`
 
@@ -147,12 +161,14 @@ function AxleRow({
   selectedTyreId,
   onSelectTyre,
   emphasizeSelection,
+  palette,
 }: {
   label: string
   tyres: TyreMeasurement[]
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
   emphasizeSelection: boolean
+  palette: TyreStatusPalette
 }) {
   // Outer → Inner on each side so dual axles render outermost wheels first.
   const leftTyres = tyres
@@ -186,6 +202,7 @@ function AxleRow({
               selected={selectedTyreId === tyre.id}
               onSelect={() => onSelectTyre(tyre.id)}
               emphasizeSelection={emphasizeSelection}
+              palette={palette}
             />
           ))}
         </div>
@@ -200,6 +217,7 @@ function AxleRow({
               selected={selectedTyreId === tyre.id}
               onSelect={() => onSelectTyre(tyre.id)}
               emphasizeSelection={emphasizeSelection}
+              palette={palette}
             />
           ))}
         </div>
@@ -215,6 +233,7 @@ function UnitDiagram({
   selectedTyreId,
   onSelectTyre,
   emphasizeSelection,
+  palette,
 }: {
   unit: TyreUnit
   title: string
@@ -222,6 +241,7 @@ function UnitDiagram({
   selectedTyreId: string | null
   onSelectTyre: (tyreId: string) => void
   emphasizeSelection: boolean
+  palette: TyreStatusPalette
 }) {
   const unitTyres = measurements.filter((tyre) => tyre.unit === unit)
   if (unitTyres.length === 0) return null
@@ -256,6 +276,7 @@ function UnitDiagram({
               selectedTyreId={selectedTyreId}
               onSelectTyre={onSelectTyre}
               emphasizeSelection={emphasizeSelection}
+              palette={palette}
             />
           )
         })}
@@ -275,7 +296,7 @@ const TREAD_WEAR_SCALE = [
   { depth: '1.6 mm', worn: '100% worn', row: 'bg-[#9B1C1C]', text: 'text-white' },
 ] as const
 
-function TyreCheckLegends() {
+function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 md:items-start">
       <div className="rounded-[16px] border border-[#D3E9FC] bg-white/90 p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
@@ -344,7 +365,7 @@ function TyreCheckLegends() {
                   <span
                     className={cn(
                       'size-2.5 shrink-0 rounded-full',
-                      tyreStatusClasses(status).dot,
+                      tyreStatusClasses(status, palette).dot,
                     )}
                   />
                   <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">
@@ -384,17 +405,20 @@ export function TyreCheckDiagram({
   selectedTyreId,
   onSelectTyre,
   emphasizeSelection = false,
+  palette = 'vivid',
+  vehicleUnitTitle = 'Truck · top view',
 }: TyreCheckDiagramProps) {
   return (
     <div className="space-y-4">
-      <TyreCheckLegends />
+      <TyreCheckLegends palette={palette} />
       <UnitDiagram
         unit="vehicle"
-        title="Truck · top view"
+        title={vehicleUnitTitle}
         measurements={measurements}
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}
         emphasizeSelection={emphasizeSelection}
+        palette={palette}
       />
       <UnitDiagram
         unit="trailer"
@@ -403,6 +427,7 @@ export function TyreCheckDiagram({
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}
         emphasizeSelection={emphasizeSelection}
+        palette={palette}
       />
     </div>
   )

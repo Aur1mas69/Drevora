@@ -1,10 +1,10 @@
+import { AxleLayoutEditor } from '@/components/vehicle-checks/AxleLayoutEditor'
 import { TyreCheckAdminSectionTabs } from '@/components/vehicle-checks/TyreCheckAdminSectionTabs'
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { TyreChecksPagination } from '@/components/vehicle-checks/TyreChecksPagination'
 import { TyreChecksToolbar } from '@/components/vehicle-checks/TyreChecksToolbar'
 import { ExportMenu } from '@/components/export/ExportMenu'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
@@ -25,28 +25,25 @@ import {
 } from '@/lib/adminUiStyles'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
 import {
-  attentionTyres,
   buildTyreLayout,
-  DEFAULT_TRAILER_AXLE_COUNT,
   DEFAULT_TRUCK_AXLE_COUNT,
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
   formatAxleCountLabel,
   formatTyreCheckResultLabel,
   MAX_COMBINED_TYRE_AXLES,
-  summarizeTyreMeasurements,
-  totalAxleCount,
-  trailerAxleOptions,
-  treadDepthToStatus,
-  truckAxleOptions,
+  resizeAxleWheelLayouts,
+  resolveFallbackTrailerAxleWheelLayouts,
+  resolveFallbackTruckAxleWheelLayouts,
+  summarizeAxleLayoutFromMeasurements,
   tyreStatusClasses,
   tyreStatusLabel,
+  type AxleWheelLayout,
   type SavedTyreCheck,
   type TyreCheckAdminOverviewStats,
   type TyreCheckAdminSection,
   type TyreCheckDefectFocusFilter,
   type TyreCheckListItem,
   type TyreCheckResultFilter,
-  type TyreMeasurement,
 } from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import type { Driver } from '@/services/driversService'
@@ -56,6 +53,10 @@ import {
   fetchTyreChecks,
   TyreChecksServiceError,
 } from '@/services/tyreChecksService'
+import {
+  fetchVehicleTyreLayout,
+  saveVehicleTyreLayout,
+} from '@/services/vehicleTyreLayoutsService'
 import type { Vehicle } from '@/services/vehiclesService'
 import {
   AlertTriangle,
@@ -65,7 +66,7 @@ import {
   Loader2,
   Settings2,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 type TyreCheckPanelProps = {
@@ -116,15 +117,6 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     [vehicles],
   )
 
-  const [vehicleId, setVehicleId] = useState('')
-  const [trailerId, setTrailerId] = useState('')
-  const [truckAxleCount, setTruckAxleCount] = useState(DEFAULT_TRUCK_AXLE_COUNT)
-  const [trailerAxleCount, setTrailerAxleCount] = useState<number | null>(null)
-  const [measurements, setMeasurements] = useState<TyreMeasurement[]>(() =>
-    buildTyreLayout(DEFAULT_TRUCK_AXLE_COUNT, null),
-  )
-  const [selectedTyreId, setSelectedTyreId] = useState<string | null>(null)
-
   const [overview, setOverview] = useState<TyreCheckAdminOverviewStats | null>(null)
   const [overviewLoading, setOverviewLoading] = useState(true)
   const [overviewError, setOverviewError] = useState<string | null>(null)
@@ -149,14 +141,6 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
-  const tyreEditorRef = useRef<HTMLDivElement>(null)
-
-  const hasTrailer = Boolean(trailerId)
-  const truckOptions = truckAxleOptions(hasTrailer ? trailerAxleCount : null)
-  const trailerOptions = trailerAxleOptions(truckAxleCount)
-  const combinedAxles = totalAxleCount(truckAxleCount, hasTrailer ? trailerAxleCount : null)
-  const summary = useMemo(() => summarizeTyreMeasurements(measurements), [measurements])
-  const selectedTyre = measurements.find((tyre) => tyre.id === selectedTyreId) ?? null
 
   const hasActiveHistoryFilters =
     debouncedSearch.trim().length > 0 ||
@@ -289,80 +273,6 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     }
   }, [activeSection, loadHistory])
 
-  useEffect(() => {
-    const next = buildTyreLayout(truckAxleCount, hasTrailer ? trailerAxleCount : null)
-    setMeasurements((current) =>
-      next.map((tyre) => {
-        const previous = current.find((item) => item.id === tyre.id)
-        if (!previous) return tyre
-        return {
-          ...tyre,
-          treadDepthMm: previous.treadDepthMm,
-          status: previous.status,
-        }
-      }),
-    )
-    setSelectedTyreId((currentId) => {
-      if (!currentId) return null
-      return next.some((tyre) => tyre.id === currentId) ? currentId : null
-    })
-  }, [truckAxleCount, trailerAxleCount, hasTrailer])
-
-  useEffect(() => {
-    if (!selectedTyreId || activeSection !== 'configuration') return
-    tyreEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [selectedTyreId, activeSection])
-
-  function updateTyre(
-    tyreId: string,
-    patch: { treadDepthMm?: number | null; dirty?: boolean },
-  ) {
-    setMeasurements((current) =>
-      current.map((tyre) => {
-        if (tyre.id !== tyreId) return tyre
-        const nextDepth =
-          patch.treadDepthMm !== undefined ? patch.treadDepthMm : tyre.treadDepthMm
-        const dirty =
-          patch.dirty !== undefined ? patch.dirty : tyre.status === 'dirty'
-        return {
-          ...tyre,
-          treadDepthMm: nextDepth,
-          status: treadDepthToStatus(nextDepth, dirty),
-        }
-      }),
-    )
-  }
-
-  function handleTrailerChange(nextTrailerId: string) {
-    setTrailerId(nextTrailerId)
-    if (nextTrailerId) {
-      setTruckAxleCount(DEFAULT_TRUCK_AXLE_COUNT)
-      setTrailerAxleCount(DEFAULT_TRAILER_AXLE_COUNT)
-      return
-    }
-    setTrailerAxleCount(null)
-    setTruckAxleCount((current) =>
-      Math.min(MAX_COMBINED_TYRE_AXLES, Math.max(1, current)),
-    )
-  }
-
-  function handleTruckAxleChange(nextTruckAxles: number) {
-    setTruckAxleCount(nextTruckAxles)
-    if (!hasTrailer || trailerAxleCount == null) return
-    const maxTrailer = MAX_COMBINED_TYRE_AXLES - nextTruckAxles
-    if (trailerAxleCount > maxTrailer) {
-      setTrailerAxleCount(Math.max(1, maxTrailer))
-    }
-  }
-
-  function handleTrailerAxleChange(nextTrailerAxles: number) {
-    setTrailerAxleCount(nextTrailerAxles)
-    const maxTruck = MAX_COMBINED_TYRE_AXLES - nextTrailerAxles
-    if (truckAxleCount > maxTruck) {
-      setTruckAxleCount(Math.max(1, maxTruck))
-    }
-  }
-
   async function handleViewHistory(check: TyreCheckListItem) {
     setIsLoadingDetail(true)
     try {
@@ -468,25 +378,6 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
         <ConfigurationSection
           tractorVehicles={tractorVehicles}
           trailerVehicles={trailerVehicles}
-          vehicleId={vehicleId}
-          trailerId={trailerId}
-          truckAxleCount={truckAxleCount}
-          trailerAxleCount={trailerAxleCount}
-          hasTrailer={hasTrailer}
-          truckOptions={truckOptions}
-          trailerOptions={trailerOptions}
-          combinedAxles={combinedAxles}
-          measurements={measurements}
-          selectedTyreId={selectedTyreId}
-          selectedTyre={selectedTyre}
-          summary={summary}
-          tyreEditorRef={tyreEditorRef}
-          onVehicleIdChange={setVehicleId}
-          onTrailerChange={handleTrailerChange}
-          onTruckAxleChange={handleTruckAxleChange}
-          onTrailerAxleChange={handleTrailerAxleChange}
-          onSelectTyre={setSelectedTyreId}
-          onUpdateTyre={updateTyre}
         />
       ) : null}
 
@@ -705,7 +596,7 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
 
       {viewingCheck ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[1px]">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[20px] bg-white p-5 shadow-xl dark:bg-slate-900/95 dark:shadow-black/50">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[20px] bg-white p-5 shadow-xl dark:bg-slate-900/95 dark:shadow-black/50">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className={`text-lg font-semibold ${adminHeading}`}>
@@ -713,6 +604,7 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                 </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   {formatCheckedAt(viewingCheck.checkedAt)} · {viewingCheck.vehicleLabel}
+                  {viewingCheck.trailerLabel ? ` + ${viewingCheck.trailerLabel}` : ''}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -756,10 +648,43 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                 </Button>
               </div>
             </div>
+
+            <dl className="mt-4 grid grid-cols-2 gap-3 rounded-[14px] bg-[#F8FBFF] p-3 text-sm dark:bg-slate-800/60 sm:grid-cols-4">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+                  Vehicle
+                </dt>
+                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
+                  {viewingCheck.vehicleLabel}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+                  Worker
+                </dt>
+                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
+                  {viewingCheck.checkedBy}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+                  Completed
+                </dt>
+                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
+                  {formatCheckedAt(viewingCheck.checkedAt)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+                  Axle layout
+                </dt>
+                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
+                  {summarizeAxleLayoutFromMeasurements(viewingCheck.measurements)}
+                </dd>
+              </div>
+            </dl>
+
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-              Worker: {viewingCheck.checkedBy}
-            </p>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               {viewingCheck.summaryLabel}
             </p>
             {viewingCheck.notes ? (
@@ -767,27 +692,57 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                 {viewingCheck.notes}
               </p>
             ) : null}
+
+            <div className="mt-4">
+              <TyreCheckDiagram
+                measurements={viewingCheck.measurements}
+                selectedTyreId={null}
+                onSelectTyre={() => {}}
+                palette="pastel"
+                vehicleUnitTitle={`${viewingCheck.vehicleLabel} · top view`}
+              />
+            </div>
+
             <div className="mt-4 space-y-2">
-              {attentionTyres(viewingCheck.measurements).length === 0 ? (
-                <p className="text-sm text-slate-500">No attention or critical positions.</p>
-              ) : (
-                attentionTyres(viewingCheck.measurements).map((tyre) => (
-                  <div
-                    key={tyre.id}
-                    className="rounded-[12px] border border-[#D3E9FC] px-3 py-2 text-sm dark:border-white/10"
-                  >
-                    <p className="font-semibold text-[#2A376F] dark:text-slate-100">
-                      {tyre.axleLabel} · {tyre.position}
-                    </p>
-                    <p className="text-slate-600">
+              <h4 className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">
+                Per-tyre detail
+              </h4>
+              {viewingCheck.measurements.map((tyre) => (
+                <div
+                  key={tyre.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[#D3E9FC] px-3 py-2 text-sm dark:border-white/10"
+                >
+                  <p className="font-semibold text-[#2A376F] dark:text-slate-100">
+                    {tyre.axleLabel} · {tyre.position}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-400">
+                    <span>
                       {tyre.treadDepthMm == null
                         ? '—'
-                        : `${tyre.treadDepthMm.toFixed(1)} mm`}{' '}
-                      · {tyreStatusLabel(tyre.status)}
-                    </p>
+                        : `${tyre.treadDepthMm.toFixed(1)} mm`}
+                    </span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-xs font-semibold',
+                        tyreStatusClasses(tyre.status, 'pastel').badge,
+                      )}
+                    >
+                      {tyreStatusLabel(tyre.status)}
+                    </span>
+                    {tyre.hasDefect ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                        <AlertTriangle className="size-3" aria-hidden="true" />
+                        Defect
+                      </span>
+                    ) : null}
+                    {(tyre.defectNotes || tyre.notes) ? (
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {tyre.defectNotes || tyre.notes}
+                      </span>
+                    ) : null}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -987,255 +942,280 @@ function OverviewSection({
 function ConfigurationSection({
   tractorVehicles,
   trailerVehicles,
-  vehicleId,
-  trailerId,
-  truckAxleCount,
-  trailerAxleCount,
-  hasTrailer,
-  truckOptions,
-  trailerOptions,
-  combinedAxles,
-  measurements,
-  selectedTyreId,
-  selectedTyre,
-  summary,
-  tyreEditorRef,
-  onVehicleIdChange,
-  onTrailerChange,
-  onTruckAxleChange,
-  onTrailerAxleChange,
-  onSelectTyre,
-  onUpdateTyre,
 }: {
   tractorVehicles: Vehicle[]
   trailerVehicles: Vehicle[]
-  vehicleId: string
-  trailerId: string
-  truckAxleCount: number
-  trailerAxleCount: number | null
-  hasTrailer: boolean
-  truckOptions: number[]
-  trailerOptions: number[]
-  combinedAxles: number
-  measurements: TyreMeasurement[]
-  selectedTyreId: string | null
-  selectedTyre: TyreMeasurement | null
-  summary: ReturnType<typeof summarizeTyreMeasurements>
-  tyreEditorRef: React.RefObject<HTMLDivElement | null>
-  onVehicleIdChange: (value: string) => void
-  onTrailerChange: (value: string) => void
-  onTruckAxleChange: (value: number) => void
-  onTrailerAxleChange: (value: number) => void
-  onSelectTyre: (id: string | null) => void
-  onUpdateTyre: (
-    tyreId: string,
-    patch: { treadDepthMm?: number | null; dirty?: boolean },
-  ) => void
 }) {
+  const allVehicles = useMemo(
+    () => [...tractorVehicles, ...trailerVehicles],
+    [tractorVehicles, trailerVehicles],
+  )
+
+  const [vehicleId, setVehicleId] = useState('')
+  const [axleCount, setAxleCount] = useState(DEFAULT_TRUCK_AXLE_COUNT)
+  const [axleLayouts, setAxleLayouts] = useState<AxleWheelLayout[]>(() =>
+    resolveFallbackTruckAxleWheelLayouts(DEFAULT_TRUCK_AXLE_COUNT),
+  )
+  const [hasSavedLayout, setHasSavedLayout] = useState(false)
+  const [isLoadingLayout, setIsLoadingLayout] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  const selectedVehicle = allVehicles.find((vehicle) => vehicle.id === vehicleId) ?? null
+  const isTrailer = selectedVehicle ? isTrailerVehicle(selectedVehicle) : false
+
+  function resolveFallback(count: number): AxleWheelLayout[] {
+    return isTrailer
+      ? resolveFallbackTrailerAxleWheelLayouts(count)
+      : resolveFallbackTruckAxleWheelLayouts(count)
+  }
+
+  function handleVehicleIdChange(nextVehicleId: string) {
+    setVehicleId(nextVehicleId)
+    if (!nextVehicleId) {
+      setHasSavedLayout(false)
+      setLoadError(null)
+      setSaveError(null)
+      setSaveMessage(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!vehicleId) return
+    let cancelled = false
+    async function load() {
+      setIsLoadingLayout(true)
+      setLoadError(null)
+      setSaveMessage(null)
+      setSaveError(null)
+      try {
+        const saved = await fetchVehicleTyreLayout(vehicleId)
+        if (cancelled) return
+        if (saved && saved.axleLayouts.length > 0) {
+          setHasSavedLayout(true)
+          setAxleCount(saved.axleCount)
+          setAxleLayouts(saved.axleLayouts)
+        } else {
+          setHasSavedLayout(false)
+          const fallbackCount = DEFAULT_TRUCK_AXLE_COUNT
+          setAxleCount(fallbackCount)
+          setAxleLayouts(resolveFallback(fallbackCount))
+        }
+      } catch (error) {
+        if (cancelled) return
+        setLoadError(
+          error instanceof Error ? error.message : 'Unable to load the saved layout.',
+        )
+      } finally {
+        if (!cancelled) setIsLoadingLayout(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+    // resolveFallback intentionally excluded: only re-run when the selected vehicle changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId])
+
+  function handleAxleCountChange(nextCount: number) {
+    setAxleCount(nextCount)
+    setAxleLayouts((current) => resizeAxleWheelLayouts(current, nextCount, resolveFallback))
+    setSaveMessage(null)
+  }
+
+  async function handleSave() {
+    if (!vehicleId || !selectedVehicle) return
+    setIsSaving(true)
+    setSaveError(null)
+    setSaveMessage(null)
+    try {
+      await saveVehicleTyreLayout(vehicleId, axleLayouts)
+      setHasSavedLayout(true)
+      setSaveMessage(`Saved default layout for ${vehicleLabel(selectedVehicle)}.`)
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : 'Unable to save the layout.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const previewMeasurements = useMemo(
+    () =>
+      buildTyreLayout(axleCount, null, {
+        truckAxleLayouts: axleLayouts,
+      }),
+    [axleCount, axleLayouts],
+  )
+
   return (
     <div className="space-y-4">
-      <div className="rounded-[16px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-100">
-        <p className="font-semibold">Configuration preview only</p>
+      <div className="rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] px-4 py-3 text-sm text-[#2A376F] dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-300">
+        <p className="font-semibold">Vehicle tyre layout configuration</p>
         <p className="mt-1 leading-6">
-          Use this screen to preview axle layouts, tyre positions, and tread status
-          colours. Layout preferences are not persisted yet, and this screen does not
-          create a completed Tyre Check.
+          Select a Vehicle to view or set its saved default axle layout. Workers using
+          this Vehicle receive this default and may correct it before starting a new
+          check. Saving here never changes any existing Tyre Check.
         </p>
       </div>
 
-      <section className={`${adminPanel} grid gap-3 p-4 lg:grid-cols-4`}>
-        <label className="space-y-1.5">
+      <section className={`${adminPanel} grid gap-3 p-4 lg:grid-cols-3`}>
+        <label className="space-y-1.5 lg:col-span-2">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
-            Vehicle / type preview
+            Vehicle
           </span>
           <select
             value={vehicleId}
-            onChange={(event) => onVehicleIdChange(event.target.value)}
+            onChange={(event) => handleVehicleIdChange(event.target.value)}
             className={adminSelect}
           >
-            <option value="">Select vehicle (optional)</option>
-            {tractorVehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicleLabel(vehicle)}
-                {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}
-              </option>
-            ))}
+            <option value="">Select a vehicle…</option>
+            {tractorVehicles.length > 0 ? (
+              <optgroup label="Trucks / tractors">
+                {tractorVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicleLabel(vehicle)}
+                    {vehicle.vehicleType ? ` · ${vehicle.vehicleType}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {trailerVehicles.length > 0 ? (
+              <optgroup label="Trailers">
+                {trailerVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicleLabel(vehicle)}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
         </label>
 
         <label className="space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
-            Trailer (optional)
+            Axle count
           </span>
           <select
-            value={trailerId}
-            onChange={(event) => onTrailerChange(event.target.value)}
+            value={axleCount}
+            disabled={!vehicleId || isLoadingLayout}
+            onChange={(event) => handleAxleCountChange(Number(event.target.value))}
             className={adminSelect}
           >
-            <option value="">No trailer</option>
-            {trailerVehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicleLabel(vehicle)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
-            Truck axle count
-          </span>
-          <select
-            value={truckAxleCount}
-            onChange={(event) => onTruckAxleChange(Number(event.target.value))}
-            className={adminSelect}
-          >
-            {truckOptions.map((count) => (
-              <option key={count} value={count}>
-                {count} axle{count === 1 ? '' : 's'}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {hasTrailer ? (
-          <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
-              Trailer axle count
-            </span>
-            <select
-              value={trailerAxleCount ?? DEFAULT_TRAILER_AXLE_COUNT}
-              onChange={(event) => onTrailerAxleChange(Number(event.target.value))}
-              className={adminSelect}
-            >
-              {trailerOptions.map((count) => (
+            {Array.from({ length: MAX_COMBINED_TYRE_AXLES }, (_, index) => index + 1).map(
+              (count) => (
                 <option key={count} value={count}>
                   {count} axle{count === 1 ? '' : 's'}
                 </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <div className="flex items-end">
-            <p className="rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2.5 text-xs font-semibold text-[#0B68BE] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300">
-              Total axles: {combinedAxles} / {MAX_COMBINED_TYRE_AXLES}
-            </p>
-          </div>
-        )}
-
-        {hasTrailer ? (
-          <div className="flex items-end lg:col-span-4">
-            <p className="rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2.5 text-xs font-semibold text-[#0B68BE] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300">
-              Total axles: {combinedAxles} / {MAX_COMBINED_TYRE_AXLES}
-            </p>
-          </div>
-        ) : null}
+              ),
+            )}
+          </select>
+        </label>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.9fr)]">
-        <section className={`${adminPanel} p-4`}>
-          <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
-            Layout preview
-          </h2>
-          <p className={`mt-1 text-sm ${adminTextMuted}`}>
-            Preview tyre positions per axle. Optional sample depths show status colours
-            only — nothing is saved.
-          </p>
-          <div className="mt-4">
-            <TyreCheckDiagram
-              measurements={measurements}
-              selectedTyreId={selectedTyreId}
-              onSelectTyre={onSelectTyre}
-            />
-          </div>
-
-          {selectedTyre ? (
+      {!vehicleId ? (
+        <div className="rounded-[16px] border border-[#D3E9FC] bg-[#F8FBFF] px-4 py-3 text-sm text-[#2A376F] dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-300">
+          Select a Vehicle above to view or set its default axle layout.
+        </div>
+      ) : (
+        <>
+          {loadError ? (
+            <div className="rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-200">
+              {loadError}
+            </div>
+          ) : (
             <div
-              ref={tyreEditorRef}
-              className="mt-4 rounded-[16px] border border-[#D3E9FC] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
+              className={cn(
+                'rounded-[16px] border px-4 py-3 text-sm',
+                hasSavedLayout
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-200'
+                  : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200',
+              )}
             >
-              <p className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">
-                {selectedTyre.axleLabel} · {selectedTyre.position}
+              <p className="font-semibold">
+                {hasSavedLayout ? 'Saved default layout' : 'No layout saved yet'}
               </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
-                <label className="space-y-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5499BF]">
-                    Sample tread depth (mm)
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={30}
-                    step={0.1}
-                    value={selectedTyre.treadDepthMm ?? ''}
-                    onChange={(event) => {
-                      const raw = event.target.value
-                      onUpdateTyre(selectedTyre.id, {
-                        treadDepthMm: raw === '' ? null : Number(raw),
-                        dirty: false,
-                      })
-                    }}
-                    className="h-11 rounded-[12px]"
-                    placeholder="Preview only"
-                  />
-                </label>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 rounded-[12px]"
-                    onClick={() =>
-                      onUpdateTyre(selectedTyre.id, {
-                        dirty: selectedTyre.status !== 'dirty',
-                        treadDepthMm: selectedTyre.treadDepthMm,
-                      })
-                    }
-                  >
-                    {selectedTyre.status === 'dirty' ? 'Clear dirty' : 'Mark dirty'}
-                  </Button>
-                </div>
-              </div>
+              <p className="mt-1 leading-6">
+                {hasSavedLayout
+                  ? 'This is the persisted default for this Vehicle.'
+                  : 'Showing a suggested starting layout. Save below to persist it as the default for future checks.'}
+              </p>
+            </div>
+          )}
+
+          {saveError ? (
+            <div className="rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-200">
+              {saveError}
             </div>
           ) : null}
-        </section>
-
-        <aside className="space-y-4">
-          <section className={`${adminPanel} p-4`}>
-            <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
-              Preview summary
-            </h2>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <SummaryMetric label="Good" value={summary.good} tone="good" />
-              <SummaryMetric label="Attention" value={summary.attention} tone="attention" />
-              <SummaryMetric label="Critical" value={summary.critical} tone="critical" />
-              <SummaryMetric label="Dirty" value={summary.dirty} tone="dirty" />
-              <SummaryMetric
-                label="Not checked"
-                value={summary.notChecked}
-                tone="not_checked"
-                className="col-span-2"
-              />
+          {saveMessage ? (
+            <div className="rounded-[16px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-200">
+              {saveMessage}
             </div>
-          </section>
+          ) : null}
 
-          <section className={`${adminPanel} space-y-3 p-4`}>
-            <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
-              Rules reference
-            </h2>
-            <ul className={`space-y-2 text-sm ${adminTextMuted}`}>
-              <li>Good: tread ≥ 6.0 mm</li>
-              <li>Attention: tread 4.0–5.9 mm</li>
-              <li>Critical: tread &lt; 4.0 mm</li>
-              <li>Dirty: marked dirty (yellow) — separate from tread band</li>
-              <li>Defect flags are recorded by Workers during inspection</li>
-            </ul>
-            <p className="rounded-[12px] border border-dashed border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-400">
-              Company enable/disable for Tyre Checks will appear here when implemented.
-              Threshold persistence is not available yet.
-            </p>
-          </section>
-        </aside>
-      </div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.9fr)]">
+            <section className={`${adminPanel} p-4`}>
+              <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
+                Layout preview
+              </h2>
+              <p className={`mt-1 text-sm ${adminTextMuted}`}>
+                {vehicleLabel(selectedVehicle!)} · top view
+              </p>
+              <div className="mt-4">
+                {isLoadingLayout ? (
+                  <p className="py-6 text-center text-sm text-slate-500">
+                    Loading saved layout…
+                  </p>
+                ) : (
+                  <TyreCheckDiagram
+                    measurements={previewMeasurements}
+                    selectedTyreId={null}
+                    onSelectTyre={() => {}}
+                    palette="pastel"
+                    vehicleUnitTitle={`${vehicleLabel(selectedVehicle!)} · top view`}
+                  />
+                )}
+              </div>
+            </section>
+
+            <aside className={`${adminPanel} space-y-3 p-4`}>
+              <h2 className={`text-lg font-semibold tracking-[-0.03em] ${adminHeading}`}>
+                Per-axle layout
+              </h2>
+              <p className={`text-sm ${adminTextMuted}`}>
+                Single = one tyre per side. Dual = outer and inner per side.
+              </p>
+              <AxleLayoutEditor
+                unitLabel={isTrailer ? 'Trailer' : 'Truck'}
+                axleLayouts={axleLayouts}
+                onChange={(next) => {
+                  setAxleLayouts(next)
+                  setSaveMessage(null)
+                }}
+                disabled={isLoadingLayout}
+              />
+              <Button
+                type="button"
+                className="h-11 w-full rounded-[12px] bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8]"
+                disabled={isLoadingLayout || isSaving}
+                onClick={() => void handleSave()}
+              >
+                {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
+                Save default layout
+              </Button>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Good: tread ≥ 6.0 mm · Attention: 4.0–5.9 mm · Critical: &lt; 4.0 mm.
+                Saving does not alter previous Tyre Checks.
+              </p>
+            </aside>
+          </div>
+        </>
+      )}
     </div>
   )
 }

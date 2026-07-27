@@ -14,6 +14,7 @@ import {
   tyrePositionFromDb,
   tyrePositionToDb,
   validateTyreAxleCounts,
+  type AxleWheelLayout,
   type TyreCheckAdminOverviewStats,
   type TyreCheckListItem,
   type TyreCheckOverallResult,
@@ -725,6 +726,10 @@ export type CreateWorkerTyreCheckInput = {
   trailerAxleCount?: number | null
   odometer: number
   odometerUnit?: 'miles' | 'km'
+  /** Per-axle Single/Dual choice for the truck, length === truckAxleCount. */
+  truckAxleLayouts?: AxleWheelLayout[]
+  /** Per-axle Single/Dual choice for the trailer, length === trailerAxleCount. */
+  trailerAxleLayouts?: AxleWheelLayout[] | null
 }
 
 export type UpdateWorkerTyreCheckItemInput = {
@@ -785,7 +790,10 @@ export async function createWorkerTyreCheck(
   }
 
   const checkId = parentData.id as string
-  const layout = buildTyreLayout(input.truckAxleCount, trailerAxleCount)
+  const layout = buildTyreLayout(input.truckAxleCount, trailerAxleCount, {
+    truckAxleLayouts: input.truckAxleLayouts,
+    trailerAxleLayouts: trailerAxleCount != null ? input.trailerAxleLayouts ?? undefined : undefined,
+  })
   const itemRows = layout.map((tyre) => ({
     tyre_check_id: checkId,
     unit: tyre.unit,

@@ -1056,3 +1056,28 @@ create policy tyre_check_items_worker_delete_own
         and public.drevora_tyre_check_is_worker_editable(tc.status)
     )
   );
+
+-- -----------------------------------------------------------------------------
+-- Vehicle Tyre Layouts (persisted default per-axle Single/Dual per Vehicle)
+-- Canonical: migrations/20260728090000_tyre_check_configurable_axle_layout.sql
+--
+-- Read-only for authenticated company members (Worker + Office). Every write
+-- goes through the SECURITY DEFINER RPC drevora_set_vehicle_tyre_layout(uuid,
+-- text[]) — no INSERT/UPDATE/DELETE grant or policy exists for authenticated.
+-- -----------------------------------------------------------------------------
+alter table public.vehicle_tyre_layouts enable row level security;
+
+revoke all on table public.vehicle_tyre_layouts from public;
+revoke all on table public.vehicle_tyre_layouts from anon;
+
+grant select on table public.vehicle_tyre_layouts to authenticated;
+
+drop policy if exists vehicle_tyre_layouts_company_select on public.vehicle_tyre_layouts;
+create policy vehicle_tyre_layouts_company_select
+  on public.vehicle_tyre_layouts
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+  );

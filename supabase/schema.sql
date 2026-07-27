@@ -1214,8 +1214,11 @@ grant select, insert, update, delete on public.vehicle_check_items to anon, auth
 
 -- =============================================================================
 -- Tyre Checks (canonical: 20260717220000_create_tyre_check_foundation.sql
---              + 20260718000000_limit_tyre_check_total_axles.sql)
+--              + 20260718000000_limit_tyre_check_total_axles.sql
+--              + 20260728090000_tyre_check_configurable_axle_layout.sql)
 -- RLS/grants for these tables live in policies.sql (authenticated only; anon revoked).
+-- Single vs Dual is a free per-axle choice (see 20260728090000); axle_type
+-- remains a steer/drive/trailer label only and no longer constrains position.
 -- =============================================================================
 
 create or replace function public.drevora_tyre_wear_percent(p_depth numeric)
@@ -1416,13 +1419,6 @@ create table if not exists public.tyre_check_items (
     (unit = 'vehicle' and axle_type in ('steer', 'drive'))
     or (unit = 'trailer' and axle_type = 'trailer')
   ),
-  constraint tyre_check_items_axle_type_position_check check (
-    (axle_type = 'steer' and position in ('left', 'right'))
-    or (
-      axle_type in ('drive', 'trailer')
-      and position in ('outer_left', 'inner_left', 'inner_right', 'outer_right')
-    )
-  ),
   constraint tyre_check_items_axle_number_check check (
     axle_number between 1 and 6
   ),
@@ -1441,7 +1437,12 @@ create table if not exists public.tyre_check_items (
 );
 
 comment on table public.tyre_check_items is
-  'Per-tyre measurements for a tyre_checks parent. tread_status/wear_percent are derived; Dirty/Defect are separate flags.';
+  'Per-tyre measurements for a tyre_checks parent. Single/Dual is a free per-axle choice (2 or 4 recorded positions); tread_status/wear_percent are derived; Dirty/Defect are separate flags.';
+
+-- Idempotent: removes the old steer=single/drive+trailer=dual coupling on
+-- databases created before 20260728090000_tyre_check_configurable_axle_layout.sql.
+alter table public.tyre_check_items
+  drop constraint if exists tyre_check_items_axle_type_position_check;
 
 create unique index if not exists tyre_check_items_position_uidx
   on public.tyre_check_items (tyre_check_id, unit, axle_number, position);
@@ -1463,6 +1464,44 @@ create index if not exists tyre_checks_company_worker_created_at_idx
 
 create index if not exists tyre_checks_company_status_created_at_idx
   on public.tyre_checks (company_id, status, created_at desc);
+
+-- Persisted default per-axle Single/Dual layout for one Vehicle (canonical:
+-- 20260728090000_tyre_check_configurable_axle_layout.sql). Read by Worker
+-- setup and Admin Configuration as the starting default only — each Tyre
+-- Check keeps using its own tyre_check_items rows as the permanent
+-- historical layout, so edits here never alter a completed check.
+-- RLS/grants live in policies.sql. Write RPC:
+-- drevora_set_vehicle_tyre_layout(uuid, text[]) (see 20260728090000).
+create table if not exists public.vehicle_tyre_layouts (
+  vehicle_id uuid primary key references public.vehicles (id) on delete cascade,
+  company_id uuid not null references public.companies (id) on delete restrict,
+  axle_count smallint not null,
+  axle_layouts text[] not null,
+  updated_by_driver_id uuid null references public.drivers (id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint vehicle_tyre_layouts_axle_count_check check (
+    axle_count between 1 and 6
+  ),
+  constraint vehicle_tyre_layouts_axle_layouts_length_check check (
+    array_length(axle_layouts, 1) = axle_count
+  ),
+  constraint vehicle_tyre_layouts_axle_layouts_values_check check (
+    axle_layouts <@ array['single', 'dual']::text[]
+  )
+);
+
+comment on table public.vehicle_tyre_layouts is
+  'Persisted default per-axle Single/Dual wheel layout for one Vehicle (truck or trailer). Read as the starting default only; each Tyre Check keeps its own tyre_check_items rows as the permanent historical layout.';
+
+create index if not exists vehicle_tyre_layouts_company_id_idx
+  on public.vehicle_tyre_layouts (company_id);
+
+drop trigger if exists vehicle_tyre_layouts_set_updated_at on public.vehicle_tyre_layouts;
+create trigger vehicle_tyre_layouts_set_updated_at
+  before update on public.vehicle_tyre_layouts
+  for each row
+  execute function public.drevora_set_updated_at();
 
 -- Vehicle check templates (flexible company/vehicle-type checklists)
 create table if not exists public.vehicle_check_templates (
@@ -2719,4 +2758,6 @@ create trigger vehicles_enforce_vehicle_plan_allowance
 -- 2. Run seed.sql      — optional demo data (local/dev only)
 -- Worker default-vehicle RPC: apply migration
 --   20260727200000_worker_set_default_vehicle_rpc.sql
+-- Tyre Check configurable axle layout + save-layout RPC: apply migration
+--   20260728090000_tyre_check_configurable_axle_layout.sql
 -- -----------------------------------------------------------------------------

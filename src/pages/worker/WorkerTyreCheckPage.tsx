@@ -1,3 +1,4 @@
+import { AxleLayoutEditor } from '@/components/vehicle-checks/AxleLayoutEditor'
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,9 @@ import {
   DEFAULT_TRUCK_AXLE_COUNT,
   MAX_COMBINED_TYRE_AXLES,
   parseTyreTreadDepthMm,
+  resizeAxleWheelLayouts,
+  resolveFallbackTrailerAxleWheelLayouts,
+  resolveFallbackTruckAxleWheelLayouts,
   sortTyresForClockwiseWalk,
   totalAxleCount,
   trailerAxleOptions,
@@ -18,6 +22,7 @@ import {
   tyreStatusClasses,
   tyreStatusLabel,
   validateTyreAxleCounts,
+  type AxleWheelLayout,
   type TyreMeasurement,
   type WorkerTyreCheckDraft,
 } from '@/lib/tyreCheckTypes'
@@ -28,6 +33,7 @@ import {
   TyreChecksServiceError,
   updateWorkerTyreCheckItem,
 } from '@/services/tyreChecksService'
+import { fetchVehicleTyreLayout, saveVehicleTyreLayout } from '@/services/vehicleTyreLayoutsService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import {
   AlertTriangle,
@@ -105,6 +111,12 @@ export default function WorkerTyreCheckPage() {
   const [trailerId, setTrailerId] = useState('')
   const [truckAxleCount, setTruckAxleCount] = useState(DEFAULT_TRUCK_AXLE_COUNT)
   const [trailerAxleCount, setTrailerAxleCount] = useState<number | null>(null)
+  const [truckAxleLayouts, setTruckAxleLayouts] = useState<AxleWheelLayout[]>(() =>
+    resolveFallbackTruckAxleWheelLayouts(DEFAULT_TRUCK_AXLE_COUNT),
+  )
+  const [trailerAxleLayouts, setTrailerAxleLayouts] = useState<AxleWheelLayout[]>(() =>
+    resolveFallbackTrailerAxleWheelLayouts(DEFAULT_TRAILER_AXLE_COUNT),
+  )
   const [odometer, setOdometer] = useState('')
   const [odometerUnit, setOdometerUnit] = useState<'miles' | 'km'>('miles')
 
@@ -183,6 +195,58 @@ export default function WorkerTyreCheckPage() {
     }
   }, [companyLoading, companyReady, searchParams, worker, workerLoading])
 
+  // Load the Vehicle's saved default layout when the selected truck changes.
+  // Falls back silently to the existing default layout when nothing is saved
+  // yet, or the RPC/table is unavailable — the Worker can still adjust and
+  // start the inspection either way.
+  useEffect(() => {
+    if (!vehicleId || step !== 'setup') return
+    let cancelled = false
+
+    async function loadSavedLayout() {
+      try {
+        const saved = await fetchVehicleTyreLayout(vehicleId)
+        if (cancelled || !saved || saved.axleLayouts.length === 0) return
+        const nextCount = Math.min(MAX_COMBINED_TYRE_AXLES, Math.max(1, saved.axleCount))
+        setTruckAxleCount(nextCount)
+        setTruckAxleLayouts(
+          resizeAxleWheelLayouts(saved.axleLayouts, nextCount, resolveFallbackTruckAxleWheelLayouts),
+        )
+      } catch {
+        // Non-fatal: keep the current default layout.
+      }
+    }
+
+    void loadSavedLayout()
+    return () => {
+      cancelled = true
+    }
+  }, [vehicleId, step])
+
+  useEffect(() => {
+    if (!hasTrailer || !trailerId || step !== 'setup') return
+    let cancelled = false
+
+    async function loadSavedTrailerLayout() {
+      try {
+        const saved = await fetchVehicleTyreLayout(trailerId)
+        if (cancelled || !saved || saved.axleLayouts.length === 0) return
+        const nextCount = Math.min(MAX_COMBINED_TYRE_AXLES, Math.max(1, saved.axleCount))
+        setTrailerAxleCount(nextCount)
+        setTrailerAxleLayouts(
+          resizeAxleWheelLayouts(saved.axleLayouts, nextCount, resolveFallbackTrailerAxleWheelLayouts),
+        )
+      } catch {
+        // Non-fatal: keep the current default layout.
+      }
+    }
+
+    void loadSavedTrailerLayout()
+    return () => {
+      cancelled = true
+    }
+  }, [trailerId, hasTrailer, step])
+
   useEffect(() => {
     if (!currentTyre || step !== 'inspect') return
     setDepthInput(
@@ -198,7 +262,9 @@ export default function WorkerTyreCheckPage() {
     setTrailerId(nextTrailerId)
     if (nextTrailerId) {
       setTruckAxleCount(DEFAULT_TRUCK_AXLE_COUNT)
+      setTruckAxleLayouts(resolveFallbackTruckAxleWheelLayouts(DEFAULT_TRUCK_AXLE_COUNT))
       setTrailerAxleCount(DEFAULT_TRAILER_AXLE_COUNT)
+      setTrailerAxleLayouts(resolveFallbackTrailerAxleWheelLayouts(DEFAULT_TRAILER_AXLE_COUNT))
       return
     }
     setTrailerAxleCount(null)
@@ -269,6 +335,22 @@ export default function WorkerTyreCheckPage() {
     setBusy(true)
     setError(null)
     try {
+      // Persist the chosen layout as this Vehicle's default for future
+      // checks. Best-effort: a save failure never blocks starting the
+      // inspection — the check's own items remain the source of truth.
+      try {
+        await saveVehicleTyreLayout(vehicleId, truckAxleLayouts)
+      } catch {
+        // Non-fatal.
+      }
+      if (hasTrailer && trailerId) {
+        try {
+          await saveVehicleTyreLayout(trailerId, trailerAxleLayouts)
+        } catch {
+          // Non-fatal.
+        }
+      }
+
       const created = await createWorkerTyreCheck({
         workerId: worker.id,
         vehicleId,
@@ -277,6 +359,8 @@ export default function WorkerTyreCheckPage() {
         trailerAxleCount: hasTrailer ? trailerAxleCount : null,
         odometer: odometerValue,
         odometerUnit,
+        truckAxleLayouts,
+        trailerAxleLayouts: hasTrailer ? trailerAxleLayouts : null,
       })
       setDraft(withClockwiseWalkItems(created))
       setTyreIndex(0)
@@ -489,10 +573,21 @@ export default function WorkerTyreCheckPage() {
                 onChange={(event) => {
                   const next = Number(event.target.value)
                   setTruckAxleCount(next)
+                  setTruckAxleLayouts((current) =>
+                    resizeAxleWheelLayouts(current, next, resolveFallbackTruckAxleWheelLayouts),
+                  )
                   if (hasTrailer && trailerAxleCount != null) {
                     const maxTrailer = MAX_COMBINED_TYRE_AXLES - next
                     if (trailerAxleCount > maxTrailer) {
-                      setTrailerAxleCount(Math.max(1, maxTrailer))
+                      const nextTrailerCount = Math.max(1, maxTrailer)
+                      setTrailerAxleCount(nextTrailerCount)
+                      setTrailerAxleLayouts((current) =>
+                        resizeAxleWheelLayouts(
+                          current,
+                          nextTrailerCount,
+                          resolveFallbackTrailerAxleWheelLayouts,
+                        ),
+                      )
                     }
                   }
                 }}
@@ -513,7 +608,13 @@ export default function WorkerTyreCheckPage() {
                 </span>
                 <select
                   value={trailerAxleCount ?? DEFAULT_TRAILER_AXLE_COUNT}
-                  onChange={(event) => setTrailerAxleCount(Number(event.target.value))}
+                  onChange={(event) => {
+                    const next = Number(event.target.value)
+                    setTrailerAxleCount(next)
+                    setTrailerAxleLayouts((current) =>
+                      resizeAxleWheelLayouts(current, next, resolveFallbackTrailerAxleWheelLayouts),
+                    )
+                  }}
                   className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold"
                 >
                   {trailerOptions.map((count) => (
@@ -536,6 +637,32 @@ export default function WorkerTyreCheckPage() {
             <p className="text-xs font-semibold text-[#0B68BE]">
               Total axles {combinedAxles} / {MAX_COMBINED_TYRE_AXLES}
             </p>
+          ) : null}
+
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              Truck axle layout
+            </span>
+            <AxleLayoutEditor
+              unitLabel="Truck"
+              axleLayouts={truckAxleLayouts}
+              onChange={setTruckAxleLayouts}
+              compact
+            />
+          </div>
+
+          {hasTrailer ? (
+            <div className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                Trailer axle layout
+              </span>
+              <AxleLayoutEditor
+                unitLabel="Trailer"
+                axleLayouts={trailerAxleLayouts}
+                onChange={setTrailerAxleLayouts}
+                compact
+              />
+            </div>
           ) : null}
 
           <div className="grid grid-cols-[1fr_auto] gap-3">

@@ -5,7 +5,7 @@ import {
   formatPersonalTimeGreeting,
   getSentenceTimeGreeting,
 } from '@/lib/greeting'
-import { getWorkerPrimaryNavItems } from '@/lib/workerNavigation'
+import { getWorkerHomeQuickActionItems } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { ChevronRight, Truck } from 'lucide-react'
 import { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
@@ -207,10 +207,10 @@ function DashboardPage() {
     worker?.assignment?.trim() ||
     null
 
-  // Same 3 items, same route/permission source, in both Light and Dark —
-  // Documents/Contacts/Settings remain reachable via the bottom nav "More"
-  // menu instead of duplicating them as Home tiles.
-  const quickActionItems = getWorkerPrimaryNavItems()
+  // Exactly 4 Quick actions cards (Timesheets, Holiday Requests, Vehicles,
+  // Documents), same route/permission source, in both Light and Dark.
+  // Contacts/Settings live only in the bottom nav; Sign out is bottom-nav only.
+  const quickActionItems = getWorkerHomeQuickActionItems()
 
   return (
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
@@ -250,7 +250,7 @@ function DashboardPage() {
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--worker-text-muted)]">
               Quick actions
             </h2>
-            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3">
               {quickActionItems.map((item, index) => {
                 const Icon = item.icon
                 if (!isDark) {
@@ -302,7 +302,7 @@ function DashboardPage() {
           </section>
 
           <Link
-            to="/worker/vehicles"
+            to="/worker/vehicle-checks"
             className={cn(
               'flex min-h-14 items-center justify-center gap-2 rounded-[1.5rem] px-4 text-base font-semibold transition-colors',
               isDark ? 'worker-cta-gradient text-white' : 'worker-btn-primary',
