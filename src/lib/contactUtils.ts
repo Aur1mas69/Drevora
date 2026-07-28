@@ -111,6 +111,7 @@ export function buildEmptyContactFormValues(): ContactFormValues {
     country: 'United Kingdom',
     notes: '',
     status: 'active',
+    visibleToWorkers: false,
     workerId: '',
   }
 }
@@ -134,6 +135,7 @@ export function contactToFormValues(contact: Contact): ContactFormValues {
     country: contact.country ?? 'United Kingdom',
     notes: contact.notes ?? '',
     status: contact.status,
+    visibleToWorkers: contact.visibleToWorkers,
     workerId: contact.workerId ?? '',
   }
 }
@@ -174,6 +176,7 @@ export function contactFormValuesToInput(values: ContactFormValues) {
     country: values.country.trim() || 'United Kingdom',
     notes: values.notes.trim() || null,
     status: values.status,
+    visibleToWorkers: values.visibleToWorkers,
     workerId: values.workerId.trim() || null,
   }
 }

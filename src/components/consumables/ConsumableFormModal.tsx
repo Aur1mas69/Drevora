@@ -294,7 +294,7 @@ export function ConsumableFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[18px] border border-[#D3E9FC] bg-white p-5 shadow-[0_30px_80px_rgba(11,38,70,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50 sm:p-6"
+        className="worker-theme-surface max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[18px] border border-[#D3E9FC] bg-white p-5 shadow-[0_30px_80px_rgba(11,38,70,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50 sm:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="consumable-form-title"
@@ -352,8 +352,11 @@ export function ConsumableFormModal({
                   id="consumable-worker-vehicle"
                   vehicles={sortedVehicles}
                   selectedVehicleId={values.vehicleId || null}
-                  onSelect={(vehicle) => updateField('vehicleId', vehicle?.id ?? '')}
-                  label="Vehicle"
+                  onSelect={(vehicle) => updateField('vehicleId', vehicle.id)}
+                  onClear={() => updateField('vehicleId', '')}
+                  label="Search registration"
+                  placeholder="Enter registration number"
+                  inputAriaLabel="Search company vehicles by registration number"
                   required
                   showAllWhenEmpty
                 />

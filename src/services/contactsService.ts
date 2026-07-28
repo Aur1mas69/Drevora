@@ -36,12 +36,39 @@ type ContactRow = {
   country: string | null
   notes: string | null
   status: string
+  visible_to_workers?: boolean | null
   worker_id?: string | null
   created_at: string
   updated_at: string
 }
 
 const contactSelect = `
+  id,
+  company,
+  name,
+  organisation,
+  category,
+  phone,
+  email,
+  website,
+  role_title,
+  vat_number,
+  account_reference,
+  address_line_1,
+  address_line_2,
+  town_city,
+  county,
+  postcode,
+  country,
+  notes,
+  status,
+  visible_to_workers,
+  worker_id,
+  created_at,
+  updated_at
+`
+
+const contactSelectWithoutVisibleFlag = `
   id,
   company,
   name,
@@ -132,6 +159,7 @@ function mapRow(row: ContactRow): Contact {
     country: row.country,
     notes: row.notes,
     status: isContactStatus(row.status) ? row.status : 'active',
+    visibleToWorkers: Boolean(row.visible_to_workers),
     workerId: row.worker_id?.trim() || null,
     workerCode: null,
     source: 'contact',
@@ -162,6 +190,7 @@ function mapDriverToWorkerContact(driver: Driver): Contact {
     country: driver.country,
     notes: null,
     status: mapDriverStatusToContactStatus(driver.status),
+    visibleToWorkers: false,
     workerId: driver.id,
     workerCode: driver.workerCode?.trim() || null,
     source: 'worker',
@@ -184,6 +213,16 @@ function isMissingWorkerIdColumnError(message: string): boolean {
   const normalized = message.toLowerCase()
   return (
     normalized.includes('worker_id') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('could not find'))
+  )
+}
+
+function isMissingVisibleToWorkersColumnError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('visible_to_workers') &&
     (normalized.includes('does not exist') ||
       normalized.includes('schema cache') ||
       normalized.includes('could not find'))
@@ -244,6 +283,9 @@ function toDbPayload(input: CreateContactInput | UpdateContactInput): Record<str
   if (input.country !== undefined) payload.country = input.country?.trim() || null
   if (input.notes !== undefined) payload.notes = input.notes?.trim() || null
   if (input.status !== undefined) payload.status = input.status
+  if (input.visibleToWorkers !== undefined) {
+    payload.visible_to_workers = Boolean(input.visibleToWorkers)
+  }
   if (input.workerId !== undefined) payload.worker_id = input.workerId?.trim() || null
 
   return payload
@@ -262,6 +304,10 @@ async function fetchContactRows(): Promise<ContactRow[]> {
 
   let { data, error } = await runSelect(contactSelect)
 
+  if (error && isMissingVisibleToWorkersColumnError(error.message)) {
+    ;({ data, error } = await runSelect(contactSelectWithoutVisibleFlag))
+  }
+
   if (error && isMissingWorkerIdColumnError(error.message)) {
     ;({ data, error } = await runSelect(contactSelectLegacy))
   }
@@ -277,6 +323,11 @@ async function fetchContactRows(): Promise<ContactRow[]> {
     if (isMissingContactsTableError(error.message)) {
       throw new ContactsServiceError(
         'Contacts table is not available yet. Run the contacts migration on your Supabase project.',
+      )
+    }
+    if (isMissingVisibleToWorkersColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts Worker visibility is not available yet. Run migration 20260728230000_contacts_visible_to_workers_and_worker_select.sql on your Supabase project.',
       )
     }
     if (isMissingWorkerIdColumnError(error.message)) {
@@ -443,6 +494,7 @@ export async function createContact(input: CreateContactInput): Promise<Contact>
     company: getVerifiedCompanyName(),
     category: input.category,
     status: input.status ?? 'active',
+    visible_to_workers: Boolean(input.visibleToWorkers),
   }
 
   const { data, error } = await requireSupabase()
@@ -459,6 +511,11 @@ export async function createContact(input: CreateContactInput): Promise<Contact>
   })
 
   if (error) {
+    if (isMissingVisibleToWorkersColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts Worker visibility is not available yet. Run migration 20260728230000_contacts_visible_to_workers_and_worker_select.sql on your Supabase project.',
+      )
+    }
     if (isMissingWorkerIdColumnError(error.message)) {
       throw new ContactsServiceError(
         'Contacts worker link is not available yet. Run the contacts worker_id migration on your Supabase project.',
@@ -502,6 +559,11 @@ export async function updateContact(id: string, input: UpdateContactInput): Prom
   })
 
   if (error) {
+    if (isMissingVisibleToWorkersColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts Worker visibility is not available yet. Run migration 20260728230000_contacts_visible_to_workers_and_worker_select.sql on your Supabase project.',
+      )
+    }
     if (isMissingWorkerIdColumnError(error.message)) {
       throw new ContactsServiceError(
         'Contacts worker link is not available yet. Run the contacts worker_id migration on your Supabase project.',
@@ -570,10 +632,51 @@ export async function deleteContact(id: string): Promise<void> {
   }
 }
 
+/**
+ * Worker read-only directory: active contacts for the verified company that
+ * Admins/Office marked visible_to_workers. Relies on RLS policy
+ * contacts_worker_select_visible; never writes.
+ */
+export async function fetchWorkerVisibleContacts(): Promise<Contact[]> {
+  const companyId = requireVerifiedCompanyId()
+
+  const { data, error } = await requireSupabase()
+    .from('contacts')
+    .select(contactSelect)
+    .eq('company_id', companyId)
+    .eq('visible_to_workers', true)
+    .eq('status', 'active')
+    .order('name', { ascending: true, nullsFirst: false })
+
+  logSupabaseQuery({
+    service: 'contactsService.fetchWorkerVisibleContacts',
+    table: 'contacts',
+    data,
+    error,
+  })
+
+  if (error) {
+    if (isMissingContactsTableError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts table is not available yet. Run the contacts migration on your Supabase project.',
+      )
+    }
+    if (isMissingVisibleToWorkersColumnError(error.message)) {
+      throw new ContactsServiceError(
+        'Contacts Worker visibility is not available yet. Ask your office to apply the latest Contacts migration.',
+      )
+    }
+    throw new ContactsServiceError(error.message)
+  }
+
+  return ((data ?? []) as unknown as ContactRow[]).map(mapRow).sort(compareContacts)
+}
+
 export const contactsService = {
   fetchContacts,
   fetchContactSummaryCounts,
   countWorkerPhoneContacts,
+  fetchWorkerVisibleContacts,
   createContact,
   updateContact,
   unlinkContactWorker,

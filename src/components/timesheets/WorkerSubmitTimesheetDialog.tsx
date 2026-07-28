@@ -64,10 +64,10 @@ export function WorkerSubmitTimesheetDialog({
             id="worker-submit-timesheet-title"
             className="text-lg font-semibold tracking-[-0.03em] text-[color:var(--worker-text)] sm:text-xl"
           >
-            Submit Timesheet?
+            Submit Week?
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-            Please check all days before submitting this Timesheet.
+            Please check all days before submitting this week.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export function WorkerSubmitTimesheetDialog({
             onClick={onConfirm}
             className="worker-btn-primary h-12 rounded-2xl px-5 font-semibold disabled:opacity-70"
           >
-            {isSubmitting ? 'Submitting…' : 'Submit Timesheet'}
+            {isSubmitting ? 'Submitting…' : 'Submit Week'}
           </Button>
         </div>
       </section>

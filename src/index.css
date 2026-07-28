@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource/dancing-script/400.css";
+@import "@fontsource/dancing-script/600.css";
+@import "@fontsource/dancing-script/700.css";
 @import './styles/worker-theme.css';
 
 @custom-variant dark (&:is(.dark *));
@@ -855,7 +858,7 @@ html.worker-dark #root {
   /* Matches --worker-bg dark value (src/styles/worker-theme.css). Hardcoded
      here because that custom property only resolves inside
      .worker-mobile-layout/.worker-theme-surface, not on body/#root. */
-  background-color: #080b14;
+  background-color: #0b0d12;
   color-scheme: dark;
 }
 

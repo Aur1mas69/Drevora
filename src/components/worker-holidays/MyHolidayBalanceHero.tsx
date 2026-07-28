@@ -31,7 +31,8 @@ function DonutRing({
   return (
     <div className="relative mx-auto flex size-[168px] items-center justify-center">
       <div
-        className="pointer-events-none absolute inset-0 rounded-full bg-[#89CFF0]/25 blur-2xl"
+        className="pointer-events-none absolute inset-0 rounded-full opacity-25 blur-2xl"
+        style={{ backgroundColor: 'var(--worker-holiday-donut-progress)' }}
         aria-hidden
       />
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
@@ -40,7 +41,7 @@ function DonutRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#E8F3FE"
+          stroke="var(--worker-holiday-donut-track)"
           strokeWidth={stroke}
         />
         <circle
@@ -48,25 +49,25 @@ function DonutRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#myHolidayDonutGradient)"
+          stroke="var(--worker-holiday-donut-progress)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={dashOffset}
           className="transition-[stroke-dashoffset] duration-500 ease-out"
         />
-        <defs>
-          <linearGradient id="myHolidayDonutGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#218EE7" />
-            <stop offset="100%" stopColor="#7DB8FF" />
-          </linearGradient>
-        </defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <p className="text-4xl font-bold tracking-[-0.05em] text-[#0B477F] tabular-nums">
+        <p
+          className="text-4xl font-bold tracking-[-0.05em] tabular-nums"
+          style={{ color: 'var(--worker-holiday-donut-text)' }}
+        >
           {formatWorkerHolidayDayCount(remaining)}
         </p>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#5499BF]">
+        <p
+          className="mt-1 text-xs font-semibold uppercase tracking-[0.14em]"
+          style={{ color: 'var(--worker-holiday-donut-label)' }}
+        >
           days left
         </p>
       </div>

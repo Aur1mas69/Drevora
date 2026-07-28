@@ -29,6 +29,10 @@ alter table public.worker_compliance_records disable row level security;
 alter table public.vehicle_compliance_records disable row level security;
 alter table public.consumables disable row level security;
 alter table public.contacts disable row level security;
+-- Live tenant RLS for contacts (office CRUD + Worker SELECT of visible_to_workers)
+-- is defined in migrations/20260715210000_enable_full_tenant_rls.sql and
+-- migrations/20260728230000_contacts_visible_to_workers_and_worker_select.sql.
+-- Do not grant Worker INSERT/UPDATE/DELETE. Do not backfill visible_to_workers.
 alter table public.documents disable row level security;
 alter table public.driver_reports disable row level security;
 alter table public.dashboard_notes enable row level security;
@@ -1060,6 +1064,7 @@ create policy tyre_check_items_worker_delete_own
 -- -----------------------------------------------------------------------------
 -- Vehicle Tyre Layouts (persisted default per-axle Single/Dual per Vehicle)
 -- Canonical: migrations/20260728090000_tyre_check_configurable_axle_layout.sql
+-- and 20260728220000_fix_tyre_layout_rpc_and_position_constraint.sql
 --
 -- Read-only for authenticated company members (Worker + Office). Every write
 -- goes through the SECURITY DEFINER RPC drevora_set_vehicle_tyre_layout(uuid,

@@ -388,7 +388,7 @@ export function VehicleCheckChecklistForm({
                                       comment: option === 'Advisory' ? item.comment ?? '' : '',
                                     })
                                   }
-                                  className={`${resultButtonBaseClassName} ${resultButtonStyles[option]}`}
+                                  className={`${resultButtonBaseClassName} ${resultButtonStyles[option]} worker-result-${option === 'Pass' ? 'ok' : option === 'Advisory' ? 'defect' : 'na'}`}
                                   data-selected={selected}
                                   aria-pressed={selected}
                                   aria-label={`${resultLabels[option]}${selected ? ', selected' : ''}`}

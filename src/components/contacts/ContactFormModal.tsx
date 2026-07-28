@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { SettingsToggle } from '@/components/settings/SettingsControls'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import type { Contact, ContactFormValues } from '@/lib/contactTypes'
 import { CONTACT_CATEGORIES } from '@/lib/contactTypes'
@@ -229,6 +230,14 @@ export function ContactFormModal({
                 </select>
               </label>
             </div>
+
+            <SettingsToggle
+              label="Visible to Workers"
+              description="When enabled, Workers in your company can see this active contact on their Contacts page. Defaults off."
+              checked={values.visibleToWorkers}
+              onChange={(checked) => updateField('visibleToWorkers', checked)}
+              disabled={isSaving}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700">

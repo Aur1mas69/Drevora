@@ -42,6 +42,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -130,6 +131,8 @@ export default function WorkerTyreCheckPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submitLockRef = useRef(false)
+  /** Apply URL / saved default at most once after vehicles load — never re-lock the picker. */
+  const didInitVehicleRef = useRef(false)
 
   const tractorVehicles = useMemo(
     () => vehicles.filter((vehicle) => !isTrailerVehicle(vehicle)),
@@ -151,6 +154,8 @@ export default function WorkerTyreCheckPage() {
   const currentTyre = draft?.items[tyreIndex] ?? null
   const selectedVehicle =
     tractorVehicles.find((vehicle) => vehicle.id === (draft?.vehicleId || vehicleId)) ?? null
+  const setupSelectedVehicle =
+    tractorVehicles.find((vehicle) => vehicle.id === vehicleId) ?? null
   const selectedTrailer =
     trailerVehicles.find(
       (vehicle) => vehicle.id === (draft?.trailerVehicleId || trailerId),
@@ -173,12 +178,25 @@ export default function WorkerTyreCheckPage() {
         const rows = await fetchVehicles()
         if (cancelled) return
         setVehicles(rows)
-        const preferred =
-          searchParams.get('vehicleId')?.trim() ||
-          worker.defaultVehicleId ||
-          rows.find((row) => !isTrailerVehicle(row))?.id ||
-          ''
-        setVehicleId((current) => current || preferred)
+
+        // Optional initial selection only: route vehicleId, else a valid saved
+        // default. Never invent a selection from the first tractor, and never
+        // re-apply after the Worker has changed or cleared the picker.
+        if (!didInitVehicleRef.current) {
+          didInitVehicleRef.current = true
+          const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+          const fromDefault = worker.defaultVehicleId?.trim() || ''
+          const candidate = fromUrl || fromDefault
+          const isValidTractor = Boolean(
+            candidate &&
+              rows.some(
+                (row) => row.id === candidate && !isTrailerVehicle(row),
+              ),
+          )
+          if (isValidTractor) {
+            setVehicleId(candidate)
+          }
+        }
       } catch (loadError) {
         if (cancelled) return
         setVehiclesError(
@@ -530,15 +548,68 @@ export default function WorkerTyreCheckPage() {
       ) : null}
 
       {step === 'setup' ? (
-        <section className="space-y-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+        <section className="space-y-4 overflow-visible rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+          {setupSelectedVehicle ? (
+            <div className="rounded-2xl border border-[#C5DFFB] bg-[#F5FAFF] px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Selected vehicle
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-slate-950">
+                    {vehicleLabel(setupSelectedVehicle)}
+                  </p>
+                  {([setupSelectedVehicle.make, setupSelectedVehicle.model]
+                    .filter(Boolean)
+                    .join(' ') || null) && (
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {[setupSelectedVehicle.make, setupSelectedVehicle.model]
+                        .filter(Boolean)
+                        .join(' ')}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVehicleId('')
+                    setError(null)
+                    window.setTimeout(() => {
+                      document.getElementById('worker-tyre-check-vehicle')?.focus()
+                    }, 0)
+                  }}
+                  aria-label={`Remove selected vehicle ${vehicleLabel(setupSelectedVehicle)}`}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Search and select an active company vehicle to continue. A saved
+              default is optional.
+            </p>
+          )}
+
           <WorkerVehicleCombobox
             id="worker-tyre-check-vehicle"
             vehicles={tractorVehicles}
             selectedVehicleId={vehicleId || null}
-            onSelect={(vehicle) => setVehicleId(vehicle?.id ?? '')}
-            label="Vehicle"
+            onSelect={(vehicle) => {
+              setVehicleId(vehicle.id)
+              setError(null)
+            }}
+            onClear={() => {
+              setVehicleId('')
+              setError(null)
+            }}
+            label="Search registration"
+            placeholder="Enter registration number"
+            inputAriaLabel="Search company vehicles by registration number"
             required
             showAllWhenEmpty
+            showSelectedSummary={false}
           />
 
           <label className="block space-y-1.5">
@@ -701,7 +772,7 @@ export default function WorkerTyreCheckPage() {
           <Button
             type="button"
             className="h-12 w-full rounded-2xl bg-[#2563EB] text-base font-semibold text-white hover:bg-[#1d4ed8]"
-            disabled={busy}
+            disabled={busy || !vehicleId}
             onClick={() => void handleStart()}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}

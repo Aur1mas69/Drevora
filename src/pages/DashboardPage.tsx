@@ -1,19 +1,32 @@
 import { Link } from 'react-router-dom'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
-import {
-  formatPersonalTimeGreeting,
-  getSentenceTimeGreeting,
-} from '@/lib/greeting'
+import { getSentenceTimeGreeting } from '@/lib/greeting'
 import { getWorkerHomeQuickActionItems } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
-import { ChevronRight, Truck } from 'lucide-react'
+import {
+  ChevronRight,
+  MoonStar,
+  ShieldCheck,
+  Sun,
+  Sunset,
+  Truck,
+  type LucideIcon,
+} from 'lucide-react'
 import { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 
 /** Existing 51 KB WebP asset — rendered directly, never duplicated or inlined,
  * shown in both Light and Dark mode. */
 const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-dark.webp'
 const WORKER_ROBOT_SIZE = 256
+
+function getGreetingPeriodIcon(date = new Date()): LucideIcon {
+  const hour = date.getHours()
+  if (hour >= 5 && hour < 12) return Sun
+  if (hour >= 12 && hour < 17) return Sun
+  if (hour >= 17 && hour < 22) return Sunset
+  return MoonStar
+}
 
 function subscribeWorkerDarkMode(onChange: () => void): () => void {
   const root = document.documentElement
@@ -53,16 +66,10 @@ function resetHorizontalScrollOffset() {
   window.scrollTo(0, window.scrollY || window.pageYOffset || 0)
 }
 
-function WorkerHomeHeader({
-  firstName,
-  companyName,
-  isNameLoading = false,
-}: {
-  firstName: string | null
-  companyName: string
-  isNameLoading?: boolean
-}) {
+function WorkerHomeHeader({ companyName }: { companyName: string }) {
   const headerRef = useRef<HTMLElement>(null)
+  const GreetingIcon = getGreetingPeriodIcon()
+  const greeting = getSentenceTimeGreeting()
 
   useLayoutEffect(() => {
     // iOS PWA cold launch can keep a non-zero horizontal scroll offset (or a
@@ -98,25 +105,29 @@ function WorkerHomeHeader({
     }
   }, [])
 
-  const greeting = isNameLoading
-    ? getSentenceTimeGreeting()
-    : formatPersonalTimeGreeting(firstName)
-
   return (
-    <header ref={headerRef} className="worker-home-header w-full min-w-0 max-w-full space-y-1">
-      <h1 className="max-w-full text-3xl font-semibold tracking-tight break-words text-[color:var(--worker-text)]">
-        {greeting}
-      </h1>
-      {companyName ? (
-        <p className="max-w-full text-sm font-medium break-words text-[color:var(--worker-text-secondary)]">
-          {companyName}
-        </p>
-      ) : (
-        <div
-          className="h-4 w-36 max-w-full animate-pulse rounded-full bg-[color:var(--worker-border)]"
-          aria-hidden
-        />
-      )}
+    <header
+      ref={headerRef}
+      className="worker-home-header flex w-full min-w-0 max-w-full items-center gap-3.5"
+    >
+      <div className="worker-home-greeting-icon" aria-hidden>
+        <GreetingIcon className="size-5" strokeWidth={1.85} />
+      </div>
+      <div className="min-w-0 flex-1 space-y-2.5">
+        <h1 className="worker-home-greeting-script max-w-full break-words">
+          {greeting}
+        </h1>
+        {companyName ? (
+          <p className="worker-home-greeting-company max-w-full break-words">
+            {companyName}
+          </p>
+        ) : (
+          <div
+            className="h-5 w-40 max-w-full animate-pulse rounded-full bg-[color:var(--worker-border)]"
+            aria-hidden
+          />
+        )}
+      </div>
     </header>
   )
 }
@@ -135,24 +146,24 @@ function WorkerHomeHeader({
  */
 function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
-    <section className="relative isolate flex items-end gap-3 px-5 pt-5 pb-5 sm:gap-5 sm:px-6 sm:pt-6 sm:pb-6">
+    <section className="relative isolate flex items-end gap-3 px-5 pt-4 pb-4 sm:gap-5 sm:px-6 sm:pt-5 sm:pb-5">
       <div
         aria-hidden="true"
         className={cn(
           'absolute inset-x-0 bottom-0 z-0 min-h-[5.75rem] rounded-[1.75rem] p-px min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]',
           isDark
             ? 'bg-gradient-to-br from-[#A3F1AB]/60 to-[#4344F6]/60'
-            : 'bg-[color:var(--worker-border)]',
+            : 'bg-[#BFE3F5]',
         )}
       >
         <div className="worker-robot-hero relative h-full w-full overflow-hidden rounded-[calc(1.75rem-1px)]" />
       </div>
 
-      <div className="relative z-10 min-w-0 flex-1 space-y-1.5 pb-1">
+      <div className="relative z-10 min-w-0 flex-1 space-y-1.5 pb-0.5 pr-1 pl-0.5">
         <h2
           className={cn(
-            'text-xl font-semibold tracking-tight sm:text-2xl',
-            isDark ? 'text-white' : 'text-[color:var(--worker-text)]',
+            'text-xl font-bold leading-[1.2] tracking-tight sm:text-2xl [font-weight:700]',
+            isDark ? 'text-white' : 'text-[#0F172A]',
           )}
         >
           Let's get things done!
@@ -160,7 +171,7 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
         <p
           className={cn(
             'text-sm leading-snug',
-            isDark ? 'text-white/70' : 'text-[color:var(--worker-text-secondary)]',
+            isDark ? 'text-white/70' : 'text-[#334155]',
           )}
         >
           Here's what's happening with your work today.
@@ -188,7 +199,6 @@ function DashboardPage() {
 
   const verifiedCompany =
     companyName?.trim() || worker?.company?.trim() || ''
-  const firstName = worker?.firstName ?? null
 
   if (!isLoading && (error || !worker)) {
     return (
@@ -214,11 +224,7 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
-      <WorkerHomeHeader
-        firstName={firstName}
-        companyName={verifiedCompany}
-        isNameLoading={isLoading}
-      />
+      <WorkerHomeHeader companyName={verifiedCompany} />
 
       {isLoading || companyLoading ? (
         <div
@@ -231,18 +237,19 @@ function DashboardPage() {
           <WorkerHomeRobotHero isDark={isDark} />
 
           {defaultVehicleLabel ? (
-            <div className="flex items-center gap-3 rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)]">
-                <Truck className="size-5 text-[color:var(--worker-primary)]" />
+            <div className="worker-home-surface worker-home-surface--interactive flex items-center gap-3.5 px-4 py-3.5">
+              <div className="worker-home-icon-well">
+                <Truck className="size-6" strokeWidth={1.75} aria-hidden />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
                   Default vehicle
                 </p>
-                <p className="truncate text-sm font-semibold text-[color:var(--worker-text)]">
+                <p className="mt-0.5 truncate text-[15px] font-semibold leading-snug text-[color:var(--worker-text)]">
                   {defaultVehicleLabel}
                 </p>
               </div>
+              <ChevronRight className="worker-home-chevron" aria-hidden />
             </div>
           ) : null}
 
@@ -251,50 +258,23 @@ function DashboardPage() {
               Quick actions
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              {quickActionItems.map((item, index) => {
+              {quickActionItems.map((item) => {
                 const Icon = item.icon
-                if (!isDark) {
-                  return (
-                    <Link
-                      key={item.id}
-                      to={item.to}
-                      className={cn(
-                        'flex min-h-[6.5rem] flex-col justify-between rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 transition-colors',
-                        'hover:border-[color:var(--worker-primary)] hover:bg-[color:var(--worker-primary-soft)] active:bg-[color:var(--worker-primary-soft)]',
-                      )}
-                    >
-                      <div className="flex size-11 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)]">
-                        <Icon className="size-5 text-[color:var(--worker-primary)]" />
-                      </div>
-                      <p className="text-base font-semibold text-[color:var(--worker-text)]">{item.label}</p>
-                    </Link>
-                  )
-                }
-
-                const isMint = index % 2 === 0
                 return (
                   <Link
                     key={item.id}
                     to={item.to}
-                    className={cn(
-                      'flex min-h-[6.5rem] flex-col justify-between rounded-[1.5rem] p-4 transition-transform active:scale-[0.98]',
-                      isMint
-                        ? 'worker-quick-action-mint text-[#08130c]'
-                        : 'worker-quick-action-indigo text-white',
-                    )}
+                    className="worker-home-quick-action"
                   >
-                    <div className="flex items-center justify-between">
-                      <div
-                        className={cn(
-                          'flex size-11 items-center justify-center rounded-2xl',
-                          isMint ? 'bg-black/10' : 'bg-white/15',
-                        )}
-                      >
-                        <Icon className="size-5" />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="worker-home-icon-well">
+                        <Icon className="size-5" strokeWidth={1.75} aria-hidden />
                       </div>
-                      <ChevronRight className="size-4 opacity-70" aria-hidden />
+                      <ChevronRight className="worker-home-chevron mt-0.5" aria-hidden />
                     </div>
-                    <p className="text-base font-semibold">{item.label}</p>
+                    <p className="text-[15px] font-semibold leading-snug text-[color:var(--worker-text)]">
+                      {item.label}
+                    </p>
                   </Link>
                 )
               })}
@@ -304,12 +284,15 @@ function DashboardPage() {
           <Link
             to="/worker/vehicle-checks"
             className={cn(
-              'flex min-h-14 items-center justify-center gap-2 rounded-[1.5rem] px-4 text-base font-semibold transition-colors',
+              'worker-home-cta',
               isDark ? 'worker-cta-gradient text-white' : 'worker-btn-primary',
             )}
           >
-            Start Vehicle Check
-            {isDark ? <ChevronRight className="size-5" aria-hidden /> : null}
+            <span className="flex min-w-0 items-center gap-2.5">
+              <ShieldCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+              <span className="truncate">Start Vehicle Check</span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
           </Link>
         </>
       )}

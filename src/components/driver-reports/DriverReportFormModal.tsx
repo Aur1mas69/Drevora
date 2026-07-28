@@ -155,7 +155,7 @@ export function DriverReportFormModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
+        className="worker-theme-surface flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#D3E9FC] bg-white shadow-[0_24px_60px_rgba(33,142,231,0.18)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="driver-report-form-title"
@@ -271,8 +271,11 @@ export function DriverReportFormModal({
                   id="driver-report-worker-vehicle"
                   vehicles={sortedVehicles}
                   selectedVehicleId={values.vehicleId || null}
-                  onSelect={(vehicle) => updateField('vehicleId', vehicle?.id ?? '')}
-                  label="Vehicle (optional)"
+                  onSelect={(vehicle) => updateField('vehicleId', vehicle.id)}
+                  onClear={() => updateField('vehicleId', '')}
+                  label="Search registration"
+                  placeholder="Enter registration number"
+                  inputAriaLabel="Search company vehicles by registration number"
                   showAllWhenEmpty
                 />
               )}

@@ -188,14 +188,27 @@ function DayIndicatorDot({ state }: { state: DayIndicatorState }) {
 function dayIndicatorAriaLabel(state: DayIndicatorState): string {
   switch (state) {
     case 'valid':
-      return 'complete'
+      return 'completed'
     case 'partial':
-      return 'partially completed'
+      return 'in progress'
     case 'error':
       return 'needs attention'
     default:
-      return 'no entry'
+      return 'not started'
   }
+}
+
+/** Short weekday for compact mobile day boxes (Mon–Sun). Local helper — do not alter timesheetUtils. */
+function formatShortWeekday(dayDate: string): string {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(
+    parseLocalDate(dayDate),
+  )
+}
+
+function formatWeekdayLong(dayDate: string): string {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(
+    parseLocalDate(dayDate),
+  )
 }
 
 /** Collapsed-row preview text — only shows entered times/total for completed days. */
@@ -488,6 +501,156 @@ function WorkerDayFormFields({
   )
 }
 
+type WorkerMobileDaySelectorProps = {
+  entries: TimesheetEntryInput[]
+  selectedDayDate: string
+  todayDateString: string
+  onSelectDay: (dayDate: string) => void
+}
+
+/**
+ * Compact Mon–Sun day boxes for Worker mobile. Status uses the same
+ * getDayIndicatorState rules as the accordion (valid / partial / empty / error).
+ * Only one day’s full form is shown below — this strip never stacks full forms.
+ */
+function WorkerMobileDaySelector({
+  entries,
+  selectedDayDate,
+  todayDateString,
+  onSelectDay,
+}: WorkerMobileDaySelectorProps) {
+  return (
+    <div
+      role="group"
+      aria-label="Days this week"
+      className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <div className="mx-auto grid min-w-[17.5rem] grid-cols-7 gap-1 sm:gap-1.5">
+        {entries.map((entry) => {
+          const state = getDayIndicatorState(entry)
+          const selected = entry.dayDate === selectedDayDate
+          const isToday = entry.dayDate === todayDateString
+          const shortLabel = formatShortWeekday(entry.dayDate)
+          const statusPhrase = dayIndicatorAriaLabel(state)
+
+          return (
+            <button
+              key={entry.dayDate}
+              type="button"
+              onClick={() => onSelectDay(entry.dayDate)}
+              aria-label={`${formatWeekdayLong(entry.dayDate)}, ${statusPhrase}${isToday ? ', today' : ''}`}
+              aria-pressed={selected}
+              className={cn(
+                'flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl border px-0.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED] focus-visible:ring-offset-2',
+                state === 'valid' &&
+                  'worker-day-complete border-emerald-300 bg-emerald-50 text-emerald-900',
+                state === 'partial' &&
+                  'border-amber-300 bg-amber-50 text-amber-900',
+                state === 'error' && 'border-rose-300 bg-rose-50 text-rose-900',
+                state === 'empty' && 'border-slate-200 bg-white text-slate-700',
+                selected && 'ring-2 ring-[#89CFF0] ring-offset-1',
+              )}
+            >
+              <span className="text-[11px] font-semibold leading-none tracking-tight">
+                {shortLabel}
+              </span>
+              <span
+                aria-hidden="true"
+                className="flex h-3.5 items-center justify-center"
+              >
+                {state === 'valid' ? <Check className="size-3" strokeWidth={2.5} /> : null}
+                {state === 'partial' ? (
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                ) : null}
+                {state === 'error' ? (
+                  <AlertTriangle className="size-3" strokeWidth={2.5} />
+                ) : null}
+                {state === 'empty' ? (
+                  <span className="size-1 rounded-full bg-slate-300" />
+                ) : null}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+type WorkerMobileSelectedDayCardProps = DayFormProps & {
+  entry: TimesheetEntryInput
+  isToday: boolean
+  onSaveDay: () => void
+  isSavingDay: boolean
+  daySaveState: DaySaveState
+}
+
+/** Single expanded day form under the mobile day selector. */
+function WorkerMobileSelectedDayCard({
+  entry,
+  isToday,
+  onSaveDay,
+  isSavingDay,
+  daySaveState,
+  editable,
+  ...dayFormProps
+}: WorkerMobileSelectedDayCardProps) {
+  const state = getDayIndicatorState(entry)
+
+  return (
+    <article
+      className={cn(
+        'rounded-[1.5rem] border bg-white p-4 shadow-sm shadow-slate-200/50',
+        state === 'error' ? 'border-rose-200' : 'border-slate-100',
+        'ring-2 ring-[#2F80ED]/70',
+      )}
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <DayIndicatorDot state={state} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-950">
+              {formatDayLabel(entry.dayDate)}
+            </h2>
+            {isToday ? (
+              <span className="rounded-full bg-[#F6F9FF] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2F80ED]">
+                Today
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {dayIndicatorAriaLabel(state)}
+          </p>
+        </div>
+      </div>
+
+      <WorkerDayFormFields entry={entry} editable={editable} {...dayFormProps} />
+
+      {editable ? (
+        <div className="mt-4 space-y-2">
+          <Button
+            type="button"
+            disabled={isSavingDay}
+            className="h-12 w-full rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
+            onClick={onSaveDay}
+          >
+            {daySaveState === 'saving' || isSavingDay
+              ? 'Saving…'
+              : daySaveState === 'saved'
+                ? 'Saved'
+                : 'Save Day'}
+          </Button>
+          {daySaveState === 'error' ? (
+            <p className="text-center text-xs font-medium text-rose-600">
+              Could not save day. Try again.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  )
+}
+
 type WorkerDayAccordionRowProps = DayFormProps & {
   entry: TimesheetEntryInput
   isExpanded: boolean
@@ -499,9 +662,9 @@ type WorkerDayAccordionRowProps = DayFormProps & {
 }
 
 /**
- * Current Week — one accordion row per day. Today/selected expands by
- * default; other days stay collapsed, showing their entered times/total via
- * `collapsedDaySummary`. Save Day applies to the expanded day only.
+ * Desktop (lg+) Current Week — one accordion row per day. Today/selected
+ * expands by default; other days stay collapsed. Mobile uses
+ * WorkerMobileDaySelector + WorkerMobileSelectedDayCard instead.
  */
 function WorkerDayAccordionRow({
   entry,
@@ -631,7 +794,6 @@ export default function WorkerTimesheetsPage() {
   const [selectedDayDate, setSelectedDayDate] = useState('')
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
   const [isSavingDay, setIsSavingDay] = useState(false)
   const [daySaveState, setDaySaveState] = useState<DaySaveState>('idle')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -882,8 +1044,9 @@ export default function WorkerTimesheetsPage() {
     setDaySaveState('idle')
   }
 
-  /** Week-level save: persists every day and reloads the full timesheet. */
-  async function persistWeekEntries(successMessage: string): Promise<boolean> {
+  /** Week-level draft persist: validates and upserts every day, reloads timesheet.
+   * Kept for internal use (Submit Week) — no separate Worker "Save Draft" button. */
+  async function persistWeekEntries(successMessage?: string | null): Promise<boolean> {
     if (!timesheet || !editable) return false
 
     const recalculated = recalculateEntryInputs(entries, {
@@ -903,7 +1066,9 @@ export default function WorkerTimesheetsPage() {
       throw new Error('Timesheet does not belong to the signed-in worker.')
     }
     applyLoadedTimesheet(refreshed)
-    setActionMessage(successMessage)
+    if (successMessage) {
+      setActionMessage(successMessage)
+    }
     return true
   }
 
@@ -913,7 +1078,7 @@ export default function WorkerTimesheetsPage() {
    * on unsaved days.
    */
   async function handleSaveDay() {
-    if (!timesheet || !editable || isSaving || isSavingDay || isSubmitting) return
+    if (!timesheet || !editable || isSavingDay || isSubmitting) return
 
     const dayDate = selectedEntry?.dayDate ?? selectedDayDate
     const currentDay = entries.find((entry) => entry.dayDate === dayDate)
@@ -993,34 +1158,9 @@ export default function WorkerTimesheetsPage() {
     }
   }
 
-  async function handleSaveDraft() {
-    if (!timesheet || !editable || isSaving || isSavingDay || isSubmitting) return
-
-    setIsSaving(true)
-    setActionError(null)
-    setActionMessage(null)
-    setDaySaveState('idle')
-
-    try {
-      await persistWeekEntries(
-        timesheet.status === 'Rejected' ? 'Changes saved.' : 'Draft saved.',
-      )
-    } catch (error) {
-      setActionError(
-        error instanceof TimesheetsServiceError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to save timesheet.',
-      )
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   /** First press: validate only, then open confirmation. Never submits here. */
   function handleSubmitClick() {
-    if (!timesheet || !editable || isSaving || isSavingDay || isSubmitting) return
+    if (!timesheet || !editable || isSavingDay || isSubmitting) return
 
     setActionError(null)
     setActionMessage(null)
@@ -1046,12 +1186,11 @@ export default function WorkerTimesheetsPage() {
     setSubmitConfirmOpen(false)
   }
 
-  /** Final confirmation only — existing week submission path. */
+  /** Final confirmation — persist week draft entries, then submit for office review. */
   async function handleSubmitConfirm() {
     if (
       !timesheet ||
       !editable ||
-      isSaving ||
       isSavingDay ||
       isSubmitting ||
       submitLockRef.current
@@ -1066,18 +1205,11 @@ export default function WorkerTimesheetsPage() {
     setDaySaveState('idle')
 
     try {
-      const recalculated = recalculateEntryInputs(entries, {
-        overtimeMode,
-        overtimeRules,
-        paidBreaks,
-      })
-      const validationError = validateEntriesForSave(recalculated)
-      if (validationError) {
-        setActionError(validationError)
+      const saved = await persistWeekEntries(null)
+      if (!saved) {
         setSubmitConfirmOpen(false)
         return
       }
-      await upsertTimesheetEntries(timesheet.id, recalculated)
       const submitted = await submitTimesheet(timesheet.id)
       const refreshed = await fetchTimesheetById(submitted.id)
       if (refreshed.driverId !== worker?.id) {
@@ -1176,7 +1308,7 @@ export default function WorkerTimesheetsPage() {
   }
 
   const status = timesheet?.status ?? 'Draft'
-  const busy = isSaving || isSavingDay || isSubmitting || isLoading || isDownloadingPdf
+  const busy = isSavingDay || isSubmitting || isLoading || isDownloadingPdf
 
   const dayFormProps = {
     editable,
@@ -1317,7 +1449,31 @@ export default function WorkerTimesheetsPage() {
             <SummaryStat label="Total" value={formatTotalHours(summary.totalHours)} />
           </section>
 
-          <div role="list" aria-label="Days this week" className="space-y-2">
+          <div className="space-y-3 lg:hidden">
+            <WorkerMobileDaySelector
+              entries={entries}
+              selectedDayDate={selectedEntry?.dayDate ?? selectedDayDate}
+              todayDateString={todayDateString}
+              onSelectDay={setSelectedDayDate}
+            />
+
+            {selectedEntry ? (
+              <WorkerMobileSelectedDayCard
+                entry={selectedEntry}
+                isToday={selectedEntry.dayDate === todayDateString}
+                onSaveDay={() => void handleSaveDay()}
+                isSavingDay={isSavingDay}
+                daySaveState={daySaveState}
+                {...dayFormProps}
+              />
+            ) : null}
+          </div>
+
+          <div
+            role="list"
+            aria-label="Days this week"
+            className="hidden space-y-2 lg:block"
+          >
             {entries.map((entry) => {
               const isExpanded = entry.dayDate === (selectedEntry?.dayDate ?? selectedDayDate)
               return (
@@ -1341,27 +1497,18 @@ export default function WorkerTimesheetsPage() {
           </div>
 
           {editable ? (
-            <div className="grid gap-3 pb-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                className="h-12 rounded-2xl"
-                onClick={() => void handleSaveDraft()}
-              >
-                {isSaving
-                  ? 'Saving…'
-                  : status === 'Rejected'
-                    ? 'Save Changes'
-                    : 'Save Draft'}
-              </Button>
+            <div className="pt-1 pb-2">
               <Button
                 type="button"
                 disabled={busy}
-                className="h-12 rounded-2xl bg-[#2F80ED] hover:bg-[#2569C7]"
+                className="h-12 w-full rounded-2xl bg-[#2F80ED] text-base font-semibold hover:bg-[#2569C7]"
                 onClick={handleSubmitClick}
               >
-                {status === 'Rejected' ? 'Resubmit' : 'Submit'}
+                {isSubmitting
+                  ? 'Submitting…'
+                  : status === 'Rejected'
+                    ? 'Resubmit Week'
+                    : 'Submit Week'}
               </Button>
             </div>
           ) : null}

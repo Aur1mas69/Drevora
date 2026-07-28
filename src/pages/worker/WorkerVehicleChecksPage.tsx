@@ -5,7 +5,6 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
-import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import {
@@ -39,6 +38,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   CircleDot,
+  CreditCard,
   Loader2,
   X,
 } from 'lucide-react'
@@ -75,7 +75,7 @@ function VehicleSummaryCard({
           <button
             type="button"
             onClick={onClear}
-            aria-label="Clear selected vehicle"
+            aria-label="Change vehicle"
             className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#5499BF] transition-colors hover:bg-[#E3F0FF] hover:text-[#113C69]"
           >
             <X className="size-4" />
@@ -131,22 +131,16 @@ export default function WorkerVehicleChecksPage() {
   const [showCompletionValidation, setShowCompletionValidation] = useState(false)
   const [completedResult, setCompletedResult] = useState<VehicleCheckResult | null>(null)
   const submitLockRef = useRef(false)
-  const prefilledVehicleRef = useRef(false)
+  const redirectedMissingVehicleRef = useRef(false)
 
   const selectedVehicle = useMemo(
     () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
     [vehicleId, vehicles],
   )
 
-  const rememberedVehicle = useMemo(() => {
-    const rememberedId = getRememberedVehicleCheckId()
-    if (!rememberedId) return null
-    return vehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
-  }, [vehicles])
-
   // A remembered vehicle id that no longer matches an active company vehicle
   // (archived, deleted, or from another company) is stale local storage —
-  // drop it so it never resurfaces as a Quick select suggestion.
+  // drop it so it never resurfaces as a convenience default.
   useEffect(() => {
     if (vehicles.length === 0) return
     const rememberedId = getRememberedVehicleCheckId()
@@ -185,20 +179,14 @@ export default function WorkerVehicleChecksPage() {
     checklistStatus === 'ready' &&
     items.length > 0
 
-  function selectVehicle(vehicle: Vehicle) {
-    setVehicleId(vehicle.id)
-    setError(null)
-  }
-
   /**
-   * Clears the selected vehicle back to the search/list state. A remembered
-   * default is a convenience only — clearing here never re-locks the Worker
-   * into it; it must be re-selected (from Quick select or search) to apply.
+   * Vehicle selection happens on Worker Vehicles. Clearing here returns the
+   * Worker to that page so they can pick another real company vehicle.
    */
   function clearSelectedVehicle() {
-    setVehicleId('')
     setRememberVehicle(false)
     setError(null)
+    navigate('/worker/vehicles', { replace: true })
   }
 
   useEffect(() => {
@@ -235,28 +223,41 @@ export default function WorkerVehicleChecksPage() {
     }
   }, [companyLoading, companyReady, worker, workerLoading])
 
+  // Require a real vehicleId from the Vehicles page route. Free-text entry is
+  // not allowed here — missing/invalid IDs redirect back to Vehicles.
   useEffect(() => {
-    if (prefilledVehicleRef.current || vehicles.length === 0) return
+    if (vehiclesLoading || companyLoading || workerLoading) return
+    if (!companyReady || !worker) return
+    if (step !== 'setup') return
+    if (vehiclesError) return
 
-    const preferredId =
-      searchParams.get('vehicleId')?.trim() ||
-      getRememberedVehicleCheckId() ||
-      worker?.defaultVehicleId ||
-      ''
-
-    const preferred = preferredId
-      ? vehicles.find((vehicle) => vehicle.id === preferredId) ?? null
+    const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+    const match = fromUrl
+      ? vehicles.find((vehicle) => vehicle.id === fromUrl) ?? null
       : null
 
-    if (preferred) {
-      setVehicleId(preferred.id)
-      setRememberVehicle(Boolean(getRememberedVehicleCheckId() === preferred.id))
-    } else {
-      setRememberVehicle(Boolean(rememberedVehicle))
+    if (!match) {
+      if (!redirectedMissingVehicleRef.current) {
+        redirectedMissingVehicleRef.current = true
+        navigate('/worker/vehicles', { replace: true })
+      }
+      return
     }
 
-    prefilledVehicleRef.current = true
-  }, [vehicles, searchParams, worker?.defaultVehicleId, rememberedVehicle])
+    setVehicleId(match.id)
+    setRememberVehicle(getRememberedVehicleCheckId() === match.id)
+  }, [
+    companyLoading,
+    companyReady,
+    navigate,
+    searchParams,
+    step,
+    vehicles,
+    vehiclesError,
+    vehiclesLoading,
+    worker,
+    workerLoading,
+  ])
 
   useEffect(() => {
     if (isChecklistFullyAnswered(items, checklistSections)) {
@@ -477,18 +478,29 @@ export default function WorkerVehicleChecksPage() {
       </div>
 
       {step === 'setup' ? (
-        <Link
-          to={tyreCheckHref(vehicleId)}
-          className="flex min-h-12 items-center gap-3 rounded-[1.25rem] border border-slate-100 bg-white px-4 py-3 text-sm shadow-sm transition-colors hover:border-[#BFDFFF] hover:bg-[#F8FBFF]"
+        <aside
+          role="note"
+          aria-label="Tachograph driver card reminder"
+          className="flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm"
         >
-          <span className="flex size-10 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#2F80ED]">
-            <CircleDot className="size-5" />
+          <span
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-800"
+            aria-hidden="true"
+          >
+            <CreditCard className="size-5" />
           </span>
-          <span className="min-w-0 text-left">
-            <span className="block font-semibold text-slate-950">Need a Tyre Check instead?</span>
-            <span className="block text-slate-500">Open the tyre inspection workflow</span>
-          </span>
-        </Link>
+          <div className="min-w-0 text-left">
+            <p className="font-semibold text-amber-950">
+              Before starting your Daily Vehicle Check
+            </p>
+            <p className="mt-0.5 text-amber-900/85">
+              Make sure your driver card is inserted into the tachograph.
+            </p>
+            <p className="mt-1 text-xs text-amber-800/80">
+              Do this before beginning the walkaround inspection.
+            </p>
+          </div>
+        </aside>
       ) : null}
 
       {error ? (
@@ -507,43 +519,13 @@ export default function WorkerVehicleChecksPage() {
           </p>
 
           <form onSubmit={(event) => void handleContinue(event)} className="space-y-4">
-            {rememberedVehicle ? (
-              <div className="rounded-[1.25rem] border border-[#D3E9FC] bg-[#FAFCFF] p-3">
-                <p className="text-xs font-semibold text-[#5499BF]">Quick select</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => selectVehicle(rememberedVehicle)}
-                  className="mt-2 h-11 w-full justify-start rounded-2xl border-[#C5DFFB] bg-white px-3 text-left text-sm font-semibold text-[#113C69] hover:bg-[#F5FAFF]"
-                >
-                  {rememberedVehicle.registration}
-                  <span className="ml-2 font-normal text-[#5499BF]">
-                    {getVehicleMakeModelLabel(rememberedVehicle)}
-                    {rememberedVehicle.vehicleType ? ` · ${rememberedVehicle.vehicleType}` : ''}
-                  </span>
-                </Button>
-              </div>
-            ) : null}
-
-            <WorkerVehicleCombobox
-              id="worker-vehicle-check-search"
-              vehicles={vehicles}
-              selectedVehicleId={vehicleId || null}
-              onSelect={(vehicle) => {
-                if (vehicle) selectVehicle(vehicle)
-                else {
-                  setVehicleId('')
-                  setError(null)
-                }
-              }}
-              label="Number plate"
-              required
-              showAllWhenEmpty
-            />
-
             {selectedVehicle ? (
               <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
-            ) : null}
+            ) : (
+              <p className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                Select a vehicle on the Vehicles page before starting this check.
+              </p>
+            )}
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
               <input

@@ -115,20 +115,30 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   return trimmed ? trimmed : null
 }
 
-function isMissingVehicleCheckTemplateColumnError(error: unknown): boolean {
-  const message =
-    error instanceof VehicleCheckTemplatesServiceError
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : ''
+function supabaseErrorMessage(error: unknown): string {
+  if (error instanceof VehicleCheckTemplatesServiceError) return error.message
+  if (error instanceof Error) return error.message
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message
+  }
+  return ''
+}
 
-  const normalized = message.toLowerCase()
+function isMissingVehicleCheckTemplateColumnError(error: unknown): boolean {
+  const normalized = supabaseErrorMessage(error).toLowerCase()
+  if (!normalized) return false
   return (
     normalized.includes('could not find') ||
     normalized.includes('schema cache') ||
     (normalized.includes('column') &&
-      (normalized.includes('does not exist') || normalized.includes('not found')))
+      (normalized.includes('does not exist') ||
+        normalized.includes('not found') ||
+        normalized.includes('guidance')))
   )
 }
 
@@ -666,17 +676,12 @@ export async function deleteTemplateItem(itemId: string): Promise<void> {
 }
 
 function isVehicleCheckTemplateSchemaMismatch(error: unknown): boolean {
-  const message =
-    error instanceof VehicleCheckTemplatesServiceError
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : ''
-
-  const normalized = message.toLowerCase()
+  const normalized = supabaseErrorMessage(error).toLowerCase()
+  if (!normalized) return false
   return (
     normalized.includes('does not exist') ||
-    normalized.includes('could not find the table') ||
+    normalized.includes('could not find') ||
+    normalized.includes('schema cache') ||
     normalized.includes('vehicle_check_template_items') ||
     (normalized.includes('column') && normalized.includes('vehicle_check_templates'))
   )
@@ -776,33 +781,32 @@ async function fetchLegacyFlatTemplateItemsByVehicleType(
       .order('item_name', { ascending: true })
   }
 
-  let result = await runLegacySelect(legacySelectWithGuidance)
-  if (result.error && isMissingVehicleCheckTemplateColumnError(result.error)) {
+  function throwIfMissingCompanyIdColumn(error: { message?: string } | null): void {
     // Fail closed: without company_id the flat-table path cannot be tenant-safe.
     // In-memory Basic DVSA fallback in vehicleCheckTemplateLoader covers checklist load.
-    const message = (result.error.message ?? '').toLowerCase()
+    const message = (error?.message ?? '').toLowerCase()
     if (message.includes('company_id')) {
       throw new VehicleCheckTemplatesServiceError(
         'Vehicle check template company_id is not available yet. Run migration 20260714220000_add_vehicle_check_templates_company_id.sql on your Supabase project.',
       )
     }
   }
-  if (result.error && result.error.message.toLowerCase().includes('does not exist')) {
+
+  // Prefer guidance when present (legacy flat rows). Live DBs that never applied
+  // 20260707204100_add_vehicle_check_template_guidance.sql fail that select —
+  // fall back to description / minimal so template load cannot block vehicle flows.
+  let result = await runLegacySelect(legacySelectWithGuidance)
+  if (result.error && isMissingVehicleCheckTemplateColumnError(result.error)) {
+    throwIfMissingCompanyIdColumn(result.error)
     result = await runLegacySelect(legacySelectWithDescription)
   }
-  if (result.error && result.error.message.toLowerCase().includes('does not exist')) {
+  if (result.error && isMissingVehicleCheckTemplateColumnError(result.error)) {
+    throwIfMissingCompanyIdColumn(result.error)
     result = await runLegacySelect(legacySelectMinimal)
   }
 
   if (result.error) {
-    if (isMissingVehicleCheckTemplateColumnError(result.error)) {
-      const message = (result.error.message ?? '').toLowerCase()
-      if (message.includes('company_id')) {
-        throw new VehicleCheckTemplatesServiceError(
-          'Vehicle check template company_id is not available yet. Run migration 20260714220000_add_vehicle_check_templates_company_id.sql on your Supabase project.',
-        )
-      }
-    }
+    throwIfMissingCompanyIdColumn(result.error)
     throw new VehicleCheckTemplatesServiceError(result.error.message)
   }
 

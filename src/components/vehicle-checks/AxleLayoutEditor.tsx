@@ -52,7 +52,7 @@ export function AxleLayoutEditor({
                 aria-pressed={layout === option}
                 onClick={() => setAxle(index, option)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                  'worker-axle-toggle px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                   layout === option
                     ? 'bg-[#2563EB] text-white'
                     : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',

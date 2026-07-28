@@ -220,7 +220,7 @@ export default function MyHolidaysPage() {
       ) : null}
 
       {toastMessage ? (
-        <div className="fixed bottom-24 left-1/2 z-[60] w-[min(100vw-2rem,20rem)] -translate-x-1/2 rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg">
+        <div className="worker-toast-success fixed bottom-24 left-1/2 z-[60] w-[min(100vw-2rem,20rem)] -translate-x-1/2 rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg">
           {toastMessage}
         </div>
       ) : null}

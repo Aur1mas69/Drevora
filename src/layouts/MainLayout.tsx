@@ -17,7 +17,7 @@ import { useLayoutEffect, useMemo } from 'react'
 
 function navButtonClass(active: boolean) {
   return cn(
-    'flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2 text-[11px] font-medium transition-colors',
+    'worker-nav-item flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2.5 text-[11px] font-medium transition-colors',
     active
       ? 'worker-nav-active'
       : 'text-[color:var(--worker-nav-inactive)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]',
@@ -48,15 +48,15 @@ function MainLayout() {
 
   function renderNavLink(item: WorkerNavItem) {
     const Icon = item.icon
+    const active = isWorkerNavPathActive(location.pathname, item.to)
     return (
       <NavLink
         key={item.id}
         to={item.to}
-        className={() =>
-          navButtonClass(isWorkerNavPathActive(location.pathname, item.to))
-        }
+        className={() => navButtonClass(active)}
       >
-        <Icon className="size-5 shrink-0" />
+        {active ? <span className="worker-nav-indicator" aria-hidden /> : null}
+        <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
         <span className="truncate">{item.shortLabel ?? item.label}</span>
       </NavLink>
     )
@@ -68,9 +68,9 @@ function MainLayout() {
         <Outlet />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 w-full max-w-full border-t border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)]/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
+      <div className="fixed bottom-0 left-0 right-0 z-30 worker-bottom-nav-shell w-full max-w-full border-t border-[color:var(--worker-border)] bg-[color:var(--worker-card)]/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
         <div className="relative mx-auto w-full min-w-0 max-w-md lg:max-w-lg">
-          <div className="flex w-full min-w-0 items-center justify-between gap-1 rounded-[2rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-1.5">
+          <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-1 rounded-[2rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-1.5">
             <NavLink
               to={WORKER_HOME_PATH}
               className={() =>
@@ -78,7 +78,13 @@ function MainLayout() {
               }
               aria-label="Home"
             >
-              <Home className="size-5 shrink-0" />
+              {location.pathname === WORKER_HOME_PATH ? (
+                <span className="worker-nav-indicator" aria-hidden />
+              ) : null}
+              <Home
+                className="size-5 shrink-0"
+                strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.25 : 1.75}
+              />
               <span className="truncate">Home</span>
             </NavLink>
 
@@ -90,7 +96,7 @@ function MainLayout() {
               onClick={() => void handleSignOut()}
               className={navButtonClass(false)}
             >
-              <LogOut className="size-5 shrink-0" />
+              <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
               <span className="truncate">Sign out</span>
             </button>
           </div>

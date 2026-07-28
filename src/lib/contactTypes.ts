@@ -37,6 +37,8 @@ export type Contact = {
   country: string | null
   notes: string | null
   status: ContactStatus
+  /** Admin/Office flag — when true, Workers in the same company may read this active contact. */
+  visibleToWorkers: boolean
   workerId: string | null
   workerCode: string | null
   /** `worker` rows are virtual directory entries sourced from public.drivers. */
@@ -86,6 +88,7 @@ export type CreateContactInput = {
   country?: string | null
   notes?: string | null
   status?: ContactStatus
+  visibleToWorkers?: boolean
   workerId?: string | null
 }
 
@@ -109,6 +112,7 @@ export type ContactFormValues = {
   country: string
   notes: string
   status: ContactStatus
+  visibleToWorkers: boolean
   workerId: string
 }
 

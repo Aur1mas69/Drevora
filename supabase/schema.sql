@@ -1439,10 +1439,22 @@ create table if not exists public.tyre_check_items (
 comment on table public.tyre_check_items is
   'Per-tyre measurements for a tyre_checks parent. Single/Dual is a free per-axle choice (2 or 4 recorded positions); tread_status/wear_percent are derived; Dirty/Defect are separate flags.';
 
--- Idempotent: removes the old steer=single/drive+trailer=dual coupling on
--- databases created before 20260728090000_tyre_check_configurable_axle_layout.sql.
+-- Idempotent: replaces the old steer=single / drive+trailer=dual coupling
+-- (canonical: 20260728220000_fix_tyre_layout_rpc_and_position_constraint.sql).
+-- Any axle_type may use Single {left,right} or Dual outer/inner positions.
 alter table public.tyre_check_items
   drop constraint if exists tyre_check_items_axle_type_position_check;
+
+alter table public.tyre_check_items
+  add constraint tyre_check_items_axle_type_position_check check (
+    position in ('left', 'right')
+    or position in (
+      'outer_left',
+      'inner_left',
+      'inner_right',
+      'outer_right'
+    )
+  );
 
 create unique index if not exists tyre_check_items_position_uidx
   on public.tyre_check_items (tyre_check_id, unit, axle_number, position);
@@ -1471,7 +1483,8 @@ create index if not exists tyre_checks_company_status_created_at_idx
 -- Check keeps using its own tyre_check_items rows as the permanent
 -- historical layout, so edits here never alter a completed check.
 -- RLS/grants live in policies.sql. Write RPC:
--- drevora_set_vehicle_tyre_layout(uuid, text[]) (see 20260728090000).
+-- drevora_set_vehicle_tyre_layout(uuid, text[])
+-- (see 20260728090000 / 20260728220000).
 create table if not exists public.vehicle_tyre_layouts (
   vehicle_id uuid primary key references public.vehicles (id) on delete cascade,
   company_id uuid not null references public.companies (id) on delete restrict,
@@ -1525,6 +1538,20 @@ alter table public.vehicle_check_templates
   add column if not exists is_active boolean not null default true,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
+
+-- Compact checklist guidance / flags (canonical:
+-- 20260707204100_add_vehicle_check_template_guidance.sql). Nullable guidance;
+-- after normalize, Worker UI guidance text lives on
+-- vehicle_check_template_items.description for header+items templates.
+alter table public.vehicle_check_templates
+  add column if not exists guidance text,
+  add column if not exists allow_notes boolean not null default true,
+  add column if not exists allow_photo boolean not null default false,
+  add column if not exists fail_on_defect boolean not null default true,
+  add column if not exists is_custom boolean not null default false;
+
+comment on column public.vehicle_check_templates.guidance is
+  'Optional legacy flat-row checklist guidance text. Nullable. Prefer vehicle_check_template_items.description on normalized templates.';
 
 update public.vehicle_check_templates
 set name = coalesce(name, vehicle_type || ' Daily Vehicle Check', 'Vehicle Check Template')
@@ -2214,6 +2241,7 @@ create table if not exists public.contacts (
   country text default 'United Kingdom',
   notes text,
   status text not null default 'active',
+  visible_to_workers boolean not null default false,
   worker_id uuid references public.drivers (id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
@@ -2233,6 +2261,9 @@ create table if not exists public.contacts (
   constraint contacts_status_check check (status in ('active', 'inactive'))
 );
 
+comment on column public.contacts.visible_to_workers is
+  'When true, authenticated Workers (Drivers) in the same company may SELECT this active contact. Defaults false; Admins/Office must enable explicitly. No automatic backfill.';
+
 create index if not exists contacts_company_idx on public.contacts (company);
 create index if not exists contacts_category_idx on public.contacts (category);
 create index if not exists contacts_status_idx on public.contacts (status);
@@ -2242,6 +2273,8 @@ create index if not exists contacts_worker_id_idx on public.contacts (worker_id)
 create unique index if not exists contacts_worker_id_unique_idx
   on public.contacts (worker_id)
   where worker_id is not null;
+-- Partial index contacts_company_visible_to_workers_idx (company_id) is created in
+-- migration 20260728230000 after company_id exists on live projects.
 
 drop trigger if exists contacts_set_updated_at on public.contacts;
 

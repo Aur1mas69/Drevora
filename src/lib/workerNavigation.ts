@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarDays,
-  ClipboardList,
+  ClipboardCheck,
   Contact,
   FileText,
   Settings,
@@ -32,7 +32,7 @@ export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
     label: 'Timesheets',
     shortLabel: 'Timesheets',
     to: '/worker/timesheets',
-    icon: ClipboardList,
+    icon: ClipboardCheck,
   },
   {
     id: 'holidays',

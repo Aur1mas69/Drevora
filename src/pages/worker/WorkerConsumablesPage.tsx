@@ -344,7 +344,7 @@ export default function WorkerConsumablesPage() {
       )}
 
       {toastMessage ? (
-        <div className="fixed bottom-24 left-1/2 z-[70] w-[min(92vw,24rem)] -translate-x-1/2 rounded-xl bg-[color:var(--worker-text)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--worker-bg)] shadow-lg">
+        <div className="worker-toast-success fixed bottom-24 left-1/2 z-[70] w-[min(92vw,24rem)] -translate-x-1/2 rounded-xl bg-[color:var(--worker-text)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--worker-bg)] shadow-lg">
           {toastMessage}
         </div>
       ) : null}
