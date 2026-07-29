@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
+import App from '@/App'
 import { RootErrorBoundary } from '@/components/RootErrorBoundary'
 import { normalizeAppLaunchPath } from '@/components/pwa/pwaUtils'
 import { AuthProvider } from '@/contexts/AuthContext'

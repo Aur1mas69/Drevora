@@ -112,19 +112,33 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
+      alias: [
+        // Exact `@/App` must win over the general `@` prefix.
+        // Web → App.tsx (full Admin + Worker router); native → App.native.tsx (Worker-only).
+        {
+          find: '@/App',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/App.native.tsx')
+            : path.resolve(__dirname, './src/App.tsx'),
+        },
+        {
+          find: '@',
+          replacement: path.resolve(__dirname, './src'),
+        },
         // When VitePWA is disabled, `virtual:pwa-register` is not provided — stub it
         // so PwaRuntime still compiles for Capacitor without registering a SW.
         ...(isNative
-          ? {
-              'virtual:pwa-register': path.resolve(
-                __dirname,
-                './src/lib/pwaRegisterNativeStub.ts',
-              ),
-            }
-          : {}),
-      },
+          ? [
+              {
+                find: 'virtual:pwa-register',
+                replacement: path.resolve(
+                  __dirname,
+                  './src/lib/pwaRegisterNativeStub.ts',
+                ),
+              },
+            ]
+          : []),
+      ],
     },
   }
 })
