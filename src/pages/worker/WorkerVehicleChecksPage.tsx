@@ -29,6 +29,10 @@ import type {
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { computeOverallResult, isChecklistFullyAnswered, todayIsoDate } from '@/lib/vehicleCheckUtils'
 import {
+  captureVehicleCheckLocation,
+  type VehicleCheckLocationResult,
+} from '@/lib/vehicleCheckLocation'
+import {
   createVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
@@ -40,6 +44,7 @@ import {
   CircleDot,
   CreditCard,
   Loader2,
+  MapPin,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -130,8 +135,43 @@ export default function WorkerVehicleChecksPage() {
   const [showChecklistValidation, setShowChecklistValidation] = useState(false)
   const [showCompletionValidation, setShowCompletionValidation] = useState(false)
   const [completedResult, setCompletedResult] = useState<VehicleCheckResult | null>(null)
+  const [startedLocationResult, setStartedLocationResult] =
+    useState<VehicleCheckLocationResult | null>(null)
+  const [startLocationStatus, setStartLocationStatus] = useState<
+    'idle' | 'capturing' | 'success' | 'unavailable'
+  >('idle')
   const submitLockRef = useRef(false)
   const redirectedMissingVehicleRef = useRef(false)
+  const locationStatusHideTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (locationStatusHideTimerRef.current != null) {
+        window.clearTimeout(locationStatusHideTimerRef.current)
+      }
+    }
+  }, [])
+
+  /**
+   * One-shot capture when the Worker starts the Vehicle Check. Never blocks —
+   * the checklist is already usable while this resolves in the background.
+   */
+  function beginStartLocationCapture() {
+    if (locationStatusHideTimerRef.current != null) {
+      window.clearTimeout(locationStatusHideTimerRef.current)
+      locationStatusHideTimerRef.current = null
+    }
+    setStartedLocationResult(null)
+    setStartLocationStatus('capturing')
+
+    void captureVehicleCheckLocation().then((result) => {
+      setStartedLocationResult(result)
+      setStartLocationStatus(result.status === 'success' ? 'success' : 'unavailable')
+      locationStatusHideTimerRef.current = window.setTimeout(() => {
+        setStartLocationStatus('idle')
+      }, 4000)
+    })
+  }
 
   const selectedVehicle = useMemo(
     () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
@@ -316,6 +356,7 @@ export default function WorkerVehicleChecksPage() {
       setChecklistNotice(checklist.notice)
       setChecklistStatus(checklist.status)
       setInspectionStartedAt(new Date().toISOString())
+      beginStartLocationCapture()
       setDurationNowMs(Date.now())
       setOdometer('')
       setOdometerUnit(DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT)
@@ -388,6 +429,9 @@ export default function WorkerVehicleChecksPage() {
     submitLockRef.current = true
     setIsSaving(true)
     try {
+      // One-shot GPS request immediately before the final save — part of the
+      // same completion flow, never a separate/independent submission.
+      const completedLocationResult = await captureVehicleCheckLocation()
       const created = await createVehicleCheck({
         vehicleId,
         workerId: worker.id,
@@ -398,6 +442,10 @@ export default function WorkerVehicleChecksPage() {
         signatureFile,
         inspectionStartedAt: confirmedStartedAt,
         items,
+        startedLocation:
+          startedLocationResult?.status === 'success' ? startedLocationResult.location : null,
+        completedLocation:
+          completedLocationResult.status === 'success' ? completedLocationResult.location : null,
       })
       setCompletedResult(created.overallResult)
       setStep('done')
@@ -454,6 +502,8 @@ export default function WorkerVehicleChecksPage() {
             if (step === 'checklist') {
               setStep('setup')
               setInspectionStartedAt(null)
+              setStartedLocationResult(null)
+              setStartLocationStatus('idle')
               return
             }
             navigate('/worker/vehicles')
@@ -550,6 +600,11 @@ export default function WorkerVehicleChecksPage() {
               />
             </label>
 
+            <p className="flex items-start gap-1.5 text-xs text-slate-400">
+              <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              Your location is recorded when this Vehicle Check starts and when it is completed.
+            </p>
+
             <Button
               type="submit"
               disabled={isLoadingChecklist || vehicles.length === 0 || !selectedVehicle}
@@ -572,6 +627,20 @@ export default function WorkerVehicleChecksPage() {
           >
             {isLoadingChecklist ? (
               <p className="text-sm text-slate-500">Loading checklist…</p>
+            ) : null}
+
+            {startLocationStatus !== 'idle' ? (
+              <p
+                role="status"
+                className="flex items-center gap-1.5 rounded-[10px] bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500"
+              >
+                <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+                {startLocationStatus === 'capturing'
+                  ? 'Recording location…'
+                  : startLocationStatus === 'success'
+                    ? 'Location recorded'
+                    : 'Location unavailable — you can continue'}
+              </p>
             ) : null}
 
             {checklistNotice ? (
@@ -637,6 +706,8 @@ export default function WorkerVehicleChecksPage() {
                 onClick={() => {
                   setStep('setup')
                   setInspectionStartedAt(null)
+                  setStartedLocationResult(null)
+                  setStartLocationStatus('idle')
                 }}
               >
                 <ChevronLeft className="mr-1 size-4" />
@@ -648,7 +719,7 @@ export default function WorkerVehicleChecksPage() {
                 className="h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
-                {isSaving ? 'Saving…' : 'Complete'}
+                {isSaving ? 'Completing Vehicle Check…' : 'Complete'}
               </Button>
             </div>
           </form>

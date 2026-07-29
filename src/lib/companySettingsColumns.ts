@@ -46,6 +46,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'sunday_overtime_after_hours',
   'sunday_overtime_multiplier',
   'sunday_use_company_default_break',
+  'weekend_rules_scope',
   'timesheet_week_start_day',
   'timesheet_week_reset_month',
   'timesheet_week_reset_day',
@@ -105,6 +106,7 @@ export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
   'sunday_overtime_multiplier',
   'sunday_guaranteed_paid_hours',
   'sunday_use_company_default_break',
+  'weekend_rules_scope',
 ] as const
 
 /** Timesheet week numbering columns — optional until migration is applied. */
@@ -172,7 +174,8 @@ export const companySettingsWeekendSelect = `
   sunday_overtime_after_hours,
   sunday_overtime_multiplier,
   sunday_guaranteed_paid_hours,
-  sunday_use_company_default_break
+  sunday_use_company_default_break,
+  weekend_rules_scope
 ` as const
 
 export const companySettingsWeekNumberingSelect = `

@@ -45,11 +45,13 @@ import {
   CURRENCY_OPTIONS,
   DEFAULT_HOLIDAY_WORKING_DAYS,
   DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
+  DEFAULT_WEEKEND_RULES_SCOPE,
   HOLIDAY_WORKING_DAY_OPTIONS,
   type HolidayEntitlementRules,
   type HolidayEntitlementRule,
   type HolidayCountingMethod,
   type HolidayWorkingDay,
+  type WeekendRulesScope,
 } from '@/lib/companySettingsTypes'
 import {
   normalizeConsumableDefaultPrices,
@@ -108,6 +110,7 @@ type CompanyRow = {
   sunday_overtime_multiplier: number | null
   sunday_guaranteed_paid_hours: number | null
   sunday_use_company_default_break?: boolean | null
+  weekend_rules_scope?: string | null
   timesheet_week_start_day: string | null
   timesheet_week_reset_month: number | null
   timesheet_week_reset_day: number | null
@@ -157,6 +160,10 @@ function normalizeBreakMinutes(value: number | null | undefined): DefaultBreakMi
 
 function normalizePaidBreaks(value: boolean | null | undefined): boolean {
   return value === true
+}
+
+function normalizeWeekendRulesScope(value: string | null | undefined): WeekendRulesScope {
+  return value === 'worker' ? 'worker' : DEFAULT_WEEKEND_RULES_SCOPE
 }
 
 function normalizeTimesheetWeekStartDay(
@@ -493,6 +500,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
       DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
     ),
     sundayUseCompanyDefaultBreak: row.sunday_use_company_default_break ?? true,
+    weekendRulesScope: normalizeWeekendRulesScope(row.weekend_rules_scope),
     timesheetWeekStartDay: normalizeTimesheetWeekStartDay(row.timesheet_week_start_day),
     timesheetWeekResetMonth: normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
     timesheetWeekResetDay: normalizeTimesheetWeekResetDay(
@@ -557,6 +565,7 @@ export function companySettingsToFormValues(
     sundayOvertimeMultiplier: settings.sundayOvertimeMultiplier,
     sundayGuaranteedPaidHours: settings.sundayGuaranteedPaidHours,
     sundayUseCompanyDefaultBreak: settings.sundayUseCompanyDefaultBreak,
+    weekendRulesScope: settings.weekendRulesScope,
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
@@ -703,6 +712,9 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   }
   if (input.sundayUseCompanyDefaultBreak !== undefined) {
     payload.sunday_use_company_default_break = input.sundayUseCompanyDefaultBreak
+  }
+  if (input.weekendRulesScope !== undefined) {
+    payload.weekend_rules_scope = input.weekendRulesScope === 'worker' ? 'worker' : 'company'
   }
   if (input.timesheetWeekStartDay !== undefined) {
     payload.timesheet_week_start_day = normalizeTimesheetWeekStartDay(input.timesheetWeekStartDay)

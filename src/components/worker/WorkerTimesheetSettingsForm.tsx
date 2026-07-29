@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   WORKER_BREAK_MINUTES_OPTIONS,
   type EffectiveTimesheetSettings,
+  type WeekendRulesScope,
   type WorkerTimesheetSettingsForm,
 } from '@/lib/workerTimesheetSettingsTypes'
 import {
@@ -39,10 +40,12 @@ function formFromEffective(effective: EffectiveTimesheetSettings): WorkerTimeshe
     saturdayOvertimeAfterHours: effective.saturdayOvertimeAfterHours,
     saturdayOvertimeMultiplier: effective.saturdayOvertimeMultiplier,
     saturdayGuaranteedPaidHours: effective.saturdayGuaranteedPaidHours,
+    saturdayUseCompanyDefaultBreak: effective.saturdayUseCompanyDefaultBreak,
     sundayOvertimeEnabled: effective.sundayOvertimeEnabled,
     sundayOvertimeAfterHours: effective.sundayOvertimeAfterHours,
     sundayOvertimeMultiplier: effective.sundayOvertimeMultiplier,
     sundayGuaranteedPaidHours: effective.sundayGuaranteedPaidHours,
+    sundayUseCompanyDefaultBreak: effective.sundayUseCompanyDefaultBreak,
   }
 }
 
@@ -60,17 +63,22 @@ export function WorkerTimesheetSettingsForm({
     snapshot(formFromEffective(initialEffective)),
   )
   const [hasOverride, setHasOverride] = useState(initialEffective.hasWorkerOverride)
+  const [weekendRulesScope, setWeekendRulesScope] = useState<WeekendRulesScope>(
+    initialEffective.weekendRulesScope,
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const saveLockRef = useRef(false)
+  const weekendEditable = weekendRulesScope === 'worker'
 
   useEffect(() => {
     const next = formFromEffective(initialEffective)
     setForm(next)
     setBaseline(snapshot(next))
     setHasOverride(initialEffective.hasWorkerOverride)
+    setWeekendRulesScope(initialEffective.weekendRulesScope)
   }, [initialEffective])
 
   const validationError = useMemo(
@@ -99,7 +107,7 @@ export function WorkerTimesheetSettingsForm({
     setError(null)
     setSuccess(null)
     try {
-      await saveOwnDriverTimesheetSettings(driverId, form)
+      await saveOwnDriverTimesheetSettings(driverId, form, weekendRulesScope)
       setBaseline(snapshot(form))
       setHasOverride(true)
       setSuccess('Timesheet settings saved.')
@@ -280,30 +288,69 @@ export function WorkerTimesheetSettingsForm({
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Weekend Rules" hint="Saturday and Sunday are independent.">
-        <WeekendDayEditor
-          dayLabel="Saturday"
-          enabled={form.saturdayOvertimeEnabled}
-          afterHours={form.saturdayOvertimeAfterHours}
-          multiplier={form.saturdayOvertimeMultiplier}
-          guaranteed={form.saturdayGuaranteedPaidHours}
-          onEnabledChange={(enabled) => patch({ saturdayOvertimeEnabled: enabled })}
-          onAfterHoursChange={(value) => patch({ saturdayOvertimeAfterHours: value })}
-          onMultiplierChange={(value) => patch({ saturdayOvertimeMultiplier: value })}
-          onGuaranteedChange={(value) => patch({ saturdayGuaranteedPaidHours: value })}
-        />
-        <div className="my-4 border-t border-slate-100" />
-        <WeekendDayEditor
-          dayLabel="Sunday"
-          enabled={form.sundayOvertimeEnabled}
-          afterHours={form.sundayOvertimeAfterHours}
-          multiplier={form.sundayOvertimeMultiplier}
-          guaranteed={form.sundayGuaranteedPaidHours}
-          onEnabledChange={(enabled) => patch({ sundayOvertimeEnabled: enabled })}
-          onAfterHoursChange={(value) => patch({ sundayOvertimeAfterHours: value })}
-          onMultiplierChange={(value) => patch({ sundayOvertimeMultiplier: value })}
-          onGuaranteedChange={(value) => patch({ sundayGuaranteedPaidHours: value })}
-        />
+      <SettingsCard
+        title="Weekend Rules"
+        hint={
+          weekendEditable
+            ? 'Saturday and Sunday are independent.'
+            : 'Managed by your company. Your Admin controls these values for everyone.'
+        }
+      >
+        {weekendEditable ? (
+          <>
+            <WeekendDayEditor
+              dayLabel="Saturday"
+              enabled={form.saturdayOvertimeEnabled}
+              afterHours={form.saturdayOvertimeAfterHours}
+              multiplier={form.saturdayOvertimeMultiplier}
+              guaranteed={form.saturdayGuaranteedPaidHours}
+              useCompanyDefaultBreak={form.saturdayUseCompanyDefaultBreak}
+              onEnabledChange={(enabled) => patch({ saturdayOvertimeEnabled: enabled })}
+              onAfterHoursChange={(value) => patch({ saturdayOvertimeAfterHours: value })}
+              onMultiplierChange={(value) => patch({ saturdayOvertimeMultiplier: value })}
+              onGuaranteedChange={(value) => patch({ saturdayGuaranteedPaidHours: value })}
+              onUseCompanyDefaultBreakChange={(checked) =>
+                patch({ saturdayUseCompanyDefaultBreak: checked })
+              }
+            />
+            <div className="my-4 border-t border-slate-100" />
+            <WeekendDayEditor
+              dayLabel="Sunday"
+              enabled={form.sundayOvertimeEnabled}
+              afterHours={form.sundayOvertimeAfterHours}
+              multiplier={form.sundayOvertimeMultiplier}
+              guaranteed={form.sundayGuaranteedPaidHours}
+              useCompanyDefaultBreak={form.sundayUseCompanyDefaultBreak}
+              onEnabledChange={(enabled) => patch({ sundayOvertimeEnabled: enabled })}
+              onAfterHoursChange={(value) => patch({ sundayOvertimeAfterHours: value })}
+              onMultiplierChange={(value) => patch({ sundayOvertimeMultiplier: value })}
+              onGuaranteedChange={(value) => patch({ sundayGuaranteedPaidHours: value })}
+              onUseCompanyDefaultBreakChange={(checked) =>
+                patch({ sundayUseCompanyDefaultBreak: checked })
+              }
+            />
+          </>
+        ) : (
+          <>
+            <WeekendDayReadOnly
+              dayLabel="Saturday"
+              enabled={form.saturdayOvertimeEnabled}
+              afterHours={form.saturdayOvertimeAfterHours}
+              multiplier={form.saturdayOvertimeMultiplier}
+              guaranteed={form.saturdayGuaranteedPaidHours}
+              useCompanyDefaultBreak={form.saturdayUseCompanyDefaultBreak}
+            />
+            <div className="my-4 border-t border-slate-100" />
+            <WeekendDayReadOnly
+              dayLabel="Sunday"
+              enabled={form.sundayOvertimeEnabled}
+              afterHours={form.sundayOvertimeAfterHours}
+              multiplier={form.sundayOvertimeMultiplier}
+              guaranteed={form.sundayGuaranteedPaidHours}
+              useCompanyDefaultBreak={form.sundayUseCompanyDefaultBreak}
+            />
+          </>
+        )}
       </SettingsCard>
 
       <SettingsCard title="Week and Time Display" hint="Timesheet clocks stay in 24-hour format.">
@@ -525,20 +572,24 @@ function WeekendDayEditor({
   afterHours,
   multiplier,
   guaranteed,
+  useCompanyDefaultBreak,
   onEnabledChange,
   onAfterHoursChange,
   onMultiplierChange,
   onGuaranteedChange,
+  onUseCompanyDefaultBreakChange,
 }: {
   dayLabel: string
   enabled: boolean
   afterHours: number
   multiplier: number
   guaranteed: number
+  useCompanyDefaultBreak: boolean
   onEnabledChange: (enabled: boolean) => void
   onAfterHoursChange: (value: number) => void
   onMultiplierChange: (value: number) => void
   onGuaranteedChange: (value: number) => void
+  onUseCompanyDefaultBreakChange: (checked: boolean) => void
 }) {
   return (
     <div>
@@ -587,6 +638,75 @@ function WeekendDayEditor({
           </div>
         </div>
       ) : null}
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Use company default break</p>
+          <p className="text-xs text-slate-500">
+            On: new {dayLabel} entries use the company default break. Off: they start with
+            Break = 0 (still editable).
+          </p>
+        </div>
+        <Switch
+          checked={useCompanyDefaultBreak}
+          onChange={onUseCompanyDefaultBreakChange}
+          label={`Use company default break — ${dayLabel}`}
+        />
+      </div>
+    </div>
+  )
+}
+
+function WeekendDayReadOnly({
+  dayLabel,
+  enabled,
+  afterHours,
+  multiplier,
+  guaranteed,
+  useCompanyDefaultBreak,
+}: {
+  dayLabel: string
+  enabled: boolean
+  afterHours: number
+  multiplier: number
+  guaranteed: number
+  useCompanyDefaultBreak: boolean
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-slate-950">{dayLabel} overtime</p>
+        <span
+          className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
+            enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500',
+          )}
+        >
+          {enabled ? 'On' : 'Off'}
+        </span>
+      </div>
+      {enabled ? (
+        <div className="mt-3 space-y-2">
+          <ReadOnlyRow label="Overtime threshold" value={`${afterHours} hours`} />
+          <ReadOnlyRow label="Overtime multiplier" value={`${multiplier}x`} />
+          <ReadOnlyRow label="Guaranteed paid hours" value={`${guaranteed} hours`} />
+        </div>
+      ) : null}
+      <div className="mt-3">
+        <ReadOnlyRow
+          label="Use company default break"
+          value={useCompanyDefaultBreak ? 'On' : 'Off'}
+        />
+      </div>
+      <p className="mt-2 text-xs font-medium text-slate-400">Managed by your company</p>
+    </div>
+  )
+}
+
+function ReadOnlyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+      <span className="text-xs font-medium text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-700">{value}</span>
     </div>
   )
 }

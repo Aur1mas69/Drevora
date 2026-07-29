@@ -116,6 +116,9 @@ export const DEFAULT_TIMESHEET_WEEK_SETTINGS: TimesheetWeekSettings = {
   timesheetWeekResetDay: 5,
 }
 
+export type WeekendRulesScope = 'company' | 'worker'
+export const DEFAULT_WEEKEND_RULES_SCOPE: WeekendRulesScope = 'company'
+
 export type CompanyTheme = 'light' | 'dark' | 'system'
 export type DefaultBreakMinutes = 30 | 45 | 60
 export type OvertimeAfterHours = number
@@ -332,6 +335,7 @@ export type CompanySettings = {
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
   sundayUseCompanyDefaultBreak: boolean
+  weekendRulesScope: WeekendRulesScope
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -385,6 +389,7 @@ export type CompanySettingsInput = {
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
   sundayUseCompanyDefaultBreak: boolean
+  weekendRulesScope: WeekendRulesScope
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -437,6 +442,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   sundayOvertimeMultiplier: DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
   sundayGuaranteedPaidHours: DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
   sundayUseCompanyDefaultBreak: true,
+  weekendRulesScope: DEFAULT_WEEKEND_RULES_SCOPE,
   ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
 }
 

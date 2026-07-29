@@ -1,6 +1,5 @@
 import {
   getGlobalCompanySettings,
-  getSetting,
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
@@ -1055,8 +1054,8 @@ async function insertTimesheetWithEntries(
   const effective = await resolveEffectiveForDriver(driverId)
   const defaultBreakMinutes = effective.defaultBreakMinutes
   const breakOptions = {
-    saturdayUseCompanyDefaultBreak: getSetting('saturdayUseCompanyDefaultBreak') ?? true,
-    sundayUseCompanyDefaultBreak: getSetting('sundayUseCompanyDefaultBreak') ?? true,
+    saturdayUseCompanyDefaultBreak: effective.saturdayUseCompanyDefaultBreak,
+    sundayUseCompanyDefaultBreak: effective.sundayUseCompanyDefaultBreak,
   }
   const entryRows = weekDates.map((dayDate) =>
     buildEmptyTimesheetEntryDbRow(

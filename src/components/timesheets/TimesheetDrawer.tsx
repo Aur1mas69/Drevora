@@ -195,12 +195,12 @@ export function TimesheetDrawer({
 
   const breakOptions = useMemo(
     () => ({
-      saturdayUseCompanyDefaultBreak: settings?.saturdayUseCompanyDefaultBreak ?? true,
-      sundayUseCompanyDefaultBreak: settings?.sundayUseCompanyDefaultBreak ?? true,
+      saturdayUseCompanyDefaultBreak: effective?.saturdayUseCompanyDefaultBreak ?? true,
+      sundayUseCompanyDefaultBreak: effective?.sundayUseCompanyDefaultBreak ?? true,
     }),
     [
-      settings?.saturdayUseCompanyDefaultBreak,
-      settings?.sundayUseCompanyDefaultBreak,
+      effective?.saturdayUseCompanyDefaultBreak,
+      effective?.sundayUseCompanyDefaultBreak,
     ],
   )
 

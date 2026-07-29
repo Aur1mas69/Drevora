@@ -65,10 +65,12 @@ const override: DriverTimesheetSettingsOverride = {
   saturdayOvertimeAfterHours: 6,
   saturdayOvertimeMultiplier: 1.5,
   saturdayGuaranteedPaidHours: 10,
+  saturdayUseCompanyDefaultBreak: null,
   sundayOvertimeEnabled: false,
   sundayOvertimeAfterHours: 0,
   sundayOvertimeMultiplier: 2,
   sundayGuaranteedPaidHours: 10,
+  sundayUseCompanyDefaultBreak: null,
 }
 
 const withOverride = resolveEffectiveTimesheetSettings(company, override)

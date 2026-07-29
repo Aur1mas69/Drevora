@@ -1,3 +1,5 @@
+import type { VehicleCheckLocationCapture } from '@/lib/vehicleCheckLocation'
+
 export type VehicleCheckOdometerUnit = 'miles' | 'km'
 
 export const DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT: VehicleCheckOdometerUnit = 'miles'
@@ -37,6 +39,19 @@ export type VehicleCheckItem = {
   allowNotes: boolean
   allowPhoto: boolean
   failOnDefect: boolean
+}
+
+/**
+ * Device GPS captured once for a single moment (Vehicle Check start or
+ * completion). Supporting information only — always optional, never a
+ * pass/fail signal. `null` fields mean location was not available.
+ */
+export type VehicleCheckLocationSnapshot = {
+  latitude: number | null
+  longitude: number | null
+  accuracy: number | null
+  /** When the device actually returned the GPS fix (distinct from the workflow action timestamp). */
+  locationAt: string | null
 }
 
 export type VehicleCheckListItem = {
@@ -82,6 +97,9 @@ export type VehicleCheckListItem = {
 
 export type VehicleCheck = VehicleCheckListItem & {
   items: VehicleCheckItem[]
+  /** Only loaded on the Vehicle Check details query — not part of the list/table view. */
+  startedLocation: VehicleCheckLocationSnapshot
+  completedLocation: VehicleCheckLocationSnapshot
 }
 
 export type VehicleCheckSummaryStats = {
@@ -148,6 +166,10 @@ export type CreateVehicleCheckInput = {
   signatureFile: File
   inspectionStartedAt: string
   items: VehicleCheckItemInput[]
+  /** Device GPS captured once when the Worker pressed Start. Omit/null when unavailable — never a hard requirement. */
+  startedLocation?: VehicleCheckLocationCapture | null
+  /** Device GPS captured once immediately before this completed Vehicle Check was saved. Omit/null when unavailable. */
+  completedLocation?: VehicleCheckLocationCapture | null
 }
 
 export type UpdateVehicleCheckInput = {

@@ -2,7 +2,6 @@ import { TimesheetDecimalHoursInput } from '@/components/timesheets/TimesheetDec
 import { WorkerTimesheetShiftTimes } from '@/components/timesheets/WorkerTimesheetShiftTimes'
 import { WorkerSubmitTimesheetDialog } from '@/components/timesheets/WorkerSubmitTimesheetDialog'
 import { Button } from '@/components/ui/button'
-import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
@@ -767,7 +766,6 @@ function WorkerDayAccordionRow({
 export default function WorkerTimesheetsPage() {
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
-  const { settings } = useCompanySettings()
   const {
     effective,
     isLoading: effectiveSettingsLoading,
@@ -844,12 +842,12 @@ export default function WorkerTimesheetsPage() {
 
   const breakOptions = useMemo(
     () => ({
-      saturdayUseCompanyDefaultBreak: settings?.saturdayUseCompanyDefaultBreak ?? true,
-      sundayUseCompanyDefaultBreak: settings?.sundayUseCompanyDefaultBreak ?? true,
+      saturdayUseCompanyDefaultBreak: effective?.saturdayUseCompanyDefaultBreak ?? true,
+      sundayUseCompanyDefaultBreak: effective?.sundayUseCompanyDefaultBreak ?? true,
     }),
     [
-      settings?.saturdayUseCompanyDefaultBreak,
-      settings?.sundayUseCompanyDefaultBreak,
+      effective?.saturdayUseCompanyDefaultBreak,
+      effective?.sundayUseCompanyDefaultBreak,
     ],
   )
 

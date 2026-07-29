@@ -1,5 +1,6 @@
 import {
   SettingsChipGroup,
+  SettingsChoiceGroup,
   SettingsField,
   SettingsPageIntro,
   SettingsSegmentedControl,
@@ -25,6 +26,7 @@ import {
   type OvertimeMode,
   type OvertimeMultiplier,
   type RoundTimeMinutes,
+  type WeekendRulesScope,
 } from '@/lib/companySettingsTypes'
 import {
   getDaysInMonth,
@@ -517,6 +519,33 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
       </div>
 
       {/* 3. Weekend rules — Automatic mode only (values preserved when hidden) */}
+      {isAutomatic ? (
+        <CompactCard
+          title="Weekend rules apply to"
+          description="Choose whether weekend overtime settings are managed centrally for the whole company or individually by each Worker."
+        >
+          <SettingsChoiceGroup<WeekendRulesScope>
+            name="weekend-rules-scope"
+            value={form.weekendRulesScope}
+            onChange={(value) => onChange({ weekendRulesScope: value })}
+            options={[
+              {
+                value: 'company',
+                label: 'Whole company',
+                description:
+                  'All Workers use the same Saturday and Sunday rules configured below.',
+              },
+              {
+                value: 'worker',
+                label: 'Each Worker individually',
+                description:
+                  'Workers manage their own Saturday and Sunday rules. Company values are used as defaults until a Worker changes them.',
+              },
+            ]}
+          />
+        </CompactCard>
+      ) : null}
+
       {isAutomatic ? (
         <CompactCard
           title="Weekend Rules"

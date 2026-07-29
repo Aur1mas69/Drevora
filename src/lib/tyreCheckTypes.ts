@@ -85,7 +85,7 @@ export type TyreCheckOverallResult = 'incomplete' | 'pass' | 'attention' | 'fail
  * - fail → Defects found (critical tread and/or defect flags per DB compute)
  * - attention → Attention overall result
  */
-export type TyreCheckResultFilter = 'all' | 'pass' | 'fail' | 'attention'
+export type TyreCheckResultFilter = 'all' | 'pass' | 'fail' | 'attention' | 'incomplete'
 
 /**
  * Defect-focused history filters using stored count columns (no invented data).
@@ -98,6 +98,7 @@ export type TyreCheckDefectFocusFilter =
   | 'dirty'
   | 'has_defect'
 
+/** Admin Tyre Check workspace sections. `history` is Overview with full history expanded (no separate History tab). */
 export type TyreCheckAdminSection = 'overview' | 'configuration' | 'history'
 
 export type TyreCheckListItem = {

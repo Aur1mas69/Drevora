@@ -23,10 +23,16 @@ import {
 } from '@/lib/vehicleCheckUtils'
 import { formatInspectionDuration } from '@/lib/vehicleCheckDurationUtils'
 import {
+  formatVehicleCheckAccuracy,
+  formatVehicleCheckCoordinate,
+  formatVehicleCheckCoordinatePair,
+} from '@/lib/vehicleCheckLocation'
+import type { VehicleCheckLocationSnapshot } from '@/lib/vehicleCheckTypes'
+import {
   collectVehicleCheckDownloadableFiles,
 } from '@/lib/export/modules/vehicleChecksExport'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
-import { Download, Loader2, X } from 'lucide-react'
+import { Check, Copy, Download, Loader2, MapPin, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type VehicleCheckDrawerProps = {
@@ -92,6 +98,95 @@ function VehicleCheckPhotoThumb({ item }: { item: VehicleCheckItem }) {
   )
 }
 
+function CopyCoordinatesButton({ latitude, longitude }: { latitude: number | null; longitude: number | null }) {
+  const [copied, setCopied] = useState(false)
+  const pair = formatVehicleCheckCoordinatePair(latitude, longitude)
+  if (!pair) return null
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(pair!)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be denied/unavailable — this is an optional convenience only.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5"
+      aria-label="Copy coordinates"
+    >
+      {copied ? (
+        <Check className="size-3" aria-hidden="true" />
+      ) : (
+        <Copy className="size-3" aria-hidden="true" />
+      )}
+      {copied ? 'Copied' : 'Copy coordinates'}
+    </button>
+  )
+}
+
+function VehicleCheckLocationSubsection({
+  title,
+  location,
+  unavailableLabel,
+  formatDateTime,
+}: {
+  title: string
+  location: VehicleCheckLocationSnapshot
+  unavailableLabel: string
+  formatDateTime: (iso: string) => string
+}) {
+  const hasLocation = location.latitude != null && location.longitude != null
+
+  return (
+    <div className="rounded-[10px] bg-[#F8FBFF] px-3 py-2.5 dark:bg-slate-800/60">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          {title}
+        </p>
+        {hasLocation ? (
+          <CopyCoordinatesButton latitude={location.latitude} longitude={location.longitude} />
+        ) : null}
+      </div>
+      {hasLocation ? (
+        <dl className="mt-1.5 space-y-1 text-sm">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-slate-500">Latitude</dt>
+            <dd className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+              {formatVehicleCheckCoordinate(location.latitude)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-slate-500">Longitude</dt>
+            <dd className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+              {formatVehicleCheckCoordinate(location.longitude)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-slate-500">Accuracy</dt>
+            <dd className="text-right text-slate-700 dark:text-slate-200">
+              {formatVehicleCheckAccuracy(location.accuracy)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-slate-500">Recorded</dt>
+            <dd className="text-right tabular-nums text-slate-700 dark:text-slate-200">
+              {location.locationAt ? formatDateTime(location.locationAt) : '—'}
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="mt-1 text-sm text-slate-500">{unavailableLabel}</p>
+      )}
+    </div>
+  )
+}
+
 export function VehicleCheckDrawer({
   check,
   isOpen,
@@ -106,7 +201,7 @@ export function VehicleCheckDrawer({
   onDownloadPdf,
   onDownloadFiles,
 }: VehicleCheckDrawerProps) {
-  const { formatDate } = useCompanySettings()
+  const { formatDate, formatDateTime } = useCompanySettings()
 
   useEffect(() => {
     if (!isOpen) return
@@ -411,6 +506,33 @@ export function VehicleCheckDrawer({
                 </dd>
               </div>
             </dl>
+          </section>
+
+          <section>
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <MapPin className="size-3.5" aria-hidden="true" />
+              Check location
+            </h3>
+            {check.startedLocation.latitude == null && check.completedLocation.latitude == null ? (
+              <p className="mt-3 rounded-[10px] bg-[#F8FBFF] px-3 py-2.5 text-sm text-slate-500 dark:bg-slate-800/60">
+                Location was not available for this Vehicle Check.
+              </p>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <VehicleCheckLocationSubsection
+                  title="Started"
+                  location={check.startedLocation}
+                  unavailableLabel="Start location unavailable"
+                  formatDateTime={formatDateTime}
+                />
+                <VehicleCheckLocationSubsection
+                  title="Completed"
+                  location={check.completedLocation}
+                  unavailableLabel="Completion location unavailable"
+                  formatDateTime={formatDateTime}
+                />
+              </div>
+            )}
           </section>
 
           <section>

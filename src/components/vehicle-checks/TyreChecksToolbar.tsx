@@ -1,7 +1,10 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { TyreCheckResultFilter } from '@/lib/tyreCheckTypes'
+import type {
+  TyreCheckDefectFocusFilter,
+  TyreCheckResultFilter,
+} from '@/lib/tyreCheckTypes'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
@@ -12,6 +15,8 @@ type TyreChecksToolbarProps = {
   onSearchTermChange: (value: string) => void
   resultFilter: TyreCheckResultFilter
   onResultFilterChange: (value: TyreCheckResultFilter) => void
+  defectFocus: TyreCheckDefectFocusFilter
+  onDefectFocusChange: (value: TyreCheckDefectFocusFilter) => void
   vehicleFilter: string
   onVehicleFilterChange: (value: string) => void
   workerFilter: string
@@ -30,6 +35,14 @@ type TyreChecksToolbarProps = {
   loading?: boolean
   secondaryActions?: ReactNode
 }
+
+const DEFECT_FOCUS_OPTIONS: { id: TyreCheckDefectFocusFilter; label: string }[] = [
+  { id: 'all', label: 'All checks' },
+  { id: 'critical', label: 'Critical' },
+  { id: 'attention', label: 'Attention' },
+  { id: 'dirty', label: 'Dirty' },
+  { id: 'has_defect', label: 'Has defect' },
+]
 
 const selectClass =
   'h-10 rounded-[12px] border border-[#C5DFFB] bg-white px-3 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30 dark:border-white/15 dark:bg-slate-900/70 dark:text-slate-100'
@@ -58,6 +71,8 @@ export function TyreChecksToolbar({
   onSearchTermChange,
   resultFilter,
   onResultFilterChange,
+  defectFocus,
+  onDefectFocusChange,
   vehicleFilter,
   onVehicleFilterChange,
   workerFilter,
@@ -80,6 +95,7 @@ export function TyreChecksToolbar({
   const filtersRef = useRef<HTMLDivElement>(null)
 
   const [draftResult, setDraftResult] = useState(resultFilter)
+  const [draftDefectFocus, setDraftDefectFocus] = useState(defectFocus)
   const [draftVehicle, setDraftVehicle] = useState(vehicleFilter)
   const [draftWorker, setDraftWorker] = useState(workerFilter)
   const [draftTrailer, setDraftTrailer] = useState(trailerFilter)
@@ -113,17 +129,27 @@ export function TyreChecksToolbar({
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (resultFilter !== 'all') count += 1
+    if (defectFocus !== 'all') count += 1
     if (vehicleFilter !== 'all') count += 1
     if (workerFilter !== 'all') count += 1
     if (trailerFilter !== 'all') count += 1
     if (dateFrom) count += 1
     if (dateTo) count += 1
     return count
-  }, [dateFrom, dateTo, resultFilter, trailerFilter, vehicleFilter, workerFilter])
+  }, [
+    dateFrom,
+    dateTo,
+    defectFocus,
+    resultFilter,
+    trailerFilter,
+    vehicleFilter,
+    workerFilter,
+  ])
 
   useEffect(() => {
     if (!isFiltersOpen) return
     setDraftResult(resultFilter)
+    setDraftDefectFocus(defectFocus)
     setDraftVehicle(vehicleFilter)
     setDraftWorker(workerFilter)
     setDraftTrailer(trailerFilter)
@@ -132,6 +158,7 @@ export function TyreChecksToolbar({
   }, [
     dateFrom,
     dateTo,
+    defectFocus,
     isFiltersOpen,
     resultFilter,
     trailerFilter,
@@ -164,6 +191,7 @@ export function TyreChecksToolbar({
 
   function handleApplyFilters() {
     onResultFilterChange(draftResult)
+    onDefectFocusChange(draftDefectFocus)
     onVehicleFilterChange(draftVehicle)
     onWorkerFilterChange(draftWorker)
     onTrailerFilterChange(draftTrailer)
@@ -174,6 +202,7 @@ export function TyreChecksToolbar({
 
   function handleClearFilters() {
     setDraftResult('all')
+    setDraftDefectFocus('all')
     setDraftVehicle('all')
     setDraftWorker('all')
     setDraftTrailer('all')
@@ -189,7 +218,7 @@ export function TyreChecksToolbar({
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
       onSearchClear={() => onSearchTermChange('')}
-      searchPlaceholder="Search vehicle, worker, registration or trailer"
+      searchPlaceholder="Search vehicle, worker, registration..."
       onFilterToggle={() => setIsFiltersOpen((open) => !open)}
       filterOpen={isFiltersOpen}
       activeFilterCount={activeFilterCount}
@@ -225,6 +254,29 @@ export function TyreChecksToolbar({
             </div>
 
             <div className="mt-4 grid min-w-0 gap-3">
+              <div className="space-y-1.5">
+                <span className={labelClass}>Focus</span>
+                <div className="flex flex-wrap gap-2">
+                  {DEFECT_FOCUS_OPTIONS.map((option) => {
+                    const selected = draftDefectFocus === option.id
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setDraftDefectFocus(option.id)}
+                        className={
+                          selected
+                            ? 'rounded-[12px] bg-[#EAF4FF] px-3 py-1.5 text-xs font-semibold text-[#2563EB] ring-1 ring-[#BFDBFE] dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/60'
+                            : 'rounded-[12px] bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-[rgba(75,120,220,0.12)] hover:bg-[#F8FBFF] dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10'
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="grid min-w-0 grid-cols-2 gap-2">
                 <label className="block min-w-0 space-y-1.5">
                   <span className={labelClass}>From date</span>
@@ -248,7 +300,7 @@ export function TyreChecksToolbar({
               </div>
 
               <label className="block min-w-0 space-y-1.5">
-                <span className={labelClass}>Result</span>
+                <span className={labelClass}>Result / status</span>
                 <select
                   value={draftResult}
                   onChange={(event) =>
@@ -261,6 +313,7 @@ export function TyreChecksToolbar({
                   <option value="pass">Passed</option>
                   <option value="attention">Attention</option>
                   <option value="fail">Defects found</option>
+                  <option value="incomplete">Incomplete</option>
                 </select>
               </label>
 
@@ -319,6 +372,7 @@ export function TyreChecksToolbar({
             <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3 dark:border-white/10">
               {hasActiveFilters ||
               draftResult !== 'all' ||
+              draftDefectFocus !== 'all' ||
               draftVehicle !== 'all' ||
               draftWorker !== 'all' ||
               draftTrailer !== 'all' ||

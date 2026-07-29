@@ -410,6 +410,7 @@ create table if not exists public.companies (
   sunday_overtime_multiplier numeric not null default 2.0,
   sunday_guaranteed_paid_hours numeric not null default 10.0,
   sunday_use_company_default_break boolean not null default true,
+  weekend_rules_scope text not null default 'company',
   timesheet_week_start_day text not null default 'monday',
   timesheet_week_reset_month integer not null default 4,
   timesheet_week_reset_day integer not null default 5,
@@ -497,6 +498,9 @@ create table if not exists public.companies (
   constraint companies_sunday_guaranteed_paid_hours_check check (
     sunday_guaranteed_paid_hours >= 0
   ),
+  constraint companies_weekend_rules_scope_check check (
+    weekend_rules_scope in ('company', 'worker')
+  ),
   constraint companies_timesheet_week_start_day_check check (
     timesheet_week_start_day in ('monday', 'sunday')
   ),
@@ -554,6 +558,8 @@ create table if not exists public.driver_timesheet_settings (
   sunday_overtime_after_hours numeric null,
   sunday_overtime_multiplier numeric null,
   sunday_guaranteed_paid_hours numeric null,
+  saturday_use_company_default_break boolean null,
+  sunday_use_company_default_break boolean null,
   constraint driver_timesheet_settings_overtime_mode_check
     check (overtime_mode is null or overtime_mode in ('Manual', 'Automatic')),
   constraint driver_timesheet_settings_ot_method_check
@@ -956,6 +962,14 @@ create table if not exists public.vehicle_checks (
   defect_reviewed_by uuid references auth.users (id) on delete set null,
   defect_reviewed_by_name text,
   defect_review_notes text,
+  started_latitude double precision,
+  started_longitude double precision,
+  started_location_accuracy double precision,
+  started_location_at timestamptz,
+  completed_latitude double precision,
+  completed_longitude double precision,
+  completed_location_accuracy double precision,
+  completed_location_at timestamptz,
   constraint vehicle_checks_status_check check (
     status in ('Completed', 'Pending', 'In Progress')
   ),
@@ -992,7 +1006,15 @@ alter table public.vehicle_checks
   add column if not exists original_check_id uuid references public.vehicle_checks (id) on delete restrict,
   add column if not exists correction_reason text,
   add column if not exists correction_created_by uuid references auth.users (id) on delete set null,
-  add column if not exists correction_created_at timestamptz;
+  add column if not exists correction_created_at timestamptz,
+  add column if not exists started_latitude double precision,
+  add column if not exists started_longitude double precision,
+  add column if not exists started_location_accuracy double precision,
+  add column if not exists started_location_at timestamptz,
+  add column if not exists completed_latitude double precision,
+  add column if not exists completed_longitude double precision,
+  add column if not exists completed_location_accuracy double precision,
+  add column if not exists completed_location_at timestamptz;
 
 update public.vehicle_checks
 set odometer_unit = 'miles'
@@ -1141,7 +1163,15 @@ begin
        or new.correction_reason is distinct from old.correction_reason
        or new.correction_created_by is distinct from old.correction_created_by
        or new.correction_created_at is distinct from old.correction_created_at
-       or new.created_at is distinct from old.created_at then
+       or new.created_at is distinct from old.created_at
+       or new.started_latitude is distinct from old.started_latitude
+       or new.started_longitude is distinct from old.started_longitude
+       or new.started_location_accuracy is distinct from old.started_location_accuracy
+       or new.started_location_at is distinct from old.started_location_at
+       or new.completed_latitude is distinct from old.completed_latitude
+       or new.completed_longitude is distinct from old.completed_longitude
+       or new.completed_location_accuracy is distinct from old.completed_location_accuracy
+       or new.completed_location_at is distinct from old.completed_location_at then
       raise exception 'DREVORA: Completed Vehicle Checks are read-only. Create a correction to amend.';
     end if;
   end if;
@@ -1149,6 +1179,9 @@ begin
   return new;
 end;
 $$;
+
+-- (canonical: 20260729180000_vehicle_checks_gps_capture.sql — extends the
+-- protected field list above with started_*/completed_* GPS columns)
 
 drop trigger if exists drevora_enforce_vehicle_check_completed_immutable
   on public.vehicle_checks;

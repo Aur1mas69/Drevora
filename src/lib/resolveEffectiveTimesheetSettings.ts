@@ -8,11 +8,13 @@ import {
   DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
   DEFAULT_SUNDAY_OVERTIME_AFTER_HOURS,
   DEFAULT_SUNDAY_OVERTIME_MULTIPLIER,
+  DEFAULT_WEEKEND_RULES_SCOPE,
   type CompanyCurrency,
   type OvertimeCalculationMethod,
   type OvertimeMode,
   type RoundTimeMinutes,
   type TimesheetWeekStartDay,
+  type WeekendRulesScope,
 } from '@/lib/companySettingsTypes'
 import {
   DEFAULT_WEEKLY_OVERTIME_AFTER_HOURS,
@@ -132,6 +134,7 @@ export function companySettingsToTimesheetForm(
       DEFAULT_SATURDAY_GUARANTEED_PAID_HOURS,
       24,
     ),
+    saturdayUseCompanyDefaultBreak: company.saturdayUseCompanyDefaultBreak !== false,
     sundayOvertimeEnabled: Boolean(company.sundayOvertimeEnabled),
     sundayOvertimeAfterHours: normalizePositiveHours(
       company.sundayOvertimeAfterHours,
@@ -147,7 +150,15 @@ export function companySettingsToTimesheetForm(
       DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
       24,
     ),
+    sundayUseCompanyDefaultBreak: company.sundayUseCompanyDefaultBreak !== false,
   }
+}
+
+function normalizeWeekendRulesScope(
+  value: unknown,
+  fallback: WeekendRulesScope = DEFAULT_WEEKEND_RULES_SCOPE,
+): WeekendRulesScope {
+  return value === 'worker' ? 'worker' : fallback
 }
 
 /**
@@ -164,7 +175,7 @@ export function resolveEffectiveTimesheetSettings(
   const companyForm = companySettingsToTimesheetForm(company)
   const hasWorkerOverride = Boolean(override)
 
-  const form: WorkerTimesheetSettingsForm = hasWorkerOverride && override
+  const mergedForm: WorkerTimesheetSettingsForm = hasWorkerOverride && override
     ? {
         overtimeMode: normalizeOvertimeMode(
           pickOverride(override.overtimeMode, companyForm.overtimeMode),
@@ -242,6 +253,12 @@ export function resolveEffectiveTimesheetSettings(
           companyForm.saturdayGuaranteedPaidHours,
           24,
         ),
+        saturdayUseCompanyDefaultBreak: Boolean(
+          pickOverride(
+            override.saturdayUseCompanyDefaultBreak,
+            companyForm.saturdayUseCompanyDefaultBreak,
+          ),
+        ),
         sundayOvertimeEnabled: Boolean(
           pickOverride(override.sundayOvertimeEnabled, companyForm.sundayOvertimeEnabled),
         ),
@@ -268,8 +285,39 @@ export function resolveEffectiveTimesheetSettings(
           companyForm.sundayGuaranteedPaidHours,
           24,
         ),
+        sundayUseCompanyDefaultBreak: Boolean(
+          pickOverride(
+            override.sundayUseCompanyDefaultBreak,
+            companyForm.sundayUseCompanyDefaultBreak,
+          ),
+        ),
       }
     : companyForm
+
+  // Weekend rules ownership: only apply the Worker's Saturday/Sunday values
+  // (whether from an override row or plain company inheritance above) when
+  // the company has explicitly handed weekend ownership to Workers. In
+  // "company" scope, Admin's Saturday/Sunday configuration always wins,
+  // regardless of any stored Worker override — this keeps historical
+  // "Whole company" behaviour identical and lets a dormant Worker override
+  // simply resume once scope is switched back to "worker".
+  const weekendRulesScope = normalizeWeekendRulesScope(company?.weekendRulesScope)
+  const form: WorkerTimesheetSettingsForm =
+    weekendRulesScope === 'worker'
+      ? mergedForm
+      : {
+          ...mergedForm,
+          saturdayOvertimeEnabled: companyForm.saturdayOvertimeEnabled,
+          saturdayOvertimeAfterHours: companyForm.saturdayOvertimeAfterHours,
+          saturdayOvertimeMultiplier: companyForm.saturdayOvertimeMultiplier,
+          saturdayGuaranteedPaidHours: companyForm.saturdayGuaranteedPaidHours,
+          saturdayUseCompanyDefaultBreak: companyForm.saturdayUseCompanyDefaultBreak,
+          sundayOvertimeEnabled: companyForm.sundayOvertimeEnabled,
+          sundayOvertimeAfterHours: companyForm.sundayOvertimeAfterHours,
+          sundayOvertimeMultiplier: companyForm.sundayOvertimeMultiplier,
+          sundayGuaranteedPaidHours: companyForm.sundayGuaranteedPaidHours,
+          sundayUseCompanyDefaultBreak: companyForm.sundayUseCompanyDefaultBreak,
+        }
 
   const source: EffectiveTimesheetSettings['source'] = hasWorkerOverride
     ? 'worker'
@@ -281,6 +329,7 @@ export function resolveEffectiveTimesheetSettings(
     ...form,
     hasWorkerOverride,
     source,
+    weekendRulesScope,
     overtimeRules: {
       overtimeAfterHours: form.overtimeAfterHours,
       overtimeMultiplier: form.overtimeMultiplier,

@@ -29,6 +29,8 @@ import type {
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { calculateInspectionDurationSeconds } from '@/lib/vehicleCheckDurationUtils'
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
+import type { VehicleCheckLocationSnapshot } from '@/lib/vehicleCheckTypes'
+import { toVehicleCheckLocationColumns } from '@/lib/vehicleCheckLocation'
 import {
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
@@ -136,6 +138,14 @@ const vehicleCheckDetailSelect = `
   correction_reason,
   correction_created_by,
   correction_created_at,
+  started_latitude,
+  started_longitude,
+  started_location_accuracy,
+  started_location_at,
+  completed_latitude,
+  completed_longitude,
+  completed_location_accuracy,
+  completed_location_at,
   drivers ( first_name, last_name ),
   vehicles ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
@@ -167,6 +177,15 @@ type VehicleCheckRow = {
   correction_reason: string | null
   correction_created_by: string | null
   correction_created_at: string | null
+  /** Only present when selected via vehicleCheckDetailSelect (details view, not the list). */
+  started_latitude?: number | null
+  started_longitude?: number | null
+  started_location_accuracy?: number | null
+  started_location_at?: string | null
+  completed_latitude?: number | null
+  completed_longitude?: number | null
+  completed_location_accuracy?: number | null
+  completed_location_at?: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
   vehicles:
     | (VehicleJoinRow & { status?: string | null })
@@ -353,11 +372,40 @@ async function attachLinkedCorrectionSummaries(
   })
 }
 
+function mapLocationSnapshot(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+  accuracy: number | null | undefined,
+  locationAt: string | null | undefined,
+): VehicleCheckLocationSnapshot {
+  return {
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
+    accuracy: accuracy ?? null,
+    locationAt: locationAt ?? null,
+  }
+}
+
 function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
   const list = mapListRow(row)
   const items = (row.vehicle_check_items ?? []).map(mapItemRow)
   items.sort((a, b) => a.itemName.localeCompare(b.itemName))
-  return { ...list, items }
+  return {
+    ...list,
+    items,
+    startedLocation: mapLocationSnapshot(
+      row.started_latitude,
+      row.started_longitude,
+      row.started_location_accuracy,
+      row.started_location_at,
+    ),
+    completedLocation: mapLocationSnapshot(
+      row.completed_latitude,
+      row.completed_longitude,
+      row.completed_location_accuracy,
+      row.completed_location_at,
+    ),
+  }
 }
 
 async function assertWorkerAndVehicleInCompany(
@@ -835,6 +883,10 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     verifiedCompanyId,
   )
 
+  const startedLocationColumns = toVehicleCheckLocationColumns(
+    input.startedLocation ? { status: 'success', location: input.startedLocation } : null,
+  )
+
   const { data: checkRow, error: checkError } = await requireSupabase()
     .from('vehicle_checks')
     .insert({
@@ -849,6 +901,10 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
       defect_review_status: defectReviewStatus,
       notes: input.notes?.trim() || null,
       inspection_started_at: startedAtDate.toISOString(),
+      started_latitude: startedLocationColumns.latitude,
+      started_longitude: startedLocationColumns.longitude,
+      started_location_accuracy: startedLocationColumns.accuracy,
+      started_location_at: startedLocationColumns.locationAt,
     })
     .select('id')
     .single()
@@ -918,6 +974,9 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     }
 
     const signedAt = completedAtDate.toISOString()
+    const completedLocationColumns = toVehicleCheckLocationColumns(
+      input.completedLocation ? { status: 'success', location: input.completedLocation } : null,
+    )
     const { data: completedRows, error: completeError } = await requireSupabase()
       .from('vehicle_checks')
       .update({
@@ -929,6 +988,10 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
         inspection_completed_at: signedAt,
         duration_seconds: durationSeconds,
         updated_at: signedAt,
+        completed_latitude: completedLocationColumns.latitude,
+        completed_longitude: completedLocationColumns.longitude,
+        completed_location_accuracy: completedLocationColumns.accuracy,
+        completed_location_at: completedLocationColumns.locationAt,
       })
       .eq('id', checkRow.id)
       .eq('company_id', verifiedCompanyId)

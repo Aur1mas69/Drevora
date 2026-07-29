@@ -5,12 +5,16 @@ import type {
   RoundTimeMinutes,
   TimesheetOvertimeRules,
   TimesheetWeekStartDay,
+  WeekendRulesScope,
 } from '@/lib/companySettingsTypes'
 import {
   DEFAULT_OVERTIME_AFTER_HOURS,
   DEFAULT_OVERTIME_MULTIPLIER,
   DEFAULT_TIMESHEET_OVERTIME_RULES,
+  DEFAULT_WEEKEND_RULES_SCOPE,
 } from '@/lib/companySettingsTypes'
+
+export type { WeekendRulesScope }
 
 export type { OvertimeCalculationMethod }
 
@@ -42,10 +46,12 @@ export type DriverTimesheetSettingsOverride = {
   saturdayOvertimeAfterHours: number | null
   saturdayOvertimeMultiplier: number | null
   saturdayGuaranteedPaidHours: number | null
+  saturdayUseCompanyDefaultBreak: boolean | null
   sundayOvertimeEnabled: boolean | null
   sundayOvertimeAfterHours: number | null
   sundayOvertimeMultiplier: number | null
   sundayGuaranteedPaidHours: number | null
+  sundayUseCompanyDefaultBreak: boolean | null
 }
 
 /** Full editable form values (always concrete; never null). */
@@ -64,10 +70,12 @@ export type WorkerTimesheetSettingsForm = {
   saturdayOvertimeAfterHours: number
   saturdayOvertimeMultiplier: number
   saturdayGuaranteedPaidHours: number
+  saturdayUseCompanyDefaultBreak: boolean
   sundayOvertimeEnabled: boolean
   sundayOvertimeAfterHours: number
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
+  sundayUseCompanyDefaultBreak: boolean
 }
 
 /** Resolved settings used by Timesheet calculations. */
@@ -76,6 +84,8 @@ export type EffectiveTimesheetSettings = WorkerTimesheetSettingsForm & {
   hasWorkerOverride: boolean
   source: 'worker' | 'company' | 'fallback'
   overtimeRules: TimesheetOvertimeRules
+  /** Who owns Saturday/Sunday rules for this company: 'company' (Admin authoritative) or 'worker' (this Worker's own values apply). */
+  weekendRulesScope: WeekendRulesScope
 }
 
 export const SAFE_FALLBACK_TIMESHEET_SETTINGS: WorkerTimesheetSettingsForm = {
@@ -93,8 +103,12 @@ export const SAFE_FALLBACK_TIMESHEET_SETTINGS: WorkerTimesheetSettingsForm = {
   saturdayOvertimeAfterHours: DEFAULT_TIMESHEET_OVERTIME_RULES.saturdayOvertimeAfterHours,
   saturdayOvertimeMultiplier: DEFAULT_TIMESHEET_OVERTIME_RULES.saturdayOvertimeMultiplier,
   saturdayGuaranteedPaidHours: DEFAULT_TIMESHEET_OVERTIME_RULES.saturdayGuaranteedPaidHours,
+  saturdayUseCompanyDefaultBreak: true,
   sundayOvertimeEnabled: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayOvertimeEnabled,
   sundayOvertimeAfterHours: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayOvertimeAfterHours,
   sundayOvertimeMultiplier: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayOvertimeMultiplier,
   sundayGuaranteedPaidHours: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayGuaranteedPaidHours,
+  sundayUseCompanyDefaultBreak: true,
 }
+
+export { DEFAULT_WEEKEND_RULES_SCOPE }

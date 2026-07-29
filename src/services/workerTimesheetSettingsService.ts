@@ -4,6 +4,7 @@ import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type {
   DriverTimesheetSettingsOverride,
   OvertimeCalculationMethod,
+  WeekendRulesScope,
   WorkerTimesheetSettingsForm,
 } from '@/lib/workerTimesheetSettingsTypes'
 import type { CompanyCurrency, OvertimeMode, RoundTimeMinutes, TimesheetWeekStartDay } from '@/lib/companySettingsTypes'
@@ -27,10 +28,12 @@ type DriverTimesheetSettingsRow = {
   saturday_overtime_after_hours: number | null
   saturday_overtime_multiplier: number | null
   saturday_guaranteed_paid_hours: number | null
+  saturday_use_company_default_break: boolean | null
   sunday_overtime_enabled: boolean | null
   sunday_overtime_after_hours: number | null
   sunday_overtime_multiplier: number | null
   sunday_guaranteed_paid_hours: number | null
+  sunday_use_company_default_break: boolean | null
 }
 
 const SELECT_COLUMNS = `
@@ -52,10 +55,12 @@ const SELECT_COLUMNS = `
   saturday_overtime_after_hours,
   saturday_overtime_multiplier,
   saturday_guaranteed_paid_hours,
+  saturday_use_company_default_break,
   sunday_overtime_enabled,
   sunday_overtime_after_hours,
   sunday_overtime_multiplier,
-  sunday_guaranteed_paid_hours
+  sunday_guaranteed_paid_hours,
+  sunday_use_company_default_break
 `
 
 export class WorkerTimesheetSettingsServiceError extends Error {
@@ -107,15 +112,28 @@ function mapRow(row: DriverTimesheetSettingsRow): DriverTimesheetSettingsOverrid
     saturdayOvertimeAfterHours: row.saturday_overtime_after_hours,
     saturdayOvertimeMultiplier: row.saturday_overtime_multiplier,
     saturdayGuaranteedPaidHours: row.saturday_guaranteed_paid_hours,
+    saturdayUseCompanyDefaultBreak: row.saturday_use_company_default_break,
     sundayOvertimeEnabled: row.sunday_overtime_enabled,
     sundayOvertimeAfterHours: row.sunday_overtime_after_hours,
     sundayOvertimeMultiplier: row.sunday_overtime_multiplier,
     sundayGuaranteedPaidHours: row.sunday_guaranteed_paid_hours,
+    sundayUseCompanyDefaultBreak: row.sunday_use_company_default_break,
   }
 }
 
-function formToPayload(form: WorkerTimesheetSettingsForm) {
-  return {
+/**
+ * Maps the form to a DB payload. Saturday/Sunday override columns are only
+ * included when this company has handed weekend ownership to Workers
+ * ("worker" scope). In "company" scope they are omitted entirely (not
+ * nulled) so an existing personal weekend override is preserved untouched
+ * and simply resumes if Admin switches scope back to "worker" later —
+ * saving unrelated settings (e.g. break rules) must never erase it.
+ */
+function formToPayload(
+  form: WorkerTimesheetSettingsForm,
+  weekendRulesScope: WeekendRulesScope,
+) {
+  const payload: Record<string, unknown> = {
     overtime_mode: form.overtimeMode,
     overtime_calculation_method: form.overtimeCalculationMethod,
     overtime_after_hours: form.overtimeAfterHours,
@@ -126,16 +144,23 @@ function formToPayload(form: WorkerTimesheetSettingsForm) {
     round_time_minutes: form.roundTimeMinutes,
     currency: form.currency,
     timesheet_week_start_day: form.timesheetWeekStartDay,
-    saturday_overtime_enabled: form.saturdayOvertimeEnabled,
-    saturday_overtime_after_hours: form.saturdayOvertimeAfterHours,
-    saturday_overtime_multiplier: form.saturdayOvertimeMultiplier,
-    saturday_guaranteed_paid_hours: form.saturdayGuaranteedPaidHours,
-    sunday_overtime_enabled: form.sundayOvertimeEnabled,
-    sunday_overtime_after_hours: form.sundayOvertimeAfterHours,
-    sunday_overtime_multiplier: form.sundayOvertimeMultiplier,
-    sunday_guaranteed_paid_hours: form.sundayGuaranteedPaidHours,
     updated_at: new Date().toISOString(),
   }
+
+  if (weekendRulesScope === 'worker') {
+    payload.saturday_overtime_enabled = form.saturdayOvertimeEnabled
+    payload.saturday_overtime_after_hours = form.saturdayOvertimeAfterHours
+    payload.saturday_overtime_multiplier = form.saturdayOvertimeMultiplier
+    payload.saturday_guaranteed_paid_hours = form.saturdayGuaranteedPaidHours
+    payload.saturday_use_company_default_break = form.saturdayUseCompanyDefaultBreak
+    payload.sunday_overtime_enabled = form.sundayOvertimeEnabled
+    payload.sunday_overtime_after_hours = form.sundayOvertimeAfterHours
+    payload.sunday_overtime_multiplier = form.sundayOvertimeMultiplier
+    payload.sunday_guaranteed_paid_hours = form.sundayGuaranteedPaidHours
+    payload.sunday_use_company_default_break = form.sundayUseCompanyDefaultBreak
+  }
+
+  return payload
 }
 
 /** Load the authenticated worker's personal override (null = using company defaults). */
@@ -200,12 +225,13 @@ export async function fetchDriverTimesheetSettingsByDriverIds(
 export async function saveOwnDriverTimesheetSettings(
   driverId: string,
   form: WorkerTimesheetSettingsForm,
+  weekendRulesScope: WeekendRulesScope,
 ): Promise<DriverTimesheetSettingsOverride> {
   const companyId = requireVerifiedCompanyId()
   const payload = {
     driver_id: driverId,
     company_id: companyId,
-    ...formToPayload(form),
+    ...formToPayload(form, weekendRulesScope),
   }
 
   const { data, error } = await requireSupabase()
