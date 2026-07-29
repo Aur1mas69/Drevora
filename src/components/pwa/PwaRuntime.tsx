@@ -15,7 +15,8 @@ export function PwaRuntime() {
   >(undefined)
 
   useEffect(() => {
-    if (!import.meta.env.PROD) {
+    // Capacitor native builds (`vite build --mode native`) must not register a SW.
+    if (!import.meta.env.PROD || import.meta.env.MODE === 'native') {
       return
     }
 
