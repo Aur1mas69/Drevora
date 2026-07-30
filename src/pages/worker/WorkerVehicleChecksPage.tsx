@@ -5,6 +5,7 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import {
@@ -101,7 +102,7 @@ function tyreCheckHref(vehicleId: string): string {
     : '/worker/tyre-checks/new'
 }
 
-/** Worker entry point from Vehicles → Start Vehicle Check. */
+/** Worker Vehicle Check flow — opened from Home or Vehicles. Owns vehicle selection. */
 export default function WorkerVehicleChecksPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -141,7 +142,8 @@ export default function WorkerVehicleChecksPage() {
     'idle' | 'capturing' | 'success' | 'unavailable'
   >('idle')
   const submitLockRef = useRef(false)
-  const redirectedMissingVehicleRef = useRef(false)
+  /** Apply URL / default / remembered vehicle once after load — never re-lock the picker. */
+  const didInitVehicleRef = useRef(false)
   const locationStatusHideTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -219,14 +221,14 @@ export default function WorkerVehicleChecksPage() {
     checklistStatus === 'ready' &&
     items.length > 0
 
-  /**
-   * Vehicle selection happens on Worker Vehicles. Clearing here returns the
-   * Worker to that page so they can pick another real company vehicle.
-   */
+  /** Clear selection on this page — never bounce to Vehicles. */
   function clearSelectedVehicle() {
+    setVehicleId('')
     setRememberVehicle(false)
     setError(null)
-    navigate('/worker/vehicles', { replace: true })
+    window.setTimeout(() => {
+      document.getElementById('worker-vehicle-check-vehicle')?.focus()
+    }, 0)
   }
 
   useEffect(() => {
@@ -247,6 +249,31 @@ export default function WorkerVehicleChecksPage() {
         const rows = await fetchVehicles()
         if (cancelled) return
         setVehicles(rows)
+
+        // Optional initial selection only: route vehicleId, else a valid worker
+        // default, else a valid device-remembered id. Never redirect when missing
+        // or invalid — the in-page selector handles those cases.
+        if (!didInitVehicleRef.current) {
+          didInitVehicleRef.current = true
+          const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+          const fromDefault = worker.defaultVehicleId?.trim() || ''
+          const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
+          const candidates = [fromUrl, fromDefault, fromRemembered].filter(Boolean)
+          const matchId =
+            candidates.find((id) => rows.some((row) => row.id === id)) ?? ''
+
+          if (fromRemembered && !rows.some((row) => row.id === fromRemembered)) {
+            setRememberedVehicleCheckId(null)
+          }
+
+          if (matchId) {
+            setVehicleId(matchId)
+            setRememberVehicle(fromRemembered === matchId)
+          } else {
+            setVehicleId('')
+            setRememberVehicle(false)
+          }
+        }
       } catch (loadError) {
         if (cancelled) return
         setVehiclesError(
@@ -261,43 +288,7 @@ export default function WorkerVehicleChecksPage() {
     return () => {
       cancelled = true
     }
-  }, [companyLoading, companyReady, worker, workerLoading])
-
-  // Require a real vehicleId from the Vehicles page route. Free-text entry is
-  // not allowed here — missing/invalid IDs redirect back to Vehicles.
-  useEffect(() => {
-    if (vehiclesLoading || companyLoading || workerLoading) return
-    if (!companyReady || !worker) return
-    if (step !== 'setup') return
-    if (vehiclesError) return
-
-    const fromUrl = searchParams.get('vehicleId')?.trim() || ''
-    const match = fromUrl
-      ? vehicles.find((vehicle) => vehicle.id === fromUrl) ?? null
-      : null
-
-    if (!match) {
-      if (!redirectedMissingVehicleRef.current) {
-        redirectedMissingVehicleRef.current = true
-        navigate('/worker/vehicles', { replace: true })
-      }
-      return
-    }
-
-    setVehicleId(match.id)
-    setRememberVehicle(getRememberedVehicleCheckId() === match.id)
-  }, [
-    companyLoading,
-    companyReady,
-    navigate,
-    searchParams,
-    step,
-    vehicles,
-    vehiclesError,
-    vehiclesLoading,
-    worker,
-    workerLoading,
-  ])
+  }, [companyLoading, companyReady, searchParams, worker, workerLoading])
 
   useEffect(() => {
     if (isChecklistFullyAnswered(items, checklistSections)) {
@@ -572,10 +563,29 @@ export default function WorkerVehicleChecksPage() {
             {selectedVehicle ? (
               <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
             ) : (
-              <p className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                Select a vehicle on the Vehicles page before starting this check.
+              <p className="text-sm text-slate-500">
+                Search and select an active company vehicle to continue. A saved
+                default is optional.
               </p>
             )}
+
+            <WorkerVehicleCombobox
+              id="worker-vehicle-check-vehicle"
+              vehicles={vehicles}
+              selectedVehicleId={vehicleId || null}
+              onSelect={(vehicle) => {
+                setVehicleId(vehicle.id)
+                setRememberVehicle(getRememberedVehicleCheckId() === vehicle.id)
+                setError(null)
+              }}
+              onClear={clearSelectedVehicle}
+              label="Search registration"
+              placeholder="Enter registration number"
+              inputAriaLabel="Search company vehicles by registration number"
+              required
+              showAllWhenEmpty
+              showSelectedSummary={false}
+            />
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
               <input
