@@ -847,7 +847,21 @@ export async function fetchVehicleCheckById(id: string): Promise<VehicleCheck | 
   return check
 }
 
-export async function createVehicleCheck(input: CreateVehicleCheckInput): Promise<VehicleCheck> {
+type CreateVehicleCheckInternalInput = Omit<CreateVehicleCheckInput, 'signatureFile'> & {
+  signatureFile?: File | null
+  /**
+   * Offline queue sync only: reuse insert/items rules, leave In Progress
+   * (schema requires signature_url to mark Completed).
+   */
+  leaveIncomplete?: boolean
+  /** Fired immediately after insert so offline sync can persist the check id before media upload. */
+  onInserted?: (checkId: string) => void | Promise<void>
+}
+
+async function createVehicleCheckInternal(
+  input: CreateVehicleCheckInternalInput,
+): Promise<VehicleCheck> {
+  const leaveIncomplete = input.leaveIncomplete === true
   const verifiedCompanyId = requireVerifiedCompanyId()
   if (input.items.length === 0) {
     throw new VehicleChecksServiceError('Inspection checklist cannot be empty.')
@@ -857,7 +871,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     throw new VehicleChecksServiceError('Odometer / mileage is required.')
   }
 
-  if (!input.signatureFile) {
+  if (!leaveIncomplete && !input.signatureFile) {
     throw new VehicleChecksServiceError('Worker signature is required.')
   }
 
@@ -887,6 +901,12 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     input.startedLocation ? { status: 'success', location: input.startedLocation } : null,
   )
 
+  const offlineNote = leaveIncomplete
+    ? 'Synced from offline queue — signature required to complete.'
+    : null
+  const notesParts = [input.notes?.trim() || null, offlineNote].filter(Boolean)
+  const notes = notesParts.length > 0 ? notesParts.join('\n') : null
+
   const { data: checkRow, error: checkError } = await requireSupabase()
     .from('vehicle_checks')
     .insert({
@@ -899,7 +919,7 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
       status: 'In Progress',
       overall_result: overallResult,
       defect_review_status: defectReviewStatus,
-      notes: input.notes?.trim() || null,
+      notes,
       inspection_started_at: startedAtDate.toISOString(),
       started_latitude: startedLocationColumns.latitude,
       started_longitude: startedLocationColumns.longitude,
@@ -918,6 +938,10 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
 
   if (checkError || !checkRow) {
     throw new VehicleChecksServiceError(checkError?.message ?? 'Failed to create inspection.')
+  }
+
+  if (input.onInserted) {
+    await input.onInserted(checkRow.id)
   }
 
   // On any later failure: leave the check In Progress and do not report completion success.
@@ -950,6 +974,19 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
 
     if (itemsError) {
       throw new VehicleChecksServiceError(itemsError.message)
+    }
+
+    if (leaveIncomplete) {
+      // Offline MVP cannot satisfy Completed RLS without a signature file.
+      const createdDraft = await fetchVehicleCheckById(checkRow.id)
+      if (!createdDraft) {
+        throw new VehicleChecksServiceError('Inspection was saved but could not be loaded.')
+      }
+      return createdDraft
+    }
+
+    if (!input.signatureFile) {
+      throw new VehicleChecksServiceError('Worker signature is required.')
     }
 
     let signaturePath: string
@@ -1030,6 +1067,179 @@ export async function createVehicleCheck(input: CreateVehicleCheckInput): Promis
     )
   }
 
+  return created
+}
+
+export async function createVehicleCheck(
+  input: CreateVehicleCheckInput & {
+    onInserted?: (checkId: string) => void | Promise<void>
+  },
+): Promise<VehicleCheck> {
+  return createVehicleCheckInternal({ ...input, leaveIncomplete: false })
+}
+
+/**
+ * Offline queue sync entry point — reuses createVehicleCheck insert/items rules.
+ * Leaves the check In Progress because Completed requires signature_url (no schema change).
+ * @deprecated Prefer full offline media sync via createVehicleCheck.
+ */
+export async function createVehicleCheckFromOfflineQueue(
+  input: Omit<CreateVehicleCheckInput, 'signatureFile'>,
+): Promise<VehicleCheck> {
+  return createVehicleCheckInternal({ ...input, signatureFile: null, leaveIncomplete: true })
+}
+
+/**
+ * Resume an In Progress check created by an interrupted offline sync.
+ * Skips re-upload when items already have storage photoUrl and no new photoFile.
+ */
+export async function finalizeInProgressVehicleCheck(
+  checkId: string,
+  input: CreateVehicleCheckInput,
+): Promise<VehicleCheck> {
+  const verifiedCompanyId = requireVerifiedCompanyId()
+  const existing = await fetchVehicleCheckById(checkId)
+  if (!existing) {
+    throw new VehicleChecksServiceError('Inspection not found for offline sync resume.')
+  }
+  if (existing.status === 'Completed') {
+    return existing
+  }
+  if (existing.status !== 'In Progress' && existing.status !== 'Pending') {
+    throw new VehicleChecksServiceError('Inspection is not resumable for offline sync.')
+  }
+  if (!input.signatureFile) {
+    throw new VehicleChecksServiceError('Worker signature is required.')
+  }
+
+  const inspectionStartedAt = input.inspectionStartedAt?.trim() || existing.inspectionStartedAt
+  if (!inspectionStartedAt) {
+    throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
+  }
+  const startedAtDate = new Date(inspectionStartedAt)
+  if (Number.isNaN(startedAtDate.getTime())) {
+    throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
+  }
+
+  const overallResult = computeOverallResult(input.items)
+  const defectCount = countDefectAnswers(input.items.filter((item) => item.isAnswered === true))
+  const defectReviewStatus = defaultDefectReviewStatus(defectCount)
+
+  // Prefer already-uploaded photoUrl when photoFile is absent (duplicate upload protection).
+  const itemsForUpload: VehicleCheckItemInput[] = input.items.map((item) => {
+    if (item.photoFile) return item
+    if (item.photoUrl) {
+      return { ...item, photoFile: null, photoPreviewUrl: null }
+    }
+    return item
+  })
+
+  let itemsWithPhotos: VehicleCheckItemInput[]
+  try {
+    itemsWithPhotos = await prepareItemsWithUploadedPhotos(
+      input.vehicleId,
+      checkId,
+      itemsForUpload,
+      existing.items,
+    )
+  } catch (photoError) {
+    throw new VehicleChecksServiceError(
+      photoError instanceof Error ? photoError.message : 'Failed to upload defect photo.',
+    )
+  }
+
+  await assertVehicleCheckInCompany(checkId, verifiedCompanyId)
+  const { error: deleteError } = await requireSupabase()
+    .from(VEHICLE_CHECK_ITEMS_TABLE)
+    .delete()
+    .eq('vehicle_check_id', checkId)
+  if (deleteError) {
+    throw new VehicleChecksServiceError(deleteError.message)
+  }
+
+  const itemRows = buildItemRows(checkId, itemsWithPhotos)
+  const { error: itemsError } = await requireSupabase()
+    .from(VEHICLE_CHECK_ITEMS_TABLE)
+    .insert(itemRows)
+  logSupabaseQuery({
+    service: 'vehicleChecksService.finalizeInProgressVehicleCheck.items',
+    table: 'vehicle_check_items',
+    data: itemRows,
+    error: itemsError,
+  })
+  if (itemsError) {
+    throw new VehicleChecksServiceError(itemsError.message)
+  }
+
+  let signaturePath: string
+  try {
+    // Signature upload uses upsert:true — safe to retry without duplicate objects.
+    signaturePath = await uploadVehicleCheckSignature(
+      input.vehicleId,
+      checkId,
+      input.signatureFile,
+    )
+  } catch (signatureError) {
+    throw new VehicleChecksServiceError(
+      signatureError instanceof Error
+        ? signatureError.message
+        : 'Failed to upload worker signature.',
+    )
+  }
+
+  const completedAtDate = new Date()
+  const durationSeconds = calculateInspectionDurationSeconds(startedAtDate, completedAtDate)
+  if (durationSeconds == null) {
+    throw new VehicleChecksServiceError('Inspection duration could not be calculated.')
+  }
+
+  const signedAt = completedAtDate.toISOString()
+  const completedLocationColumns = toVehicleCheckLocationColumns(
+    input.completedLocation ? { status: 'success', location: input.completedLocation } : null,
+  )
+  const { data: completedRows, error: completeError } = await requireSupabase()
+    .from('vehicle_checks')
+    .update({
+      status: 'Completed',
+      overall_result: overallResult,
+      defect_review_status: defectReviewStatus,
+      signature_url: signaturePath,
+      signed_at: signedAt,
+      inspection_completed_at: signedAt,
+      duration_seconds: durationSeconds,
+      updated_at: signedAt,
+      notes: input.notes?.trim() || existing.notes || null,
+      completed_latitude: completedLocationColumns.latitude,
+      completed_longitude: completedLocationColumns.longitude,
+      completed_location_accuracy: completedLocationColumns.accuracy,
+      completed_location_at: completedLocationColumns.locationAt,
+    })
+    .eq('id', checkId)
+    .eq('company_id', verifiedCompanyId)
+    .select('id')
+
+  logSupabaseQuery({
+    service: 'vehicleChecksService.finalizeInProgressVehicleCheck.complete',
+    table: 'vehicle_checks',
+    data: completedRows ?? [],
+    error: completeError,
+  })
+
+  if (completeError) {
+    throw new VehicleChecksServiceError(completeError.message)
+  }
+  if ((completedRows ?? []).length === 0) {
+    throw new VehicleChecksServiceError(
+      'Inspection could not be completed for your company.',
+    )
+  }
+
+  const created = await fetchVehicleCheckById(checkId)
+  if (!created || created.status !== 'Completed') {
+    throw new VehicleChecksServiceError(
+      'Inspection was left in progress and was not marked completed.',
+    )
+  }
   return created
 }
 
@@ -1515,6 +1725,8 @@ export const vehicleChecksService = {
   fetchVehicleCheckById,
   fetchVehicleCheckCorrections,
   createVehicleCheck,
+  createVehicleCheckFromOfflineQueue,
+  finalizeInProgressVehicleCheck,
   createVehicleCheckCorrection,
   updateVehicleCheck,
   deleteVehicleCheck,

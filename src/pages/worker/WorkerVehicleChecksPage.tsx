@@ -8,6 +8,8 @@ import {
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useOfflineVehicleChecksQueue } from '@/hooks/useOfflineVehicleChecksQueue'
+import { addOnlineStatusListener, getOnlineStatus } from '@/lib/networkStatus'
 import {
   formatInspectionDuration,
   isValidInspectionStartedAt,
@@ -37,6 +39,11 @@ import {
   createVehicleCheck,
   VehicleChecksServiceError,
 } from '@/services/vehicleChecksService'
+import { OfflineMediaStorageError } from '@/lib/offlineMedia/offlineMediaStorage'
+import {
+  saveOfflineCheck,
+  syncOfflineVehicleChecks,
+} from '@/services/offlineVehicleChecksService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import {
   ArrowLeft,
@@ -102,17 +109,33 @@ function tyreCheckHref(vehicleId: string): string {
     : '/worker/tyre-checks/new'
 }
 
+function formatLastSyncAt(value: string | null): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString()
+}
+
 /** Worker entry point from Vehicles → Start Vehicle Check. */
 export default function WorkerVehicleChecksPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
-  const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
+  const {
+    companyId,
+    companyReady,
+    companyLoading,
+    membershipError,
+  } = useCompanyTenantGate()
+  const offlineQueue = useOfflineVehicleChecksQueue()
+  const [isOnline, setIsOnline] = useState(true)
 
   const [step, setStep] = useState<FlowStep>('setup')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [vehiclesLoading, setVehiclesLoading] = useState(true)
   const [vehiclesError, setVehiclesError] = useState<string | null>(null)
+  const [savedOffline, setSavedOffline] = useState(false)
+  const [isRetryingSync, setIsRetryingSync] = useState(false)
 
   const [vehicleId, setVehicleId] = useState(searchParams.get('vehicleId')?.trim() || '')
   const [rememberVehicle, setRememberVehicle] = useState(false)
@@ -150,6 +173,33 @@ export default function WorkerVehicleChecksPage() {
       if (locationStatusHideTimerRef.current != null) {
         window.clearTimeout(locationStatusHideTimerRef.current)
       }
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    let removeListener: (() => Promise<void>) | null = null
+
+    void getOnlineStatus().then((online) => {
+      if (!cancelled) setIsOnline(online)
+    })
+
+    void addOnlineStatusListener((online) => {
+      if (!cancelled) setIsOnline(online)
+    }).then((handle) => {
+      if (cancelled) {
+        void handle.remove()
+        return
+      }
+      removeListener = () => handle.remove()
+    })
+
+    // Sync pending checks when the Vehicle Checks page opens (no-op when offline).
+    void syncOfflineVehicleChecks()
+
+    return () => {
+      cancelled = true
+      if (removeListener) void removeListener()
     }
   }, [])
 
@@ -385,12 +435,6 @@ export default function WorkerVehicleChecksPage() {
       return
     }
 
-    if (!canCompleteVehicleCheck({ odometer, signatureFile })) {
-      setShowCompletionValidation(true)
-      setError('Please complete mileage and signature before saving.')
-      return
-    }
-
     if (!isValidInspectionStartedAt(inspectionStartedAt)) {
       setError(
         'Inspection duration could not be calculated. Return to setup and open the checklist again.',
@@ -402,9 +446,9 @@ export default function WorkerVehicleChecksPage() {
     setShowCompletionValidation(false)
 
     const parsedOdometer = Number.parseInt(odometer.trim(), 10)
-    if (Number.isNaN(parsedOdometer) || parsedOdometer < 0 || !signatureFile) {
+    if (Number.isNaN(parsedOdometer) || parsedOdometer < 0) {
       setShowCompletionValidation(true)
-      setError('Please complete mileage and signature before saving.')
+      setError('Please complete mileage before saving.')
       return
     }
 
@@ -413,9 +457,59 @@ export default function WorkerVehicleChecksPage() {
     submitLockRef.current = true
     setIsSaving(true)
     try {
+      const online = await getOnlineStatus()
+      setIsOnline(online)
+
+      if (!canCompleteVehicleCheck({ odometer, signatureFile }) || !signatureFile) {
+        setShowCompletionValidation(true)
+        setError('Please complete mileage and signature before saving.')
+        return
+      }
+
+      if (!online) {
+        if (!companyId) {
+          setError('Company context is required to save offline.')
+          return
+        }
+
+        // One-shot GPS request immediately before the final save — part of the
+        // same completion flow, never a separate/independent submission.
+        const completedLocationResult = await captureVehicleCheckLocation()
+        const startedLocation =
+          startedLocationResult?.status === 'success' ? startedLocationResult.location : null
+        const completedLocation =
+          completedLocationResult.status === 'success' ? completedLocationResult.location : null
+
+        // Full offline save: checklist + photos + signature to private filesystem.
+        // No Supabase calls until sync.
+        await saveOfflineCheck({
+          companyId,
+          vehicleId,
+          workerId: worker.id,
+          inspectionDate,
+          odometer: parsedOdometer,
+          odometerUnit,
+          notes,
+          inspectionStartedAt: confirmedStartedAt,
+          items,
+          signatureFile,
+          startedLocation,
+          completedLocation,
+        })
+        setCompletedResult(computeOverallResult(items))
+        setSavedOffline(true)
+        setStep('done')
+        return
+      }
+
       // One-shot GPS request immediately before the final save — part of the
       // same completion flow, never a separate/independent submission.
       const completedLocationResult = await captureVehicleCheckLocation()
+      const startedLocation =
+        startedLocationResult?.status === 'success' ? startedLocationResult.location : null
+      const completedLocation =
+        completedLocationResult.status === 'success' ? completedLocationResult.location : null
+
       const created = await createVehicleCheck({
         vehicleId,
         workerId: worker.id,
@@ -426,20 +520,21 @@ export default function WorkerVehicleChecksPage() {
         signatureFile,
         inspectionStartedAt: confirmedStartedAt,
         items,
-        startedLocation:
-          startedLocationResult?.status === 'success' ? startedLocationResult.location : null,
-        completedLocation:
-          completedLocationResult.status === 'success' ? completedLocationResult.location : null,
+        startedLocation,
+        completedLocation,
       })
       setCompletedResult(created.overallResult)
+      setSavedOffline(false)
       setStep('done')
     } catch (submitError) {
       setError(
-        submitError instanceof VehicleChecksServiceError
+        submitError instanceof OfflineMediaStorageError
           ? submitError.message
-          : submitError instanceof Error
+          : submitError instanceof VehicleChecksServiceError
             ? submitError.message
-            : 'Failed to save inspection.',
+            : submitError instanceof Error
+              ? submitError.message
+              : 'Failed to save inspection.',
       )
     } finally {
       submitLockRef.current = false
@@ -497,7 +592,7 @@ export default function WorkerVehicleChecksPage() {
         >
           <ArrowLeft className="size-5" />
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold tracking-tight text-slate-950">Vehicle Check</h1>
           <p className="text-sm text-slate-500">
             {step === 'setup'
@@ -509,7 +604,102 @@ export default function WorkerVehicleChecksPage() {
                 : 'Submitted'}
           </p>
         </div>
+        {offlineQueue.total > 0 ? (
+          <span
+            role="status"
+            aria-live="polite"
+            className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-amber-900"
+          >
+            Offline Queue ({offlineQueue.total})
+          </span>
+        ) : null}
       </div>
+
+      {offlineQueue.total > 0 ||
+      offlineQueue.isSyncing ||
+      offlineQueue.completed > 0 ||
+      offlineQueue.lastSyncAt ? (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
+              <p className="font-semibold">Offline Queue</p>
+              <p className="text-amber-900/85">
+                {offlineQueue.pending} Pending
+                {' · '}
+                {Math.max(offlineQueue.uploading, offlineQueue.syncing, offlineQueue.isSyncing ? 1 : 0)}{' '}
+                Uploading
+                {' · '}
+                {offlineQueue.failed} Failed
+                {' · '}
+                {offlineQueue.completed} Completed
+              </p>
+              {offlineQueue.progressLabel ? (
+                <p className="text-xs text-amber-800/90">
+                  {offlineQueue.currentItemId
+                    ? `Syncing item ${offlineQueue.currentItemId.slice(0, 8)}… `
+                    : ''}
+                  {offlineQueue.progressLabel}
+                  {offlineQueue.progressPercent != null
+                    ? ` (${offlineQueue.progressPercent}%)`
+                    : ''}
+                </p>
+              ) : null}
+              {formatLastSyncAt(offlineQueue.lastSyncAt) ? (
+                <p className="text-xs text-amber-800/80">
+                  Last sync: {formatLastSyncAt(offlineQueue.lastSyncAt)}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-amber-300 bg-white px-3 text-xs font-semibold text-amber-950 hover:bg-amber-100/70"
+              disabled={offlineQueue.isSyncing || isRetryingSync}
+              onClick={() => {
+                setIsRetryingSync(true)
+                void offlineQueue
+                  .retrySync()
+                  .catch(() => {
+                    // Errors stay on queue items; avoid sensitive console logs.
+                  })
+                  .finally(() => setIsRetryingSync(false))
+              }}
+            >
+              {offlineQueue.isSyncing || isRetryingSync ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : null}
+              Retry
+            </Button>
+          </div>
+          {offlineQueue.progressPercent != null && offlineQueue.isSyncing ? (
+            <div
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-amber-100"
+              aria-hidden="true"
+            >
+              <div
+                className="h-full rounded-full bg-amber-500 transition-[width] duration-300"
+                style={{
+                  width: `${Math.max(0, Math.min(100, offlineQueue.progressPercent))}%`,
+                }}
+              />
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
+
+      {!isOnline ? (
+        <p
+          role="status"
+          className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+        >
+          You are offline. Complete the full Vehicle Check with photos and signature — it will
+          sync automatically when you are back online.
+        </p>
+      ) : null}
 
       {step === 'setup' ? (
         <aside
@@ -725,9 +915,13 @@ export default function WorkerVehicleChecksPage() {
             <CheckCircle2 className="size-7" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-emerald-950">Vehicle Check submitted</h2>
+            <h2 className="text-xl font-semibold text-emerald-950">
+              {savedOffline ? 'Vehicle Check saved offline' : 'Vehicle Check submitted'}
+            </h2>
             <p className="mt-2 text-sm text-emerald-900/80">
-              Saved for Admin review.
+              {savedOffline
+                ? 'Vehicle Check saved offline. It will sync automatically.'
+                : 'Saved for Admin review.'}
               {completedResult ? (
                 <>
                   {' '}

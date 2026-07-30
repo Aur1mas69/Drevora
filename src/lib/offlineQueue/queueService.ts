@@ -1,3 +1,4 @@
+import { emitOfflineQueueChanged } from '@/lib/offlineQueue/events'
 import {
   readQueueItems,
   writeQueueItems,
@@ -40,6 +41,7 @@ export async function enqueueOfflineItem<TPayload>(
 
   const existing = await readQueueItems<TPayload>(input.module)
   await writeQueueItems(input.module, [...existing, item])
+  emitOfflineQueueChanged(input.module)
   return item
 }
 
@@ -84,6 +86,7 @@ export async function updateOfflineItemStatus(
   const nextItems = [...items]
   nextItems[index] = next
   await writeQueueItems(module, nextItems)
+  emitOfflineQueueChanged(module)
   return next
 }
 
@@ -92,5 +95,42 @@ export async function removeOfflineItem(module: string, id: string): Promise<boo
   const next = items.filter((item) => item.id !== id)
   if (next.length === items.length) return false
   await writeQueueItems(module, next)
+  emitOfflineQueueChanged(module)
   return true
+}
+
+/**
+ * Merge fields into an existing queue item's payload (and optional top-level fields).
+ * Used by Vehicle Check media sync to persist upload URLs / phases without re-enqueueing.
+ */
+export async function updateOfflineItem<TPayload>(
+  module: string,
+  id: string,
+  patch: {
+    status?: OfflineQueueStatus
+    payload?: TPayload
+    lastError?: string | null
+    bumpAttempts?: boolean
+  },
+): Promise<OfflineQueueItem<TPayload> | null> {
+  const items = await readQueueItems<TPayload>(module)
+  const index = items.findIndex((item) => item.id === id)
+  if (index < 0) return null
+
+  const current = items[index]
+  const next: OfflineQueueItem<TPayload> = {
+    ...current,
+    status: patch.status ?? current.status,
+    payload: patch.payload !== undefined ? patch.payload : current.payload,
+    updatedAt: nowIso(),
+    attempts: patch.bumpAttempts ? current.attempts + 1 : current.attempts,
+    lastError:
+      patch && 'lastError' in patch ? (patch.lastError ?? null) : current.lastError,
+  }
+
+  const nextItems = [...items]
+  nextItems[index] = next
+  await writeQueueItems(module, nextItems)
+  emitOfflineQueueChanged(module)
+  return next
 }

@@ -121,6 +121,22 @@ export default defineConfig(({ mode }) => {
             ? path.resolve(__dirname, './src/lib/offlineQueue/storage.native.ts')
             : path.resolve(__dirname, './src/lib/offlineQueue/storage.ts'),
         },
+        // Exact `@/lib/networkStatus` must win over the general `@` prefix.
+        // Web → navigator.onLine; native → @capacitor/network.
+        {
+          find: '@/lib/networkStatus',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/networkStatus.native.ts')
+            : path.resolve(__dirname, './src/lib/networkStatus.ts'),
+        },
+        // Exact `@/lib/offlineMedia/offlineMediaStorage` must win over the general `@` prefix.
+        // Web/PWA → IndexedDB Blobs; native → Capacitor Filesystem Directory.Data.
+        {
+          find: '@/lib/offlineMedia/offlineMediaStorage',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/offlineMedia/offlineMediaStorage.native.ts')
+            : path.resolve(__dirname, './src/lib/offlineMedia/offlineMediaStorage.ts'),
+        },
         // Exact `@/lib/appLockNative` must win over the general `@` prefix.
         // Web → unsupported no-op; native → AppLockBiometric plugin bridge.
         {
