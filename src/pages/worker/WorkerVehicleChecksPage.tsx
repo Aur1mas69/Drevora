@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import {
   canCompleteVehicleCheck,
   VehicleCheckCompletionSection,
@@ -141,7 +142,7 @@ export default function WorkerVehicleChecksPage() {
     'idle' | 'capturing' | 'success' | 'unavailable'
   >('idle')
   const submitLockRef = useRef(false)
-  const redirectedMissingVehicleRef = useRef(false)
+  const didInitVehicleRef = useRef(false)
   const locationStatusHideTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -219,14 +220,11 @@ export default function WorkerVehicleChecksPage() {
     checklistStatus === 'ready' &&
     items.length > 0
 
-  /**
-   * Vehicle selection happens on Worker Vehicles. Clearing here returns the
-   * Worker to that page so they can pick another real company vehicle.
-   */
+  /** Clear in-page selection only — do not bounce Home/CTA traffic to Vehicles. */
   function clearSelectedVehicle() {
+    setVehicleId('')
     setRememberVehicle(false)
     setError(null)
-    navigate('/worker/vehicles', { replace: true })
   }
 
   useEffect(() => {
@@ -247,6 +245,28 @@ export default function WorkerVehicleChecksPage() {
         const rows = await fetchVehicles()
         if (cancelled) return
         setVehicles(rows)
+
+        // One-shot initial selection for Home CTA and deep links:
+        // URL vehicleId → worker default → remembered device id.
+        // Never redirect away from this page while vehicles are loading/missing.
+        if (!didInitVehicleRef.current) {
+          didInitVehicleRef.current = true
+          const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+          const fromDefault = worker.defaultVehicleId?.trim() || ''
+          const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
+          const candidates = [fromUrl, fromDefault, fromRemembered].filter(Boolean)
+          const match =
+            candidates
+              .map((id) => rows.find((vehicle) => vehicle.id === id) ?? null)
+              .find((vehicle) => vehicle != null) ?? null
+
+          if (match) {
+            setVehicleId(match.id)
+            setRememberVehicle(fromRemembered === match.id)
+          } else if (fromRemembered) {
+            setRememberedVehicleCheckId(null)
+          }
+        }
       } catch (loadError) {
         if (cancelled) return
         setVehiclesError(
@@ -261,43 +281,7 @@ export default function WorkerVehicleChecksPage() {
     return () => {
       cancelled = true
     }
-  }, [companyLoading, companyReady, worker, workerLoading])
-
-  // Require a real vehicleId from the Vehicles page route. Free-text entry is
-  // not allowed here — missing/invalid IDs redirect back to Vehicles.
-  useEffect(() => {
-    if (vehiclesLoading || companyLoading || workerLoading) return
-    if (!companyReady || !worker) return
-    if (step !== 'setup') return
-    if (vehiclesError) return
-
-    const fromUrl = searchParams.get('vehicleId')?.trim() || ''
-    const match = fromUrl
-      ? vehicles.find((vehicle) => vehicle.id === fromUrl) ?? null
-      : null
-
-    if (!match) {
-      if (!redirectedMissingVehicleRef.current) {
-        redirectedMissingVehicleRef.current = true
-        navigate('/worker/vehicles', { replace: true })
-      }
-      return
-    }
-
-    setVehicleId(match.id)
-    setRememberVehicle(getRememberedVehicleCheckId() === match.id)
-  }, [
-    companyLoading,
-    companyReady,
-    navigate,
-    searchParams,
-    step,
-    vehicles,
-    vehiclesError,
-    vehiclesLoading,
-    worker,
-    workerLoading,
-  ])
+  }, [companyLoading, companyReady, searchParams, worker, workerLoading])
 
   useEffect(() => {
     if (isChecklistFullyAnswered(items, checklistSections)) {
@@ -572,9 +556,18 @@ export default function WorkerVehicleChecksPage() {
             {selectedVehicle ? (
               <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
             ) : (
-              <p className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                Select a vehicle on the Vehicles page before starting this check.
-              </p>
+              <WorkerVehicleCombobox
+                vehicles={vehicles}
+                selectedVehicleId={null}
+                onSelect={(vehicle) => {
+                  setVehicleId(vehicle.id)
+                  setRememberVehicle(getRememberedVehicleCheckId() === vehicle.id)
+                  setError(null)
+                }}
+                label="Select vehicle"
+                placeholder="Search registration"
+                required
+              />
             )}
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
