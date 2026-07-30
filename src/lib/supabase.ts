@@ -1,4 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import {
+  getAuthStorageConfig,
+  prepareAuthStorage,
+} from '@/lib/supabaseAuthStorage'
 import { getSupabaseHost } from '@/lib/supabaseQueryLog'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
@@ -14,13 +18,18 @@ let supabaseClient: SupabaseClient | null = null
 
 if (missingSupabaseEnvVars.length === 0) {
   try {
+    prepareAuthStorage()
+    const authStorage = getAuthStorageConfig()
+
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: authStorage.detectSessionInUrl,
+        ...(authStorage.storage ? { storage: authStorage.storage } : {}),
       },
     })
+
 
     if (import.meta.env.DEV) {
       console.info('[supabase] client configured for host:', getSupabaseHost(supabaseUrl))

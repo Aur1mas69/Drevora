@@ -113,6 +113,14 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: [
+        // Exact `@/lib/supabaseAuthStorage` must win over the general `@` prefix.
+        // Web → browser localStorage defaults; native → SecureAuthStorage plugin adapter.
+        {
+          find: '@/lib/supabaseAuthStorage',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/supabaseAuthStorage.native.ts')
+            : path.resolve(__dirname, './src/lib/supabaseAuthStorage.ts'),
+        },
         // Exact `@/App` must win over the general `@` prefix.
         // Web → App.tsx (full Admin + Worker router); native → App.native.tsx (Worker-only).
         {
