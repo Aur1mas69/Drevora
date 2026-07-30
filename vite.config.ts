@@ -113,6 +113,14 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: [
+        // Exact `@/lib/offlineQueue/storage` must win over the general `@` prefix.
+        // Web → localStorage fallback; native → Capacitor Preferences.
+        {
+          find: '@/lib/offlineQueue/storage',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/offlineQueue/storage.native.ts')
+            : path.resolve(__dirname, './src/lib/offlineQueue/storage.ts'),
+        },
         // Exact `@/lib/appLockNative` must win over the general `@` prefix.
         // Web → unsupported no-op; native → AppLockBiometric plugin bridge.
         {
