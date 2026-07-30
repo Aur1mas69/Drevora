@@ -3,4 +3,7 @@
     <exclude
         domain="sharedpref"
         path="drevora_secure_auth_storage.xml" />
+    <exclude
+        domain="sharedpref"
+        path="drevora_app_lock_preferences.xml" />
 </full-backup-content>

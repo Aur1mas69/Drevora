@@ -1,4 +1,5 @@
 import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
+import { NativeBiometricAppLockSettings } from '@/components/worker/NativeBiometricAppLockSettings'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -309,6 +310,9 @@ export default function WorkerSettingsPage() {
             aria-hidden
           />
         </div>
+        {import.meta.env.MODE === 'native' ? (
+          <NativeBiometricAppLockSettings />
+        ) : null}
       </section>
 
       {/* Section 4 — Help & App */}

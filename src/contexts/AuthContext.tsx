@@ -5,6 +5,7 @@ import {
   type AuthPortal,
 } from '@/lib/authPortal'
 import { clearGlobalCompanySettings } from '@/lib/companySettingsGlobals'
+import { runAppLockSignOutCleanup } from '@/lib/appLockSignOutBridge'
 import { clearCompanyMembershipCache } from '@/services/companyMembershipService'
 import {
   createContext,
@@ -69,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const signOut = useCallback(async () => {
+    // Best-effort local app-lock cleanup (native). Never blocks Supabase sign-out.
+    await runAppLockSignOutCleanup()
     await authService.signOut()
     setSession(null)
     setPortal(null)

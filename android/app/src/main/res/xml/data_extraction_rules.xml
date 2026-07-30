@@ -4,10 +4,16 @@
         <exclude
             domain="sharedpref"
             path="drevora_secure_auth_storage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="drevora_app_lock_preferences.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude
             domain="sharedpref"
             path="drevora_secure_auth_storage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="drevora_app_lock_preferences.xml" />
     </device-transfer>
 </data-extraction-rules>

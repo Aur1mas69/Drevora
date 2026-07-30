@@ -6,6 +6,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { AppLockGate } from '@/components/auth/AppLockGate'
 import {
   MembershipAccessBlocked,
   MembershipLoadingScreen,
@@ -130,7 +131,11 @@ function RequireWorkerAccess() {
     )
   }
 
-  return <MainLayout />
+  return (
+    <AppLockGate>
+      <MainLayout />
+    </AppLockGate>
+  )
 }
 
 /**

@@ -113,6 +113,14 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: [
+        // Exact `@/lib/appLockNative` must win over the general `@` prefix.
+        // Web → unsupported no-op; native → AppLockBiometric plugin bridge.
+        {
+          find: '@/lib/appLockNative',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/appLockNative.native.ts')
+            : path.resolve(__dirname, './src/lib/appLockNative.ts'),
+        },
         // Exact `@/lib/supabaseAuthStorage` must win over the general `@` prefix.
         // Web → browser localStorage defaults; native → SecureAuthStorage plugin adapter.
         {
