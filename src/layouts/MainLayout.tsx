@@ -17,10 +17,8 @@ import { useLayoutEffect, useMemo } from 'react'
 
 function navButtonClass(active: boolean) {
   return cn(
-    'worker-nav-item flex min-h-10 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-3xl px-1.5 py-1.5 text-[11px] font-medium transition-colors',
-    active
-      ? 'worker-nav-active'
-      : 'text-[color:var(--worker-nav-inactive)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]',
+    'worker-nav-item flex min-h-10 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-3xl px-1.5 py-1.5 text-[11px] font-semibold transition-colors',
+    active ? 'worker-nav-active' : 'worker-nav-idle',
   )
 }
 
@@ -57,7 +55,7 @@ function MainLayout() {
       >
         {active ? <span className="worker-nav-indicator" aria-hidden /> : null}
         <span className="worker-nav-icon-wrap" aria-hidden>
-          <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+          <Icon className="size-5 shrink-0" strokeWidth={active ? 2.5 : 2.25} />
         </span>
         <span className="truncate">{item.shortLabel ?? item.label}</span>
       </NavLink>
@@ -86,7 +84,7 @@ function MainLayout() {
               <span className="worker-nav-icon-wrap" aria-hidden>
                 <Home
                   className="size-5 shrink-0"
-                  strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.25 : 1.75}
+                  strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.5 : 2.25}
                 />
               </span>
               <span className="truncate">Home</span>
@@ -101,7 +99,7 @@ function MainLayout() {
               className={navButtonClass(false)}
             >
               <span className="worker-nav-icon-wrap" aria-hidden>
-                <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+                <LogOut className="size-5 shrink-0" strokeWidth={2.25} />
               </span>
               <span className="truncate">Sign out</span>
             </button>

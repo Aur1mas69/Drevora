@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { WorkerHomeRoadBackground } from '@/components/worker/WorkerHomeRoadBackground'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
-import { getSentenceTimeGreeting } from '@/lib/greeting'
+import { getSentenceTimeGreeting, resolveGreetingFullName } from '@/lib/greeting'
 import {
   addOnlineStatusListener,
   getOnlineStatus,
@@ -22,7 +22,6 @@ import {
   MoonStar,
   ShieldCheck,
   Sun,
-  Sunset,
   Truck,
   type LucideIcon,
 } from 'lucide-react'
@@ -35,9 +34,8 @@ const WORKER_ROBOT_SIZE = 256
 
 function getGreetingPeriodIcon(date = new Date()): LucideIcon {
   const hour = date.getHours()
-  if (hour >= 5 && hour < 12) return Sun
-  if (hour >= 12 && hour < 17) return Sun
-  if (hour >= 17 && hour < 22) return Sunset
+  // Morning + afternoon: sun. Evening + night: moon.
+  if (hour >= 5 && hour < 17) return Sun
   return MoonStar
 }
 
@@ -79,7 +77,7 @@ function resetHorizontalScrollOffset() {
   window.scrollTo(0, window.scrollY || window.pageYOffset || 0)
 }
 
-function WorkerHomeHeader({ companyName }: { companyName: string }) {
+function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
   const headerRef = useRef<HTMLElement>(null)
   const GreetingIcon = getGreetingPeriodIcon()
   const greeting = getSentenceTimeGreeting()
@@ -130,9 +128,9 @@ function WorkerHomeHeader({ companyName }: { companyName: string }) {
         <h1 className="worker-home-greeting-script max-w-full break-words">
           {greeting}
         </h1>
-        {companyName ? (
+        {workerName ? (
           <p className="worker-home-greeting-company max-w-full break-words">
-            {companyName}
+            {workerName}
           </p>
         ) : (
           <div
@@ -160,48 +158,45 @@ function WorkerHomeHeader({ companyName }: { companyName: string }) {
 function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
     <section className="relative isolate flex items-end gap-3 px-5 pt-4 pb-4 sm:gap-5 sm:px-6 sm:pt-5 sm:pb-5">
+      {/* Banner shell: min-height defines the paint box; road img is a direct absolute child so it cannot collapse to 0. */}
       <div
         aria-hidden="true"
         className={cn(
-          'absolute inset-x-0 bottom-0 z-0 min-h-[5.75rem] rounded-[1.75rem] p-px min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]',
-          isDark
-            ? 'bg-gradient-to-br from-[#A3F1AB]/60 to-[#4344F6]/60'
-            : 'bg-[#BFE3F5]',
+          'absolute inset-x-0 bottom-0 z-0 min-h-[5.75rem] overflow-hidden rounded-[1.75rem] min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]',
+          isDark ? 'worker-robot-hero' : null,
         )}
       >
-        <div className="worker-robot-hero relative h-full w-full overflow-hidden rounded-[calc(1.75rem-1px)]">
-          {/* Light mode only: road → readability overlay. Dark keeps CSS surface. */}
-          {!isDark ? (
-            <>
-              <WorkerHomeRoadBackground className="pointer-events-none absolute inset-0 z-0 h-full w-full" />
-              <div
-                className="pointer-events-none absolute inset-0 z-[1]"
-                style={{
-                  background:
-                    'linear-gradient(90deg, rgba(235, 246, 255, 0.98) 0%, rgba(235, 246, 255, 0.90) 35%, rgba(235, 246, 255, 0.42) 62%, rgba(235, 246, 255, 0.04) 100%)',
-                }}
-              />
-            </>
-          ) : null}
-        </div>
+        {!isDark ? (
+          <>
+            <WorkerHomeRoadBackground className="pointer-events-none absolute inset-0 z-0 h-full w-full max-w-none" />
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(247, 251, 255, 0.38) 0%, rgba(235, 246, 255, 0.18) 28%, rgba(235, 246, 255, 0.04) 52%, transparent 72%)',
+              }}
+            />
+          </>
+        ) : null}
       </div>
 
-      <div className="relative z-10 min-w-0 flex-1 space-y-1.5 pb-0.5 pr-1 pl-0.5">
+      <div className="relative z-[2] min-w-0 flex-1 space-y-1.5 self-center -translate-y-1 pr-1 pl-0.5 sm:-translate-y-2">
         <h2
           className={cn(
             'text-xl font-bold leading-[1.2] tracking-tight sm:text-2xl [font-weight:700]',
-            isDark ? 'text-white' : 'text-[#0F172A]',
+            isDark ? 'text-white' : 'text-[#0B1F3A]',
           )}
         >
-          Let's get things done!
+          Ready for the road?
         </h2>
         <p
           className={cn(
-            'text-sm leading-snug',
-            isDark ? 'text-white/70' : 'text-[#334155]',
+            'max-w-[16.5rem] text-sm leading-snug sm:max-w-[20rem]',
+            isDark ? 'text-white/70' : 'text-[#3D5A80]',
           )}
         >
-          Here's what's happening with your work today.
+          Check your vehicle, review today’s tasks, and start your shift with
+          confidence.
         </p>
       </div>
 
@@ -213,7 +208,7 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
         height={WORKER_ROBOT_SIZE}
         loading="eager"
         decoding="async"
-        className="worker-robot-hero__image relative z-10 aspect-square w-[7rem] shrink-0 select-none min-[380px]:w-[9rem] sm:w-[11rem] lg:w-[13.5rem]"
+        className="worker-robot-hero__image relative z-[2] aspect-square w-[7rem] shrink-0 select-none min-[380px]:w-[9rem] sm:w-[11rem] lg:w-[13.5rem]"
       />
     </section>
   )
@@ -222,13 +217,16 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
 function DashboardPage() {
   const { session } = useAuth()
   const { worker, isLoading, error } = useCurrentWorker()
-  const { companyId, companyName, companyLoading } = useCompanySettings()
+  const { companyId, companyLoading } = useCompanySettings()
   const isDark = useIsWorkerDarkMode()
   const [isOnline, setIsOnline] = useState(true)
   const [offlinePrepared, setOfflinePrepared] = useState<boolean | null>(null)
 
-  const verifiedCompany =
-    companyName?.trim() || worker?.company?.trim() || ''
+  const greetingWorkerName = worker
+    ? resolveGreetingFullName(worker.firstName, worker.lastName)
+    : isLoading
+      ? null
+      : 'Worker'
 
   useEffect(() => {
     let cancelled = false
@@ -370,7 +368,7 @@ function DashboardPage() {
   if (!isOnline) {
     return (
       <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
-        <WorkerHomeHeader companyName={verifiedCompany} />
+        <WorkerHomeHeader workerName={greetingWorkerName} />
 
         {showOfflineNotPrepared ? (
           <div
@@ -388,7 +386,7 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
-      <WorkerHomeHeader companyName={verifiedCompany} />
+      <WorkerHomeHeader workerName={greetingWorkerName} />
 
       {isLoading || companyLoading ? (
         <div
@@ -401,7 +399,7 @@ function DashboardPage() {
           <WorkerHomeRobotHero isDark={isDark} />
 
           {defaultVehicleLabel ? (
-            <div className="worker-home-surface worker-home-surface--interactive flex items-center gap-3.5 px-4 py-3.5">
+            <div className="worker-home-default-vehicle flex items-center gap-3.5 px-4 py-3.5">
               <div className="worker-home-icon-well">
                 <Truck className="size-6" strokeWidth={1.75} aria-hidden />
               </div>
@@ -413,7 +411,6 @@ function DashboardPage() {
                   {defaultVehicleLabel}
                 </p>
               </div>
-              <ChevronRight className="worker-home-chevron" aria-hidden />
             </div>
           ) : null}
 

@@ -6,7 +6,7 @@
 /* Shared token defaults (layout + portaled Worker surfaces). */
 .worker-mobile-layout,
 .worker-theme-surface {
-  --worker-bg: #f6f9ff;
+  --worker-bg: #dceeff;
   --worker-elevated: #ffffff;
   --worker-card: #ffffff;
   --worker-input: #ffffff;
@@ -75,6 +75,21 @@
 
 .worker-dark .worker-mobile-layout {
   background-color: var(--worker-bg);
+  background-image: none;
+}
+
+/* Light Worker page: stronger baby-blue → lighter. */
+html:not(.worker-dark) .worker-mobile-layout {
+  --worker-home-blue-gradient: linear-gradient(
+    105deg,
+    #9fd0f0 0%,
+    #bfe3f5 28%,
+    #dceeff 58%,
+    #f5faff 100%
+  );
+  background-color: var(--worker-bg);
+  background-image: var(--worker-home-blue-gradient);
+  background-attachment: fixed;
 }
 
 /* Helpers for Capacitor / future Worker surfaces */
@@ -117,6 +132,10 @@
   color: var(--worker-success);
 }
 
+.worker-mobile-layout .worker-nav-idle {
+  color: var(--worker-nav-inactive);
+}
+
 .worker-mobile-layout .worker-nav-item {
   position: relative;
   z-index: 0;
@@ -124,6 +143,23 @@
   transition:
     color 180ms ease,
     background-color 180ms ease;
+}
+
+/* Light: darker labels/icons on baby-blue nav so they stay readable. */
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-idle {
+  color: #0f172a;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-idle .worker-nav-icon-wrap svg {
+  color: #0f172a;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-item svg {
+  stroke-width: 2.25;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-active svg {
+  stroke-width: 2.5;
 }
 
 .worker-mobile-layout .worker-nav-icon-wrap {
@@ -137,6 +173,7 @@
   justify-content: center;
   border-radius: 9999px;
   background-color: transparent;
+  transition: background-color 160ms ease, width 160ms ease, height 160ms ease;
 }
 
 .worker-mobile-layout .worker-nav-item > span:not(.worker-nav-indicator):not(.worker-nav-icon-wrap),
@@ -153,16 +190,38 @@
 }
 
 /*
- * Light-mode only: soft translucent baby-blue oval behind the active icon.
- * No lift, no large shadow, no full-item pill. Dark mode unchanged.
+ * Light: active/pressed = smaller circular baby-blue chip (subtle, slightly darker).
+ * Dark mode unchanged.
  */
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-icon-wrap {
+  width: 2rem; /* 32px circle */
+  height: 2rem;
+}
+
 html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap {
-  background-color: color-mix(in srgb, var(--worker-primary) 12%, transparent);
+  width: 1.875rem; /* 30px — slightly smaller when selected */
+  height: 1.875rem;
+  background-color: #7eb8e8;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-item:active .worker-nav-icon-wrap {
+  width: 1.875rem;
+  height: 1.875rem;
+  background-color: #6eaddf;
 }
 
 html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap svg {
-  color: var(--worker-primary);
-  transform: scale(1.04);
+  color: #0f172a;
+  transform: none;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-active {
+  color: #0f172a;
+  background-color: transparent;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-idle:hover .worker-nav-icon-wrap {
+  background-color: #9fd0f0;
 }
 
 html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
@@ -174,8 +233,8 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
     transition: none;
   }
 
-  html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap svg {
-    transform: none;
+  .worker-mobile-layout .worker-nav-icon-wrap {
+    transition: none;
   }
 }
 
@@ -476,8 +535,8 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
  * ----------------------------------------------------------------------------- */
 
 .worker-mobile-layout .worker-robot-hero {
-  /* Soft baby-blue fallback under the optional inline road SVG. */
-  background-color: #e8f3fe;
+  /* Light mode: transparent so the road <img> is visible; dark sets its own fill. */
+  background-color: transparent;
   background-image: none;
 }
 
@@ -628,6 +687,21 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
+/* Non-interactive Default Vehicle info box — same stronger baby-blue gradient. */
+.worker-mobile-layout .worker-home-default-vehicle {
+  border-radius: 1.5rem;
+  border: 1.5px solid #7eb8e8;
+  background-color: #bfe3f5;
+  background-image: var(--worker-home-blue-gradient, linear-gradient(105deg, #9fd0f0 0%, #bfe3f5 28%, #dceeff 58%, #f5faff 100%));
+  box-shadow: none;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-default-vehicle {
+  border-color: rgba(127, 179, 211, 0.45);
+  background-color: rgba(127, 179, 211, 0.12);
+  background-image: none;
+}
+
 .worker-mobile-layout .worker-home-icon-well {
   display: flex;
   width: 2.75rem;
@@ -662,18 +736,23 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   flex-direction: column;
   justify-content: space-between;
   border-radius: 1.5rem;
-  border: 1px solid var(--worker-border);
-  background-color: var(--worker-card);
+  border: 1.5px solid #7eb8e8;
+  background-color: #bfe3f5;
+  background-image: var(--worker-home-blue-gradient, linear-gradient(105deg, #9fd0f0 0%, #bfe3f5 28%, #dceeff 58%, #f5faff 100%));
   padding: 1rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition:
     background-color 180ms ease,
+    background-image 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease,
     transform 180ms ease;
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action {
+  border-color: var(--worker-border);
+  background-color: var(--worker-card);
+  background-image: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
@@ -915,14 +994,31 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   border-color: var(--worker-border);
 }
 
+/* Bottom nav — same stronger baby-blue gradient (light). */
+html:not(.worker-dark) .worker-mobile-layout .worker-bottom-nav-shell {
+  background-color: #bfe3f5;
+  background-image: var(--worker-home-blue-gradient);
+  border-top-width: 2px;
+  border-color: #5aa3d8;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-bottom-nav-inner {
+  background-color: #bfe3f5;
+  background-image: var(--worker-home-blue-gradient);
+  border-width: 2px;
+  border-color: #5aa3d8;
+}
+
 /* Bottom nav dark container emphasis */
 .worker-dark .worker-mobile-layout .worker-bottom-nav-shell {
   background-color: color-mix(in srgb, var(--worker-card) 95%, transparent);
+  background-image: none;
   border-color: var(--worker-border);
 }
 
 .worker-dark .worker-mobile-layout .worker-bottom-nav-inner {
   background-color: var(--worker-card);
+  background-image: none;
   border-color: var(--worker-border);
 }
 
