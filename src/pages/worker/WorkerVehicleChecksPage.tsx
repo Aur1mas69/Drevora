@@ -11,7 +11,6 @@ import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useOfflineVehicleChecksQueue } from '@/hooks/useOfflineVehicleChecksQueue'
 import { addOnlineStatusListener, getOnlineStatus } from '@/lib/networkStatus'
-import { isRetryableNetworkError } from '@/lib/networkError'
 import {
   formatInspectionDuration,
   isValidInspectionStartedAt,
@@ -43,10 +42,9 @@ import {
 } from '@/lib/vehicleCheckLocation'
 import {
   getCachedTemplateItemsForVehicleType,
+  loadWorkerCompanyFleet,
   OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE,
   readWorkerOfflineBootstrap,
-  warmWorkerOfflineBootstrap,
-  WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS,
 } from '@/lib/workerOfflineBootstrap'
 import {
   createVehicleCheck,
@@ -57,7 +55,7 @@ import {
   saveOfflineCheck,
   syncOfflineVehicleChecks,
 } from '@/services/offlineVehicleChecksService'
-import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import type { Vehicle } from '@/services/vehiclesService'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -151,6 +149,8 @@ export default function WorkerVehicleChecksPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [vehiclesLoading, setVehiclesLoading] = useState(true)
   const [vehiclesError, setVehiclesError] = useState<string | null>(null)
+  const [fleetReconnecting, setFleetReconnecting] = useState(false)
+  const [fleetReloadToken, setFleetReloadToken] = useState(0)
   const [savedOffline, setSavedOffline] = useState(false)
   const [isRetryingSync, setIsRetryingSync] = useState(false)
 
@@ -348,81 +348,43 @@ export default function WorkerVehicleChecksPage() {
         setVehicles([])
         setVehiclesLoading(false)
         setOfflineBootstrapReady(false)
+        setFleetReconnecting(false)
         return
       }
 
       setVehiclesLoading(true)
       setVehiclesError(null)
       const userId = session?.user.id?.trim() || ''
-
-      async function restoreFromBootstrap(): Promise<boolean> {
-        if (!userId) return false
-        const cache = await readWorkerOfflineBootstrap(userId, companyId)
-        if (!(cache && cache.vehicles.length > 0)) return false
-        if (cancelled) return true
-        setVehicles(cache.vehicles)
-        setVehiclesError(null)
-        setOfflineBootstrapReady(true)
-        return true
-      }
-
-      // Offline / false-"online": restore fleet from bootstrap before network so
-      // hung fetches cannot leave Vehicle Checks on an endless loading state.
-      const online = await getOnlineStatus()
-      if (!online) {
-        const restored = await restoreFromBootstrap()
-        if (cancelled) return
-        if (!restored) {
-          setVehicles([])
-          setVehiclesError(null)
-          setOfflineBootstrapReady(false)
-        }
+      if (!userId) {
+        setVehicles([])
         setVehiclesLoading(false)
+        setOfflineBootstrapReady(false)
+        setFleetReconnecting(false)
         return
       }
 
       try {
-        const rows = await new Promise<Vehicle[]>((resolve, reject) => {
-          const timer = window.setTimeout(() => {
-            reject(new Error('VEHICLES_FETCH_TIMEOUT'))
-          }, WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS)
-          void fetchVehicles().then(
-            (value) => {
-              window.clearTimeout(timer)
-              resolve(value)
-            },
-            (error: unknown) => {
-              window.clearTimeout(timer)
-              reject(error)
-            },
-          )
+        const result = await loadWorkerCompanyFleet({
+          userId,
+          companyId,
+          worker,
         })
         if (cancelled) return
-        setVehicles(rows)
-        setOfflineBootstrapReady(true)
-
-        if (userId && companyId) {
-          void warmWorkerOfflineBootstrap({
-            userId,
-            companyId,
-            worker,
-            vehicles: rows,
-            skipOnlineCheck: true,
-          })
-        }
+        setVehicles(result.vehicles)
+        setOfflineBootstrapReady(result.vehicles.length > 0)
+        setFleetReconnecting(result.reconnecting)
+        setVehiclesError(null)
       } catch (loadError) {
         if (cancelled) return
-        if (await restoreFromBootstrap()) return
         setVehicles([])
         setOfflineBootstrapReady(false)
+        setFleetReconnecting(false)
         setVehiclesError(
-          isRetryableNetworkError(loadError)
-            ? null
-            : loadError instanceof Error &&
-                loadError.message.trim() &&
-                !/^TypeError:/i.test(loadError.message)
-              ? loadError.message
-              : 'Unable to load vehicles.',
+          loadError instanceof Error &&
+            loadError.message.trim() &&
+            !/^TypeError:/i.test(loadError.message)
+            ? loadError.message
+            : 'Unable to load vehicles.',
         )
       } finally {
         if (!cancelled) setVehiclesLoading(false)
@@ -437,10 +399,44 @@ export default function WorkerVehicleChecksPage() {
     companyId,
     companyLoading,
     companyReady,
+    fleetReloadToken,
     session?.user.id,
     worker,
     workerLoading,
   ])
+
+  // When a live fetch failed with an empty cache, retry when connectivity returns.
+  useEffect(() => {
+    if (!fleetReconnecting) return
+    let cancelled = false
+    let removeListener: (() => Promise<void>) | null = null
+
+    void addOnlineStatusListener((online) => {
+      if (!cancelled && online) {
+        setFleetReloadToken((token) => token + 1)
+      }
+    }).then((handle) => {
+      if (cancelled) {
+        void handle.remove()
+        return
+      }
+      removeListener = () => handle.remove()
+    })
+
+    const timer = window.setInterval(() => {
+      void getOnlineStatus().then((online) => {
+        if (!cancelled && online) {
+          setFleetReloadToken((token) => token + 1)
+        }
+      })
+    }, 4000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      if (removeListener) void removeListener()
+    }
+  }, [fleetReconnecting])
 
   // Preselect URL / valid default / remembered vehicle once the fleet is ready.
   // Keep retrying while selection is empty so a late-arriving defaultVehicleId
@@ -983,6 +979,14 @@ export default function WorkerVehicleChecksPage() {
                 showSelectedSummary={false}
                 required
               />
+            ) : fleetReconnecting ? (
+              <p
+                role="status"
+                className="flex items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800"
+              >
+                <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                Reconnecting… Loading company vehicles.
+              </p>
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                 No active company vehicles are available right now.

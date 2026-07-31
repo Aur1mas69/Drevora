@@ -17,11 +17,11 @@ import {
   type WorkerOfflineBootstrapCache,
 } from '@/lib/workerOfflineBootstrap/types'
 import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
+import { getOnlineStatus } from '@/lib/networkStatus'
 import type { Driver } from '@/services/driversService'
 import { fetchTemplateItemsByVehicleType } from '@/services/vehicleCheckTemplatesService'
-import type { Vehicle } from '@/services/vehiclesService'
+import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { readNativeOfflineMembershipSnapshot } from '@/lib/nativeOfflineMembership'
-import { getOnlineStatus } from '@/lib/networkStatus'
 
 export {
   OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE,
@@ -35,6 +35,24 @@ export {
 } from '@/lib/workerOfflineBootstrap/types'
 
 export { touchBootstrapHeartbeat } from '@/lib/workerOfflineBootstrap/storage'
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('VEHICLES_FETCH_TIMEOUT'))
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
 
 function isDriverShape(value: unknown): value is Driver {
   if (!value || typeof value !== 'object') return false
@@ -214,10 +232,21 @@ export async function warmWorkerOfflineBootstrap(params: {
     if (!online) return
   }
 
-  await touchBootstrapHeartbeat(`warm:${vehicles.length}`)
+  // Never clobber a prepared fleet with an empty shell warm — Web/PWA IndexedDB
+  // was left with vehicles:[] when Home warm was cancelled mid-flight, which then
+  // looked like "company has no vehicles" on Vehicle Check.
+  let vehiclesForCache = vehicles
+  if (vehicles.length === 0) {
+    const existing = await readWorkerOfflineBootstrap(userId, companyId)
+    if (existing && existing.vehicles.length > 0) {
+      vehiclesForCache = existing.vehicles
+    }
+  }
+
+  await touchBootstrapHeartbeat(`warm:${vehiclesForCache.length}`)
   const typeKeys = [
     ...new Set(
-      vehicles
+      vehiclesForCache
         .map((vehicle) => normalizeBootstrapVehicleType(vehicle.vehicleType))
         .filter((value): value is string => value != null),
     ),
@@ -230,7 +259,7 @@ export async function warmWorkerOfflineBootstrap(params: {
     companyId,
     savedAt: new Date().toISOString(),
     worker,
-    vehicles,
+    vehicles: vehiclesForCache,
     templateItemsByVehicleType: Object.fromEntries(typeKeys.map((key) => [key, []])),
   }
 
@@ -283,5 +312,128 @@ export async function warmWorkerOfflineBootstrap(params: {
     })
   } catch {
     // Shell cache from the first write remains — DVSA merge still works offline.
+  }
+}
+
+export type WorkerCompanyFleetLoadResult = {
+  vehicles: Vehicle[]
+  /** True when the returned fleet came from bootstrap cache, not live Supabase. */
+  fromCache: boolean
+  /** True when a live Supabase fetch was attempted. */
+  liveAttempted: boolean
+  /**
+   * True when live fetch failed and no non-empty cache was available.
+   * Callers must not treat this as “company has zero vehicles”.
+   */
+  reconnecting: boolean
+}
+
+/**
+ * Shared Worker fleet loader (Web/PWA IndexedDB + Native Preferences).
+ *
+ * - Online: fetch active company vehicles from Supabase first, then refresh bootstrap.
+ * - Offline with a prepared cache: return cached vehicles (no live call).
+ * - Offline / false-offline with an empty cache: still attempt live once so a
+ *   stale service-worker / empty IndexedDB warm cannot skip Supabase.
+ * - Retryable live failures: fall back to a non-empty cache only.
+ */
+export async function loadWorkerCompanyFleet(params: {
+  userId: string
+  companyId: string | null | undefined
+  worker: Driver
+}): Promise<WorkerCompanyFleetLoadResult> {
+  const userId = params.userId.trim()
+  const companyId = params.companyId?.trim() || null
+  if (!userId || !isDriverShape(params.worker)) {
+    return {
+      vehicles: [],
+      fromCache: false,
+      liveAttempted: false,
+      reconnecting: false,
+    }
+  }
+
+  async function readCachedVehicles(): Promise<Vehicle[]> {
+    const cache = await readWorkerOfflineBootstrap(userId, companyId)
+    if (!(cache && cache.vehicles.length > 0)) return []
+    return cache.vehicles
+  }
+
+  async function fetchLiveAndWarm(): Promise<Vehicle[]> {
+    const rows = await withTimeout(
+      fetchVehicles(),
+      WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS,
+    )
+    await warmWorkerOfflineBootstrap({
+      userId,
+      companyId: companyId ?? '',
+      worker: params.worker,
+      vehicles: rows,
+      skipOnlineCheck: true,
+    })
+    return rows
+  }
+
+  const browserOnline = await getOnlineStatus()
+
+  if (!browserOnline) {
+    const cached = await readCachedVehicles()
+    if (cached.length > 0) {
+      return {
+        vehicles: cached,
+        fromCache: true,
+        liveAttempted: false,
+        reconnecting: false,
+      }
+    }
+
+    // Empty cache is not proof the company has no vehicles — probe live in case
+    // navigator/SW reported offline incorrectly (common on Web/PWA).
+    try {
+      const rows = await fetchLiveAndWarm()
+      return {
+        vehicles: rows,
+        fromCache: false,
+        liveAttempted: true,
+        reconnecting: false,
+      }
+    } catch {
+      return {
+        vehicles: [],
+        fromCache: false,
+        liveAttempted: true,
+        // Reported offline with nothing cached — unprepared, not a reconnect flap.
+        reconnecting: false,
+      }
+    }
+  }
+
+  try {
+    const rows = await fetchLiveAndWarm()
+    return {
+      vehicles: rows,
+      fromCache: false,
+      liveAttempted: true,
+      reconnecting: false,
+    }
+  } catch {
+    const cached = await readCachedVehicles()
+    if (cached.length > 0) {
+      return {
+        vehicles: cached,
+        fromCache: true,
+        liveAttempted: true,
+        reconnecting: false,
+      }
+    }
+
+    return {
+      vehicles: [],
+      fromCache: false,
+      liveAttempted: true,
+      // Empty cache after a live miss is temporary until connectivity/membership
+      // settles — never present it as a confirmed empty company fleet.
+      reconnecting: true,
+    }
   }
 }
