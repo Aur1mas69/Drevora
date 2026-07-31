@@ -17,7 +17,7 @@ import { useLayoutEffect, useMemo } from 'react'
 
 function navButtonClass(active: boolean) {
   return cn(
-    'worker-nav-item flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2.5 text-[11px] font-medium transition-colors',
+    'worker-nav-item flex min-h-10 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-3xl px-1.5 py-1.5 text-[11px] font-medium transition-colors',
     active
       ? 'worker-nav-active'
       : 'text-[color:var(--worker-nav-inactive)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]',
@@ -66,13 +66,13 @@ function MainLayout() {
 
   return (
     <div className="worker-mobile-layout w-full max-w-full min-w-0 bg-[color:var(--worker-bg)] text-[color:var(--worker-text)]">
-      <main className="mx-auto box-border w-full min-w-0 max-w-4xl overflow-x-clip px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 sm:px-6 sm:pt-8 lg:pb-32">
+      <main className="mx-auto box-border w-full min-w-0 max-w-4xl overflow-x-clip px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-24 sm:px-6 sm:pt-8 lg:pb-28">
         <Outlet />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 worker-bottom-nav-shell w-full max-w-full border-t border-[color:var(--worker-border)] bg-[color:var(--worker-card)]/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
+      <div className="fixed bottom-0 left-0 right-0 z-30 worker-bottom-nav-shell w-full max-w-full border-t border-[color:var(--worker-border)] bg-[color:var(--worker-card)]/95 px-3 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
         <div className="relative mx-auto w-full min-w-0 max-w-md lg:max-w-lg">
-          <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-1 rounded-[2rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-1.5">
+          <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-1 rounded-[1.75rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-1">
             <NavLink
               to={WORKER_HOME_PATH}
               className={() =>

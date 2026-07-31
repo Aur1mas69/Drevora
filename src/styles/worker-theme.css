@@ -130,8 +130,8 @@
   position: relative;
   z-index: 1;
   display: flex;
-  width: 2.875rem; /* 46px — reserved for every item so spacing stays equal */
-  height: 2.625rem; /* 42px */
+  width: 2.5rem; /* 40px — reserved for every item so spacing stays equal */
+  height: 2.125rem; /* 34px — shorter bar so Home CTA clears the nav */
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -183,7 +183,7 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
    or page content underneath the fixed bottom bar. */
 .worker-mobile-layout .worker-nav-indicator {
   position: absolute;
-  top: 0.2rem;
+  top: 0.1rem;
   left: 50%;
   z-index: 0;
   width: 1.125rem;
