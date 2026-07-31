@@ -38,6 +38,25 @@ export function resolveGreetingFirstName(
   return trimmed
 }
 
+/**
+ * Worker full name for Home greetings. Uses profile first + last name, rejects
+ * employment-type labels, and falls back safely when the name is missing.
+ */
+export function resolveGreetingFullName(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  fallback = 'Worker',
+): string {
+  const first = resolveGreetingFirstName(firstName)
+  const lastRaw = lastName?.trim() || null
+  const last =
+    lastRaw && !INVALID_GREETING_FIRST_NAMES.has(lastRaw.toLowerCase())
+      ? lastRaw
+      : null
+  const full = [first, last].filter(Boolean).join(' ').trim()
+  return full || fallback
+}
+
 /** Combined "Good morning, Aurimas" — daypart only while name is unavailable. */
 export function formatPersonalTimeGreeting(
   firstName: string | null | undefined,
