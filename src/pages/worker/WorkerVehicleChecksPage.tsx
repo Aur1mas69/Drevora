@@ -21,6 +21,10 @@ import {
   setRememberedVehicleCheckId,
 } from '@/lib/vehicleCheckRememberedVehicle'
 import {
+  isVehicleInFleet,
+  resolvePreferredWorkerVehicle,
+} from '@/lib/vehicleRegistrationSearch'
+import {
   canSubmitVehicleChecklist,
   loadVehicleChecklist,
   type VehicleChecklistLoadStatus,
@@ -178,7 +182,8 @@ export default function WorkerVehicleChecksPage() {
     'idle' | 'capturing' | 'success' | 'unavailable'
   >('idle')
   const submitLockRef = useRef(false)
-  const didInitVehicleRef = useRef(false)
+  /** True after the Worker explicitly clears selection — never re-apply default. */
+  const userClearedSelectionRef = useRef(false)
   const locationStatusHideTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -324,33 +329,17 @@ export default function WorkerVehicleChecksPage() {
 
   /** Clear in-page selection only — do not bounce Home/CTA traffic to Vehicles. */
   function clearSelectedVehicle() {
+    userClearedSelectionRef.current = true
     setVehicleId('')
     setRememberVehicle(false)
     setError(null)
+    window.setTimeout(() => {
+      document.getElementById('worker-vehicle-check-vehicle')?.focus()
+    }, 0)
   }
 
   useEffect(() => {
     let cancelled = false
-
-    async function applyInitialVehicleSelection(rows: Vehicle[], currentWorker: NonNullable<typeof worker>) {
-      if (didInitVehicleRef.current) return
-      didInitVehicleRef.current = true
-      const fromUrl = searchParams.get('vehicleId')?.trim() || ''
-      const fromDefault = currentWorker.defaultVehicleId?.trim() || ''
-      const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
-      const candidates = [fromUrl, fromDefault, fromRemembered].filter(Boolean)
-      const match =
-        candidates
-          .map((id) => rows.find((vehicle) => vehicle.id === id) ?? null)
-          .find((vehicle) => vehicle != null) ?? null
-
-      if (match) {
-        setVehicleId(match.id)
-        setRememberVehicle(fromRemembered === match.id)
-      } else if (fromRemembered) {
-        setRememberedVehicleCheckId(null)
-      }
-    }
 
     async function load() {
       if (companyLoading || workerLoading) return
@@ -374,7 +363,6 @@ export default function WorkerVehicleChecksPage() {
         setVehicles(cache.vehicles)
         setVehiclesError(null)
         setOfflineBootstrapReady(true)
-        await applyInitialVehicleSelection(cache.vehicles, worker!)
         return true
       }
 
@@ -412,7 +400,6 @@ export default function WorkerVehicleChecksPage() {
         if (cancelled) return
         setVehicles(rows)
         setOfflineBootstrapReady(true)
-        await applyInitialVehicleSelection(rows, worker)
 
         if (userId && companyId) {
           void warmWorkerOfflineBootstrap({
@@ -450,8 +437,52 @@ export default function WorkerVehicleChecksPage() {
     companyId,
     companyLoading,
     companyReady,
-    searchParams,
     session?.user.id,
+    worker,
+    workerLoading,
+  ])
+
+  // Preselect URL / valid default / remembered vehicle once the fleet is ready.
+  // Keep retrying while selection is empty so a late-arriving defaultVehicleId
+  // still applies — but never after the Worker explicitly clears the field.
+  useEffect(() => {
+    if (step !== 'setup' || workerLoading || vehiclesLoading) return
+    if (!worker || vehicles.length === 0) return
+    if (userClearedSelectionRef.current) {
+      if (vehicleId && !isVehicleInFleet(vehicles, vehicleId)) {
+        setVehicleId('')
+      }
+      return
+    }
+
+    if (isVehicleInFleet(vehicles, vehicleId)) return
+
+    // Stale id (archived / other company / missing from cache) — drop it.
+    if (vehicleId && !isVehicleInFleet(vehicles, vehicleId)) {
+      setVehicleId('')
+    }
+
+    const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+    const fromDefault = worker.defaultVehicleId?.trim() || ''
+    const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
+    const match = resolvePreferredWorkerVehicle(vehicles, [
+      fromUrl,
+      fromDefault,
+      fromRemembered,
+    ])
+
+    if (match) {
+      setVehicleId(match.id)
+      setRememberVehicle(fromRemembered === match.id)
+    } else if (fromRemembered && !fromUrl && !fromDefault) {
+      setRememberedVehicleCheckId(null)
+    }
+  }, [
+    searchParams,
+    step,
+    vehicleId,
+    vehicles,
+    vehiclesLoading,
     worker,
     workerLoading,
   ])
@@ -928,18 +959,34 @@ export default function WorkerVehicleChecksPage() {
             {selectedVehicle ? (
               <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
             ) : (
+              <p className="text-sm text-slate-500">
+                Search and select an active company vehicle to continue. A saved
+                default is applied automatically when available.
+              </p>
+            )}
+
+            {vehicles.length > 0 ? (
               <WorkerVehicleCombobox
+                id="worker-vehicle-check-vehicle"
                 vehicles={vehicles}
-                selectedVehicleId={null}
+                selectedVehicleId={vehicleId || null}
                 onSelect={(vehicle) => {
+                  userClearedSelectionRef.current = false
                   setVehicleId(vehicle.id)
                   setRememberVehicle(getRememberedVehicleCheckId() === vehicle.id)
                   setError(null)
                 }}
+                onClear={clearSelectedVehicle}
                 label="Select vehicle"
                 placeholder="Search registration"
+                inputAriaLabel="Search company vehicles by registration number"
+                showSelectedSummary={false}
                 required
               />
+            ) : (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                No active company vehicles are available right now.
+              </p>
             )}
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">

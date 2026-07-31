@@ -37,3 +37,34 @@ export function findVehicleByRegistrationQuery(
     ) ?? null
   )
 }
+
+/**
+ * Resolve an initial Worker vehicle from preferred ids (URL → default → remembered).
+ * Returns only a vehicle that exists in the provided active/cached company fleet.
+ * Never invents a vehicle from free text.
+ */
+export function resolvePreferredWorkerVehicle(
+  vehicles: Vehicle[],
+  preferredIds: Array<string | null | undefined>,
+): Vehicle | null {
+  if (vehicles.length === 0) return null
+
+  for (const candidate of preferredIds) {
+    const id = candidate?.trim()
+    if (!id) continue
+    const match = vehicles.find((vehicle) => vehicle.id === id)
+    if (match) return match
+  }
+
+  return null
+}
+
+/** True when selectedId points at a vehicle still present in the fleet. */
+export function isVehicleInFleet(
+  vehicles: Vehicle[],
+  selectedId: string | null | undefined,
+): boolean {
+  const id = selectedId?.trim()
+  if (!id) return false
+  return vehicles.some((vehicle) => vehicle.id === id)
+}
