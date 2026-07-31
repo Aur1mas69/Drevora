@@ -126,8 +126,21 @@
     background-color 180ms ease;
 }
 
-.worker-mobile-layout .worker-nav-item svg,
-.worker-mobile-layout .worker-nav-item > span:not(.worker-nav-indicator) {
+.worker-mobile-layout .worker-nav-icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 2.875rem; /* 46px — reserved for every item so spacing stays equal */
+  height: 2.625rem; /* 42px */
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: transparent;
+}
+
+.worker-mobile-layout .worker-nav-item > span:not(.worker-nav-indicator):not(.worker-nav-icon-wrap),
+.worker-mobile-layout .worker-nav-icon-wrap svg {
   position: relative;
   z-index: 1;
 }
@@ -135,7 +148,35 @@
 .worker-mobile-layout .worker-nav-item svg {
   transition:
     color 180ms ease,
-    stroke-width 180ms ease;
+    stroke-width 180ms ease,
+    transform 180ms ease;
+}
+
+/*
+ * Light-mode only: soft translucent baby-blue oval behind the active icon.
+ * No lift, no large shadow, no full-item pill. Dark mode unchanged.
+ */
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap {
+  background-color: color-mix(in srgb, var(--worker-primary) 12%, transparent);
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap svg {
+  color: var(--worker-primary);
+  transform: scale(1.04);
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-mobile-layout .worker-nav-item svg {
+    transition: none;
+  }
+
+  html:not(.worker-dark) .worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap svg {
+    transform: none;
+  }
 }
 
 /* Decorative only — must never steal or redirect taps to neighbouring items
@@ -435,38 +476,14 @@
  * ----------------------------------------------------------------------------- */
 
 .worker-mobile-layout .worker-robot-hero {
-  /* Visible baby-blue SaaS hero — not grey/white. */
+  /* Soft baby-blue fallback under the optional inline road SVG. */
   background-color: #e8f3fe;
-  background-image:
-    radial-gradient(95% 110% at 100% 35%, #bfe3f5 0%, transparent 58%),
-    radial-gradient(80% 95% at 8% 100%, #d3e9fc 0%, transparent 62%),
-    linear-gradient(125deg, #e8f3fe 0%, #d3e9fc 42%, #e8f3fe 78%, #dceefc 100%);
+  background-image: none;
 }
 
-.worker-mobile-layout .worker-robot-hero::before {
-  content: '';
-  position: absolute;
-  left: -18%;
-  right: -8%;
-  bottom: -42%;
-  height: 78%;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 55% 45% 0 0 / 100% 100% 0 0;
-  background: linear-gradient(180deg, rgba(191, 227, 245, 0.55) 0%, rgba(211, 233, 252, 0.35) 55%, transparent 100%);
-}
-
+.worker-mobile-layout .worker-robot-hero::before,
 .worker-mobile-layout .worker-robot-hero::after {
-  content: '';
-  position: absolute;
-  top: -30%;
-  right: -18%;
-  width: 68%;
-  height: 95%;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 45%, rgba(191, 227, 245, 0.7) 0%, transparent 68%);
+  content: none;
 }
 
 .worker-dark .worker-mobile-layout .worker-robot-hero {

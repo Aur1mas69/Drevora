@@ -6,6 +6,8 @@ import {
 } from '@/lib/authPortal'
 import { clearGlobalCompanySettings } from '@/lib/companySettingsGlobals'
 import { runAppLockSignOutCleanup } from '@/lib/appLockSignOutBridge'
+import { clearNativeOfflineMembershipSnapshot } from '@/lib/nativeOfflineMembership'
+import { clearWorkerOfflineBootstrap } from '@/lib/workerOfflineBootstrap'
 import { clearCompanyMembershipCache } from '@/services/companyMembershipService'
 import {
   createContext,
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // Session restore must not block public routes from rendering.
+        // Keep isAuthLoading true until finally so Login is not flashed mid-recovery.
       } finally {
         if (!isCancelled) {
           setIsAuthLoading(false)
@@ -72,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     // Best-effort local app-lock cleanup (native). Never blocks Supabase sign-out.
     await runAppLockSignOutCleanup()
+    await clearNativeOfflineMembershipSnapshot()
+    await clearWorkerOfflineBootstrap()
     await authService.signOut()
     setSession(null)
     setPortal(null)

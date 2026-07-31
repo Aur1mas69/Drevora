@@ -56,7 +56,9 @@ function MainLayout() {
         className={() => navButtonClass(active)}
       >
         {active ? <span className="worker-nav-indicator" aria-hidden /> : null}
-        <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+        <span className="worker-nav-icon-wrap" aria-hidden>
+          <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+        </span>
         <span className="truncate">{item.shortLabel ?? item.label}</span>
       </NavLink>
     )
@@ -81,10 +83,12 @@ function MainLayout() {
               {location.pathname === WORKER_HOME_PATH ? (
                 <span className="worker-nav-indicator" aria-hidden />
               ) : null}
-              <Home
-                className="size-5 shrink-0"
-                strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.25 : 1.75}
-              />
+              <span className="worker-nav-icon-wrap" aria-hidden>
+                <Home
+                  className="size-5 shrink-0"
+                  strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.25 : 1.75}
+                />
+              </span>
               <span className="truncate">Home</span>
             </NavLink>
 
@@ -96,7 +100,9 @@ function MainLayout() {
               onClick={() => void handleSignOut()}
               className={navButtonClass(false)}
             >
-              <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+              <span className="worker-nav-icon-wrap" aria-hidden>
+                <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+              </span>
               <span className="truncate">Sign out</span>
             </button>
           </div>

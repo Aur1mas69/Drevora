@@ -1,9 +1,22 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { WorkerHomeRoadBackground } from '@/components/worker/WorkerHomeRoadBackground'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { getSentenceTimeGreeting } from '@/lib/greeting'
+import {
+  addOnlineStatusListener,
+  getOnlineStatus,
+} from '@/lib/networkStatus'
+import { readNativeOfflineMembershipSnapshot } from '@/lib/nativeOfflineMembership'
+import {
+  OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE,
+  readWorkerOfflineBootstrap,
+  warmWorkerOfflineBootstrap,
+} from '@/lib/workerOfflineBootstrap'
 import { getWorkerHomeQuickActionItems } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
+import { fetchVehicles } from '@/services/vehiclesService'
 import {
   ChevronRight,
   MoonStar,
@@ -13,7 +26,7 @@ import {
   Truck,
   type LucideIcon,
 } from 'lucide-react'
-import { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 /** Existing 51 KB WebP asset — rendered directly, never duplicated or inlined,
  * shown in both Light and Dark mode. */
@@ -156,7 +169,21 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
             : 'bg-[#BFE3F5]',
         )}
       >
-        <div className="worker-robot-hero relative h-full w-full overflow-hidden rounded-[calc(1.75rem-1px)]" />
+        <div className="worker-robot-hero relative h-full w-full overflow-hidden rounded-[calc(1.75rem-1px)]">
+          {/* Light mode only: road → readability overlay. Dark keeps CSS surface. */}
+          {!isDark ? (
+            <>
+              <WorkerHomeRoadBackground className="pointer-events-none absolute inset-0 z-0 h-full w-full" />
+              <div
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                  background:
+                    'linear-gradient(90deg, rgba(235, 246, 255, 0.98) 0%, rgba(235, 246, 255, 0.90) 35%, rgba(235, 246, 255, 0.42) 62%, rgba(235, 246, 255, 0.04) 100%)',
+                }}
+              />
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="relative z-10 min-w-0 flex-1 space-y-1.5 pb-0.5 pr-1 pl-0.5">
@@ -193,14 +220,111 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
 }
 
 function DashboardPage() {
+  const { session } = useAuth()
   const { worker, isLoading, error } = useCurrentWorker()
-  const { companyName, companyLoading } = useCompanySettings()
+  const { companyId, companyName, companyLoading } = useCompanySettings()
   const isDark = useIsWorkerDarkMode()
+  const [isOnline, setIsOnline] = useState(true)
+  const [offlinePrepared, setOfflinePrepared] = useState<boolean | null>(null)
 
   const verifiedCompany =
     companyName?.trim() || worker?.company?.trim() || ''
 
-  if (!isLoading && (error || !worker)) {
+  useEffect(() => {
+    let cancelled = false
+    let removeListener: (() => Promise<void>) | null = null
+
+    void getOnlineStatus().then((online) => {
+      if (!cancelled) setIsOnline(online)
+    })
+    void addOnlineStatusListener((online) => {
+      if (!cancelled) setIsOnline(online)
+    }).then((handle) => {
+      if (cancelled) {
+        void handle.remove()
+        return
+      }
+      removeListener = () => handle.remove()
+    })
+
+    return () => {
+      cancelled = true
+      if (removeListener) void removeListener()
+    }
+  }, [])
+
+  // After a successful online Worker Home load, warm the shared offline bootstrap.
+  useEffect(() => {
+    const userId = session?.user.id?.trim()
+    if (!worker || !userId || isLoading || companyLoading) return
+
+    let cancelled = false
+    void (async () => {
+      const online = await getOnlineStatus()
+      if (!online || cancelled) return
+
+      let warmCompanyId = companyId?.trim() || null
+      if (!warmCompanyId) {
+        const snap = await readNativeOfflineMembershipSnapshot(userId)
+        warmCompanyId = snap?.companyId?.trim() || null
+      }
+      if (!warmCompanyId) return
+
+      try {
+        // Persist worker shell immediately so offline Home can restore default vehicle
+        // even if the fleet fetch is slow or cancelled by an effect re-run.
+        await warmWorkerOfflineBootstrap({
+          userId,
+          companyId: warmCompanyId,
+          worker,
+          vehicles: [],
+          skipOnlineCheck: true,
+        })
+        if (cancelled) return
+
+        const vehicles = await fetchVehicles()
+        if (cancelled) return
+        await warmWorkerOfflineBootstrap({
+          userId,
+          companyId: warmCompanyId,
+          worker,
+          vehicles,
+          skipOnlineCheck: true,
+        })
+        if (!cancelled) setOfflinePrepared(true)
+      } catch {
+        // Best-effort — online Home must not fail if warm fails.
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyId, companyLoading, isLoading, session?.user.id, worker])
+
+  // Offline cold start: know whether Vehicle Check data was prepared previously.
+  useEffect(() => {
+    const userId = session?.user.id?.trim()
+    if (!userId || isOnline) {
+      if (isOnline) setOfflinePrepared(null)
+      return
+    }
+
+    let cancelled = false
+    // Same readiness rule as Vehicle Checks: a cache without vehicles cannot
+    // start an offline walkaround, so Home must show the prepare message.
+    void readWorkerOfflineBootstrap(userId, companyId).then((cache) => {
+      if (!cancelled) setOfflinePrepared(cache != null && cache.vehicles.length > 0)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyId, isOnline, session?.user.id, worker])
+
+  // Online: keep hard-fail when profile is missing.
+  // Offline: always render Home shell + CTA (cached profile preferred).
+  if (!isLoading && (error || !worker) && isOnline) {
     return (
       <div className="worker-card rounded-[1.75rem] p-5">
         <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Worker profile</h1>
@@ -221,6 +345,46 @@ function DashboardPage() {
   // Documents), same route/permission source, in both Light and Dark.
   // Contacts/Settings live only in the bottom nav; Sign out is bottom-nav only.
   const quickActionItems = getWorkerHomeQuickActionItems()
+  const showOfflineNotPrepared =
+    !isOnline && offlinePrepared === false
+
+  const startVehicleCheckCta = (
+    <Link
+      to="/worker/vehicle-checks"
+      className={cn(
+        'worker-home-cta',
+        isDark ? 'worker-cta-gradient text-white' : 'worker-btn-primary',
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <ShieldCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+        <span className="truncate">Start Vehicle Check</span>
+      </span>
+      <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
+    </Link>
+  )
+
+  // Offline: never gate on live Worker/company loading — those requests cannot
+  // settle. Keep the greeting (offline banner is global), drop every live card
+  // and Quick Actions, and always expose the cached Vehicle Check entry point.
+  if (!isOnline) {
+    return (
+      <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
+        <WorkerHomeHeader companyName={verifiedCompany} />
+
+        {showOfflineNotPrepared ? (
+          <div
+            role="status"
+            className="worker-home-surface px-4 py-3.5 text-sm text-[color:var(--worker-text-secondary)]"
+          >
+            {OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE}
+          </div>
+        ) : null}
+
+        {startVehicleCheckCta}
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
@@ -281,19 +445,7 @@ function DashboardPage() {
             </div>
           </section>
 
-          <Link
-            to="/worker/vehicle-checks"
-            className={cn(
-              'worker-home-cta',
-              isDark ? 'worker-cta-gradient text-white' : 'worker-btn-primary',
-            )}
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <ShieldCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
-              <span className="truncate">Start Vehicle Check</span>
-            </span>
-            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
-          </Link>
+          {startVehicleCheckCta}
         </>
       )}
     </div>

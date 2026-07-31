@@ -22,6 +22,12 @@ import {
   applyGlobalCompanySettings,
   clearGlobalCompanySettings,
 } from '@/lib/companySettingsGlobals'
+import { getOnlineStatus } from '@/lib/networkStatus'
+import {
+  readNativeOfflineMembershipSnapshot,
+  saveNativeOfflineMembershipSnapshot,
+} from '@/lib/nativeOfflineMembership'
+import { WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS } from '@/lib/workerOfflineBootstrap'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   clearCompanyMembershipCache,
@@ -138,16 +144,81 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Prevent flashing another company's settings while membership resolves.
-      clearCompanyMembershipCache()
-      clearGlobalCompanySettings()
-      setSettings(null)
-      setCompanyId(null)
-      setCompanyName(null)
-      setMembershipRole(null)
-      setError(null)
+      // Offline / false-"online": apply Worker membership snapshot BEFORE clearing
+      // live state so hung Supabase requests cannot blank Worker Home.
+      const snapshotPromise = readNativeOfflineMembershipSnapshot(userId)
+      const earlySnapshot = await snapshotPromise
+      if (earlySnapshot && generation === loadGenerationRef.current) {
+        setSettings(earlySnapshot.companySettings)
+        setCompanyId(earlySnapshot.companyId)
+        setCompanyName(earlySnapshot.companyName)
+        setMembershipRole(earlySnapshot.membershipRole)
+        setError(null)
+        applyGlobalCompanySettings(earlySnapshot.companySettings, {
+          companyId: earlySnapshot.companyId,
+        })
+        applyDocumentTheme(earlySnapshot.companySettings.theme)
+        setIsLoading(false)
+      }
 
-      const resolution = await resolveCurrentCompanyMembership({ force: true })
+      const online = await getOnlineStatus()
+      if (!online) {
+        if (earlySnapshot && generation === loadGenerationRef.current) {
+          return
+        }
+        // No snapshot offline — clear to empty shell.
+        clearCompanyMembershipCache()
+        clearGlobalCompanySettings()
+        setSettings(null)
+        setCompanyId(null)
+        setCompanyName(null)
+        setMembershipRole(null)
+        setError(null)
+        return
+      }
+
+      // Online: keep painted snapshot while resolving live membership. Only clear
+      // when we have nothing cached (avoids a blank Home during the fetch).
+      if (!earlySnapshot) {
+        clearCompanyMembershipCache()
+        clearGlobalCompanySettings()
+        setSettings(null)
+        setCompanyId(null)
+        setCompanyName(null)
+        setMembershipRole(null)
+        setError(null)
+      }
+
+      // Native Network can report connected without working internet. Bound the
+      // live membership call so a hung fetch cannot leave Worker Home blank.
+      let resolution: Awaited<ReturnType<typeof resolveCurrentCompanyMembership>>
+      try {
+        resolution = await Promise.race([
+          resolveCurrentCompanyMembership({ force: true }),
+          new Promise<Awaited<ReturnType<typeof resolveCurrentCompanyMembership>>>(
+            (_, reject) => {
+              window.setTimeout(() => {
+                reject(new Error('COMPANY_MEMBERSHIP_FETCH_TIMEOUT'))
+              }, WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS)
+            },
+          ),
+        ])
+      } catch {
+        const timeoutSnapshot = earlySnapshot ?? (await snapshotPromise)
+        if (timeoutSnapshot && generation === loadGenerationRef.current) {
+          setSettings(timeoutSnapshot.companySettings)
+          setCompanyId(timeoutSnapshot.companyId)
+          setCompanyName(timeoutSnapshot.companyName)
+          setMembershipRole(timeoutSnapshot.membershipRole)
+          setError(null)
+          applyGlobalCompanySettings(timeoutSnapshot.companySettings, {
+            companyId: timeoutSnapshot.companyId,
+          })
+          applyDocumentTheme(timeoutSnapshot.companySettings.theme)
+          return
+        }
+        throw new Error('COMPANY_MEMBERSHIP_FETCH_TIMEOUT')
+      }
 
       if (generation !== loadGenerationRef.current) {
         return
@@ -163,7 +234,40 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
           companyId: resolution.companyId,
         })
         applyDocumentTheme(resolution.companySettings.theme)
+        void saveNativeOfflineMembershipSnapshot({
+          userId,
+          companyId: resolution.companyId,
+          companyName: resolution.companyName,
+          membershipRole: resolution.membershipRole,
+          companySettings: resolution.companySettings,
+          savedAt: new Date().toISOString(),
+        })
         return
+      }
+
+      // Worker-only snapshot (web localStorage / native Preferences): keep Worker
+      // shell available when live membership cannot be fetched. Never applied for
+      // Office/Admin roles. Also accept snapshot on unauthenticated/error when
+      // Network reports connected but fetches still fail.
+      const snapshot = await snapshotPromise
+      if (snapshot && generation === loadGenerationRef.current) {
+        const stillOnline = await getOnlineStatus()
+        const shouldUseSnapshot =
+          !stillOnline ||
+          resolution.status === 'unauthenticated' ||
+          resolution.status === 'error'
+        if (shouldUseSnapshot) {
+          setSettings(snapshot.companySettings)
+          setCompanyId(snapshot.companyId)
+          setCompanyName(snapshot.companyName)
+          setMembershipRole(snapshot.membershipRole)
+          setError(null)
+          applyGlobalCompanySettings(snapshot.companySettings, {
+            companyId: snapshot.companyId,
+          })
+          applyDocumentTheme(snapshot.companySettings.theme)
+          return
+        }
       }
 
       setSettings(null)
@@ -184,6 +288,23 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
       if (generation !== loadGenerationRef.current) {
         return
       }
+
+      if (userId) {
+        const snapshot = await readNativeOfflineMembershipSnapshot(userId)
+        if (snapshot) {
+          setSettings(snapshot.companySettings)
+          setCompanyId(snapshot.companyId)
+          setCompanyName(snapshot.companyName)
+          setMembershipRole(snapshot.membershipRole)
+          setError(null)
+          applyGlobalCompanySettings(snapshot.companySettings, {
+            companyId: snapshot.companyId,
+          })
+          applyDocumentTheme(snapshot.companySettings.theme)
+          return
+        }
+      }
+
       setSettings(null)
       setCompanyId(null)
       setCompanyName(null)

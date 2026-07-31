@@ -75,6 +75,28 @@ async function getAuthenticatedUserId(): Promise<string | null> {
     return null
   }
 
+  // Prefer local session (works offline on native after SecureAuthStorage restore).
+  // getUser() always hits the network and incorrectly looks signed-out offline.
+  const { data: sessionData, error: sessionError } =
+    await requireSupabase().auth.getSession()
+  if (sessionData.session?.user?.id) {
+    return sessionData.session.user.id
+  }
+
+  const { recoverNativeSessionAfterRefreshFailure, readNativeStoredAuthSession } =
+    await import('@/lib/nativeAuthSessionRecover')
+  const recovered = await recoverNativeSessionAfterRefreshFailure(sessionError)
+  if (recovered?.user.id) {
+    return recovered.user.id
+  }
+
+  const { getOnlineStatus } = await import('@/lib/networkStatus')
+  const online = await getOnlineStatus()
+  if (!online) {
+    const stored = await readNativeStoredAuthSession()
+    return stored?.user.id ?? null
+  }
+
   const { data, error } = await requireSupabase().auth.getUser()
   if (error || !data.user?.id) {
     return null

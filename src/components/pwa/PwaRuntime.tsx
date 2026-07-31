@@ -14,6 +14,38 @@ export function PwaRuntime() {
     ((reloadPage?: boolean) => Promise<void>) | undefined
   >(undefined)
 
+  // A service worker registered by an earlier web/dev load of this WebView keeps
+  // serving its own precache, shadowing every APK update — offline the Worker
+  // then runs stale code. Native builds ship no SW, so drop any leftover one.
+  useEffect(() => {
+    if (import.meta.env.MODE !== 'native') return
+
+    void (async () => {
+      if (!('serviceWorker' in navigator)) return
+
+      const registrations = await navigator.serviceWorker
+        .getRegistrations()
+        .catch(() => [])
+      if (registrations.length === 0) return
+
+      await Promise.all(
+        registrations.map((registration) =>
+          registration.unregister().catch(() => false),
+        ),
+      )
+
+      if (typeof caches !== 'undefined') {
+        const keys = await caches.keys().catch(() => [])
+        await Promise.all(keys.map((key) => caches.delete(key).catch(() => false)))
+      }
+
+      // Reload once so the page stops being controlled by the removed worker.
+      if (navigator.serviceWorker.controller) {
+        window.location.reload()
+      }
+    })()
+  }, [])
+
   useEffect(() => {
     // Capacitor native builds (`vite build --mode native`) must not register a SW.
     if (!import.meta.env.PROD || import.meta.env.MODE === 'native') {

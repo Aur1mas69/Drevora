@@ -1,7 +1,14 @@
 import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { isRetryableNetworkError } from '@/lib/networkError'
+import {
+  addOnlineStatusListener,
+  getOnlineStatus,
+} from '@/lib/networkStatus'
 import { cn } from '@/lib/utils'
+import { readWorkerOfflineBootstrap } from '@/lib/workerOfflineBootstrap'
 import {
   DriversServiceError,
   setWorkerDefaultVehicle,
@@ -21,6 +28,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+
+const VEHICLES_RECONNECTING_MESSAGE = 'Reconnecting…'
+const VEHICLES_LOAD_FALLBACK = 'Unable to load vehicles.'
+const VEHICLES_RECONNECT_RETRY_MS = 2500
+const VEHICLES_RECONNECT_MAX_ATTEMPTS = 4
 
 function VehicleActionCard({
   title,
@@ -106,43 +118,166 @@ function vehicleRegistrationLabel(vehicle: Vehicle): string {
 }
 
 export default function WorkerVehiclesPage() {
+  const { session } = useAuth()
   const {
     worker,
     isLoading: workerLoading,
     error: workerError,
     reload: reloadWorker,
   } = useCurrentWorker()
-  const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
+  const {
+    companyId,
+    companyReady,
+    companyLoading,
+    membershipError,
+  } = useCompanyTenantGate()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isReconnecting, setIsReconnecting] = useState(false)
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(true)
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
   const [searchResetKey, setSearchResetKey] = useState(0)
   const [isSavingDefault, setIsSavingDefault] = useState(false)
   const [defaultMessage, setDefaultMessage] = useState<string | null>(null)
   const [defaultError, setDefaultError] = useState<string | null>(null)
+  const [fleetReloadToken, setFleetReloadToken] = useState(0)
   const staleDefaultClearedRef = useRef(false)
+  const vehiclesRef = useRef<Vehicle[]>([])
+
+  useEffect(() => {
+    vehiclesRef.current = vehicles
+  }, [vehicles])
 
   useEffect(() => {
     let cancelled = false
+    let removeListener: (() => Promise<void>) | null = null
+
+    void addOnlineStatusListener((online) => {
+      if (cancelled) return
+      if (online) {
+        setFleetReloadToken((token) => token + 1)
+      }
+    }).then((handle) => {
+      if (cancelled) {
+        void handle.remove()
+        return
+      }
+      removeListener = () => handle.remove()
+    })
+
+    return () => {
+      cancelled = true
+      if (removeListener) void removeListener()
+    }
+  }, [])
+
+  // While a transient reconnect is in progress, keep probing — online events can
+  // fire before the network is actually usable for fetch.
+  useEffect(() => {
+    if (!isReconnecting) return
+    const timer = window.setInterval(() => {
+      void getOnlineStatus().then((online) => {
+        if (online) setFleetReloadToken((token) => token + 1)
+      })
+    }, VEHICLES_RECONNECT_RETRY_MS * 2)
+    return () => window.clearInterval(timer)
+  }, [isReconnecting])
+
+  useEffect(() => {
+    let cancelled = false
+    let retryTimer: number | undefined
+
+    async function restoreFromBootstrap(): Promise<Vehicle[] | null> {
+      const userId = session?.user.id?.trim() || ''
+      if (!userId) return null
+      const cache = await readWorkerOfflineBootstrap(userId, companyId)
+      if (!(cache && cache.vehicles.length > 0)) return null
+      if (cancelled) return cache.vehicles
+      setVehicles(cache.vehicles)
+      vehiclesRef.current = cache.vehicles
+      return cache.vehicles
+    }
+
+    function applyPreferredSelection(rows: Vehicle[]) {
+      const savedDefaultId = worker?.defaultVehicleId?.trim() || null
+      const savedDefaultIsValid =
+        Boolean(savedDefaultId) &&
+        rows.some((vehicle) => vehicle.id === savedDefaultId)
+
+      setSelectedVehicleId((current) => {
+        if (current && rows.some((vehicle) => vehicle.id === current)) return current
+        return savedDefaultIsValid ? savedDefaultId : null
+      })
+    }
+
+    async function fetchVehiclesWithTransientRetry(): Promise<Vehicle[]> {
+      let lastError: unknown
+      for (let attempt = 0; attempt < VEHICLES_RECONNECT_MAX_ATTEMPTS; attempt++) {
+        try {
+          return await fetchVehicles()
+        } catch (error) {
+          lastError = error
+          if (!isRetryableNetworkError(error)) throw error
+          if (cancelled) throw error
+          if (!(await getOnlineStatus())) throw error
+          if (attempt < VEHICLES_RECONNECT_MAX_ATTEMPTS - 1) {
+            await new Promise<void>((resolve) => {
+              retryTimer = window.setTimeout(
+                resolve,
+                VEHICLES_RECONNECT_RETRY_MS * (attempt + 1),
+              )
+            })
+          }
+        }
+      }
+      throw lastError
+    }
 
     async function load() {
       if (companyLoading || workerLoading) return
 
       if (!companyReady || !worker) {
-        setVehicles([])
+        if (vehiclesRef.current.length === 0) {
+          setVehicles([])
+        }
         setIsLoadingVehicles(false)
+        setIsReconnecting(false)
         setLoadError(membershipError ?? workerError)
         return
       }
 
-      setIsLoadingVehicles(true)
+      const hadCachedFleet = vehiclesRef.current.length > 0
+      // Keep existing/cached fleet visible during reconnect — never blank the page.
+      if (!hadCachedFleet) {
+        setIsLoadingVehicles(true)
+      }
       setLoadError(null)
 
+      const online = await getOnlineStatus()
+      if (!online) {
+        const restoredRows = hadCachedFleet
+          ? vehiclesRef.current
+          : await restoreFromBootstrap()
+        if (cancelled) return
+        if (restoredRows && restoredRows.length > 0) {
+          applyPreferredSelection(restoredRows)
+        }
+        // Stably offline: keep cached fleet, never flash a raw fetch error.
+        setIsReconnecting(false)
+        setLoadError(null)
+        setIsLoadingVehicles(false)
+        return
+      }
+
+      setIsReconnecting(hadCachedFleet)
+
       try {
-        const rows = await fetchVehicles()
+        const rows = await fetchVehiclesWithTransientRetry()
         if (cancelled) return
         setVehicles(rows)
+        vehiclesRef.current = rows
+        setIsReconnecting(false)
+        setLoadError(null)
 
         const savedDefaultId = worker.defaultVehicleId?.trim() || null
         const savedDefaultIsValid =
@@ -161,16 +296,36 @@ export default function WorkerVehiclesPage() {
           }
         }
 
-        const preferredId = savedDefaultIsValid ? savedDefaultId : null
-        setSelectedVehicleId((current) => {
-          if (current && rows.some((vehicle) => vehicle.id === current)) return current
-          return preferredId
-        })
+        applyPreferredSelection(rows)
       } catch (error) {
         if (cancelled) return
-        setVehicles([])
+
+        if (isRetryableNetworkError(error)) {
+          const restoredRows = hadCachedFleet
+            ? vehiclesRef.current
+            : await restoreFromBootstrap()
+          if (cancelled) return
+          if (restoredRows && restoredRows.length > 0) {
+            applyPreferredSelection(restoredRows)
+          }
+          // Temporary reconnect flap — keep fleet, never show raw TypeError.
+          setIsReconnecting(true)
+          setLoadError(null)
+          return
+        }
+
+        // Genuine non-network failure: only clear the list when we have nothing
+        // cached to show, and never surface raw TypeError text.
+        if (!hadCachedFleet && vehiclesRef.current.length === 0) {
+          setVehicles([])
+        }
+        setIsReconnecting(false)
         setLoadError(
-          error instanceof Error ? error.message : 'Unable to load vehicles.',
+          error instanceof Error &&
+            error.message.trim() &&
+            !/^TypeError:/i.test(error.message)
+            ? error.message
+            : VEHICLES_LOAD_FALLBACK,
         )
       } finally {
         if (!cancelled) setIsLoadingVehicles(false)
@@ -180,12 +335,16 @@ export default function WorkerVehiclesPage() {
     void load()
     return () => {
       cancelled = true
+      if (retryTimer != null) window.clearTimeout(retryTimer)
     }
   }, [
+    companyId,
     companyLoading,
     companyReady,
+    fleetReloadToken,
     membershipError,
     reloadWorker,
+    session?.user.id,
     worker,
     workerError,
     workerLoading,
@@ -225,11 +384,15 @@ export default function WorkerVehiclesPage() {
       )
     } catch (error) {
       setDefaultError(
-        error instanceof DriversServiceError
-          ? error.message
-          : error instanceof Error
+        isRetryableNetworkError(error)
+          ? 'Connection interrupted. Try again in a moment.'
+          : error instanceof DriversServiceError
             ? error.message
-            : 'Unable to save your default vehicle.',
+            : error instanceof Error &&
+                error.message.trim() &&
+                !/^TypeError:/i.test(error.message)
+              ? error.message
+              : 'Unable to save your default vehicle.',
       )
     } finally {
       setIsSavingDefault(false)
@@ -248,18 +411,27 @@ export default function WorkerVehiclesPage() {
       setDefaultMessage('Default vehicle removed.')
     } catch (error) {
       setDefaultError(
-        error instanceof DriversServiceError
-          ? error.message
-          : error instanceof Error
+        isRetryableNetworkError(error)
+          ? 'Connection interrupted. Try again in a moment.'
+          : error instanceof DriversServiceError
             ? error.message
-            : 'Unable to remove your default vehicle.',
+            : error instanceof Error &&
+                error.message.trim() &&
+                !/^TypeError:/i.test(error.message)
+              ? error.message
+              : 'Unable to remove your default vehicle.',
       )
     } finally {
       setIsSavingDefault(false)
     }
   }
 
-  if (workerLoading || companyLoading || isLoadingVehicles) {
+  // Keep cached fleet on screen while a reconnect fetch runs — never flash a blank page.
+  if (
+    (workerLoading || companyLoading || isLoadingVehicles) &&
+    vehicles.length === 0 &&
+    !isReconnecting
+  ) {
     return (
       <div
         className="min-h-[40vh] rounded-[1.75rem] bg-white/60"
@@ -302,6 +474,16 @@ export default function WorkerVehiclesPage() {
           Choose an active company vehicle, then start a check or related action.
         </p>
       </header>
+
+      {isReconnecting ? (
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800"
+        >
+          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          {VEHICLES_RECONNECTING_MESSAGE}
+        </p>
+      ) : null}
 
       {loadError ? (
         <p className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">

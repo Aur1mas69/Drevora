@@ -6,10 +6,12 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
+import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useOfflineVehicleChecksQueue } from '@/hooks/useOfflineVehicleChecksQueue'
 import { addOnlineStatusListener, getOnlineStatus } from '@/lib/networkStatus'
+import { isRetryableNetworkError } from '@/lib/networkError'
 import {
   formatInspectionDuration,
   isValidInspectionStartedAt,
@@ -35,6 +37,13 @@ import {
   captureVehicleCheckLocation,
   type VehicleCheckLocationResult,
 } from '@/lib/vehicleCheckLocation'
+import {
+  getCachedTemplateItemsForVehicleType,
+  OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE,
+  readWorkerOfflineBootstrap,
+  warmWorkerOfflineBootstrap,
+  WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS,
+} from '@/lib/workerOfflineBootstrap'
 import {
   createVehicleCheck,
   VehicleChecksServiceError,
@@ -120,6 +129,7 @@ function formatLastSyncAt(value: string | null): string | null {
 export default function WorkerVehicleChecksPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { session } = useAuth()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const {
     companyId,
@@ -129,6 +139,9 @@ export default function WorkerVehicleChecksPage() {
   } = useCompanyTenantGate()
   const offlineQueue = useOfflineVehicleChecksQueue()
   const [isOnline, setIsOnline] = useState(true)
+  const [offlineBootstrapReady, setOfflineBootstrapReady] = useState(false)
+  const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null)
+  const lastSeenSyncAtRef = useRef<string | null | undefined>(undefined)
 
   const [step, setStep] = useState<FlowStep>('setup')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -202,6 +215,45 @@ export default function WorkerVehicleChecksPage() {
       if (removeListener) void removeListener()
     }
   }, [])
+
+  // After a successful sync empties the active queue, briefly confirm success then
+  // hide — do not keep the Offline Queue panel open for Completed / lastSyncAt alone.
+  useEffect(() => {
+    const queueIdle =
+      !offlineQueue.isSyncing &&
+      offlineQueue.pending === 0 &&
+      offlineQueue.uploading === 0 &&
+      offlineQueue.syncing === 0 &&
+      offlineQueue.failed === 0
+
+    if (lastSeenSyncAtRef.current === undefined) {
+      lastSeenSyncAtRef.current = offlineQueue.lastSyncAt
+      return
+    }
+
+    const lastSyncChanged =
+      offlineQueue.lastSyncAt != null &&
+      offlineQueue.lastSyncAt !== lastSeenSyncAtRef.current
+
+    if (lastSyncChanged && queueIdle) {
+      setSyncSuccessMessage('Vehicle Check synced successfully')
+    }
+
+    lastSeenSyncAtRef.current = offlineQueue.lastSyncAt
+  }, [
+    offlineQueue.failed,
+    offlineQueue.isSyncing,
+    offlineQueue.lastSyncAt,
+    offlineQueue.pending,
+    offlineQueue.syncing,
+    offlineQueue.uploading,
+  ])
+
+  useEffect(() => {
+    if (!syncSuccessMessage) return
+    const timer = window.setTimeout(() => setSyncSuccessMessage(null), 3500)
+    return () => window.clearTimeout(timer)
+  }, [syncSuccessMessage])
 
   /**
    * One-shot capture when the Worker starts the Vehicle Check. Never blocks —
@@ -280,47 +332,110 @@ export default function WorkerVehicleChecksPage() {
   useEffect(() => {
     let cancelled = false
 
+    async function applyInitialVehicleSelection(rows: Vehicle[], currentWorker: NonNullable<typeof worker>) {
+      if (didInitVehicleRef.current) return
+      didInitVehicleRef.current = true
+      const fromUrl = searchParams.get('vehicleId')?.trim() || ''
+      const fromDefault = currentWorker.defaultVehicleId?.trim() || ''
+      const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
+      const candidates = [fromUrl, fromDefault, fromRemembered].filter(Boolean)
+      const match =
+        candidates
+          .map((id) => rows.find((vehicle) => vehicle.id === id) ?? null)
+          .find((vehicle) => vehicle != null) ?? null
+
+      if (match) {
+        setVehicleId(match.id)
+        setRememberVehicle(fromRemembered === match.id)
+      } else if (fromRemembered) {
+        setRememberedVehicleCheckId(null)
+      }
+    }
+
     async function load() {
       if (companyLoading || workerLoading) return
 
       if (!companyReady || !worker) {
         setVehicles([])
         setVehiclesLoading(false)
+        setOfflineBootstrapReady(false)
         return
       }
 
       setVehiclesLoading(true)
       setVehiclesError(null)
+      const userId = session?.user.id?.trim() || ''
+
+      async function restoreFromBootstrap(): Promise<boolean> {
+        if (!userId) return false
+        const cache = await readWorkerOfflineBootstrap(userId, companyId)
+        if (!(cache && cache.vehicles.length > 0)) return false
+        if (cancelled) return true
+        setVehicles(cache.vehicles)
+        setVehiclesError(null)
+        setOfflineBootstrapReady(true)
+        await applyInitialVehicleSelection(cache.vehicles, worker!)
+        return true
+      }
+
+      // Offline / false-"online": restore fleet from bootstrap before network so
+      // hung fetches cannot leave Vehicle Checks on an endless loading state.
+      const online = await getOnlineStatus()
+      if (!online) {
+        const restored = await restoreFromBootstrap()
+        if (cancelled) return
+        if (!restored) {
+          setVehicles([])
+          setVehiclesError(null)
+          setOfflineBootstrapReady(false)
+        }
+        setVehiclesLoading(false)
+        return
+      }
+
       try {
-        const rows = await fetchVehicles()
+        const rows = await new Promise<Vehicle[]>((resolve, reject) => {
+          const timer = window.setTimeout(() => {
+            reject(new Error('VEHICLES_FETCH_TIMEOUT'))
+          }, WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS)
+          void fetchVehicles().then(
+            (value) => {
+              window.clearTimeout(timer)
+              resolve(value)
+            },
+            (error: unknown) => {
+              window.clearTimeout(timer)
+              reject(error)
+            },
+          )
+        })
         if (cancelled) return
         setVehicles(rows)
+        setOfflineBootstrapReady(true)
+        await applyInitialVehicleSelection(rows, worker)
 
-        // One-shot initial selection for Home CTA and deep links:
-        // URL vehicleId → worker default → remembered device id.
-        // Never redirect away from this page while vehicles are loading/missing.
-        if (!didInitVehicleRef.current) {
-          didInitVehicleRef.current = true
-          const fromUrl = searchParams.get('vehicleId')?.trim() || ''
-          const fromDefault = worker.defaultVehicleId?.trim() || ''
-          const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
-          const candidates = [fromUrl, fromDefault, fromRemembered].filter(Boolean)
-          const match =
-            candidates
-              .map((id) => rows.find((vehicle) => vehicle.id === id) ?? null)
-              .find((vehicle) => vehicle != null) ?? null
-
-          if (match) {
-            setVehicleId(match.id)
-            setRememberVehicle(fromRemembered === match.id)
-          } else if (fromRemembered) {
-            setRememberedVehicleCheckId(null)
-          }
+        if (userId && companyId) {
+          void warmWorkerOfflineBootstrap({
+            userId,
+            companyId,
+            worker,
+            vehicles: rows,
+            skipOnlineCheck: true,
+          })
         }
       } catch (loadError) {
         if (cancelled) return
+        if (await restoreFromBootstrap()) return
+        setVehicles([])
+        setOfflineBootstrapReady(false)
         setVehiclesError(
-          loadError instanceof Error ? loadError.message : 'Unable to load vehicles.',
+          isRetryableNetworkError(loadError)
+            ? null
+            : loadError instanceof Error &&
+                loadError.message.trim() &&
+                !/^TypeError:/i.test(loadError.message)
+              ? loadError.message
+              : 'Unable to load vehicles.',
         )
       } finally {
         if (!cancelled) setVehiclesLoading(false)
@@ -331,7 +446,15 @@ export default function WorkerVehicleChecksPage() {
     return () => {
       cancelled = true
     }
-  }, [companyLoading, companyReady, searchParams, worker, workerLoading])
+  }, [
+    companyId,
+    companyLoading,
+    companyReady,
+    searchParams,
+    session?.user.id,
+    worker,
+    workerLoading,
+  ])
 
   useEffect(() => {
     if (isChecklistFullyAnswered(items, checklistSections)) {
@@ -384,7 +507,26 @@ export default function WorkerVehicleChecksPage() {
 
     setIsLoadingChecklist(true)
     try {
-      const checklist = await loadVehicleChecklist(vehicle.id, vehicle.vehicleType)
+      const userId = session?.user.id?.trim() || ''
+      let offlineTemplateItems: Awaited<
+        ReturnType<typeof getCachedTemplateItemsForVehicleType>
+      > = null
+      // Always attach bootstrap templates when present so false-"online" native
+      // status still falls back after a hung live template fetch.
+      if (userId) {
+        const cache = await readWorkerOfflineBootstrap(userId, companyId)
+        if (cache) {
+          offlineTemplateItems =
+            getCachedTemplateItemsForVehicleType(cache, vehicle.vehicleType) ?? []
+        }
+      }
+
+      const checklist = await loadVehicleChecklist(
+        vehicle.id,
+        vehicle.vehicleType,
+        undefined,
+        { offlineTemplateItems },
+      )
       setItems(checklist.items)
       setChecklistSections(checklist.sections)
       setChecklistNotice(checklist.notice)
@@ -544,6 +686,8 @@ export default function WorkerVehicleChecksPage() {
 
   const gateError = membershipError || workerError || vehiclesError
   const isBootLoading = companyLoading || workerLoading || vehiclesLoading
+  const showOfflineNotPrepared =
+    !isOnline && !offlineBootstrapReady && !vehiclesError && Boolean(worker) && companyReady
 
   if (isBootLoading) {
     return (
@@ -555,10 +699,24 @@ export default function WorkerVehicleChecksPage() {
   }
 
   if (!companyReady || !worker || gateError) {
+    const offlinePrepareOnly =
+      !isOnline &&
+      !membershipError &&
+      !vehiclesError &&
+      (!worker || Boolean(workerError))
+
     return (
       <div className="mx-auto w-full max-w-lg space-y-4 pb-8">
-        <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {gateError || 'Unable to start a Vehicle Check right now.'}
+        <div
+          className={
+            offlinePrepareOnly
+              ? 'rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700'
+              : 'rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'
+          }
+        >
+          {offlinePrepareOnly
+            ? OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE
+            : gateError || 'Unable to start a Vehicle Check right now.'}
         </div>
         <Button
           type="button"
@@ -574,6 +732,14 @@ export default function WorkerVehicleChecksPage() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 pb-8">
+      {showOfflineNotPrepared ? (
+        <div
+          role="status"
+          className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+        >
+          {OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE}
+        </div>
+      ) : null}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -604,7 +770,11 @@ export default function WorkerVehicleChecksPage() {
                 : 'Submitted'}
           </p>
         </div>
-        {offlineQueue.total > 0 ? (
+        {offlineQueue.pending > 0 ||
+        offlineQueue.uploading > 0 ||
+        offlineQueue.failed > 0 ||
+        offlineQueue.syncing > 0 ||
+        offlineQueue.isSyncing ? (
           <span
             role="status"
             aria-live="polite"
@@ -615,10 +785,22 @@ export default function WorkerVehicleChecksPage() {
         ) : null}
       </div>
 
-      {offlineQueue.total > 0 ||
+      {syncSuccessMessage ? (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm"
+        >
+          {syncSuccessMessage}
+        </aside>
+      ) : null}
+
+      {offlineQueue.pending > 0 ||
+      offlineQueue.uploading > 0 ||
+      offlineQueue.failed > 0 ||
+      offlineQueue.syncing > 0 ||
       offlineQueue.isSyncing ||
-      offlineQueue.completed > 0 ||
-      offlineQueue.lastSyncAt ? (
+      isRetryingSync ? (
         <aside
           role="status"
           aria-live="polite"

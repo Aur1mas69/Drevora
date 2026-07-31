@@ -2,6 +2,7 @@ import {
   getVerifiedCompanyName,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
+import { getOnlineStatus } from '@/lib/networkStatus'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
@@ -1634,6 +1635,14 @@ export async function setWorkerDefaultVehicle(
 }
 
 export async function getWorkerAccessStatus(): Promise<WorkerAccessStatus> {
+  // Offline (Web/PWA and Native): the lifecycle RPC cannot resolve, and waiting
+  // on it keeps the Worker shell behind the membership splash. Treat the last
+  // known access as active so cached Vehicle Checks stay reachable. Archived
+  // accounts are still blocked on the next online launch.
+  if (!(await getOnlineStatus())) {
+    return 'active'
+  }
+
   const { data, error } = await requireSupabase().rpc(
     'drevora_auth_worker_access_status',
   )

@@ -12,11 +12,31 @@ import {
   isChecklistFullyAnswered,
   mergeChecklistWithExistingItems,
 } from '@/lib/vehicleCheckUtils'
+import { getOnlineStatus } from '@/lib/networkStatus'
+import { WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS } from '@/lib/workerOfflineBootstrap/types'
 import {
   fetchTemplateItemsByVehicleType,
   getDefaultVehicleCheckItems,
 } from '@/services/vehicleCheckTemplatesService'
 import { fetchVehicleTypeById } from '@/services/vehiclesService'
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('TEMPLATE_FETCH_TIMEOUT'))
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
 
 export type VehicleChecklistLoadStatus =
   | 'ready'
@@ -144,12 +164,29 @@ function buildChecklistFromTemplates(
   }
 }
 
+export type LoadVehicleChecklistOptions = {
+  /**
+   * Offline bootstrap template rows for this vehicle type.
+   * When the live template fetch fails offline, these are used instead of throwing.
+   * Pass an empty array to allow the existing DVSA merge fallback.
+   */
+  offlineTemplateItems?: VehicleCheckTemplateItem[] | null
+}
+
 export async function loadVehicleChecklist(
   vehicleId: string,
   vehicleTypeHint: string | null | undefined,
   existingItems?: VehicleCheckItemInput[],
+  options?: LoadVehicleChecklistOptions,
 ): Promise<LoadedVehicleChecklist> {
-  const vehicleType = vehicleTypeHint?.trim() || (await fetchVehicleTypeById(vehicleId))
+  let vehicleType = vehicleTypeHint?.trim() || null
+  if (!vehicleType) {
+    try {
+      vehicleType = (await fetchVehicleTypeById(vehicleId))?.trim() || null
+    } catch {
+      vehicleType = null
+    }
+  }
 
   if (!vehicleType) {
     return {
@@ -162,13 +199,28 @@ export async function loadVehicleChecklist(
 
   let dbTemplates: VehicleCheckTemplateItem[] = []
   try {
-    dbTemplates = await fetchTemplateItemsByVehicleType(vehicleType)
+    // Bound the live fetch — native Network often reports "connected" while
+    // Supabase hangs, which previously left Vehicle Check on a spinner forever.
+    dbTemplates = await withTimeout(
+      fetchTemplateItemsByVehicleType(vehicleType),
+      WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS,
+    )
   } catch (error) {
-    const message =
-      error instanceof Error && error.message.trim().length > 0
-        ? error.message
-        : TEMPLATE_LOAD_ERROR_MESSAGE
-    throw new Error(message)
+    const offlineItems = options?.offlineTemplateItems
+    // Prefer prepared bootstrap rows whenever the caller supplied them (including
+    // false-"online" offline cold starts). Empty array → DVSA merge below.
+    if (offlineItems != null) {
+      dbTemplates = offlineItems
+    } else if (!(await getOnlineStatus())) {
+      // No prepared cache for this type — still allow DVSA walkaround offline.
+      dbTemplates = []
+    } else {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : TEMPLATE_LOAD_ERROR_MESSAGE
+      throw new Error(message)
+    }
   }
 
   const templates = mergeBasicAndExtraChecklistTemplates(dbTemplates)

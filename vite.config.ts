@@ -153,6 +153,33 @@ export default defineConfig(({ mode }) => {
             ? path.resolve(__dirname, './src/lib/supabaseAuthStorage.native.ts')
             : path.resolve(__dirname, './src/lib/supabaseAuthStorage.ts'),
         },
+        // Exact `@/lib/nativeAuthSessionRecover` must win over the general `@` prefix.
+        // Web → no-op; native → SecureAuthStorage offline session restore.
+        {
+          find: '@/lib/nativeAuthSessionRecover',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/nativeAuthSessionRecover.native.ts')
+            : path.resolve(__dirname, './src/lib/nativeAuthSessionRecover.ts'),
+        },
+        // Exact `@/lib/nativeOfflineMembership` must win over the general `@` prefix.
+        // Web → no-op; native → Preferences snapshot for offline Worker shell.
+        {
+          find: '@/lib/nativeOfflineMembership',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/nativeOfflineMembership.native.ts')
+            : path.resolve(__dirname, './src/lib/nativeOfflineMembership.ts'),
+        },
+        // Exact `@/lib/workerOfflineBootstrap/storage` must win over the general `@` prefix.
+        // Web/PWA → IndexedDB; native → Capacitor Preferences.
+        {
+          find: '@/lib/workerOfflineBootstrap/storage',
+          replacement: isNative
+            ? path.resolve(
+                __dirname,
+                './src/lib/workerOfflineBootstrap/storage.native.ts',
+              )
+            : path.resolve(__dirname, './src/lib/workerOfflineBootstrap/storage.ts'),
+        },
         // Exact `@/App` must win over the general `@` prefix.
         // Web → App.tsx (full Admin + Worker router); native → App.native.tsx (Worker-only).
         {

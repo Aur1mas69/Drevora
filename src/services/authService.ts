@@ -1,4 +1,8 @@
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
+import {
+  readNativeStoredAuthSession,
+  recoverNativeSessionAfterRefreshFailure,
+} from '@/lib/nativeAuthSessionRecover'
 
 export type AuthUser = {
   id: string
@@ -99,22 +103,57 @@ export async function getCurrentSession(): Promise<AuthSession | null> {
     return null
   }
 
-  const { data, error } = await requireSupabase().auth.getSession()
+  try {
+    const { data, error } = await requireSupabase().auth.getSession()
 
-  if (error) {
-    throw new AuthServiceError(error.message)
-  }
+    if (data.session?.user.email) {
+      return {
+        accessToken: data.session.access_token,
+        user: {
+          id: data.session.user.id,
+          email: data.session.user.email,
+        },
+      }
+    }
 
-  if (!data.session?.user.email) {
+    // Web/PWA + Native: network refresh failure must not wipe a still-stored
+    // session (localStorage / SecureAuthStorage) on cold start offline.
+    const recovered = await recoverNativeSessionAfterRefreshFailure(error)
+    if (recovered) {
+      return recovered
+    }
+
+    // Browsers/emulators often report "connected" while fetches fail and
+    // getSession returns null without a classified auth error. Prefer a
+    // still-stored session over treating the Worker as signed out.
+    const stored = await readNativeStoredAuthSession()
+    if (stored) {
+      return stored
+    }
+
+    if (error) {
+      throw new AuthServiceError(error.message)
+    }
+
     return null
-  }
+  } catch (caught) {
+    if (caught instanceof AuthServiceError) {
+      throw caught
+    }
 
-  return {
-    accessToken: data.session.access_token,
-    user: {
-      id: data.session.user.id,
-      email: data.session.user.email,
-    },
+    const recovered = await recoverNativeSessionAfterRefreshFailure(caught)
+    if (recovered) {
+      return recovered
+    }
+
+    const stored = await readNativeStoredAuthSession()
+    if (stored) {
+      return stored
+    }
+
+    throw caught instanceof Error
+      ? new AuthServiceError(caught.message)
+      : new AuthServiceError('Unable to restore the current session.')
   }
 }
 
