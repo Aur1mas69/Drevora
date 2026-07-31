@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 type WorkerSubmitTimesheetDialogProps = {
   open: boolean
@@ -15,6 +15,7 @@ type WorkerSubmitTimesheetDialogProps = {
 /**
  * Worker confirmation before week submission.
  * Opening / Cancel / Escape / outside click never submit — only Confirm does.
+ * Confirmation checkbox resets every time the modal opens.
  */
 export function WorkerSubmitTimesheetDialog({
   open,
@@ -26,6 +27,14 @@ export function WorkerSubmitTimesheetDialog({
   onCancel,
   onConfirm,
 }: WorkerSubmitTimesheetDialogProps) {
+  const [confirmed, setConfirmed] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setConfirmed(false)
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
 
@@ -40,6 +49,8 @@ export function WorkerSubmitTimesheetDialog({
   }, [isSubmitting, onCancel, open])
 
   if (!open) return null
+
+  const canSubmit = confirmed && !isSubmitting
 
   return (
     <div className="worker-theme-surface fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center">
@@ -110,6 +121,21 @@ export function WorkerSubmitTimesheetDialog({
           <p className="text-sm leading-6 text-[color:var(--worker-text-secondary)]">
             Submitting sends this Timesheet to the office for review.
           </p>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-[14px] border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-4 py-3">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={isSubmitting}
+              onChange={(event) => setConfirmed(event.target.checked)}
+              className="mt-1 size-4 shrink-0 rounded border-[color:var(--worker-border)] accent-[#0B68BE]"
+              aria-required="true"
+            />
+            <span className="text-sm leading-6 text-[color:var(--worker-text)]">
+              I confirm that I have reviewed this Timesheet and that all hours shown are
+              complete and correct.
+            </span>
+          </label>
         </div>
 
         <div className="flex flex-col-reverse gap-3 border-t border-[color:var(--worker-border)] px-5 py-4 sm:flex-row sm:justify-end">
@@ -124,7 +150,7 @@ export function WorkerSubmitTimesheetDialog({
           </Button>
           <Button
             type="button"
-            disabled={isSubmitting}
+            disabled={!canSubmit}
             onClick={onConfirm}
             className="worker-btn-primary h-12 rounded-2xl px-5 font-semibold disabled:opacity-70"
           >

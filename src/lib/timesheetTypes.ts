@@ -54,6 +54,10 @@ export type Timesheet = {
    * Null until migration applied.
    */
   retentionExpiresAt: string | null
+  /** Current Worker confirmation for this submission (cleared on Office return). */
+  workerConfirmed: boolean
+  confirmedByDriverId: string | null
+  confirmedAt: string | null
   driverName: string
   driverRole: DriverRole | null
   fleetNo: string

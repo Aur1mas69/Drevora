@@ -66,8 +66,10 @@ import {
   MapPin,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { WorkerExitVehicleCheckDialog } from '@/components/worker/WorkerExitVehicleCheckDialog'
+import { useWorkerVehicleCheckExitGuard } from '@/hooks/useWorkerVehicleCheckExitGuard'
 
 type FlowStep = 'setup' | 'checklist' | 'done'
 
@@ -185,6 +187,23 @@ export default function WorkerVehicleChecksPage() {
   /** True after the Worker explicitly clears selection — never re-apply default. */
   const userClearedSelectionRef = useRef(false)
   const locationStatusHideTimerRef = useRef<number | null>(null)
+
+  const discardActiveCheckToSetup = useCallback(() => {
+    setStep('setup')
+    setInspectionStartedAt(null)
+    setStartedLocationResult(null)
+    setStartLocationStatus('idle')
+  }, [])
+
+  const {
+    exitOpen,
+    handleContinueCheck,
+    handleExitCheck,
+    requestExitToSetup,
+  } = useWorkerVehicleCheckExitGuard({
+    isCheckActive: step === 'checklist',
+    onDiscardToSetup: discardActiveCheckToSetup,
+  })
 
   useEffect(() => {
     return () => {
@@ -772,10 +791,7 @@ export default function WorkerVehicleChecksPage() {
           type="button"
           onClick={() => {
             if (step === 'checklist') {
-              setStep('setup')
-              setInspectionStartedAt(null)
-              setStartedLocationResult(null)
-              setStartLocationStatus('idle')
+              requestExitToSetup()
               return
             }
             navigate('/worker/vehicles')
@@ -1120,10 +1136,7 @@ export default function WorkerVehicleChecksPage() {
                 className="h-12 rounded-2xl"
                 disabled={isSaving}
                 onClick={() => {
-                  setStep('setup')
-                  setInspectionStartedAt(null)
-                  setStartedLocationResult(null)
-                  setStartLocationStatus('idle')
+                  requestExitToSetup()
                 }}
               >
                 <ChevronLeft className="mr-1 size-4" />
@@ -1187,6 +1200,12 @@ export default function WorkerVehicleChecksPage() {
           </Link>
         </section>
       ) : null}
+
+      <WorkerExitVehicleCheckDialog
+        open={exitOpen}
+        onContinue={handleContinueCheck}
+        onExit={handleExitCheck}
+      />
     </div>
   )
 }

@@ -180,10 +180,10 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
         ) : null}
       </div>
 
-      <div className="relative z-[2] min-w-0 flex-1 space-y-1.5 self-center -translate-y-1 pr-1 pl-0.5 sm:-translate-y-2">
+      <div className="relative z-[2] min-w-0 max-w-[calc(100%-7.5rem)] flex-1 space-y-1 self-end pr-2 pl-0.5 pb-1 min-[380px]:max-w-[calc(100%-9.75rem)] sm:max-w-[calc(100%-12rem)] sm:space-y-1.5 sm:pr-3 sm:pb-1.5 lg:max-w-[calc(100%-14.5rem)]">
         <h2
           className={cn(
-            'text-xl font-bold leading-[1.2] tracking-tight sm:text-2xl [font-weight:700]',
+            'break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:700]',
             isDark ? 'text-white' : 'text-[#0B1F3A]',
           )}
         >
@@ -191,12 +191,11 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
         </h2>
         <p
           className={cn(
-            'max-w-[16.5rem] text-sm leading-snug sm:max-w-[20rem]',
+            'max-w-[14rem] break-words text-xs leading-snug min-[380px]:max-w-[16rem] min-[380px]:text-sm sm:max-w-[18rem]',
             isDark ? 'text-white/70' : 'text-[#3D5A80]',
           )}
         >
-          Check your vehicle, review today’s tasks, and start your shift with
-          confidence.
+          Check your vehicle and start with confidence.
         </p>
       </div>
 

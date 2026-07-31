@@ -1,10 +1,10 @@
 import { WorkerAvatar } from '@/components/workers/WorkerAvatar'
-import { NativeBiometricAppLockSettings } from '@/components/worker/NativeBiometricAppLockSettings'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
+import { getAppVersionLabel } from '@/lib/appVersion'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
   applyResolvedWorkerAppearance,
@@ -36,6 +36,48 @@ import { Link, useNavigate } from 'react-router-dom'
 function displayValue(value: string | null | undefined): string {
   const trimmed = value?.trim()
   return trimmed ? trimmed : 'Not set'
+}
+
+function SettingsRowLink({
+  to,
+  icon: Icon,
+  title,
+  subtitle,
+  className,
+}: {
+  to: string
+  icon: typeof Clock
+  title: string
+  subtitle?: string
+  className?: string
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
+        className,
+      )}
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
+          {title}
+        </span>
+        {subtitle ? (
+          <span className="mt-0.5 block truncate text-xs font-medium text-[color:var(--worker-text-secondary)]">
+            {subtitle}
+          </span>
+        ) : null}
+      </span>
+      <ChevronRight
+        className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
+        aria-hidden
+      />
+    </Link>
+  )
 }
 
 export default function WorkerSettingsPage() {
@@ -140,7 +182,6 @@ export default function WorkerSettingsPage() {
         </h1>
       </header>
 
-      {/* Section 1 — Profile */}
       <section className="worker-card rounded-[1.75rem] p-5" aria-labelledby="worker-settings-profile">
         <h2
           id="worker-settings-profile"
@@ -175,7 +216,6 @@ export default function WorkerSettingsPage() {
         </p>
       </section>
 
-      {/* Section 2 — Preferences */}
       <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-preferences">
         <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
           <h2
@@ -186,26 +226,12 @@ export default function WorkerSettingsPage() {
           </h2>
         </div>
 
-        <Link
+        <SettingsRowLink
           to="/worker/settings/timesheet"
-          className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[color:var(--worker-input)]"
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
-            <Clock className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
-              Timesheet Settings
-            </span>
-            <span className="mt-0.5 block truncate text-xs font-medium text-[color:var(--worker-text-secondary)]">
-              {timesheetSummary}
-            </span>
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
-            aria-hidden
-          />
-        </Link>
+          icon={Clock}
+          title="Timesheet Settings"
+          subtitle={timesheetSummary}
+        />
 
         <div className="border-t border-[color:var(--worker-border)] px-4 py-3.5">
           <div className="flex items-start gap-3">
@@ -222,7 +248,7 @@ export default function WorkerSettingsPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
                   to="/worker/vehicles"
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-3 text-xs font-semibold text-[color:var(--worker-text)] transition-colors hover:bg-[color:var(--worker-input)]"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#89CFF0] bg-[#E8F3FE] px-3 text-xs font-semibold text-[#0B68BE] transition-colors hover:bg-[#DCEEFF] active:bg-[#D3E9FC]"
                 >
                   Change default vehicle
                 </Link>
@@ -231,7 +257,7 @@ export default function WorkerSettingsPage() {
                     type="button"
                     disabled={isRemovingDefault}
                     onClick={() => void handleRemoveDefaultVehicle()}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:opacity-60"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isRemovingDefault ? 'Removing…' : 'Remove default'}
                   </button>
@@ -283,7 +309,6 @@ export default function WorkerSettingsPage() {
         </div>
       </section>
 
-      {/* Section 3 — Security */}
       <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-security">
         <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
           <h2
@@ -293,29 +318,18 @@ export default function WorkerSettingsPage() {
             Security
           </h2>
         </div>
-        <div className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
-            <Lock className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
-              Password &amp; Security
-            </span>
-            <span className="mt-0.5 block text-xs font-medium text-[color:var(--worker-text-secondary)]">
-              Managed by your sign-in account
-            </span>
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
-            aria-hidden
-          />
-        </div>
-        {import.meta.env.MODE === 'native' ? (
-          <NativeBiometricAppLockSettings />
-        ) : null}
+        <SettingsRowLink
+          to="/worker/settings/security"
+          icon={Lock}
+          title="Password & Security"
+          subtitle={
+            import.meta.env.MODE === 'native'
+              ? 'Password and biometric app lock'
+              : 'Change your sign-in password'
+          }
+        />
       </section>
 
-      {/* Section 4 — Help & App */}
       <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-help">
         <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
           <h2
@@ -326,56 +340,31 @@ export default function WorkerSettingsPage() {
           </h2>
         </div>
 
-        <Link
-          to="/worker/contacts"
-          className="flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[color:var(--worker-input)]"
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
-            <Contact className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
-              Contact Office
-            </span>
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
-            aria-hidden
-          />
-        </Link>
+        <SettingsRowLink
+          to="/worker/settings/contact-office"
+          icon={Contact}
+          title="Contact Office"
+          subtitle="Phone and email when shared"
+        />
 
-        <Link
-          to="/worker/contacts"
-          className="flex min-h-14 w-full min-w-0 items-center gap-3 border-t border-[color:var(--worker-border)] px-4 py-3.5 transition-colors hover:bg-[color:var(--worker-input)]"
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
-            <CircleHelp className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
-              Help &amp; Support
-            </span>
-            <span className="mt-0.5 block text-xs font-medium text-[color:var(--worker-text-secondary)]">
-              Ask your office for assistance
-            </span>
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
-            aria-hidden
-          />
-        </Link>
+        <SettingsRowLink
+          to="/worker/settings/help"
+          icon={CircleHelp}
+          title="Help & Support"
+          subtitle="Ask your office for assistance"
+          className="border-t border-[color:var(--worker-border)]"
+        />
 
         <div className="flex min-h-14 w-full min-w-0 items-center justify-between gap-3 border-t border-[color:var(--worker-border)] px-4 py-3.5">
           <span className="text-sm font-semibold text-[color:var(--worker-text)]">
             App Version
           </span>
           <span className="text-sm font-medium text-[color:var(--worker-text-secondary)]">
-            Version unavailable
+            {getAppVersionLabel()}
           </span>
         </div>
       </section>
 
-      {/* Section 5 — Sign out */}
       <Button
         type="button"
         variant="outline"

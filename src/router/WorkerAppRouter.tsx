@@ -53,6 +53,15 @@ const WorkerSettingsPage = lazy(
 const WorkerTimesheetSettingsPage = lazy(
   () => import('@/pages/worker/WorkerTimesheetSettingsPage'),
 )
+const WorkerSecuritySettingsPage = lazy(
+  () => import('@/pages/worker/WorkerSecuritySettingsPage'),
+)
+const WorkerSettingsContactOfficePage = lazy(
+  () => import('@/pages/worker/WorkerSettingsContactOfficePage'),
+)
+const WorkerSettingsHelpPage = lazy(
+  () => import('@/pages/worker/WorkerSettingsHelpPage'),
+)
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 function RouteLoadingFallback() {
@@ -185,6 +194,18 @@ function WorkerAppRouter() {
             <Route
               path="/worker/settings/timesheet"
               element={<WorkerTimesheetSettingsPage />}
+            />
+            <Route
+              path="/worker/settings/security"
+              element={<WorkerSecuritySettingsPage />}
+            />
+            <Route
+              path="/worker/settings/contact-office"
+              element={<WorkerSettingsContactOfficePage />}
+            />
+            <Route
+              path="/worker/settings/help"
+              element={<WorkerSettingsHelpPage />}
             />
             <Route path="/history" element={<Navigate to={WORKER_HOME_PATH} replace />} />
             <Route

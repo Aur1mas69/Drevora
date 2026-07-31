@@ -145,6 +145,14 @@ export default defineConfig(({ mode }) => {
             ? path.resolve(__dirname, './src/lib/appLockNative.native.ts')
             : path.resolve(__dirname, './src/lib/appLockNative.ts'),
         },
+        // Exact `@/lib/nativeBackButton` must win over the general `@` prefix.
+        // Web → no-op; native → Capacitor App backButton listener.
+        {
+          find: '@/lib/nativeBackButton',
+          replacement: isNative
+            ? path.resolve(__dirname, './src/lib/nativeBackButton.native.ts')
+            : path.resolve(__dirname, './src/lib/nativeBackButton.ts'),
+        },
         // Exact `@/lib/supabaseAuthStorage` must win over the general `@` prefix.
         // Web → browser localStorage defaults; native → SecureAuthStorage plugin adapter.
         {

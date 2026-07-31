@@ -71,6 +71,9 @@ type TimesheetRow = {
   rejected_at?: string | null
   cleaned_at?: string | null
   retention_expires_at?: string | null
+  worker_confirmed?: boolean | null
+  confirmed_by_driver_id?: string | null
+  confirmed_at?: string | null
   driver_id: string
   vehicle_id: string | null
   week_start: string
@@ -81,6 +84,7 @@ type TimesheetRow = {
   deleted_by?: string | null
   delete_reason?: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
+  confirmedByDriver?: DriverJoinRow | DriverJoinRow[] | null
   vehicles: VehicleJoinRow | VehicleJoinRow[] | null
   timesheet_entries?: TimesheetEntryRow[]
 }
@@ -120,6 +124,13 @@ const timesheetEntrySelectMinimal = `
     total_minutes
   `
 
+const timesheetOwnerDriverSelect =
+  'drivers!timesheets_driver_id_fkey ( first_name, last_name, role )'
+const timesheetOwnerDriverSelectInner =
+  'drivers!timesheets_driver_id_fkey!inner ( first_name, last_name, role )'
+const timesheetConfirmedByDriverSelect =
+  'confirmedByDriver:drivers!timesheets_confirmed_by_driver_id_fkey ( first_name, last_name, role )'
+
 const timesheetDetailSelectWithoutDailyComment = `
   id,
   created_at,
@@ -128,13 +139,17 @@ const timesheetDetailSelectWithoutDailyComment = `
   approved_at,
   rejected_at,
   cleaned_at,
+  worker_confirmed,
+  confirmed_by_driver_id,
+  confirmed_at,
   driver_id,
   vehicle_id,
   week_start,
   status,
   notes,
   bonus_amount,
-  drivers ( first_name, last_name, role ),
+  ${timesheetOwnerDriverSelect},
+  ${timesheetConfirmedByDriverSelect},
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelectCore})
 `
@@ -147,13 +162,17 @@ const timesheetDetailSelectMinimalEntries = `
   approved_at,
   rejected_at,
   cleaned_at,
+  worker_confirmed,
+  confirmed_by_driver_id,
+  confirmed_at,
   driver_id,
   vehicle_id,
   week_start,
   status,
   notes,
   bonus_amount,
-  drivers ( first_name, last_name, role ),
+  ${timesheetOwnerDriverSelect},
+  ${timesheetConfirmedByDriverSelect},
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelectMinimal})
 `
@@ -180,13 +199,17 @@ const timesheetDetailSelect = `
   rejected_at,
   cleaned_at,
   retention_expires_at,
+  worker_confirmed,
+  confirmed_by_driver_id,
+  confirmed_at,
   driver_id,
   vehicle_id,
   week_start,
   status,
   notes,
   bonus_amount,
-  drivers ( first_name, last_name, role ),
+  ${timesheetOwnerDriverSelect},
+  ${timesheetConfirmedByDriverSelect},
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelectWithDailyComment})
 `
@@ -200,13 +223,17 @@ const timesheetDetailSelectWithoutRetention = `
   approved_at,
   rejected_at,
   cleaned_at,
+  worker_confirmed,
+  confirmed_by_driver_id,
+  confirmed_at,
   driver_id,
   vehicle_id,
   week_start,
   status,
   notes,
   bonus_amount,
-  drivers ( first_name, last_name, role ),
+  ${timesheetOwnerDriverSelect},
+  ${timesheetConfirmedByDriverSelect},
   vehicles ( registration, fleet_number ),
   timesheet_entries (${timesheetEntrySelectWithDailyComment})
 `
@@ -219,13 +246,17 @@ const timesheetListSelect = `
   approved_at,
   rejected_at,
   cleaned_at,
+  worker_confirmed,
+  confirmed_by_driver_id,
+  confirmed_at,
   driver_id,
   vehicle_id,
   week_start,
   status,
   notes,
   bonus_amount,
-  drivers ( first_name, last_name, role )
+  ${timesheetOwnerDriverSelect},
+  ${timesheetConfirmedByDriverSelect}
 `
 
 export class TimesheetsServiceError extends Error {
@@ -439,6 +470,9 @@ function mapListRow(
     rejectedAt: row.rejected_at ?? null,
     cleanedAt: row.cleaned_at ?? null,
     retentionExpiresAt: row.retention_expires_at?.trim() || null,
+    workerConfirmed: Boolean(row.worker_confirmed),
+    confirmedByDriverId: row.confirmed_by_driver_id ?? null,
+    confirmedAt: row.confirmed_at ?? null,
     driverName,
     driverRole: normalizeDriverRole(driver?.role ?? null),
     fleetNo: vehicle?.fleet_number?.trim() || '—',
@@ -686,8 +720,8 @@ function buildListSelect(query: TimesheetsQuery): string {
 
   if (needsDriverInnerJoin) {
     return timesheetListSelect.replace(
-      'drivers ( first_name, last_name, role )',
-      'drivers!inner ( first_name, last_name, role )',
+      timesheetOwnerDriverSelect,
+      timesheetOwnerDriverSelectInner,
     )
   }
 
@@ -722,8 +756,26 @@ async function fetchTimesheetRowById(id: string, companyId: string): Promise<Tim
 
     const canRetry =
       isMissingRetentionExpiresAtColumnError(error.message) ||
+      isMissingWorkerConfirmationColumnError(error.message) ||
       isMissingTimesheetEntryColumnError(error)
     if (!canRetry) break
+
+    if (isMissingWorkerConfirmationColumnError(error.message)) {
+      const stripped = stripWorkerConfirmationSelect(select)
+      if (stripped !== select) {
+        const retry = await requireSupabase()
+          .from('timesheets')
+          .select(stripped)
+          .eq('id', id)
+          .eq('company_id', companyId)
+          .is('deleted_at', null)
+          .is('timesheet_entries.deleted_at', null)
+          .single()
+        data = retry.data
+        error = retry.error
+        if (!error) break
+      }
+    }
   }
 
   const logError = error
@@ -831,6 +883,11 @@ export async function fetchTimesheetsPage(query: TimesheetsQuery): Promise<Times
         'Timesheets cleanup views are not available yet. Ensure cleaned_at exists on timesheets.',
       )
     }
+    if (isMissingWorkerConfirmationColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Worker confirmation columns are not available yet. Ask DREVORA support to apply the timesheet confirmation migration.',
+      )
+    }
     throw new TimesheetsServiceError(error.message)
   }
 
@@ -887,6 +944,42 @@ function isMissingRetentionExpiresAtColumnError(
       normalized.includes('could not find the') ||
       normalized.includes('column'))
   )
+}
+
+function isMissingWorkerConfirmationColumnError(
+  message: string | null | undefined,
+): boolean {
+  if (!message) return false
+  const normalized = message.toLowerCase()
+  const mentionsConfirmation =
+    normalized.includes('worker_confirmed') ||
+    normalized.includes('confirmed_by_driver_id') ||
+    normalized.includes('confirmed_at') ||
+    normalized.includes('timesheet_submission_confirmations')
+  return (
+    mentionsConfirmation &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('could not find the') ||
+      normalized.includes('column') ||
+      normalized.includes('relation'))
+  )
+}
+
+function stripWorkerConfirmationSelect(select: string): string {
+  return select
+    .replace(/\n\s*worker_confirmed,/g, '')
+    .replace(/\n\s*confirmed_by_driver_id,/g, '')
+    .replace(/\n\s*confirmed_at,/g, '')
+    .replace(
+      new RegExp(`\\n\\s*${timesheetConfirmedByDriverSelect.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},?`, 'g'),
+      '',
+    )
+}
+
+/** Worker may edit day entries only while Draft or Returned (Rejected). */
+export function canWorkerEditTimesheetStatus(status: TimesheetStatus): boolean {
+  return status === 'Draft' || status === 'Rejected'
 }
 
 /** Apply Current / History / All cleaned_at visibility to a timesheets query. */
@@ -993,7 +1086,16 @@ export async function fetchTimesheets(): Promise<Timesheet[]> {
         .is('timesheet_entries.deleted_at', null)
         .order('week_start', { ascending: false })
         .order('updated_at', { ascending: false })
-    : null
+    : isMissingWorkerConfirmationColumnError(primary.error?.message)
+      ? await requireSupabase()
+          .from('timesheets')
+          .select(stripWorkerConfirmationSelect(timesheetDetailSelect))
+          .eq('company_id', companyId)
+          .is('deleted_at', null)
+          .is('timesheet_entries.deleted_at', null)
+          .order('week_start', { ascending: false })
+          .order('updated_at', { ascending: false })
+      : null
 
   const data = fallback?.data ?? primary.data
   const error = fallback?.error ?? primary.error
@@ -1006,6 +1108,11 @@ export async function fetchTimesheets(): Promise<Timesheet[]> {
   })
 
   if (error) {
+    if (isMissingWorkerConfirmationColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Worker confirmation columns are not available yet. Ask DREVORA support to apply the timesheet confirmation migration.',
+      )
+    }
     throw new TimesheetsServiceError(error.message)
   }
 
@@ -1308,6 +1415,26 @@ export async function deleteTimesheet(id: string): Promise<void> {
   const companyId = requireVerifiedCompanyId()
   const supabase = requireSupabase()
   await assertTimesheetInCompany(id, companyId)
+
+  const { data: existing, error: existingError } = await supabase
+    .from('timesheets')
+    .select('status')
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (existingError || !existing) {
+    throw new TimesheetsServiceError(existingError?.message ?? 'Timesheet not found')
+  }
+
+  const status = normalizeStatus(existing.status as string | null | undefined)
+  if (status === 'Submitted' || status === 'Approved') {
+    throw new TimesheetsServiceError(
+      'Submitted and Approved Timesheets cannot be deleted.',
+    )
+  }
+
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError) {
     throw new TimesheetsServiceError(userError.message)
@@ -1382,7 +1509,7 @@ export async function upsertTimesheetEntries(
 
   const { data: ownerRow, error: ownerError } = await supabase
     .from('timesheets')
-    .select('driver_id')
+    .select('driver_id, status')
     .eq('id', timesheetId)
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -1390,6 +1517,13 @@ export async function upsertTimesheetEntries(
 
   if (ownerError || !ownerRow?.driver_id) {
     throw new TimesheetsServiceError(ownerError?.message ?? 'Timesheet not found')
+  }
+
+  const status = normalizeStatus(ownerRow.status as string | null | undefined)
+  if (!canWorkerEditTimesheetStatus(status)) {
+    throw new TimesheetsServiceError(
+      'This Timesheet is submitted or approved and cannot be edited.',
+    )
   }
 
   const effective = await resolveEffectiveForDriver(ownerRow.driver_id as string)
@@ -1577,14 +1711,32 @@ export async function rejectTimesheet(id: string): Promise<Timesheet> {
   return fetchTimesheetRowById(id, companyId)
 }
 
-export async function submitTimesheet(id: string): Promise<Timesheet> {
+export type SubmitTimesheetConfirmation = {
+  /** Must be true — Worker attestation for this submission. */
+  workerConfirmed: true
+  /** drivers.id of the Worker confirming the Timesheet. */
+  confirmedByDriverId: string
+}
+
+export async function submitTimesheet(
+  id: string,
+  confirmation: SubmitTimesheetConfirmation,
+): Promise<Timesheet> {
   const companyId = requireVerifiedCompanyId()
   const supabase = requireSupabase()
   const now = new Date().toISOString()
 
+  if (!confirmation?.workerConfirmed || !confirmation.confirmedByDriverId?.trim()) {
+    throw new TimesheetsServiceError(
+      'Worker confirmation is required before submitting this Timesheet.',
+    )
+  }
+
+  const confirmedByDriverId = confirmation.confirmedByDriverId.trim()
+
   const { data: existing, error: fetchError } = await supabase
     .from('timesheets')
-    .select('submitted_at')
+    .select('submitted_at, status, driver_id, week_start')
     .eq('id', id)
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -1594,9 +1746,25 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
     throw new TimesheetsServiceError(fetchError?.message ?? 'Timesheet not found')
   }
 
+  const status = normalizeStatus(existing.status as string | null | undefined)
+  if (!canWorkerEditTimesheetStatus(status)) {
+    throw new TimesheetsServiceError(
+      'Only Draft or returned Timesheets can be submitted.',
+    )
+  }
+
+  if (existing.driver_id !== confirmedByDriverId) {
+    throw new TimesheetsServiceError(
+      'Confirmation must be made by the Worker who owns this Timesheet.',
+    )
+  }
+
   const payload: Record<string, unknown> = {
     status: 'Submitted',
     updated_at: now,
+    worker_confirmed: true,
+    confirmed_by_driver_id: confirmedByDriverId,
+    confirmed_at: now,
   }
   if (!existing.submitted_at) {
     payload.submitted_at = now
@@ -1608,6 +1776,7 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
     .eq('id', id)
     .eq('company_id', companyId)
     .is('deleted_at', null)
+    .in('status', ['Draft', 'Rejected'])
     .select('id')
     .maybeSingle()
 
@@ -1618,8 +1787,50 @@ export async function submitTimesheet(id: string): Promise<Timesheet> {
     error,
   })
 
-  if (error || !data) {
-    throw new TimesheetsServiceError(error?.message ?? 'Timesheet not found')
+  if (error) {
+    if (isMissingWorkerConfirmationColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Worker confirmation is not available yet. Ask DREVORA support to apply the timesheet confirmation migration.',
+      )
+    }
+    throw new TimesheetsServiceError(error.message)
+  }
+
+  if (!data) {
+    throw new TimesheetsServiceError('Timesheet not found or is no longer editable.')
+  }
+
+  const { error: auditError } = await supabase
+    .from('timesheet_submission_confirmations')
+    .insert({
+      company_id: companyId,
+      timesheet_id: id,
+      confirmed_by_driver_id: confirmedByDriverId,
+      confirmed_at: now,
+      week_start: existing.week_start,
+    })
+
+  logSupabaseQuery({
+    service: 'timesheetsService.submitTimesheet.audit',
+    table: 'timesheet_submission_confirmations',
+    data: [
+      {
+        timesheet_id: id,
+        confirmed_by_driver_id: confirmedByDriverId,
+        confirmed_at: now,
+        week_start: existing.week_start,
+      },
+    ],
+    error: auditError,
+  })
+
+  if (auditError) {
+    if (isMissingWorkerConfirmationColumnError(auditError.message)) {
+      throw new TimesheetsServiceError(
+        'Worker confirmation audit is not available yet. Ask DREVORA support to apply the timesheet confirmation migration.',
+      )
+    }
+    throw new TimesheetsServiceError(auditError.message)
   }
 
   return fetchTimesheetRowById(id, companyId)
@@ -1689,6 +1900,11 @@ export async function fetchTimesheetsByDriverId(
   })
 
   if (error) {
+    if (isMissingWorkerConfirmationColumnError(error.message)) {
+      throw new TimesheetsServiceError(
+        'Worker confirmation columns are not available yet. Ask DREVORA support to apply the timesheet confirmation migration.',
+      )
+    }
     throw new TimesheetsServiceError(error.message)
   }
 

@@ -716,7 +716,7 @@ async function fetchRecentTimesheetActivity(
     const { data, error } = await requireSupabase()
       .from('timesheets')
       .select(
-        'id, submitted_at, approved_at, driver_id, drivers ( first_name, last_name )',
+        'id, submitted_at, approved_at, driver_id, drivers!timesheets_driver_id_fkey ( first_name, last_name )',
       )
       .eq('company_id', scope.companyId)
       .is('deleted_at', null)

@@ -304,7 +304,10 @@ export default function TimesheetsPage() {
     setDrawerSaveError(null)
     try {
       const saved = await persistDrawerEntries(entries)
-      const submitted = await submitTimesheet(saved.id)
+      const submitted = await submitTimesheet(saved.id, {
+        workerConfirmed: true,
+        confirmedByDriverId: saved.driverId,
+      })
       const refreshed = await fetchTimesheetById(submitted.id)
       replaceListItem(refreshed)
       setDrawerState({ timesheet: refreshed, mode: 'view' })

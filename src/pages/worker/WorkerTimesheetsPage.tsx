@@ -7,7 +7,12 @@ import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
 import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesheetHistoryList'
-import type { Timesheet, TimesheetEntryInput, TimesheetStatus } from '@/lib/timesheetTypes'
+import type {
+  Timesheet,
+  TimesheetEntryInput,
+  TimesheetListItem,
+  TimesheetStatus,
+} from '@/lib/timesheetTypes'
 import {
   buildTimesheetOvertimeRules,
   decimalHoursToMinutes,
@@ -15,6 +20,8 @@ import {
   formatDayLabel,
   formatHours,
   formatLocalDateString,
+  formatSubmittedAtDisplay,
+  formatTimesheetSubmittedAt,
   formatTotalHours,
   getDefaultWeekStartMonday,
   getEntryPayableDisplayResult,
@@ -231,7 +238,10 @@ function collapsedDaySummary(
 }
 
 const workerFieldClass =
-  'h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20 disabled:opacity-60'
+  'h-12 w-full rounded-2xl border border-[#C5DFFB]/90 bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20 disabled:opacity-60'
+
+const workerReadonlyFieldClass =
+  'flex h-12 items-center rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF] px-3 text-sm font-semibold tabular-nums text-slate-800'
 
 type DaySaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -278,13 +288,13 @@ function WorkerDayFormFields({
   const missingField = getMissingTimePairField(entry)
 
   return (
-    <div>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
           Shift
         </p>
         {editable ? (
-          <div className="mt-2">
+          <div className="mt-2.5">
             <WorkerTimesheetShiftTimes
               startValue={entry.startTime}
               finishValue={entry.finishTime}
@@ -296,20 +306,20 @@ function WorkerDayFormFields({
             />
           </div>
         ) : (
-          <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="mt-2.5 grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Start
               </span>
-              <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+              <p className={workerReadonlyFieldClass}>
                 {entry.startTime?.slice(0, 5) || '—'}
               </p>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Finish
               </span>
-              <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+              <p className={workerReadonlyFieldClass}>
                 {entry.finishTime?.slice(0, 5) || '—'}
               </p>
             </label>
@@ -321,8 +331,8 @@ function WorkerDayFormFields({
           </p>
         ) : null}
 
-        <label className="mt-3 block space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+        <label className="mt-3.5 block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Break
           </span>
           {editable ? (
@@ -347,22 +357,20 @@ function WorkerDayFormFields({
               ) : null}
             </select>
           ) : (
-            <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
-              {entry.breakMinutes}m
-            </p>
+            <p className={workerReadonlyFieldClass}>{entry.breakMinutes}m</p>
           )}
         </label>
       </div>
 
-      <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+      <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
           Paid hours
         </p>
 
         {isManualMode ? (
-          <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="mt-2.5 grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Basic Hours
               </span>
               {editable ? (
@@ -377,14 +385,14 @@ function WorkerDayFormFields({
                   aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
                 />
               ) : (
-                <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+                <p className={workerReadonlyFieldClass}>
                   {formatHours(payable.basicHours)}
                 </p>
               )}
             </label>
 
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Overtime
               </span>
               {editable ? (
@@ -399,35 +407,35 @@ function WorkerDayFormFields({
                   aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
                 />
               ) : (
-                <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+                <p className={workerReadonlyFieldClass}>
                   {formatHours(payable.overtimeDisplayHours)}
                 </p>
               )}
             </label>
           </div>
         ) : (
-          <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center">
+          <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Basic
               </p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+              <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(payable.basicHours)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Overtime
               </p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-slate-950">
+              <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(payable.overtimeDisplayHours)}
               </p>
             </div>
           </div>
         )}
 
-        <label className="mt-3 block space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+        <label className="mt-3.5 block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Additional Hours
           </span>
           {editable ? (
@@ -438,7 +446,7 @@ function WorkerDayFormFields({
               aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
             />
           ) : (
-            <p className="flex h-12 items-center rounded-2xl border border-slate-100 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-700">
+            <p className={workerReadonlyFieldClass}>
               {formatHours(payable.additionalHours)}
             </p>
           )}
@@ -451,8 +459,8 @@ function WorkerDayFormFields({
           ) : null}
         </label>
 
-        <div className="mt-3 rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+        <div className="mt-3.5 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Total Hours
           </p>
           <p className="mt-1 text-base font-bold tabular-nums text-slate-950">
@@ -470,32 +478,34 @@ function WorkerDayFormFields({
         </div>
       </div>
 
-      <label className="mt-4 block space-y-1.5">
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-          Daily note
-        </span>
-        {editable ? (
-          <input
-            type="text"
-            value={entry.dailyComment}
-            onChange={(event) =>
-              onUpdate(entry.dayDate, {
-                dailyComment: event.target.value,
-              })
-            }
-            placeholder={
-              entry.additionalHours > 0
-                ? 'Required — e.g. Night-shift allowance'
-                : 'Optional note'
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-[#F8FBFF] px-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20"
-          />
-        ) : (
-          <p className="min-h-12 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-            {entry.dailyComment.trim() || '—'}
-          </p>
-        )}
-      </label>
+      <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Daily note
+          </span>
+          {editable ? (
+            <input
+              type="text"
+              value={entry.dailyComment}
+              onChange={(event) =>
+                onUpdate(entry.dayDate, {
+                  dailyComment: event.target.value,
+                })
+              }
+              placeholder={
+                entry.additionalHours > 0
+                  ? 'Required — e.g. Night-shift allowance'
+                  : 'Optional note'
+              }
+              className={workerFieldClass}
+            />
+          ) : (
+            <p className="min-h-12 rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-3 text-sm text-slate-800">
+              {entry.dailyComment.trim() || '—'}
+            </p>
+          )}
+        </label>
+      </div>
     </div>
   )
 }
@@ -599,12 +609,12 @@ function WorkerMobileSelectedDayCard({
   return (
     <article
       className={cn(
-        'rounded-[1.5rem] border bg-white p-4 shadow-sm shadow-slate-200/50',
-        state === 'error' ? 'border-rose-200' : 'border-slate-100',
-        'ring-2 ring-[#2F80ED]/70',
+        'rounded-[1.5rem] border bg-white p-4 shadow-[0_2px_10px_rgba(33,142,231,0.08)]',
+        state === 'error' ? 'border-rose-200' : 'border-[#BFE3F5]/80',
+        'ring-2 ring-[#2F80ED]/55',
       )}
     >
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3 border-b border-[#E8F3FE] pb-3">
         <DayIndicatorDot state={state} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -612,7 +622,7 @@ function WorkerMobileSelectedDayCard({
               {formatDayLabel(entry.dayDate)}
             </h2>
             {isToday ? (
-              <span className="rounded-full bg-[#F6F9FF] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2F80ED]">
+              <span className="rounded-full bg-[#E8F3FE] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0B68BE]">
                 Today
               </span>
             ) : null}
@@ -801,6 +811,7 @@ export default function WorkerTimesheetsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
+  const [viewingFromHistory, setViewingFromHistory] = useState(false)
   const loadGenerationRef = useRef(0)
   const submitLockRef = useRef(false)
 
@@ -1188,6 +1199,7 @@ export default function WorkerTimesheetsPage() {
   async function handleSubmitConfirm() {
     if (
       !timesheet ||
+      !worker ||
       !editable ||
       isSavingDay ||
       isSubmitting ||
@@ -1208,7 +1220,10 @@ export default function WorkerTimesheetsPage() {
         setSubmitConfirmOpen(false)
         return
       }
-      const submitted = await submitTimesheet(timesheet.id)
+      const submitted = await submitTimesheet(timesheet.id, {
+        workerConfirmed: true,
+        confirmedByDriverId: worker.id,
+      })
       const refreshed = await fetchTimesheetById(submitted.id)
       if (refreshed.driverId !== worker?.id) {
         throw new Error('Timesheet does not belong to the signed-in worker.')
@@ -1258,7 +1273,23 @@ export default function WorkerTimesheetsPage() {
 
   function handleWeekChange(deltaWeeks: number) {
     if (!confirmDiscardIfDirty()) return
+    setViewingFromHistory(false)
     setWeekStart((current) => shiftWeekStart(current, deltaWeeks, weekSettings))
+  }
+
+  function handleOpenHistoryWeek(item: TimesheetListItem) {
+    if (!confirmDiscardIfDirty()) return
+    setViewingFromHistory(true)
+    setWeekStart(item.weekStart)
+    setActiveTab('current')
+    setActionError(null)
+    setActionMessage(null)
+  }
+
+  function handleBackToHistory() {
+    if (!confirmDiscardIfDirty()) return
+    setViewingFromHistory(false)
+    setActiveTab('history')
   }
 
   if (workerLoading || companyLoading || (isLoading && !timesheet && !loadError)) {
@@ -1395,22 +1426,69 @@ export default function WorkerTimesheetsPage() {
       ) : null}
 
       {!editable ? (
-        <p className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">
-          This timesheet is {status.toLowerCase()} and is read-only for Workers.
-          Office reviews Submitted and Approved timesheets.
-        </p>
+        <div className="space-y-2 rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
+          <p className="text-sm font-medium text-slate-700">
+            This timesheet is <span className="font-semibold">{getStatusLabel(status)}</span> and
+            is read-only. Editing historical Submitted or Approved records is not allowed.
+          </p>
+          <dl className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 sm:grid-cols-2">
+            <div className="flex justify-between gap-2 sm:block">
+              <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Submitted
+              </dt>
+              <dd className="font-medium text-slate-700">
+                {formatSubmittedAtDisplay(timesheet?.submittedAt, status)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2 sm:block">
+              <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Approved
+              </dt>
+              <dd className="font-medium text-slate-700">
+                {status === 'Approved'
+                  ? formatTimesheetSubmittedAt(timesheet?.approvedAt) ?? '—'
+                  : '—'}
+              </dd>
+            </div>
+            {timesheet?.workerConfirmed && timesheet.confirmedAt ? (
+              <div className="flex justify-between gap-2 sm:col-span-2 sm:block">
+                <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
+                  Confirmation
+                </dt>
+                <dd className="font-medium text-slate-700">
+                  Confirmed by {timesheet.driverName}
+                  {formatTimesheetSubmittedAt(timesheet.confirmedAt)
+                    ? ` · ${formatTimesheetSubmittedAt(timesheet.confirmedAt)}`
+                    : ''}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+          {viewingFromHistory ? (
+            <button
+              type="button"
+              onClick={handleBackToHistory}
+              className="mt-1 inline-flex min-h-10 items-center text-sm font-semibold text-[#0B68BE] hover:underline"
+            >
+              ← Back to History
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <div
         role="tablist"
         aria-label="Timesheet view"
-        className="grid grid-cols-2 gap-1 rounded-[1.25rem] border border-slate-100 bg-white p-1.5 shadow-sm"
+        className="grid grid-cols-2 gap-1 rounded-[1.25rem] border border-[#BFE3F5]/70 bg-white p-1.5 shadow-sm"
       >
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === 'current'}
-          onClick={() => setActiveTab('current')}
+          onClick={() => {
+            setViewingFromHistory(false)
+            setActiveTab('current')
+          }}
           className={cn(
             'h-10 rounded-2xl text-sm font-semibold transition-colors',
             activeTab === 'current'
@@ -1424,7 +1502,11 @@ export default function WorkerTimesheetsPage() {
           type="button"
           role="tab"
           aria-selected={activeTab === 'history'}
-          onClick={() => setActiveTab('history')}
+          onClick={() => {
+            if (!confirmDiscardIfDirty()) return
+            setViewingFromHistory(false)
+            setActiveTab('history')
+          }}
           className={cn(
             'h-10 rounded-2xl text-sm font-semibold transition-colors',
             activeTab === 'history'
@@ -1440,7 +1522,7 @@ export default function WorkerTimesheetsPage() {
         <>
           <section
             aria-label="Week summary"
-            className="grid grid-cols-3 gap-2"
+            className="grid grid-cols-3 gap-2.5"
           >
             <SummaryStat label="Worked" value={formatHours(summary.workedHours)} />
             <SummaryStat label="Overtime" value={formatHours(summary.overtimeHours)} />
@@ -1516,7 +1598,10 @@ export default function WorkerTimesheetsPage() {
           </p>
         </>
       ) : (
-        <WorkerTimesheetHistoryList workerId={worker.id} />
+        <WorkerTimesheetHistoryList
+          workerId={worker.id}
+          onOpenWeek={handleOpenHistoryWeek}
+        />
       )}
 
       <WorkerSubmitTimesheetDialog
@@ -1535,11 +1620,11 @@ export default function WorkerTimesheetsPage() {
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-[#F6F9FF] px-3 py-3 text-center">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+    <div className="rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center shadow-[0_1px_3px_rgba(33,142,231,0.06)]">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#5499BF]">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">{value}</p>
     </div>
   )
 }

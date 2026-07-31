@@ -1,6 +1,10 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  WorkerNavigationGuardProvider,
+  useWorkerNavigationGuard,
+} from '@/contexts/WorkerNavigationGuardContext'
+import {
   applyResolvedWorkerAppearance,
   clearWorkerAppearance,
 } from '@/lib/workerAppearance'
@@ -13,7 +17,7 @@ import {
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { Home, LogOut } from 'lucide-react'
-import { useLayoutEffect, useMemo } from 'react'
+import { useLayoutEffect, useMemo, type MouseEvent } from 'react'
 
 function navButtonClass(active: boolean) {
   return cn(
@@ -22,10 +26,11 @@ function navButtonClass(active: boolean) {
   )
 }
 
-function MainLayout() {
+function MainLayoutShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const { signOut, session } = useAuth()
+  const { attemptLeave } = useWorkerNavigationGuard()
   const userId = session?.user.id ?? null
 
   const bottomNavItems = useMemo(() => getWorkerBottomNavItems(), [])
@@ -39,9 +44,20 @@ function MainLayout() {
     return () => clearWorkerAppearance()
   }, [userId])
 
+  function handleGuardedNavigate(to: string, event?: MouseEvent) {
+    event?.preventDefault()
+    attemptLeave(() => {
+      navigate(to)
+    })
+  }
+
   async function handleSignOut() {
-    await signOut()
-    navigate(LOGIN_PATH, { replace: true })
+    attemptLeave(() => {
+      void (async () => {
+        await signOut()
+        navigate(LOGIN_PATH, { replace: true })
+      })()
+    })
   }
 
   function renderNavLink(item: WorkerNavItem) {
@@ -51,6 +67,7 @@ function MainLayout() {
       <NavLink
         key={item.id}
         to={item.to}
+        onClick={(event) => handleGuardedNavigate(item.to, event)}
         className={() => navButtonClass(active)}
       >
         {active ? <span className="worker-nav-indicator" aria-hidden /> : null}
@@ -73,6 +90,7 @@ function MainLayout() {
           <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-1 rounded-[1.75rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-1">
             <NavLink
               to={WORKER_HOME_PATH}
+              onClick={(event) => handleGuardedNavigate(WORKER_HOME_PATH, event)}
               className={() =>
                 navButtonClass(location.pathname === WORKER_HOME_PATH)
               }
@@ -107,6 +125,14 @@ function MainLayout() {
         </div>
       </div>
     </div>
+  )
+}
+
+function MainLayout() {
+  return (
+    <WorkerNavigationGuardProvider>
+      <MainLayoutShell />
+    </WorkerNavigationGuardProvider>
   )
 }
 

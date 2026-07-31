@@ -343,6 +343,8 @@ grant select, insert, update, delete on public.vehicle_availability to anon, aut
 grant select, insert, update, delete on public.companies to anon, authenticated;
 grant select, insert, update, delete on public.timesheets to anon, authenticated;
 grant select, insert, update, delete on public.timesheet_entries to anon, authenticated;
+grant select, insert on public.timesheet_submission_confirmations to anon, authenticated;
+revoke update, delete on public.timesheet_submission_confirmations from anon, authenticated;
 -- Timesheet retention: column REVOKE is defense-in-depth only (see 20260726200000).
 -- Table-level INSERT/UPDATE above still confers effective column access in PostgreSQL;
 -- drevora_timesheets_retention_guard overwrites any client-supplied retention_expires_at.

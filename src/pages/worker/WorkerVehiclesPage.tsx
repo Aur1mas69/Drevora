@@ -18,13 +18,14 @@ import {
   type Vehicle,
 } from '@/services/vehiclesService'
 import {
+  ChevronRight,
   ClipboardCheck,
   CircleDot,
   FileWarning,
   Fuel,
   Loader2,
-  Truck,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -34,6 +35,35 @@ const VEHICLES_LOAD_FALLBACK = 'Unable to load vehicles.'
 const VEHICLES_RECONNECT_RETRY_MS = 2500
 const VEHICLES_RECONNECT_MAX_ATTEMPTS = 4
 
+type VehicleActionTone = 'violet' | 'amber' | 'rose'
+
+const VEHICLE_ACTION_TONE: Record<
+  VehicleActionTone,
+  { card: string; iconWell: string; icon: string; hover: string; active: string }
+> = {
+  violet: {
+    card: 'border-violet-200/80 bg-violet-50/90',
+    iconWell: 'bg-violet-100 text-violet-700',
+    icon: 'text-violet-700',
+    hover: 'hover:border-violet-300 hover:bg-violet-100/90',
+    active: 'active:border-violet-300 active:bg-violet-100',
+  },
+  amber: {
+    card: 'border-amber-200/80 bg-amber-50/90',
+    iconWell: 'bg-amber-100 text-amber-800',
+    icon: 'text-amber-800',
+    hover: 'hover:border-amber-300 hover:bg-amber-100/90',
+    active: 'active:border-amber-300 active:bg-amber-100',
+  },
+  rose: {
+    card: 'border-rose-200/80 bg-rose-50/90',
+    iconWell: 'bg-rose-100 text-rose-700',
+    icon: 'text-rose-700',
+    hover: 'hover:border-rose-300 hover:bg-rose-100/90',
+    active: 'active:border-rose-300 active:bg-rose-100',
+  },
+}
+
 function VehicleActionCard({
   title,
   description,
@@ -41,22 +71,22 @@ function VehicleActionCard({
   to,
   disabled,
   comingSoon,
-  activeClassName,
+  tone,
 }: {
   title: string
   description: string
-  icon: typeof Truck
+  icon: LucideIcon
   to?: string
   disabled?: boolean
   comingSoon?: boolean
-  activeClassName?: string
+  tone: VehicleActionTone
 }) {
+  const toneStyles = VEHICLE_ACTION_TONE[tone]
   const className = cn(
-    'flex min-h-[5.5rem] w-full flex-col justify-between rounded-[1.5rem] border p-4 text-left shadow-sm transition-colors',
+    'flex h-full min-h-[6.5rem] w-full flex-col justify-between rounded-[1.5rem] border p-4 text-left shadow-sm transition-colors',
     disabled
-      ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400'
-      : 'border-slate-100 bg-white text-slate-950 shadow-slate-200/60 hover:border-[#BFDFFF] hover:bg-[#F8FBFF]',
-    !disabled && activeClassName,
+      ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400 shadow-none'
+      : cn(toneStyles.card, 'shadow-slate-200/40', toneStyles.hover, toneStyles.active),
   )
 
   const body = (
@@ -64,12 +94,14 @@ function VehicleActionCard({
       <div className="flex items-start justify-between gap-3">
         <div
           className={cn(
-            'flex size-11 items-center justify-center rounded-2xl',
-            disabled ? 'bg-slate-100' : 'bg-[#EAF4FF]',
+            'flex size-10 items-center justify-center rounded-2xl',
+            disabled ? 'bg-slate-100 text-slate-400' : toneStyles.iconWell,
           )}
         >
           <Icon
-            className={cn('size-5', disabled ? 'text-slate-400' : 'text-[#2F80ED]')}
+            className={cn('size-5', disabled ? 'text-slate-400' : toneStyles.icon)}
+            strokeWidth={1.75}
+            aria-hidden
           />
         </div>
         {comingSoon ? (
@@ -79,8 +111,8 @@ function VehicleActionCard({
         ) : null}
       </div>
       <div>
-        <p className="text-base font-semibold">{title}</p>
-        <p className={cn('mt-1 text-sm', disabled ? 'text-slate-400' : 'text-slate-500')}>
+        <p className="text-base font-semibold leading-snug text-slate-950">{title}</p>
+        <p className={cn('mt-1 text-sm leading-snug', disabled ? 'text-slate-400' : 'text-slate-600')}>
           {description}
         </p>
       </div>
@@ -510,13 +542,29 @@ export default function WorkerVehiclesPage() {
       />
 
       {selectedVehicle ? (
-        <section className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50">
+        <section
+          className="rounded-[1.5rem] border border-[#89CFF0] p-4 shadow-[0_1px_3px_rgba(33,142,231,0.12)]"
+          style={{
+            backgroundImage:
+              'linear-gradient(135deg, #9FD0F0 0%, #BFE3F5 35%, #E8F3FE 68%, #FFFFFF 100%)',
+          }}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Selected vehicle
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#5499BF]">
+                  Selected vehicle
+                </p>
+                {isSelectedDefault ? (
+                  <span
+                    className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-emerald-700"
+                    role="status"
+                  >
+                    Default vehicle
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
                 {selectedRegistration}
               </p>
             </div>
@@ -524,38 +572,28 @@ export default function WorkerVehiclesPage() {
               type="button"
               onClick={clearSelection}
               aria-label={`Remove selected vehicle ${selectedRegistration}`}
-              className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#89CFF0] bg-white/80 text-slate-600 transition-colors hover:bg-white hover:text-slate-900"
             >
               <X className="size-4" aria-hidden="true" />
             </button>
           </div>
 
-          {selectedMakeModel ? (
-            <p className="mt-1 text-sm text-slate-500">{selectedMakeModel}</p>
-          ) : null}
-          {selectedType ? (
-            <p className="mt-0.5 text-sm text-slate-500">Type: {selectedType}</p>
-          ) : null}
-          {selectedFleet ? (
-            <p className="mt-0.5 text-sm text-slate-500">{selectedFleet}</p>
-          ) : null}
+          <div className="mt-2 space-y-0.5 text-sm text-slate-600">
+            {selectedMakeModel ? <p>{selectedMakeModel}</p> : null}
+            {selectedType ? <p>Type: {selectedType}</p> : null}
+            {selectedFleet ? <p>{selectedFleet}</p> : null}
+          </div>
 
           {isSelectedDefault ? (
-            <div className="mt-4 space-y-2">
-              <p
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-emerald-50 px-3 text-sm font-semibold text-emerald-700"
-                role="status"
-              >
-                Saved as your default
-              </p>
+            <div className="mt-3">
               <button
                 type="button"
                 disabled={isSavingDefault}
                 onClick={() => void handleRemoveDefault()}
                 aria-label={`Remove ${selectedRegistration} as default vehicle`}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline disabled:opacity-60"
               >
-                {isSavingDefault ? <Loader2 className="size-4 animate-spin" /> : null}
+                {isSavingDefault ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
                 Remove default
               </button>
             </div>
@@ -565,9 +603,9 @@ export default function WorkerVehiclesPage() {
               disabled={isSavingDefault}
               onClick={() => void handleSaveDefault()}
               aria-label={`Set ${selectedRegistration} as default vehicle`}
-              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#2F80ED] text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:opacity-60"
+              className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F80ED] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:opacity-60"
             >
-              {isSavingDefault ? <Loader2 className="size-4 animate-spin" /> : null}
+              {isSavingDefault ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               Set as default
             </button>
           )}
@@ -586,37 +624,68 @@ export default function WorkerVehiclesPage() {
         </p>
       )}
 
-      <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
-        <VehicleActionCard
-          title="Start Vehicle Check"
-          description="Walkaround check for the selected vehicle."
-          icon={ClipboardCheck}
-          disabled={!selectedVehicle}
-          to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
-        />
-        <VehicleActionCard
-          title="Start Tyre Check"
-          description="Tyre inspection workflow."
-          icon={CircleDot}
-          disabled={!selectedVehicle}
-          to={vehicleHref('/worker/tyre-checks/new', selectedVehicleId)}
-        />
-        <VehicleActionCard
-          title="Add Consumable"
-          description="Record fuel, AdBlue or other consumables."
-          icon={Fuel}
-          disabled={!selectedVehicle}
-          to={vehicleHref('/worker/consumables', selectedVehicleId)}
-        />
-        <VehicleActionCard
-          title="Create Driver Report"
-          description="Report a defect or operational issue."
-          icon={FileWarning}
-          disabled={!selectedVehicle}
-          to={vehicleHref('/worker/driver-reports', selectedVehicleId)}
-          activeClassName="active:border-[#BFDFFF] active:bg-[#F8FBFF]"
-        />
-      </section>
+      <div className="space-y-3">
+        {selectedVehicle ? (
+          <Link
+            to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
+            className="worker-home-cta worker-btn-primary w-full text-white"
+          >
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ClipboardCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+                <span className="truncate">Start Vehicle Check</span>
+              </span>
+              <span className="pl-7 text-left text-xs font-normal text-white/85">
+                Walkaround check for the selected vehicle.
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
+          </Link>
+        ) : (
+          <div
+            className="worker-home-cta worker-btn-primary w-full cursor-not-allowed text-white opacity-60"
+            aria-disabled="true"
+          >
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ClipboardCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+                <span className="truncate">Start Vehicle Check</span>
+              </span>
+              <span className="pl-7 text-left text-xs font-normal text-white/85">
+                Walkaround check for the selected vehicle.
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+          <VehicleActionCard
+            title="Start Tyre Check"
+            description="Tyre inspection workflow."
+            icon={CircleDot}
+            tone="violet"
+            disabled={!selectedVehicle}
+            to={vehicleHref('/worker/tyre-checks/new', selectedVehicleId)}
+          />
+          <VehicleActionCard
+            title="Add Consumable"
+            description="Record fuel, AdBlue or other consumables."
+            icon={Fuel}
+            tone="amber"
+            disabled={!selectedVehicle}
+            to={vehicleHref('/worker/consumables', selectedVehicleId)}
+          />
+          <VehicleActionCard
+            title="Create Driver Report"
+            description="Report a defect or operational issue."
+            icon={FileWarning}
+            tone="rose"
+            disabled={!selectedVehicle}
+            to={vehicleHref('/worker/driver-reports', selectedVehicleId)}
+          />
+        </section>
+      </div>
     </div>
   )
 }

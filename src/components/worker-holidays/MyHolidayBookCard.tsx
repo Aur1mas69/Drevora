@@ -50,22 +50,22 @@ export function MyHolidayBookCard({
   return (
     <section className={myHolidayCardClass}>
       <p className={myHolidaySectionEyebrowClass}>Book holiday</p>
-      <h2 className={`mt-1 ${myHolidaySectionTitleClass}`}>Request time off</h2>
+      <h2 className={`mt-1.5 ${myHolidaySectionTitleClass}`}>Request time off</h2>
 
       {showManagedMessage ? (
-        <p className="mt-3 rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
+        <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
           Your holiday balance is managed by your company.
         </p>
       ) : null}
 
       <HolidayDatePickerGroup>
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3.5">
           <label className="block min-w-0 space-y-1.5">
             <span className="text-xs font-semibold text-[#5499BF]">Start date</span>
             <HolidayDateInput
               value={startDate}
               onChange={onStartDateChange}
-              className="h-11 rounded-[14px] border-[#C5DFFB]/80 bg-white"
+              className="h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
               layout="modal"
               blurOnSelect
               aria-label="Start date"
@@ -77,7 +77,7 @@ export function MyHolidayBookCard({
               value={endDate}
               onChange={onEndDateChange}
               min={startDate || undefined}
-              className="h-11 rounded-[14px] border-[#C5DFFB]/80 bg-white"
+              className="h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
               layout="modal"
               blurOnSelect
               aria-label="End date"
@@ -90,21 +90,21 @@ export function MyHolidayBookCard({
               onChange={(event) => onReasonChange(event.target.value)}
               rows={3}
               placeholder="Add a short note for your manager"
-              className="w-full resize-none rounded-[14px] border border-[#C5DFFB]/80 bg-white px-3 py-2.5 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors placeholder:text-[#5499BF]/70 focus:border-[#89CFF0] focus:ring-2 focus:ring-[#BFE3F5]/70"
+              className="w-full resize-none rounded-2xl border border-[#C5DFFB]/80 bg-white px-3 py-2.5 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors placeholder:text-[#5499BF]/70 focus:border-[#89CFF0] focus:ring-2 focus:ring-[#BFE3F5]/70"
             />
           </label>
         </div>
       </HolidayDatePickerGroup>
 
       {hasDates ? (
-        <div className="mt-4 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-3">
+        <div className="mt-5 rounded-2xl border border-[#D3E9FC] bg-white/80 p-3.5 shadow-[0_1px_3px_rgba(33,142,231,0.06)]">
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#218EE7]">
             Request summary
           </p>
           {isPreviewLoading ? (
             <p className="mt-2 text-sm text-[#5499BF]">Calculating days…</p>
           ) : preview ? (
-            <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <dl className="mt-2.5 grid grid-cols-3 gap-2 text-center">
               <div>
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
                   Calendar
@@ -138,7 +138,7 @@ export function MyHolidayBookCard({
             </dl>
           ) : null}
           {exceedsBalance ? (
-            <p className="mt-3 rounded-[10px] border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-800">
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-800">
               This request is higher than your current balance. Your manager will review it.
             </p>
           ) : null}
@@ -149,7 +149,7 @@ export function MyHolidayBookCard({
         type="button"
         disabled={!hasDates || isSubmitting || isPreviewLoading}
         onClick={onSubmit}
-        className={`mt-4 ${myHolidayPrimaryButtonClass}`}
+        className={`mt-5 ${myHolidayPrimaryButtonClass}`}
       >
         {isSubmitting ? 'Submitting…' : 'Submit request'}
       </Button>

@@ -672,10 +672,48 @@ alter table public.timesheets
   add column if not exists approved_at timestamptz,
   add column if not exists rejected_at timestamptz,
   add column if not exists cleaned_at timestamptz,
-  add column if not exists retention_expires_at timestamptz;
+  add column if not exists retention_expires_at timestamptz,
+  add column if not exists worker_confirmed boolean not null default false,
+  add column if not exists confirmed_by_driver_id uuid references public.drivers (id) on delete set null,
+  add column if not exists confirmed_at timestamptz;
 
 comment on column public.timesheets.retention_expires_at is
   'Final included UTC retention instant for the Timesheet parent: start of (week_start + 7 days) + 6 calendar years − 1 microsecond. Preserves the full final work-week day and the full six-year period. Metadata only; does not auto-delete.';
+
+comment on column public.timesheets.worker_confirmed is
+  'True when the Worker has confirmed the current submission. Cleared when Office returns/rejects for correction.';
+comment on column public.timesheets.confirmed_by_driver_id is
+  'drivers.id of the Worker who confirmed the current submission. Cleared on return/reject.';
+comment on column public.timesheets.confirmed_at is
+  'Timestamp of the current Worker confirmation. Cleared on return/reject; prior values live in timesheet_submission_confirmations.';
+
+create table if not exists public.timesheet_submission_confirmations (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  company_id uuid not null references public.companies (id) on delete cascade,
+  timesheet_id uuid not null references public.timesheets (id) on delete cascade,
+  confirmed_by_driver_id uuid not null references public.drivers (id) on delete restrict,
+  confirmed_at timestamptz not null,
+  week_start date not null
+);
+
+comment on table public.timesheet_submission_confirmations is
+  'Append-only audit of Worker Timesheet submission confirmations. Survives Office return/reject resets of timesheets.worker_confirmed.';
+
+create index if not exists timesheet_submission_confirmations_timesheet_id_idx
+  on public.timesheet_submission_confirmations (timesheet_id);
+create index if not exists timesheet_submission_confirmations_company_id_idx
+  on public.timesheet_submission_confirmations (company_id);
+create index if not exists timesheet_submission_confirmations_confirmed_at_idx
+  on public.timesheet_submission_confirmations (timesheet_id, confirmed_at desc);
+create index if not exists timesheets_confirmed_by_driver_id_idx
+  on public.timesheets (confirmed_by_driver_id)
+  where confirmed_by_driver_id is not null;
+create index if not exists timesheets_confirmed_at_idx
+  on public.timesheets (confirmed_at)
+  where confirmed_at is not null;
+
+alter table public.timesheet_submission_confirmations disable row level security;
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -716,6 +754,46 @@ create index if not exists idx_timesheet_entries_not_deleted
   on public.timesheet_entries (timesheet_id, deleted_at);
 create unique index if not exists timesheet_entries_timesheet_day_unique_idx
   on public.timesheet_entries (timesheet_id, day_date);
+
+create or replace function public.drevora_enforce_timesheet_entries_immutable_when_locked()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_status text;
+  v_timesheet_id uuid;
+begin
+  v_timesheet_id := coalesce(new.timesheet_id, old.timesheet_id);
+
+  select t.status
+  into v_status
+  from public.timesheets t
+  where t.id = v_timesheet_id
+  for share;
+
+  if v_status in ('Submitted', 'Approved') then
+    raise exception 'TIMESHEET_ENTRIES_LOCKED'
+      using errcode = 'P0001',
+            hint = 'Submitted and Approved Timesheets are read-only. Return/reject the Timesheet before editing days.';
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists timesheet_entries_immutable_when_locked
+  on public.timesheet_entries;
+
+create trigger timesheet_entries_immutable_when_locked
+  before insert or update or delete
+  on public.timesheet_entries
+  for each row
+  execute function public.drevora_enforce_timesheet_entries_immutable_when_locked();
 
 -- Timesheet retention calculator + guard (see 20260726200000).
 create or replace function public.drevora_timesheet_retention_expires_at(p_week_start date)

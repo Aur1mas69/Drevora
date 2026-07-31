@@ -214,7 +214,7 @@ async function searchTimesheets(
 ): Promise<QuickSearchResultItem[]> {
   const request = requireSupabase()
     .from('timesheets')
-    .select('id, week_start, status, driver_id, drivers!inner ( first_name, last_name )')
+    .select('id, week_start, status, driver_id, drivers!timesheets_driver_id_fkey!inner ( first_name, last_name )')
     .eq('company_id', scope.companyId)
     .is('deleted_at', null)
     .or(
