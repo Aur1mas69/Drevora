@@ -16,6 +16,7 @@ import {
   type WorkerNavItem,
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
+import { subscribeWorkerVisualViewportSync } from '@/lib/workerVisualViewport'
 import { Home, LogOut } from 'lucide-react'
 import { useLayoutEffect, useMemo, type MouseEvent } from 'react'
 
@@ -43,6 +44,10 @@ function MainLayoutShell() {
     // leave worker-dark applied to the shared document.
     return () => clearWorkerAppearance()
   }, [userId])
+
+  // iOS installed PWA: remeasure visual viewport when the Worker shell mounts
+  // (after auth/legal gates). Refresh used to fix stale 100dvh cold-launch sizes.
+  useLayoutEffect(() => subscribeWorkerVisualViewportSync(), [])
 
   function handleGuardedNavigate(to: string, event?: MouseEvent) {
     event?.preventDefault()

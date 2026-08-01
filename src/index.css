@@ -168,15 +168,29 @@ body {
   }
 }
 
-/* Worker routes only — do not apply to Admin shell */
+/*
+ * Worker routes only — do not apply to Admin shell.
+ * --drevora-worker-vvh / --drevora-worker-vvw are set by
+ * src/lib/workerVisualViewport.ts when MainLayout mounts (iOS PWA cold launch).
+ * Fallback keeps prior 100dvh behaviour on Android / desktop / before sync.
+ */
 .worker-mobile-layout {
   position: relative;
   width: 100%;
   max-width: 100%;
+  max-width: min(100%, var(--drevora-worker-vvw, 100%));
   min-width: 0;
   min-height: 100dvh;
+  min-height: var(--drevora-worker-vvh, 100dvh);
   overflow-x: clip;
   isolation: isolate;
+}
+
+html.worker-vvh-ready,
+html.worker-vvh-ready body,
+html.worker-vvh-ready #root {
+  min-height: 100dvh;
+  min-height: var(--drevora-worker-vvh, 100dvh);
 }
 
 .worker-mobile-layout main,
