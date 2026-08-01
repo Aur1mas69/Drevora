@@ -128,14 +128,29 @@ export function WorkerVehicleCombobox({
       const anchor = inputWrapRef.current
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom - 8
-      const spaceAbove = rect.top - 8
-      const preferBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove
-      const maxHeight = Math.min(224, Math.max(120, preferBelow ? spaceBelow : spaceAbove))
+      // Use visualViewport so the list stays visible above the mobile keyboard.
+      const vv = window.visualViewport
+      const viewportTop = vv?.offsetTop ?? 0
+      const viewportHeight = vv?.height ?? window.innerHeight
+      const viewportLeft = vv?.offsetLeft ?? 0
+      const viewportWidth = vv?.width ?? window.innerWidth
+      const gutter = 8
+      const spaceBelow = viewportTop + viewportHeight - rect.bottom - gutter
+      const spaceAbove = rect.top - viewportTop - gutter
+      const preferBelow = spaceBelow >= 120 || spaceBelow >= spaceAbove
+      const available = preferBelow ? spaceBelow : spaceAbove
+      const maxHeight = Math.min(240, Math.max(96, available))
+      const width = Math.min(rect.width, viewportWidth - gutter * 2)
+      const left = Math.min(
+        Math.max(viewportLeft + gutter, rect.left),
+        viewportLeft + viewportWidth - width - gutter,
+      )
       setListboxPosition({
-        top: preferBelow ? rect.bottom + 4 : Math.max(8, rect.top - maxHeight - 4),
-        left: rect.left,
-        width: rect.width,
+        top: preferBelow
+          ? rect.bottom + 4
+          : Math.max(viewportTop + gutter, rect.top - maxHeight - 4),
+        left,
+        width,
         maxHeight,
       })
     }
@@ -143,9 +158,14 @@ export function WorkerVehicleCombobox({
     updatePosition()
     window.addEventListener('resize', updatePosition)
     window.addEventListener('scroll', updatePosition, true)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', updatePosition)
+    vv?.addEventListener('scroll', updatePosition)
     return () => {
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
+      vv?.removeEventListener('resize', updatePosition)
+      vv?.removeEventListener('scroll', updatePosition)
     }
   }, [showResults, searchQuery, filteredVehicles.length])
 
@@ -185,7 +205,7 @@ export function WorkerVehicleCombobox({
               width: listboxPosition.width,
               maxHeight: listboxPosition.maxHeight,
             }}
-            className="worker-theme-surface z-[200] overflow-y-auto rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)] py-1 shadow-lg"
+            className="worker-theme-surface z-[200] max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)] py-1 shadow-lg"
           >
             {filteredVehicles.length === 0 ? (
               <p className="px-3 py-2.5 text-sm text-[color:var(--worker-text-secondary)]">
@@ -281,7 +301,7 @@ export function WorkerVehicleCombobox({
             placeholder={placeholder}
             onChange={(event) => handleSearchChange(event.target.value)}
             onFocus={() => setOpen(true)}
-            className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-sm font-semibold uppercase tracking-[0.04em] text-[color:var(--worker-text)] focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-[color:var(--worker-primary)]"
+            className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-base font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase sm:text-sm focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-[color:var(--worker-primary)]"
           />
         </div>
       </label>
