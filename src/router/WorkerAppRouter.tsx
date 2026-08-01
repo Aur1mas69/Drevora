@@ -6,6 +6,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { RequireWorkerLegalAcceptance } from '@/components/legal/RequireWorkerLegalAcceptance'
 import { AppLockGate } from '@/components/auth/AppLockGate'
 import {
   MembershipAccessBlocked,
@@ -61,6 +62,11 @@ const WorkerSettingsContactOfficePage = lazy(
 )
 const WorkerSettingsHelpPage = lazy(
   () => import('@/pages/worker/WorkerSettingsHelpPage'),
+)
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
+const WorkerTermsPage = lazy(() => import('@/pages/WorkerTermsPage'))
+const WorkerCompanyPrivacyNoticePage = lazy(
+  () => import('@/pages/worker/WorkerCompanyPrivacyNoticePage'),
 )
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
@@ -142,7 +148,9 @@ function RequireWorkerAccess() {
 
   return (
     <AppLockGate>
-      <MainLayout />
+      <RequireWorkerLegalAcceptance>
+        <MainLayout />
+      </RequireWorkerLegalAcceptance>
     </AppLockGate>
   )
 }
@@ -206,6 +214,18 @@ function WorkerAppRouter() {
             <Route
               path="/worker/settings/help"
               element={<WorkerSettingsHelpPage />}
+            />
+            <Route
+              path="/worker/settings/help/legal/worker-terms"
+              element={<WorkerTermsPage />}
+            />
+            <Route
+              path="/worker/settings/help/legal/privacy"
+              element={<PrivacyPage />}
+            />
+            <Route
+              path="/worker/settings/help/legal/company-privacy-notice"
+              element={<WorkerCompanyPrivacyNoticePage />}
             />
             <Route path="/history" element={<Navigate to={WORKER_HOME_PATH} replace />} />
             <Route

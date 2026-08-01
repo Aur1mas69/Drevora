@@ -18,7 +18,7 @@ import {
   LayoutDashboard,
   Plug,
   Rocket,
-  Scale,
+  FileSignature,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -62,8 +62,9 @@ export const adminMainNavigationItems: AdminNavItem[] = [
 /** Settings and support modules shown below the sidebar divider. */
 export const adminSecondaryNavigationItems: AdminNavItem[] = [
   { label: 'Settings', to: '/admin/settings', icon: Settings },
-  { label: 'Terms & Conditions', to: '/terms', icon: Scale },
+  { label: 'Customer Terms & Conditions', to: '/terms', icon: ScrollText },
   { label: 'Privacy Policy', to: '/privacy', icon: ShieldCheck },
+  { label: 'Data Processing Agreement', to: '/dpa', icon: FileSignature },
   { label: 'FAQ / Help', to: '/admin/faq', icon: CircleHelp },
 ]
 
@@ -109,6 +110,7 @@ export const activeAdminRoutes = new Set([
   '/admin/settings',
   '/terms',
   '/privacy',
+  '/dpa',
   '/admin/faq',
 ])
 

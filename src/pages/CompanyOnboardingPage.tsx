@@ -79,7 +79,10 @@ function CompanyOnboardingPage() {
     try {
       await createCompanyWithPendingTrialPlan({ companyName })
       refreshCompanySettings()
-      navigate(OFFICE_HOME_PATH, { replace: true })
+      navigate(OFFICE_HOME_PATH, {
+        replace: true,
+        state: { legalAcceptanceSource: 'trial' },
+      })
     } catch (error) {
       setErrorMessage(
         error instanceof CompanyPlanServiceError
@@ -189,6 +192,17 @@ function CompanyOnboardingPage() {
               placeholder="Your transport company"
               autoComplete="organization"
             />
+          </div>
+
+          <div className="rounded-xl border border-sky-100 bg-[#F8FBFF] px-4 py-3 text-sm text-slate-600">
+            <p className="font-semibold text-[#0F1B35]">Legal agreements</p>
+            <p className="mt-1">
+              After your company is created, an authorised Office representative
+              must accept the DREVORA Customer Terms &amp; Conditions and Data
+              Processing Agreement, and acknowledge the Privacy Policy, before
+              using the Office system. Exact document versions will be shown on
+              the next step.
+            </p>
           </div>
 
           {errorMessage ? (

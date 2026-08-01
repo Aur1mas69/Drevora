@@ -1088,3 +1088,61 @@ create policy vehicle_tyre_layouts_company_select
     company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
   );
+
+-- -----------------------------------------------------------------------------
+-- Legal document versions + acceptances (select-only for authenticated)
+-- Canonical: migrations/20260801140000_legal_documents_and_acceptances.sql
+-- Hardening: migrations/20260801150000_harden_legal_acceptance_audit.sql
+-- Writes go through SECURITY DEFINER RPCs — no INSERT/UPDATE/DELETE grants.
+-- SELECT: office-role (company) or own worker rows. ACCEPT is Admin-only via RPC
+-- (drevora_auth_user_has_admin_role_for_company); status RPCs stay office-role.
+-- -----------------------------------------------------------------------------
+alter table public.legal_document_versions enable row level security;
+alter table public.legal_acceptances enable row level security;
+
+revoke all on table public.legal_document_versions from anon;
+revoke all on table public.legal_document_versions from public;
+revoke all on table public.legal_document_versions from authenticated;
+
+revoke all on table public.legal_acceptances from anon;
+revoke all on table public.legal_acceptances from public;
+revoke all on table public.legal_acceptances from authenticated;
+
+grant select on table public.legal_document_versions to authenticated;
+grant select on table public.legal_acceptances to authenticated;
+
+drop policy if exists legal_document_versions_authenticated_select
+  on public.legal_document_versions;
+create policy legal_document_versions_authenticated_select
+  on public.legal_document_versions
+  for select
+  to authenticated
+  using (
+    published_at is not null
+    or is_current = true
+  );
+
+drop policy if exists legal_acceptances_office_select_company
+  on public.legal_acceptances;
+create policy legal_acceptances_office_select_company
+  on public.legal_acceptances
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+  );
+
+drop policy if exists legal_acceptances_worker_select_own
+  on public.legal_acceptances;
+create policy legal_acceptances_worker_select_own
+  on public.legal_acceptances
+  for select
+  to authenticated
+  using (
+    subject_type = 'worker'
+    and driver_id is not null
+    and driver_id = public.drevora_auth_user_driver_id()
+    and company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+  );

@@ -4,6 +4,7 @@ import {
   companySettingsCoreSelect,
   companySettingsHolidayCountingSelect,
   companySettingsConsumablePricesSelect,
+  companySettingsLegalSelect,
   companySettingsMedicalUploadSelect,
   companySettingsOvertimeCalculationSelect,
   companySettingsSelect,
@@ -118,6 +119,15 @@ type CompanyRow = {
   holiday_working_days: string[] | null
   holiday_entitlement_rules: unknown | null
   consumable_default_prices: unknown | null
+  legal_company_name?: string | null
+  business_address_line_1?: string | null
+  business_address_line_2?: string | null
+  county?: string | null
+  privacy_contact_email?: string | null
+  worker_privacy_notice_url?: string | null
+  worker_privacy_notice_content?: string | null
+  worker_privacy_notice_version?: string | null
+  worker_privacy_notice_updated_at?: string | null
 }
 
 export class CompanySettingsServiceError extends Error {
@@ -513,6 +523,15 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     consumableDefaultPrices: normalizeConsumableDefaultPrices(
       row.consumable_default_prices ?? {},
     ),
+    legalCompanyName: row.legal_company_name ?? null,
+    businessAddressLine1: row.business_address_line_1 ?? null,
+    businessAddressLine2: row.business_address_line_2 ?? null,
+    county: row.county ?? null,
+    privacyContactEmail: row.privacy_contact_email ?? null,
+    workerPrivacyNoticeUrl: row.worker_privacy_notice_url ?? null,
+    workerPrivacyNoticeContent: row.worker_privacy_notice_content ?? null,
+    workerPrivacyNoticeVersion: row.worker_privacy_notice_version ?? null,
+    workerPrivacyNoticeUpdatedAt: row.worker_privacy_notice_updated_at ?? null,
   }
 }
 
@@ -572,6 +591,15 @@ export function companySettingsToFormValues(
     holidayCountingMethod: settings.holidayCountingMethod,
     holidayWorkingDays: settings.holidayWorkingDays,
     holidayEntitlementRules: settings.holidayEntitlementRules,
+    legalCompanyName: settings.legalCompanyName ?? '',
+    businessAddressLine1: settings.businessAddressLine1 ?? '',
+    businessAddressLine2: settings.businessAddressLine2 ?? '',
+    county: settings.county ?? '',
+    privacyContactEmail: settings.privacyContactEmail ?? '',
+    workerPrivacyNoticeUrl: settings.workerPrivacyNoticeUrl ?? '',
+    workerPrivacyNoticeContent: settings.workerPrivacyNoticeContent ?? '',
+    workerPrivacyNoticeVersion: settings.workerPrivacyNoticeVersion ?? '',
+    workerPrivacyNoticeUpdatedAt: settings.workerPrivacyNoticeUpdatedAt ?? null,
   }
 }
 
@@ -741,6 +769,36 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   if (input.holidayEntitlementRules !== undefined) {
     payload.holiday_entitlement_rules = normalizeHolidayEntitlementRules(input.holidayEntitlementRules)
   }
+  if (input.legalCompanyName !== undefined) {
+    payload.legal_company_name = input.legalCompanyName.trim() || null
+  }
+  if (input.businessAddressLine1 !== undefined) {
+    payload.business_address_line_1 = input.businessAddressLine1.trim() || null
+  }
+  if (input.businessAddressLine2 !== undefined) {
+    payload.business_address_line_2 = input.businessAddressLine2.trim() || null
+  }
+  if (input.county !== undefined) {
+    payload.county = input.county.trim() || null
+  }
+  if (input.privacyContactEmail !== undefined) {
+    payload.privacy_contact_email = input.privacyContactEmail.trim() || null
+  }
+  if (input.workerPrivacyNoticeUrl !== undefined) {
+    payload.worker_privacy_notice_url = input.workerPrivacyNoticeUrl.trim() || null
+  }
+  if (input.workerPrivacyNoticeContent !== undefined) {
+    payload.worker_privacy_notice_content =
+      input.workerPrivacyNoticeContent.trim() || null
+  }
+  if (input.workerPrivacyNoticeVersion !== undefined) {
+    payload.worker_privacy_notice_version =
+      input.workerPrivacyNoticeVersion.trim() || null
+  }
+  if (input.workerPrivacyNoticeUpdatedAt !== undefined) {
+    payload.worker_privacy_notice_updated_at =
+      input.workerPrivacyNoticeUpdatedAt?.trim() || null
+  }
 
   return payload
 }
@@ -765,6 +823,23 @@ const OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS = [
   'weekly_overtime_after_hours',
 ] as const
 
+const OPTIONAL_LEGAL_PAYLOAD_KEYS = [
+  'legal_company_name',
+  'business_address_line_1',
+  'business_address_line_2',
+  'county',
+  'privacy_contact_email',
+  'worker_privacy_notice_url',
+  'worker_privacy_notice_content',
+  'worker_privacy_notice_version',
+  'worker_privacy_notice_updated_at',
+] as const
+
+const OPTIONAL_COMPANY_SETTINGS_PAYLOAD_KEYS = [
+  ...OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS,
+  ...OPTIONAL_LEGAL_PAYLOAD_KEYS,
+] as const
+
 async function updateCompanyRecord(
   companyId: string,
   payload: Record<string, unknown>,
@@ -777,20 +852,20 @@ async function updateCompanyRecord(
 
   if (!error) return
 
-  const hasOptionalOtColumns = OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS.some(
+  const hasOptionalColumns = OPTIONAL_COMPANY_SETTINGS_PAYLOAD_KEYS.some(
     (key) => key in payload,
   )
 
-  if (error && isMissingColumnError(error) && hasOptionalOtColumns) {
+  if (error && isMissingColumnError(error) && hasOptionalColumns) {
     logCompanySettingsPersistenceError('update', table, payload, error)
     const retryPayload = { ...payload }
-    for (const key of OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS) {
+    for (const key of OPTIONAL_COMPANY_SETTINGS_PAYLOAD_KEYS) {
       delete retryPayload[key]
     }
 
     if (Object.keys(retryPayload).length === 0) {
       throw new CompanySettingsServiceError(
-        'Overtime calculation defaults are not available yet. Run the company overtime calculation migration in Supabase first.',
+        'Some Company Settings columns are not available yet. Run the latest Supabase migrations first.',
       )
     }
 
@@ -915,6 +990,35 @@ async function mergeOptionalConsumableDefaultPrices(
   return row
 }
 
+async function mergeOptionalLegalColumns(
+  companyId: string,
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data, error } = await queryCompanyRow(companyId, companySettingsLegalSelect)
+
+  if (!error && data) {
+    return {
+      ...row,
+      ...(data as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      {
+        select: companySettingsLegalSelect,
+        optional: 'legal_company_fields',
+        companyId,
+      },
+      error,
+    )
+  }
+
+  return row
+}
+
 async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | null> {
   const table = 'companies'
   const { data, error } = await queryCompanyRow(companyId, companySettingsSelect)
@@ -941,7 +1045,8 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
       companyId,
       merged as unknown as CompanyRow,
     )
-    return mergeOptionalConsumableDefaultPrices(companyId, withOtDefaults)
+    const withLegal = await mergeOptionalLegalColumns(companyId, withOtDefaults)
+    return mergeOptionalConsumableDefaultPrices(companyId, withLegal)
   }
 
   if (error && !isMissingColumnError(error)) {
@@ -1102,7 +1207,7 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
     )
   }
 
-  return merged as unknown as CompanyRow
+  return mergeOptionalLegalColumns(companyId, merged as unknown as CompanyRow)
 }
 
 async function resolveAuthenticatedCompanyId(): Promise<string | null> {

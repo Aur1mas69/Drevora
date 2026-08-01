@@ -8,7 +8,12 @@ import {
   ContactsServiceError,
   fetchWorkerVisibleContacts,
 } from '@/services/contactsService'
-import { Mail, Phone } from 'lucide-react'
+import { Building2, Mail, Phone, Scale, Shield } from 'lucide-react'
+import {
+  isLegalDocumentAvailable,
+  LEGAL_DOCUMENTS,
+  LEGAL_UNAVAILABLE_MESSAGE,
+} from '@/lib/legalDocuments'
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -211,6 +216,83 @@ export default function WorkerSettingsHelpPage() {
           })}
         </ul>
       )}
+
+      <section className="space-y-2 pt-2" aria-labelledby="help-legal-heading">
+        <h2
+          id="help-legal-heading"
+          className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
+        >
+          Legal
+        </h2>
+        <ul className="space-y-2">
+          {(
+            [
+              {
+                key: 'worker_terms' as const,
+                description: 'Terms for using the DREVORA Worker app.',
+                icon: Scale,
+              },
+              {
+                key: 'privacy' as const,
+                description: 'How DREVORA handles personal information.',
+                icon: Shield,
+              },
+              {
+                key: 'company_privacy_notice' as const,
+                description: "Your employer's privacy notice for Worker data.",
+                icon: Building2,
+              },
+            ] as const
+          ).map(({ key, description, icon: Icon }) => {
+            const doc = LEGAL_DOCUMENTS[key]
+            const available = isLegalDocumentAvailable(key)
+            const className =
+              'flex min-h-12 items-start gap-3 rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-3 text-left transition-colors'
+            if (!available || !doc.path) {
+              return (
+                <li key={key}>
+                  <div className={className} aria-disabled="true">
+                    <Icon
+                      className="mt-0.5 size-5 shrink-0 text-[color:var(--worker-text-muted)]"
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[color:var(--worker-text-muted)]">
+                        {doc.title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[color:var(--worker-text-muted)]">
+                        {LEGAL_UNAVAILABLE_MESSAGE}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              )
+            }
+            return (
+              <li key={key}>
+                <Link
+                  to={doc.path}
+                  className={className + ' hover:bg-[color:var(--worker-input)]'}
+                >
+                  <Icon
+                    className="mt-0.5 size-5 shrink-0 text-[color:var(--worker-primary)]"
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[color:var(--worker-text)]">
+                      {doc.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[color:var(--worker-text-secondary)]">
+                      {description}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
     </div>
   )
 }

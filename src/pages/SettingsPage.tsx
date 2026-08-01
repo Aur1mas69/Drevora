@@ -21,6 +21,7 @@ import {
   settingsStatusTextClassName,
 } from '@/components/settings/SettingsControls'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
+import { CompanyLegalAcceptanceSummary } from '@/components/settings/CompanyLegalAcceptanceSummary'
 import { SettingsPlanSummary } from '@/components/settings/SettingsPlanSummary'
 import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
@@ -97,6 +98,15 @@ function SettingsPage() {
   }, [searchParams])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash !== '#company-legal') return
+    setActiveTab('general')
+    window.requestAnimationFrame(() => {
+      document.getElementById('company-legal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
+  useEffect(() => {
     isDirtyRef.current = isDirty
   }, [isDirty])
 
@@ -122,7 +132,19 @@ function SettingsPage() {
     setSaveError(null)
 
     try {
-      const updated = await updateSettings(form)
+      const noticeChanged =
+        form.workerPrivacyNoticeUrl !== savedForm.workerPrivacyNoticeUrl ||
+        form.workerPrivacyNoticeContent !== savedForm.workerPrivacyNoticeContent ||
+        form.workerPrivacyNoticeVersion !== savedForm.workerPrivacyNoticeVersion
+
+      const payload: CompanySettingsInput = noticeChanged
+        ? {
+            ...form,
+            workerPrivacyNoticeUpdatedAt: new Date().toISOString(),
+          }
+        : form
+
+      const updated = await updateSettings(payload)
       const values = companySettingsService.companySettingsToFormValues(updated)
       setForm(values)
       setSavedForm(values)
@@ -135,7 +157,9 @@ function SettingsPage() {
     }
   }
 
-  function handleTextChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleTextChange(
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) {
     const { name, value } = event.target
     if (name === 'name') return
     updateForm({ [name]: value } as Partial<CompanySettingsInput>)
@@ -311,6 +335,124 @@ function SettingsPage() {
                   />
                 </SettingsField>
               </SettingsSection>
+
+              <div id="company-legal" className="scroll-mt-24 space-y-4 pt-8">
+                <SettingsSection
+                  title="Legal / Company Legal Details"
+                  description="Legal entity details used for DPA acceptance and worker privacy notices. City, postcode and country reuse the company profile fields."
+                >
+                  <SettingsField label="Legal company name" span="full">
+                    <Input
+                      name="legalCompanyName"
+                      value={form.legalCompanyName}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Business address line 1" span="full">
+                    <Input
+                      name="businessAddressLine1"
+                      value={form.businessAddressLine1}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Business address line 2" span="full">
+                    <Input
+                      name="businessAddressLine2"
+                      value={form.businessAddressLine2}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="City">
+                    <Input
+                      name="city"
+                      value={form.city}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="County">
+                    <Input
+                      name="county"
+                      value={form.county}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Postcode">
+                    <Input
+                      name="postcode"
+                      value={form.postcode}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Country">
+                    <Input
+                      name="country"
+                      value={form.country}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Privacy contact email" span="full">
+                    <Input
+                      name="privacyContactEmail"
+                      type="email"
+                      value={form.privacyContactEmail}
+                      onChange={handleTextChange}
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField
+                    label="Worker privacy notice URL"
+                    span="full"
+                    hint="Optional external link. Content below is used when no URL is set."
+                  >
+                    <Input
+                      name="workerPrivacyNoticeUrl"
+                      value={form.workerPrivacyNoticeUrl}
+                      onChange={handleTextChange}
+                      placeholder="https://…"
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Worker privacy notice content" span="full">
+                    <textarea
+                      name="workerPrivacyNoticeContent"
+                      value={form.workerPrivacyNoticeContent}
+                      onChange={handleTextChange}
+                      rows={6}
+                      className={`${settingsFieldClassName} h-auto min-h-[8.5rem] py-3`}
+                    />
+                  </SettingsField>
+
+                  <SettingsField label="Worker privacy notice version">
+                    <Input
+                      name="workerPrivacyNoticeVersion"
+                      value={form.workerPrivacyNoticeVersion}
+                      onChange={handleTextChange}
+                      placeholder="e.g. 1.0"
+                      className={settingsFieldClassName}
+                    />
+                  </SettingsField>
+
+                  {companyId ? (
+                    <CompanyLegalAcceptanceSummary companyId={companyId} />
+                  ) : null}
+                </SettingsSection>
+              </div>
               </>
             ) : null}
 

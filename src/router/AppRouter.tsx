@@ -6,6 +6,8 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { RequireCustomerLegalAcceptance } from '@/components/legal/RequireCustomerLegalAcceptance'
+import { RequireWorkerLegalAcceptance } from '@/components/legal/RequireWorkerLegalAcceptance'
 import {
   MembershipAccessBlocked,
   MembershipLoadingScreen,
@@ -88,6 +90,11 @@ const FaqHelpPage = lazy(() => import('@/pages/FaqHelpPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const TermsPage = lazy(() => import('@/pages/TermsPage'))
+const DpaPage = lazy(() => import('@/pages/DpaPage'))
+const WorkerTermsPage = lazy(() => import('@/pages/WorkerTermsPage'))
+const WorkerCompanyPrivacyNoticePage = lazy(
+  () => import('@/pages/worker/WorkerCompanyPrivacyNoticePage'),
+)
 const HolidayRequestsPage = lazy(() => import('@/pages/HolidayRequestsPage'))
 const VehicleChecksPage = lazy(() => import('@/pages/VehicleChecksPage'))
 const TimesheetsPage = lazy(() => import('@/pages/TimesheetsPage'))
@@ -142,7 +149,9 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
     return <MembershipAccessBlocked message={access.message} />
   }
 
-  return children
+  return (
+    <RequireCustomerLegalAcceptance>{children}</RequireCustomerLegalAcceptance>
+  )
 }
 
 /**
@@ -207,7 +216,11 @@ function RequireWorkerAccess() {
     )
   }
 
-  return <MainLayout />
+  return (
+    <RequireWorkerLegalAcceptance>
+      <MainLayout />
+    </RequireWorkerLegalAcceptance>
+  )
 }
 
 function AdminDashboardRoute() {
@@ -360,6 +373,14 @@ function AppRouter() {
           element={
             <RequireOfficeAccess>
               <PrivacyPage />
+            </RequireOfficeAccess>
+          }
+        />
+        <Route
+          path="/dpa"
+          element={
+            <RequireOfficeAccess>
+              <DpaPage />
             </RequireOfficeAccess>
           }
         />
@@ -527,6 +548,18 @@ function AppRouter() {
           <Route
             path="/worker/settings/help"
             element={<WorkerSettingsHelpPage />}
+          />
+          <Route
+            path="/worker/settings/help/legal/worker-terms"
+            element={<WorkerTermsPage />}
+          />
+          <Route
+            path="/worker/settings/help/legal/privacy"
+            element={<PrivacyPage />}
+          />
+          <Route
+            path="/worker/settings/help/legal/company-privacy-notice"
+            element={<WorkerCompanyPrivacyNoticePage />}
           />
           <Route path="/history" element={<Navigate to="/dashboard" replace />} />
           <Route

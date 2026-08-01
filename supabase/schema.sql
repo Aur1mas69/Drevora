@@ -2896,6 +2896,174 @@ create trigger vehicles_enforce_vehicle_plan_allowance
   execute function public.drevora_enforce_vehicle_plan_allowance();
 
 
+-- Legal documents + company legal controller fields
+-- Canonical: migrations/20260801140000_legal_documents_and_acceptances.sql
+-- Hardening: migrations/20260801150000_harden_legal_acceptance_audit.sql
+-- Customer ACCEPT requires Admin (drevora_auth_user_has_admin_role_for_company);
+-- status read remains office-role. Published metadata/hashes + acceptances immutable.
+-- -----------------------------------------------------------------------------
+
+alter table public.companies
+  add column if not exists legal_company_name text,
+  add column if not exists business_address_line_1 text,
+  add column if not exists business_address_line_2 text,
+  add column if not exists county text,
+  add column if not exists privacy_contact_email text,
+  add column if not exists worker_privacy_notice_url text,
+  add column if not exists worker_privacy_notice_content text,
+  add column if not exists worker_privacy_notice_version text,
+  add column if not exists worker_privacy_notice_updated_at timestamptz;
+
+create table if not exists public.legal_document_versions (
+  id uuid primary key default gen_random_uuid(),
+  document_type text not null,
+  version text not null,
+  title text not null,
+  effective_date date not null,
+  content_hash text not null,
+  audience text not null,
+  is_current boolean not null default false,
+  published_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  constraint legal_document_versions_document_type_check check (
+    document_type in ('customer_terms', 'dpa', 'privacy_policy', 'worker_terms')
+  ),
+  constraint legal_document_versions_audience_check check (
+    audience in ('customer_admin', 'worker', 'both')
+  ),
+  constraint legal_document_versions_content_hash_check check (
+    content_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint legal_document_versions_type_version_unique unique (document_type, version)
+);
+
+create unique index if not exists legal_document_versions_one_current_per_type_idx
+  on public.legal_document_versions (document_type)
+  where is_current = true;
+
+create table if not exists public.legal_acceptances (
+  id uuid primary key default gen_random_uuid(),
+  acceptance_batch_id uuid not null,
+  created_at timestamptz not null default now(),
+  document_version_id uuid not null references public.legal_document_versions (id),
+  document_type text not null,
+  document_version text not null,
+  document_hash text not null,
+  subject_type text not null,
+  company_id uuid null references public.companies (id),
+  driver_id uuid null references public.drivers (id),
+  accepted_by_auth_user_id uuid not null,
+  accepted_by_name text not null,
+  accepted_by_email text not null,
+  confirmed_company_authority boolean not null default false,
+  acceptance_action text not null,
+  acceptance_source text not null,
+  platform text not null,
+  route text null,
+  user_agent text null,
+  legal_entity_snapshot jsonb not null default '{}'::jsonb,
+  accepted_at timestamptz not null default now(),
+  constraint legal_acceptances_document_type_check check (
+    document_type in ('customer_terms', 'dpa', 'privacy_policy', 'worker_terms')
+  ),
+  constraint legal_acceptances_subject_type_check check (
+    subject_type in ('customer_admin', 'worker')
+  ),
+  constraint legal_acceptances_acceptance_action_check check (
+    acceptance_action in ('accepted', 'acknowledged')
+  ),
+  constraint legal_acceptances_action_for_document_check check (
+    (
+      document_type in ('customer_terms', 'dpa', 'worker_terms')
+      and acceptance_action = 'accepted'
+    )
+    or (
+      document_type = 'privacy_policy'
+      and acceptance_action = 'acknowledged'
+    )
+  ),
+  constraint legal_acceptances_acceptance_source_check check (
+    acceptance_source in (
+      'onboarding',
+      'trial',
+      'subscription',
+      'office_login',
+      'worker_first_login',
+      'legal_update'
+    )
+  ),
+  constraint legal_acceptances_subject_source_check check (
+    (
+      subject_type = 'customer_admin'
+      and acceptance_source in (
+        'onboarding',
+        'trial',
+        'subscription',
+        'office_login',
+        'legal_update'
+      )
+    )
+    or (
+      subject_type = 'worker'
+      and acceptance_source in ('worker_first_login', 'legal_update')
+    )
+  ),
+  constraint legal_acceptances_platform_check check (
+    platform in ('android', 'web', 'pwa')
+  ),
+  constraint legal_acceptances_document_hash_check check (
+    document_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint legal_acceptances_accepted_by_name_check check (
+    char_length(btrim(accepted_by_name)) > 0
+  ),
+  constraint legal_acceptances_accepted_by_email_check check (
+    char_length(btrim(accepted_by_email)) > 0
+  ),
+  constraint legal_acceptances_subject_refs_check check (
+    (
+      subject_type = 'customer_admin'
+      and company_id is not null
+      and driver_id is null
+      and confirmed_company_authority = true
+    )
+    or (
+      subject_type = 'worker'
+      and company_id is not null
+      and driver_id is not null
+      and confirmed_company_authority = false
+    )
+  ),
+  constraint legal_acceptances_doc_subject_check check (
+    (
+      document_type in ('customer_terms', 'dpa')
+      and subject_type = 'customer_admin'
+    )
+    or (
+      document_type = 'worker_terms'
+      and subject_type = 'worker'
+    )
+    or (
+      document_type = 'privacy_policy'
+      and subject_type in ('customer_admin', 'worker')
+    )
+  ),
+  constraint legal_acceptances_batch_document_type_unique unique (
+    acceptance_batch_id,
+    document_type
+  )
+);
+
+create index if not exists legal_acceptances_company_type_accepted_idx
+  on public.legal_acceptances (company_id, document_type, accepted_at);
+
+create index if not exists legal_acceptances_driver_type_idx
+  on public.legal_acceptances (driver_id, document_type);
+
+create index if not exists legal_acceptances_batch_idx
+  on public.legal_acceptances (acceptance_batch_id);
+
+
 -- -----------------------------------------------------------------------------
 -- Next steps
 -- 1. Run policies.sql  — RLS configuration (MVP: disabled)
@@ -2904,4 +3072,8 @@ create trigger vehicles_enforce_vehicle_plan_allowance
 --   20260727200000_worker_set_default_vehicle_rpc.sql
 -- Tyre Check configurable axle layout + save-layout RPC: apply migration
 --   20260728090000_tyre_check_configurable_axle_layout.sql
+-- Legal documents + acceptances: apply migration
+--   20260801140000_legal_documents_and_acceptances.sql
+-- Legal acceptance audit hardening (Admin accept, immutability, constraints):
+--   20260801150000_harden_legal_acceptance_audit.sql
 -- -----------------------------------------------------------------------------

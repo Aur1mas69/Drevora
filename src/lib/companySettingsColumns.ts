@@ -54,6 +54,15 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'holiday_working_days',
   'holiday_entitlement_rules',
   'consumable_default_prices',
+  'legal_company_name',
+  'business_address_line_1',
+  'business_address_line_2',
+  'county',
+  'privacy_contact_email',
+  'worker_privacy_notice_url',
+  'worker_privacy_notice_content',
+  'worker_privacy_notice_version',
+  'worker_privacy_notice_updated_at',
 ] as const
 
 export type CompanySettingsColumn = (typeof COMPANY_SETTINGS_COLUMNS)[number]
@@ -95,6 +104,31 @@ export const COMPANY_SETTINGS_CORE_COLUMNS = [
 ] as const
 
 /** Weekend overtime columns — optional until migration is applied. */
+/** Legal / company controller fields — optional until migration is applied. */
+export const COMPANY_SETTINGS_LEGAL_COLUMNS = [
+  'legal_company_name',
+  'business_address_line_1',
+  'business_address_line_2',
+  'county',
+  'privacy_contact_email',
+  'worker_privacy_notice_url',
+  'worker_privacy_notice_content',
+  'worker_privacy_notice_version',
+  'worker_privacy_notice_updated_at',
+] as const
+
+export const companySettingsLegalSelect = `
+  legal_company_name,
+  business_address_line_1,
+  business_address_line_2,
+  county,
+  privacy_contact_email,
+  worker_privacy_notice_url,
+  worker_privacy_notice_content,
+  worker_privacy_notice_version,
+  worker_privacy_notice_updated_at
+` as const
+
 export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
   'saturday_overtime_enabled',
   'saturday_overtime_after_hours',

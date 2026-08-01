@@ -339,6 +339,16 @@ export type CompanySettings = {
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
+  /** Legal / controller identity (optional until legal migration). */
+  legalCompanyName: string | null
+  businessAddressLine1: string | null
+  businessAddressLine2: string | null
+  county: string | null
+  privacyContactEmail: string | null
+  workerPrivacyNoticeUrl: string | null
+  workerPrivacyNoticeContent: string | null
+  workerPrivacyNoticeVersion: string | null
+  workerPrivacyNoticeUpdatedAt: string | null
   consumableDefaultPrices: ConsumableDefaultPricesMap
 }
 
@@ -393,6 +403,15 @@ export type CompanySettingsInput = {
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
+  legalCompanyName: string
+  businessAddressLine1: string
+  businessAddressLine2: string
+  county: string
+  privacyContactEmail: string
+  workerPrivacyNoticeUrl: string
+  workerPrivacyNoticeContent: string
+  workerPrivacyNoticeVersion: string
+  workerPrivacyNoticeUpdatedAt: string | null
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
@@ -444,6 +463,15 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   sundayUseCompanyDefaultBreak: true,
   weekendRulesScope: DEFAULT_WEEKEND_RULES_SCOPE,
   ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
+  legalCompanyName: '',
+  businessAddressLine1: '',
+  businessAddressLine2: '',
+  county: '',
+  privacyContactEmail: '',
+  workerPrivacyNoticeUrl: '',
+  workerPrivacyNoticeContent: '',
+  workerPrivacyNoticeVersion: '',
+  workerPrivacyNoticeUpdatedAt: null,
 }
 
 export type CompanySettingsTab =
