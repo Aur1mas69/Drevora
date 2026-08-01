@@ -123,7 +123,7 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
  * 1) Banner shell — fixed min-height, overflow hidden, rounded corners; road/dark fill only.
  * 2) Left copy — in-flow over the banner; never sized by the robot.
  * 3) Robot — absolute bottom-right sibling of the shell (not inside overflow:hidden),
- *    so only the head may peek above the rounded box. Wave uses body+arm layers.
+ *    so only the head may peek above the rounded box.
  */
 function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
@@ -186,16 +186,6 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
             decoding="async"
             draggable={false}
             className="worker-robot-hero__body"
-          />
-          <img
-            src={WORKER_ROBOT_SRC}
-            alt=""
-            width={WORKER_ROBOT_WIDTH}
-            height={WORKER_ROBOT_HEIGHT}
-            loading="eager"
-            decoding="async"
-            draggable={false}
-            className="worker-robot-hero__arm"
           />
         </div>
       </div>

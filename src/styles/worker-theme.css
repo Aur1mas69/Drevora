@@ -687,10 +687,9 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 }
 
 /*
- * Raised-arm wave: same transparent robot-only WebP twice.
- * Body uses evenodd mask to cut the arm hole; arm layer is clipped and rotates
- * from the shoulder. Rest pose aligns with the hole (no static ghost arm).
- * Figure is absolutely positioned; aspect matches the cropped asset (1264×975).
+ * Robot figure: single full WebP (no separate waving-arm layer).
+ * Absolutely positioned; aspect matches the cropped asset (1264×975).
+ * overflow:visible so the head can peek above the banner shell without clipping.
  */
 .worker-mobile-layout .worker-robot-hero__figure {
   position: absolute;
@@ -699,8 +698,7 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   aspect-ratio: 1264 / 975;
 }
 
-.worker-mobile-layout .worker-robot-hero__body,
-.worker-mobile-layout .worker-robot-hero__arm {
+.worker-mobile-layout .worker-robot-hero__body {
   position: absolute;
   inset: 0;
   display: block;
@@ -711,79 +709,6 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   object-position: right bottom;
   user-select: none;
   -webkit-user-drag: none;
-}
-
-/* Full figure minus raised-arm polygon (coords for cropped robot-only asset). */
-.worker-mobile-layout .worker-robot-hero__body {
-  z-index: 1;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M0 0H100V100H0zM0 34.9L0 24.4 0.3 16 10.1 13.9 19.8 18.1 27.1 26.5 31.9 37 35.6 47.5 39.2 58 41.7 66.4 42.9 73.7 36.8 79 27.1 81.1 14.9 79 5.2 72.7 0 62.2 0 49.6 0 41.2z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M0 0H100V100H0zM0 34.9L0 24.4 0.3 16 10.1 13.9 19.8 18.1 27.1 26.5 31.9 37 35.6 47.5 39.2 58 41.7 66.4 42.9 73.7 36.8 79 27.1 81.1 14.9 79 5.2 72.7 0 62.2 0 49.6 0 41.2z'/%3E%3C/svg%3E");
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-}
-
-.worker-mobile-layout .worker-robot-hero__arm {
-  z-index: 2;
-  clip-path: polygon(
-    0% 34.9%,
-    0% 24.4%,
-    0.3% 16%,
-    10.1% 13.9%,
-    19.8% 18.1%,
-    27.1% 26.5%,
-    31.9% 37%,
-    35.6% 47.5%,
-    39.2% 58%,
-    41.7% 66.4%,
-    42.9% 73.7%,
-    36.8% 79%,
-    27.1% 81.1%,
-    14.9% 79%,
-    5.2% 72.7%,
-    0% 62.2%,
-    0% 49.6%,
-    0% 41.2%
-  );
-  transform-origin: 36.8% 74.8%;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .worker-mobile-layout .worker-robot-hero__arm {
-    animation: worker-robot-wave 2.8s ease-in-out infinite;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .worker-mobile-layout .worker-robot-hero__arm {
-    animation: none;
-  }
-}
-
-@keyframes worker-robot-wave {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  18% {
-    transform: rotate(7deg);
-  }
-  36% {
-    transform: rotate(-3deg);
-  }
-  54% {
-    transform: rotate(6deg);
-  }
-  72% {
-    transform: rotate(-2deg);
-  }
-  86% {
-    transform: rotate(3deg);
-  }
 }
 
 .worker-mobile-layout .worker-quick-action-mint {
