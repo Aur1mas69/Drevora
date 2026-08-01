@@ -10,6 +10,8 @@ import {
 } from '@/lib/timesheetUtils'
 import { WORKER_PROFILE_HISTORY_LIMIT } from '@/lib/workerProfileUtils'
 import { cn } from '@/lib/utils'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { fetchTimesheetsByDriverId, TimesheetsServiceError } from '@/services/timesheetsService'
 
 type WorkerTimesheetHistoryListProps = {
@@ -25,6 +27,7 @@ export function WorkerTimesheetHistoryList({
   workerId,
   onOpenWeek,
 }: WorkerTimesheetHistoryListProps) {
+  const isDark = useIsWorkerDarkMode()
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -62,7 +65,7 @@ export function WorkerTimesheetHistoryList({
   if (isLoading) {
     return (
       <div
-        className="min-h-[30vh] rounded-[1.5rem] bg-white/60"
+        className="min-h-[30vh] rounded-[1rem] bg-white/60"
         aria-label="Loading timesheet history"
         role="status"
       />
@@ -79,40 +82,48 @@ export function WorkerTimesheetHistoryList({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-8 text-center shadow-sm">
-        <ClipboardList className="size-6 text-slate-300" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-500">No previous timesheets yet.</p>
+      <div className="flex flex-col items-center gap-2 rounded-[1rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-6 text-center">
+        <ClipboardList className="size-5 text-[color:var(--worker-text-muted)]" aria-hidden="true" />
+        <p className="text-sm font-medium text-[color:var(--worker-text-secondary)]">
+          No previous timesheets yet.
+        </p>
       </div>
     )
   }
 
   return (
-    <ul className="space-y-3">
-      {items.map((item) => (
+    <ul className="worker-list-stack">
+      {items.map((item, index) => (
         <li key={item.id}>
           <button
             type="button"
             onClick={() => onOpenWeek(item)}
-            className={cn(
-              'flex w-full items-stretch gap-3 rounded-[1.5rem] border border-[#BFE3F5]/80 bg-gradient-to-br from-white to-[#F5FAFF] p-4 text-left shadow-[0_2px_8px_rgba(33,142,231,0.08)] transition-colors',
-              'hover:border-[#89CFF0] hover:bg-[#F0F7FF] active:bg-[#E8F3FE]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED]/40',
-            )}
+            className={workerListCardClass(index, isDark, { interactive: true }, 'flex items-center gap-2')}
             aria-label={`View week ${item.weekNumber} timesheet, ${getStatusLabel(item.status)}`}
           >
             <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-3">
+              <div className="worker-list-card__meta">
                 <div className="min-w-0">
-                  <p className="text-base font-bold tracking-tight text-slate-950">
+                  <p
+                    className={cn(
+                      'worker-accent-title truncate text-sm font-bold tracking-tight',
+                      !isDark && 'text-slate-950',
+                    )}
+                  >
                     Week {item.weekNumber}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
-                    {item.weekRangeLabel}
+                    <span
+                      className={cn(
+                        'worker-accent-secondary ml-1.5 text-xs font-medium',
+                        !isDark && 'text-slate-500',
+                      )}
+                    >
+                      · {item.weekRangeLabel}
+                    </span>
                   </p>
                 </div>
                 <span
                   className={cn(
-                    'inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
+                    'worker-accent-badge inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
                     getStatusBadgeClass(item.status),
                   )}
                 >
@@ -120,35 +131,36 @@ export function WorkerTimesheetHistoryList({
                 </span>
               </div>
 
-              <div className="mt-3 flex items-end justify-between gap-3 border-t border-[#E8F3FE] pt-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Submitted
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium text-slate-600">
-                    {formatSubmittedAtDisplay(item.submittedAt, item.status)}
-                  </p>
-                  {item.workerConfirmed && item.confirmedAt ? (
-                    <p className="mt-1.5 text-xs font-medium leading-5 text-slate-600">
-                      Confirmed by {item.driverName}
-                      <span className="block text-slate-500">
-                        {formatTimesheetSubmittedAt(item.confirmedAt) ?? '—'}
-                      </span>
-                    </p>
-                  ) : null}
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Total
-                  </p>
-                  <p className="mt-0.5 text-base font-bold tabular-nums text-slate-950">
-                    {formatTotalHours(item.totalHours)}
-                  </p>
-                </div>
+              <div className="worker-list-card__footer">
+                <p
+                  className={cn(
+                    'worker-accent-muted min-w-0 truncate text-[11px] font-medium',
+                    !isDark && 'text-slate-500',
+                  )}
+                >
+                  {formatSubmittedAtDisplay(item.submittedAt, item.status)}
+                  {item.workerConfirmed && item.confirmedAt
+                    ? ` · Confirmed ${formatTimesheetSubmittedAt(item.confirmedAt) ?? '—'}`
+                    : null}
+                </p>
+                <p
+                  className={cn(
+                    'worker-accent-value shrink-0 text-sm font-bold tabular-nums',
+                    !isDark && 'text-slate-950',
+                  )}
+                >
+                  {formatTotalHours(item.totalHours)}
+                </p>
               </div>
             </div>
-            <span className="flex shrink-0 items-center self-center text-[#5499BF]" aria-hidden>
-              <ChevronRight className="size-5" strokeWidth={2} />
+            <span
+              className={cn(
+                'worker-accent-muted flex shrink-0 items-center',
+                !isDark && 'text-[#5499BF]',
+              )}
+              aria-hidden
+            >
+              <ChevronRight className="size-4" strokeWidth={2} />
             </span>
           </button>
         </li>

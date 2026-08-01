@@ -3,13 +3,14 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Contact } from '@/lib/contactTypes'
 import { getCategoryLabel, getContactPrimaryName } from '@/lib/contactUtils'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
-import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
 import {
   ContactsServiceError,
   fetchWorkerVisibleContacts,
 } from '@/services/contactsService'
 import { Mail, Phone } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 
 function telHref(phone: string): string {
@@ -31,13 +32,7 @@ function ContactActionCard({
     contact.roleTitle?.trim() || contact.organisation?.trim() || null
 
   return (
-    <li
-      className={workerAccentCardClass(
-        index,
-        isDark,
-        'rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm',
-      )}
-    >
+    <li className={workerListCardClass(index, isDark)}>
       <div className="min-w-0">
         <p
           className={cn(
@@ -68,12 +63,12 @@ function ContactActionCard({
       </div>
 
       {phone || email ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           {phone ? (
             <a
               href={telHref(phone)}
               className={cn(
-                'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                'worker-accent-pill inline-flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors',
                 !isDark &&
                   'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE] hover:bg-[#DCEEFF]',
               )}
@@ -86,7 +81,7 @@ function ContactActionCard({
             <a
               href={`mailto:${email}`}
               className={cn(
-                'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                'worker-accent-pill inline-flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors',
                 !isDark &&
                   'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] text-[color:var(--worker-text)] hover:bg-[color:var(--worker-input)]',
               )}
@@ -131,7 +126,10 @@ function ContactActionCard({
   )
 }
 
-/** Company office contacts shared with Workers (no invented details). */
+/**
+ * Contact Office — employment and operational matters for the Worker’s company.
+ * Separate from DREVORA technical support. Never invents phone/email.
+ */
 export default function WorkerSettingsContactOfficePage() {
   const isDark = useIsWorkerDarkMode()
   const { companyName } = useCompanySettings()
@@ -182,18 +180,29 @@ export default function WorkerSettingsContactOfficePage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-3">
-        <WorkerSettingsBackLink />
+        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
             Contact Office
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
-            {companyLabel
-              ? `Reach ${companyLabel} using contacts shared with Workers.`
-              : 'Reach your office using contacts shared with Workers.'}
+            For working hours, rota, holidays, assigned vehicles, company
+            documents and operational issues. App bugs and technical problems
+            belong in DREVORA Support.
           </p>
         </div>
       </header>
+
+      {companyLabel ? (
+        <div className="rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
+            Company
+          </p>
+          <p className="mt-1 text-base font-semibold text-[color:var(--worker-text)]">
+            {companyLabel}
+          </p>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div
@@ -211,14 +220,14 @@ export default function WorkerSettingsContactOfficePage() {
       ) : officeContacts.length === 0 ? (
         <div className="rounded-[1.5rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-8 text-center">
           <p className="text-base font-semibold text-[color:var(--worker-text)]">
-            No office contact details are available
+            No Office contact details have been configured.
           </p>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
-            Your office has not shared a phone or email contact for Workers yet.
+            Ask your Office to share a phone or email contact for Workers.
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="worker-list-stack">
           {officeContacts.map((contact, index) => (
             <ContactActionCard
               key={contact.id}
@@ -229,6 +238,13 @@ export default function WorkerSettingsContactOfficePage() {
           ))}
         </ul>
       )}
+
+      <Link
+        to="/worker/contacts"
+        className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#89CFF0] bg-white text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-slate-600 dark:bg-slate-900/40 dark:text-[#A3F1AB]"
+      >
+        Open Contacts
+      </Link>
     </div>
   )
 }

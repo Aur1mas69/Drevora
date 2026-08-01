@@ -4,6 +4,7 @@ import CustomerLegalAgreementsPage from '@/pages/CustomerLegalAgreementsPage'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import {
   fetchCustomerLegalStatus,
+  isLegalNotAvailableYetError,
   LegalAcceptanceServiceError,
 } from '@/services/legalAcceptanceService'
 import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
@@ -53,7 +54,7 @@ export function RequireCustomerLegalAcceptance({
           ? err.message
           : 'Unable to verify legal acceptance status.'
       // Soft-pass until the legal migration is applied on the project.
-      if (/not available yet/i.test(message)) {
+      if (isLegalNotAvailableYetError(err) || /not available yet/i.test(message)) {
         setRequiresAcceptance(false)
         setError(null)
         return

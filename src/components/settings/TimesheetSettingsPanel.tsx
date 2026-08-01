@@ -26,7 +26,7 @@ import {
   type OvertimeMode,
   type OvertimeMultiplier,
   type RoundTimeMinutes,
-  type WeekendRulesScope,
+  type TimesheetManagementScope,
 } from '@/lib/companySettingsTypes'
 import {
   getDaysInMonth,
@@ -518,33 +518,31 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
         </CompactCard>
       </div>
 
-      {/* 3. Weekend rules — Automatic mode only (values preserved when hidden) */}
-      {isAutomatic ? (
-        <CompactCard
-          title="Weekend rules apply to"
-          description="Choose whether weekend overtime settings are managed centrally for the whole company or individually by each Worker."
-        >
-          <SettingsChoiceGroup<WeekendRulesScope>
-            name="weekend-rules-scope"
-            value={form.weekendRulesScope}
-            onChange={(value) => onChange({ weekendRulesScope: value })}
-            options={[
-              {
-                value: 'company',
-                label: 'Whole company',
-                description:
-                  'All Workers use the same Saturday and Sunday rules configured below.',
-              },
-              {
-                value: 'worker',
-                label: 'Each Worker individually',
-                description:
-                  'Workers manage their own Saturday and Sunday rules. Company values are used as defaults until a Worker changes them.',
-              },
-            ]}
-          />
-        </CompactCard>
-      ) : null}
+      {/* 3. Who manages Timesheets — company-wide workflow ownership */}
+      <CompactCard
+        title="Who manages Timesheets?"
+        description="Choose whether Office or Workers own Timesheet create, edit, save and submit."
+      >
+        <SettingsChoiceGroup<TimesheetManagementScope>
+          name="timesheet-management-scope"
+          value={form.timesheetManagementScope}
+          onChange={(value) => onChange({ timesheetManagementScope: value })}
+          options={[
+            {
+              value: 'office',
+              label: 'Office manages Timesheets',
+              description:
+                'Workers can view their Timesheets, but only Office can create or edit them.',
+            },
+            {
+              value: 'worker',
+              label: 'Workers manage their own Timesheets',
+              description:
+                'Workers can create, edit, save and submit their own Timesheets. Office reviews and approves them.',
+            },
+          ]}
+        />
+      </CompactCard>
 
       {isAutomatic ? (
         <CompactCard

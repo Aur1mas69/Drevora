@@ -8,7 +8,7 @@ import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import type { Consumable, ConsumableFormSubmitPayload } from '@/lib/consumableTypes'
-import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
 import {
   formatConsumableEntryDateTime,
@@ -277,15 +277,11 @@ export default function WorkerConsumablesPage() {
           </Button>
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="worker-list-stack mt-4">
           {items.map((item, index) => (
             <li
               key={item.id}
-              className={workerAccentCardClass(
-                index,
-                isDark,
-                'rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4',
-              )}
+              className={workerListCardClass(index, isDark)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -299,7 +295,7 @@ export default function WorkerConsumablesPage() {
                   </span>
                   <p
                     className={cn(
-                      'worker-accent-title mt-2 truncate text-base font-semibold',
+                      'worker-accent-title mt-1 truncate text-sm font-semibold',
                       !isDark && 'text-[color:var(--worker-text)]',
                     )}
                   >

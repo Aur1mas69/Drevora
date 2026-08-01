@@ -8,6 +8,7 @@ import {
   companySettingsMedicalUploadSelect,
   companySettingsOvertimeCalculationSelect,
   companySettingsSelect,
+  companySettingsTimesheetManagementSelect,
   companySettingsWeekendSelect,
   companySettingsWeekNumberingSelect,
 } from '@/lib/companySettingsColumns'
@@ -26,6 +27,7 @@ import {
   type OvertimeMultiplier,
   type RoundTimeMinutes,
   type CompanyCurrency,
+  type TimesheetManagementScope,
   type TimesheetWeekStartDay,
   DEFAULT_OVERTIME_MULTIPLIER,
   DEFAULT_CURRENCY,
@@ -47,6 +49,7 @@ import {
   DEFAULT_HOLIDAY_WORKING_DAYS,
   DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
   DEFAULT_WEEKEND_RULES_SCOPE,
+  DEFAULT_TIMESHEET_MANAGEMENT_SCOPE,
   HOLIDAY_WORKING_DAY_OPTIONS,
   type HolidayEntitlementRules,
   type HolidayEntitlementRule,
@@ -112,6 +115,7 @@ type CompanyRow = {
   sunday_guaranteed_paid_hours: number | null
   sunday_use_company_default_break?: boolean | null
   weekend_rules_scope?: string | null
+  timesheet_management_scope?: string | null
   timesheet_week_start_day: string | null
   timesheet_week_reset_month: number | null
   timesheet_week_reset_day: number | null
@@ -174,6 +178,12 @@ function normalizePaidBreaks(value: boolean | null | undefined): boolean {
 
 function normalizeWeekendRulesScope(value: string | null | undefined): WeekendRulesScope {
   return value === 'worker' ? 'worker' : DEFAULT_WEEKEND_RULES_SCOPE
+}
+
+function normalizeTimesheetManagementScope(
+  value: string | null | undefined,
+): TimesheetManagementScope {
+  return value === 'office' ? 'office' : DEFAULT_TIMESHEET_MANAGEMENT_SCOPE
 }
 
 function normalizeTimesheetWeekStartDay(
@@ -511,6 +521,9 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     ),
     sundayUseCompanyDefaultBreak: row.sunday_use_company_default_break ?? true,
     weekendRulesScope: normalizeWeekendRulesScope(row.weekend_rules_scope),
+    timesheetManagementScope: normalizeTimesheetManagementScope(
+      row.timesheet_management_scope,
+    ),
     timesheetWeekStartDay: normalizeTimesheetWeekStartDay(row.timesheet_week_start_day),
     timesheetWeekResetMonth: normalizeTimesheetWeekResetMonth(row.timesheet_week_reset_month),
     timesheetWeekResetDay: normalizeTimesheetWeekResetDay(
@@ -585,6 +598,7 @@ export function companySettingsToFormValues(
     sundayGuaranteedPaidHours: settings.sundayGuaranteedPaidHours,
     sundayUseCompanyDefaultBreak: settings.sundayUseCompanyDefaultBreak,
     weekendRulesScope: settings.weekendRulesScope,
+    timesheetManagementScope: settings.timesheetManagementScope,
     timesheetWeekStartDay: settings.timesheetWeekStartDay,
     timesheetWeekResetMonth: settings.timesheetWeekResetMonth,
     timesheetWeekResetDay: settings.timesheetWeekResetDay,
@@ -744,6 +758,10 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   if (input.weekendRulesScope !== undefined) {
     payload.weekend_rules_scope = input.weekendRulesScope === 'worker' ? 'worker' : 'company'
   }
+  if (input.timesheetManagementScope !== undefined) {
+    payload.timesheet_management_scope =
+      input.timesheetManagementScope === 'office' ? 'office' : 'worker'
+  }
   if (input.timesheetWeekStartDay !== undefined) {
     payload.timesheet_week_start_day = normalizeTimesheetWeekStartDay(input.timesheetWeekStartDay)
   }
@@ -823,6 +841,10 @@ const OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS = [
   'weekly_overtime_after_hours',
 ] as const
 
+const OPTIONAL_TIMESHEET_MANAGEMENT_PAYLOAD_KEYS = [
+  'timesheet_management_scope',
+] as const
+
 const OPTIONAL_LEGAL_PAYLOAD_KEYS = [
   'legal_company_name',
   'business_address_line_1',
@@ -837,6 +859,7 @@ const OPTIONAL_LEGAL_PAYLOAD_KEYS = [
 
 const OPTIONAL_COMPANY_SETTINGS_PAYLOAD_KEYS = [
   ...OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS,
+  ...OPTIONAL_TIMESHEET_MANAGEMENT_PAYLOAD_KEYS,
   ...OPTIONAL_LEGAL_PAYLOAD_KEYS,
 ] as const
 
@@ -930,6 +953,67 @@ async function fetchAlternateCompanyName(companyId: string): Promise<string | nu
   return null
 }
 
+async function mergeOptionalTimesheetManagementScope(
+  companyId: string,
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data, error } = await queryCompanyRow(
+    companyId,
+    companySettingsTimesheetManagementSelect,
+  )
+
+  if (!error && data) {
+    return {
+      ...row,
+      ...(data as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      {
+        select: companySettingsTimesheetManagementSelect,
+        optional: 'timesheet_management_scope',
+        companyId,
+      },
+      error,
+    )
+  }
+
+  return row
+}
+
+async function mergeOptionalLegalColumns(
+  companyId: string,
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data, error } = await queryCompanyRow(companyId, companySettingsLegalSelect)
+
+  if (!error && data) {
+    return {
+      ...row,
+      ...(data as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      {
+        select: companySettingsLegalSelect,
+        optional: 'legal_company_fields',
+        companyId,
+      },
+      error,
+    )
+  }
+
+  return row
+}
+
 async function mergeOptionalOvertimeCalculationDefaults(
   companyId: string,
   row: CompanyRow,
@@ -990,35 +1074,6 @@ async function mergeOptionalConsumableDefaultPrices(
   return row
 }
 
-async function mergeOptionalLegalColumns(
-  companyId: string,
-  row: CompanyRow,
-): Promise<CompanyRow> {
-  const { data, error } = await queryCompanyRow(companyId, companySettingsLegalSelect)
-
-  if (!error && data) {
-    return {
-      ...row,
-      ...(data as unknown as Record<string, unknown>),
-    } as CompanyRow
-  }
-
-  if (error) {
-    logCompanySettingsPersistenceError(
-      'select',
-      'companies',
-      {
-        select: companySettingsLegalSelect,
-        optional: 'legal_company_fields',
-        companyId,
-      },
-      error,
-    )
-  }
-
-  return row
-}
-
 async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | null> {
   const table = 'companies'
   const { data, error } = await queryCompanyRow(companyId, companySettingsSelect)
@@ -1045,7 +1100,11 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
       companyId,
       merged as unknown as CompanyRow,
     )
-    const withLegal = await mergeOptionalLegalColumns(companyId, withOtDefaults)
+    const withTimesheetManagement = await mergeOptionalTimesheetManagementScope(
+      companyId,
+      withOtDefaults,
+    )
+    const withLegal = await mergeOptionalLegalColumns(companyId, withTimesheetManagement)
     return mergeOptionalConsumableDefaultPrices(companyId, withLegal)
   }
 
@@ -1207,7 +1266,11 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
     )
   }
 
-  return mergeOptionalLegalColumns(companyId, merged as unknown as CompanyRow)
+  const withTimesheetManagement = await mergeOptionalTimesheetManagementScope(
+    companyId,
+    merged as unknown as CompanyRow,
+  )
+  return mergeOptionalLegalColumns(companyId, withTimesheetManagement)
 }
 
 async function resolveAuthenticatedCompanyId(): Promise<string | null> {

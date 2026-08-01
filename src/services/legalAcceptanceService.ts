@@ -3,6 +3,7 @@ import {
   type LegalDocumentType,
 } from '@/content/legal/legalManifest'
 import {
+  cacheWorkerLegalStatusSummary,
   detectLegalPlatform,
   type CustomerLegalStatus,
   type LegalAcceptanceBatchResult,
@@ -21,6 +22,49 @@ export class LegalAcceptanceServiceError extends Error {
   }
 }
 
+function errorText(error: unknown): string {
+  if (error instanceof Error) return `${error.message} ${error.name}`
+  if (!error || typeof error !== 'object') return String(error ?? '')
+  const message =
+    'message' in error ? String((error as { message?: unknown }).message ?? '') : ''
+  const hint =
+    'hint' in error ? String((error as { hint?: unknown }).hint ?? '') : ''
+  const code =
+    'code' in error ? String((error as { code?: unknown }).code ?? '') : ''
+  const details =
+    'details' in error ? String((error as { details?: unknown }).details ?? '') : ''
+  return `${message} ${hint} ${code} ${details}`
+}
+
+/** Network / offline failures — use cached Worker acceptance when valid. */
+export function isLegalNetworkError(error: unknown): boolean {
+  const combined = errorText(error).toLowerCase()
+  return (
+    /failed to fetch|networkerror|network request failed|load failed|err_internet|err_network|offline|timeout|timed out|econnrefused|enotfound|dns|unavailable|fetch failed/i.test(
+      combined,
+    ) ||
+    (typeof navigator !== 'undefined' && navigator.onLine === false)
+  )
+}
+
+/** Soft-pass only when legal RPCs/tables are genuinely not migrated yet. */
+export function isLegalNotAvailableYetError(error: unknown): boolean {
+  const combined = errorText(error).toLowerCase()
+  if (isLegalNetworkError(error)) return false
+  return (
+    /not available yet/i.test(combined) ||
+    /relation .*legal_|function .*legal_|does not exist/i.test(combined)
+  )
+}
+
+/** Auth / permission failures — do not soft-pass or invent acceptance. */
+export function isLegalForbiddenError(error: unknown): boolean {
+  const combined = errorText(error).toLowerCase()
+  return /legal_accept_forbidden|42501|permission denied|jwt expired|not authenticated|unauthorized|forbidden|invalid.?jwt|row-level security|pgrst301/i.test(
+    combined,
+  )
+}
+
 function friendlyLegalError(error: unknown, fallback: string): LegalAcceptanceServiceError {
   if (error instanceof LegalAcceptanceServiceError) return error
   const message =
@@ -33,9 +77,14 @@ function friendlyLegalError(error: unknown, fallback: string): LegalAcceptanceSe
       : ''
   const combined = `${message} ${hint}`.toLowerCase()
 
-  if (/relation .*legal_|function .*legal_|does not exist/i.test(combined)) {
+  if (isLegalNotAvailableYetError(error)) {
     return new LegalAcceptanceServiceError(
       'Legal acceptance is not available yet. Please ask your Office to apply the latest DREVORA update.',
+    )
+  }
+  if (isLegalNetworkError(error)) {
+    return new LegalAcceptanceServiceError(
+      'Unable to reach DREVORA right now. Check your connection and try again.',
     )
   }
   if (/LEGAL_ACCEPT_CONTROLLER_INCOMPLETE|controller details are incomplete/i.test(combined)) {
@@ -48,7 +97,7 @@ function friendlyLegalError(error: unknown, fallback: string): LegalAcceptanceSe
       'Please confirm authority and accept every required document.',
     )
   }
-  if (/LEGAL_ACCEPT_FORBIDDEN|42501|permission|jwt|auth/i.test(combined)) {
+  if (isLegalForbiddenError(error)) {
     return new LegalAcceptanceServiceError(
       'You do not have permission to record this legal acceptance.',
     )
@@ -208,7 +257,15 @@ export async function fetchWorkerLegalStatus(
     throw friendlyLegalError(error, 'Unable to load worker legal status.')
   }
 
-  return mapWorkerStatus(data as Record<string, unknown>)
+  const status = mapWorkerStatus(data as Record<string, unknown>)
+  if (!status.requiresAcceptance && status.companyId && status.driverId) {
+    cacheWorkerLegalStatusSummary({
+      companyId: status.companyId,
+      driverId: status.driverId,
+      documents: status.documents,
+    })
+  }
+  return status
 }
 
 export async function acceptCustomerLegalDocuments(input: {
@@ -295,10 +352,13 @@ export async function acceptWorkerLegalDocuments(input: {
       companyId: input.companyId,
       driverId: input.driverId,
       workerTermsVersion: workerTerms.documentVersion,
-      workerTermsHash: workerTerms.documentHash,
+      workerTermsAccepted: true,
       privacyVersion: privacy.documentVersion,
+      privacyAcknowledged: true,
+      workerTermsHash: workerTerms.documentHash,
       privacyHash: privacy.documentHash,
       acceptedAt: result.acceptedAt,
+      cachedAt: new Date().toISOString(),
     })
   }
   return result

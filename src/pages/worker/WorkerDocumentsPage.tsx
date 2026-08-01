@@ -8,6 +8,9 @@ import {
 } from '@/components/ui/card'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import { cn } from '@/lib/utils'
+import { workerListCardClass } from '@/lib/workerDarkAccent'
 import {
   formatFileSizeBytes,
   isWorkerSubmissionPdfMime,
@@ -48,6 +51,7 @@ function reviewBadgeClass(status: WorkerDocumentSubmission['reviewStatus']): str
 export default function WorkerDocumentsPage() {
   const { formatDateTime } = useCompanySettings()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
+  const isDark = useIsWorkerDarkMode()
 
   const [history, setHistory] = useState<WorkerDocumentSubmission[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
@@ -427,42 +431,66 @@ export default function WorkerDocumentsPage() {
           </div>
         ) : null}
 
-        <ul className="space-y-3">
-          {history.map((submission) => (
+        <ul className="worker-list-stack">
+          {history.map((submission, index) => (
             <li
               key={submission.id}
-              className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50"
+              className={workerListCardClass(index, isDark)}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="worker-list-card__meta">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-950">
+                  <p
+                    className={cn(
+                      'worker-accent-title truncate text-sm font-semibold',
+                      !isDark && 'text-slate-950',
+                    )}
+                  >
                     {getWorkerSubmissionDisplayName(submission)}
                   </p>
                   {submission.documentType === 'Other' ? null : (
-                    <p className="text-xs text-slate-500">{submission.documentType}</p>
+                    <p
+                      className={cn(
+                        'worker-accent-muted text-[11px]',
+                        !isDark && 'text-slate-500',
+                      )}
+                    >
+                      {submission.documentType}
+                    </p>
                   )}
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p
+                    className={cn(
+                      'worker-accent-muted text-[11px]',
+                      !isDark && 'text-slate-500',
+                    )}
+                  >
                     {formatDateTime(submission.submittedAt)}
+                    {' · '}
+                    {submission.attachments.length}{' '}
+                    {submission.attachments.length === 1 ? 'file' : 'files'}
                   </p>
                 </div>
                 <span
-                  className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${reviewBadgeClass(submission.reviewStatus)}`}
+                  className={cn(
+                    'worker-accent-badge inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+                    reviewBadgeClass(submission.reviewStatus),
+                  )}
                 >
                   {getWorkerSubmissionReviewLabel(submission.reviewStatus)}
                 </span>
               </div>
 
-              <p className="mt-2 text-xs text-slate-500">
-                {submission.attachments.length}{' '}
-                {submission.attachments.length === 1 ? 'file' : 'files'}
-              </p>
-              <ul className="mt-2 space-y-1.5">
+              <ul className="mt-1.5 space-y-0.5">
                 {submission.attachments.map((attachment) => (
                   <li
                     key={attachment.id}
-                    className="flex items-center justify-between gap-2 text-sm"
+                    className="flex min-h-11 items-center justify-between gap-2 text-sm"
                   >
-                    <span className="min-w-0 truncate text-slate-700">
+                    <span
+                      className={cn(
+                        'worker-accent-secondary min-w-0 truncate text-xs',
+                        !isDark && 'text-slate-700',
+                      )}
+                    >
                       {attachment.originalFileName}
                     </span>
                     <div className="flex shrink-0 gap-2">
@@ -472,7 +500,7 @@ export default function WorkerDocumentsPage() {
                         onClick={() =>
                           void openAttachment(attachment.filePath, attachment.id)
                         }
-                        className="text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
+                        className="min-h-11 px-1 text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                       >
                         View
                       </button>
@@ -482,7 +510,7 @@ export default function WorkerDocumentsPage() {
                         onClick={() =>
                           void openAttachment(attachment.filePath, attachment.id)
                         }
-                        className="text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
+                        className="min-h-11 px-1 text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                       >
                         Download
                       </button>
@@ -492,7 +520,7 @@ export default function WorkerDocumentsPage() {
               </ul>
 
               {submission.reviewStatus === 'rejected' && submission.rejectionReason ? (
-                <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <p className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700">
                   Reason: {submission.rejectionReason}
                 </p>
               ) : null}

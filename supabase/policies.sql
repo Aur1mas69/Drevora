@@ -813,6 +813,17 @@ grant select on public.notifications to authenticated;
 grant select, insert, update, delete on public.notification_reads to authenticated;
 
 -- -----------------------------------------------------------------------------
+-- Support requests (Worker Help & Support)
+-- Applied by 20260801130000_create_support_requests.sql
+-- -----------------------------------------------------------------------------
+alter table public.support_requests enable row level security;
+
+revoke all on table public.support_requests from anon;
+revoke all on table public.support_requests from authenticated;
+
+grant select, insert on table public.support_requests to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Production — enable RLS and add policies (NOT active during MVP)
 -- Uncomment and adapt before go-live. Example pattern shown below.
 -- -----------------------------------------------------------------------------

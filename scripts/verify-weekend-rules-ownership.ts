@@ -1,6 +1,8 @@
 /**
- * Verification for configurable Weekend Timesheet Rules ownership
- * (companies.weekend_rules_scope + per-Worker Saturday/Sunday overrides).
+ * Verification for Weekend Timesheet Rules ownership used in overtime
+ * calculations (companies.weekend_rules_scope + per-Worker Sat/Sun overrides).
+ * Admin UI for this flag was replaced by "Who manages Timesheets?"
+ * (timesheet_management_scope); calculation ownership behaviour is unchanged.
  * Run: npx tsx scripts/verify-weekend-rules-ownership.ts
  */
 import type { CompanySettings } from '../src/lib/companySettingsTypes.ts'

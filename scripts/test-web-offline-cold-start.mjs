@@ -145,6 +145,7 @@ function workerMembershipSnapshot(userId) {
       sundayGuaranteedPaidHours: 0,
       sundayUseCompanyDefaultBreak: true,
       weekendRulesScope: 'company',
+      timesheetManagementScope: 'worker',
       timesheetWeekStartDay: 'monday',
       timesheetWeekResetMonth: 1,
       timesheetWeekResetDay: 1,

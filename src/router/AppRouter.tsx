@@ -85,6 +85,27 @@ const WorkerSettingsContactOfficePage = lazy(
 const WorkerSettingsHelpPage = lazy(
   () => import('@/pages/worker/WorkerSettingsHelpPage'),
 )
+const WorkerSupportBugPage = lazy(
+  () => import('@/pages/worker/WorkerSupportBugPage'),
+)
+const WorkerSupportFeedbackPage = lazy(
+  () => import('@/pages/worker/WorkerSupportFeedbackPage'),
+)
+const WorkerSupportRatePage = lazy(
+  () => import('@/pages/worker/WorkerSupportRatePage'),
+)
+const WorkerSupportRequestsPage = lazy(
+  () => import('@/pages/worker/WorkerSupportRequestsPage'),
+)
+const WorkerSupportRequestDetailPage = lazy(
+  () => import('@/pages/worker/WorkerSupportRequestDetailPage'),
+)
+const WorkerSupportGuidesPage = lazy(
+  () => import('@/pages/worker/WorkerSupportGuidesPage'),
+)
+const WorkerSupportGuideTopicPage = lazy(
+  () => import('@/pages/worker/WorkerSupportGuideTopicPage'),
+)
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const FaqHelpPage = lazy(() => import('@/pages/FaqHelpPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
@@ -548,6 +569,34 @@ function AppRouter() {
           <Route
             path="/worker/settings/help"
             element={<WorkerSettingsHelpPage />}
+          />
+          <Route
+            path="/worker/settings/help/bug"
+            element={<WorkerSupportBugPage />}
+          />
+          <Route
+            path="/worker/settings/help/feedback"
+            element={<WorkerSupportFeedbackPage />}
+          />
+          <Route
+            path="/worker/settings/help/rate"
+            element={<WorkerSupportRatePage />}
+          />
+          <Route
+            path="/worker/settings/help/requests"
+            element={<WorkerSupportRequestsPage />}
+          />
+          <Route
+            path="/worker/settings/help/requests/:requestId"
+            element={<WorkerSupportRequestDetailPage />}
+          />
+          <Route
+            path="/worker/settings/help/guides"
+            element={<WorkerSupportGuidesPage />}
+          />
+          <Route
+            path="/worker/settings/help/guides/:topicId"
+            element={<WorkerSupportGuideTopicPage />}
           />
           <Route
             path="/worker/settings/help/legal/worker-terms"

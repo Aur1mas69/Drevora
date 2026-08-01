@@ -47,6 +47,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'sunday_overtime_multiplier',
   'sunday_use_company_default_break',
   'weekend_rules_scope',
+  'timesheet_management_scope',
   'timesheet_week_start_day',
   'timesheet_week_reset_month',
   'timesheet_week_reset_day',
@@ -104,6 +105,29 @@ export const COMPANY_SETTINGS_CORE_COLUMNS = [
 ] as const
 
 /** Weekend overtime columns — optional until migration is applied. */
+export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
+  'saturday_overtime_enabled',
+  'saturday_overtime_after_hours',
+  'saturday_overtime_multiplier',
+  'saturday_guaranteed_paid_hours',
+  'saturday_use_company_default_break',
+  'sunday_overtime_enabled',
+  'sunday_overtime_after_hours',
+  'sunday_overtime_multiplier',
+  'sunday_guaranteed_paid_hours',
+  'sunday_use_company_default_break',
+  'weekend_rules_scope',
+] as const
+
+/** Timesheet workflow ownership — optional until migration is applied. */
+export const COMPANY_SETTINGS_TIMESHEET_MANAGEMENT_COLUMNS = [
+  'timesheet_management_scope',
+] as const
+
+export const companySettingsTimesheetManagementSelect = `
+  timesheet_management_scope
+` as const
+
 /** Legal / company controller fields — optional until migration is applied. */
 export const COMPANY_SETTINGS_LEGAL_COLUMNS = [
   'legal_company_name',
@@ -128,20 +152,6 @@ export const companySettingsLegalSelect = `
   worker_privacy_notice_version,
   worker_privacy_notice_updated_at
 ` as const
-
-export const COMPANY_SETTINGS_WEEKEND_COLUMNS = [
-  'saturday_overtime_enabled',
-  'saturday_overtime_after_hours',
-  'saturday_overtime_multiplier',
-  'saturday_guaranteed_paid_hours',
-  'saturday_use_company_default_break',
-  'sunday_overtime_enabled',
-  'sunday_overtime_after_hours',
-  'sunday_overtime_multiplier',
-  'sunday_guaranteed_paid_hours',
-  'sunday_use_company_default_break',
-  'weekend_rules_scope',
-] as const
 
 /** Timesheet week numbering columns — optional until migration is applied. */
 export const COMPANY_SETTINGS_WEEK_NUMBERING_COLUMNS = [

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import WorkerLegalAgreementsPage from '@/pages/WorkerLegalAgreementsPage'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { getLegalManifestEntry } from '@/content/legal/legalManifest'
+import { evaluateOfflineWorkerLegalAccess } from '@/lib/legalAcceptanceTypes'
 import { WORKER_LEGAL_ROUTES } from '@/lib/legalContent'
 import {
   addOnlineStatusListener,
@@ -9,6 +11,9 @@ import {
 } from '@/lib/networkStatus'
 import {
   fetchWorkerLegalStatus,
+  isLegalForbiddenError,
+  isLegalNetworkError,
+  isLegalNotAvailableYetError,
   LegalAcceptanceServiceError,
 } from '@/services/legalAcceptanceService'
 import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
@@ -33,9 +38,9 @@ type RequireWorkerLegalAcceptanceProps = {
 }
 
 /**
- * Worker first-login / legal-update gate. Offline users who still require
- * acceptance see the gate with an offline explanation; allowlisted document
- * routes remain readable.
+ * Worker-only legal gate (Worker Terms + Privacy).
+ * Never shows Customer Terms or DPA. Offline access uses a safe local summary
+ * matched to bundled manifest versions — Supabase remains source of truth online.
  */
 export function RequireWorkerLegalAcceptance({
   children,
@@ -44,6 +49,7 @@ export function RequireWorkerLegalAcceptance({
   const location = useLocation()
   const [isOnline, setIsOnline] = useState(true)
   const [requiresAcceptance, setRequiresAcceptance] = useState<boolean | null>(null)
+  const [usingCachedAcceptance, setUsingCachedAcceptance] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,35 +73,84 @@ export function RequireWorkerLegalAcceptance({
     }
   }, [])
 
+  const applyOfflineOrCacheDecision = useCallback((nextCompanyId: string) => {
+    const decision = evaluateOfflineWorkerLegalAccess({
+      companyId: nextCompanyId,
+      bundledWorkerTermsVersion: getLegalManifestEntry('worker_terms').version,
+      bundledPrivacyVersion: getLegalManifestEntry('privacy_policy').version,
+    })
+    if (decision.kind === 'allow_cached') {
+      setRequiresAcceptance(false)
+      setUsingCachedAcceptance(true)
+      setError(null)
+      return
+    }
+    // No valid cache / outdated versions — Worker-only gate, not Customer docs.
+    setRequiresAcceptance(true)
+    setUsingCachedAcceptance(false)
+    setError(null)
+  }, [])
+
   const refresh = useCallback(async () => {
     if (!companyReady || !companyId) {
       setRequiresAcceptance(null)
+      setUsingCachedAcceptance(false)
       return
     }
+
     const online = await getOnlineStatus()
     if (!online) {
-      // Keep prior known state when possible; treat unknown as requiring gate.
-      setRequiresAcceptance((prev) => (prev == null ? true : prev))
+      applyOfflineOrCacheDecision(companyId)
       return
     }
+
     setError(null)
     try {
       const status = await fetchWorkerLegalStatus(companyId)
       setRequiresAcceptance(status.requiresAcceptance)
+      setUsingCachedAcceptance(false)
     } catch (err) {
+      if (isLegalNotAvailableYetError(err)) {
+        setRequiresAcceptance(false)
+        setUsingCachedAcceptance(false)
+        setError(null)
+        return
+      }
+
+      // Network failure after a prior acceptance — use cache; never invent acceptance.
+      if (isLegalNetworkError(err)) {
+        applyOfflineOrCacheDecision(companyId)
+        return
+      }
+
+      // Forbidden / auth — do not soft-pass.
+      if (isLegalForbiddenError(err)) {
+        setRequiresAcceptance(null)
+        setUsingCachedAcceptance(false)
+        setError(
+          err instanceof LegalAcceptanceServiceError
+            ? err.message
+            : 'You do not have permission to verify legal acceptance.',
+        )
+        return
+      }
+
       const message =
         err instanceof LegalAcceptanceServiceError
           ? err.message
           : 'Unable to verify legal acceptance status.'
-      if (/not available yet/i.test(message)) {
-        setRequiresAcceptance(false)
-        setError(null)
+
+      // If the device is actually offline despite getOnlineStatus, prefer cache.
+      if (!(await getOnlineStatus())) {
+        applyOfflineOrCacheDecision(companyId)
         return
       }
+
       setRequiresAcceptance(null)
+      setUsingCachedAcceptance(false)
       setError(message)
     }
-  }, [companyId, companyReady])
+  }, [applyOfflineOrCacheDecision, companyId, companyReady])
 
   useEffect(() => {
     void refresh()
@@ -105,7 +160,7 @@ export function RequireWorkerLegalAcceptance({
     return <AuthSplashScreen />
   }
 
-  if (error && isOnline) {
+  if (error && isOnline && !usingCachedAcceptance) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#F6F9FF] px-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -131,5 +186,17 @@ export function RequireWorkerLegalAcceptance({
     )
   }
 
-  return children
+  return (
+    <>
+      {usingCachedAcceptance && !isOnline ? (
+        <div
+          role="status"
+          className="legal-print-hide border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
+        >
+          You’re offline. Your previously confirmed legal settings are being used.
+        </div>
+      ) : null}
+      {children}
+    </>
+  )
 }

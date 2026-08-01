@@ -2,12 +2,14 @@ import { TimesheetDecimalHoursInput } from '@/components/timesheets/TimesheetDec
 import { WorkerTimesheetShiftTimes } from '@/components/timesheets/WorkerTimesheetShiftTimes'
 import { WorkerSubmitTimesheetDialog } from '@/components/timesheets/WorkerSubmitTimesheetDialog'
 import { Button } from '@/components/ui/button'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
 import { WorkerTimesheetHistoryDetailModal } from '@/components/timesheets/WorkerTimesheetHistoryDetailModal'
 import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesheetHistoryList'
+import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
   TimesheetEntryInput,
@@ -42,6 +44,7 @@ import { cn } from '@/lib/utils'
 import {
   createTimesheet,
   fetchTimesheetById,
+  fetchTimesheetForDriverWeek,
   submitTimesheet,
   TimesheetsServiceError,
   upsertTimesheetEntries,
@@ -776,10 +779,15 @@ function WorkerDayAccordionRow({
 export default function WorkerTimesheetsPage() {
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
+  const { settings: companySettings } = useCompanySettings()
   const {
     effective,
     isLoading: effectiveSettingsLoading,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
+
+  const workersManageTimesheets = workersManageOwnTimesheets(
+    companySettings?.timesheetManagementScope,
+  )
 
   const defaultBreakMinutes = effective?.defaultBreakMinutes ?? 30
   const overtimeMode = effective?.overtimeMode ?? 'Manual'
@@ -817,7 +825,10 @@ export default function WorkerTimesheetsPage() {
 
   const todayDateString = useMemo(() => formatLocalDateString(new Date()), [])
 
-  const editable = timesheet ? canWorkerEditTimesheet(timesheet.status) : false
+  const editable =
+    Boolean(timesheet) &&
+    workersManageTimesheets &&
+    canWorkerEditTimesheet(timesheet!.status)
   const isDirty = editable && entriesSnapshot(entries) !== savedSnapshot
   const isManualMode = overtimeMode === 'Manual'
 
@@ -863,14 +874,14 @@ export default function WorkerTimesheetsPage() {
   )
 
   const applyLoadedTimesheet = useCallback(
-    (loaded: Timesheet) => {
+    (loaded: Timesheet, canEditLoaded: boolean) => {
       const prepared = prepareEntryInputs(
         loaded.weekStart,
         loaded.entries,
         defaultBreakMinutes,
         breakOptions,
       )
-      const nextEntries = canWorkerEditTimesheet(loaded.status)
+      const nextEntries = canEditLoaded
         ? recalculateEntryInputs(prepared, {
             overtimeMode,
             overtimeRules,
@@ -920,19 +931,47 @@ export default function WorkerTimesheetsPage() {
           targetWeekStart,
           weekSettings,
         )
-        const result = await createTimesheet({
-          driverId: worker.id,
-          weekStart: normalizedWeek,
-          vehicleId: worker.defaultVehicleId,
-        })
 
-        if (generation !== loadGenerationRef.current) return
+        if (workersManageTimesheets) {
+          const result = await createTimesheet(
+            {
+              driverId: worker.id,
+              weekStart: normalizedWeek,
+              vehicleId: worker.defaultVehicleId,
+            },
+            { asWorkerSelfService: true },
+          )
 
-        if (result.timesheet.driverId !== worker.id) {
-          throw new Error('Timesheet does not belong to the signed-in worker.')
+          if (generation !== loadGenerationRef.current) return
+
+          if (result.timesheet.driverId !== worker.id) {
+            throw new Error('Timesheet does not belong to the signed-in worker.')
+          }
+
+          applyLoadedTimesheet(
+            result.timesheet,
+            canWorkerEditTimesheet(result.timesheet.status),
+          )
+        } else {
+          const existing = await fetchTimesheetForDriverWeek(worker.id, normalizedWeek)
+
+          if (generation !== loadGenerationRef.current) return
+
+          if (!existing) {
+            setTimesheet(null)
+            setEntries([])
+            setSavedSnapshot('')
+            setSelectedDayDate('')
+            setWeekStart(normalizedWeek)
+            return
+          }
+
+          if (existing.driverId !== worker.id) {
+            throw new Error('Timesheet does not belong to the signed-in worker.')
+          }
+
+          applyLoadedTimesheet(existing, false)
         }
-
-        applyLoadedTimesheet(result.timesheet)
       } catch (error) {
         if (generation !== loadGenerationRef.current) return
         setTimesheet(null)
@@ -959,6 +998,7 @@ export default function WorkerTimesheetsPage() {
       weekSettings,
       worker,
       workerError,
+      workersManageTimesheets,
     ],
   )
 
@@ -1069,12 +1109,14 @@ export default function WorkerTimesheetsPage() {
       return false
     }
 
-    await upsertTimesheetEntries(timesheet.id, recalculated)
+    await upsertTimesheetEntries(timesheet.id, recalculated, {
+      asWorkerSelfService: true,
+    })
     const refreshed = await fetchTimesheetById(timesheet.id)
     if (refreshed.driverId !== worker?.id) {
       throw new Error('Timesheet does not belong to the signed-in worker.')
     }
-    applyLoadedTimesheet(refreshed)
+    applyLoadedTimesheet(refreshed, canWorkerEditTimesheet(refreshed.status))
     if (successMessage) {
       setActionMessage(successMessage)
     }
@@ -1118,9 +1160,11 @@ export default function WorkerTimesheetsPage() {
         return
       }
 
-      const updatedTimesheet = await upsertTimesheetEntries(timesheet.id, [
-        recalculatedDay,
-      ])
+      const updatedTimesheet = await upsertTimesheetEntries(
+        timesheet.id,
+        [recalculatedDay],
+        { asWorkerSelfService: true },
+      )
       if (updatedTimesheet.driverId !== worker?.id) {
         throw new Error('Timesheet does not belong to the signed-in worker.')
       }
@@ -1220,15 +1264,19 @@ export default function WorkerTimesheetsPage() {
         setSubmitConfirmOpen(false)
         return
       }
-      const submitted = await submitTimesheet(timesheet.id, {
-        workerConfirmed: true,
-        confirmedByDriverId: worker.id,
-      })
+      const submitted = await submitTimesheet(
+        timesheet.id,
+        {
+          workerConfirmed: true,
+          confirmedByDriverId: worker.id,
+        },
+        { asWorkerSelfService: true },
+      )
       const refreshed = await fetchTimesheetById(submitted.id)
       if (refreshed.driverId !== worker?.id) {
         throw new Error('Timesheet does not belong to the signed-in worker.')
       }
-      applyLoadedTimesheet(refreshed)
+      applyLoadedTimesheet(refreshed, false)
       setSubmitConfirmOpen(false)
       setActionMessage('Submitted for office review.')
     } catch (error) {
@@ -1417,7 +1465,14 @@ export default function WorkerTimesheetsPage() {
         </p>
       ) : null}
 
-      {!editable ? (
+      {!workersManageTimesheets ? (
+        <div className="rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
+          <p className="text-sm font-medium text-slate-700">
+            Your Office manages Timesheets. You can view yours here; only Office
+            can create or edit them.
+          </p>
+        </div>
+      ) : !editable ? (
         <div className="space-y-2 rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
           <p className="text-sm font-medium text-slate-700">
             This timesheet is <span className="font-semibold">{getStatusLabel(status)}</span> and
@@ -1500,6 +1555,15 @@ export default function WorkerTimesheetsPage() {
       </div>
 
       {activeTab === 'current' ? (
+        !timesheet ? (
+          <div className="rounded-[1.75rem] border border-[#BFE3F5] bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-600">
+              {workersManageTimesheets
+                ? 'No Timesheet is available for this week yet.'
+                : 'No Timesheet has been created for this week yet. Your Office will create it when ready.'}
+            </p>
+          </div>
+        ) : (
         <>
           <section
             aria-label="Week summary"
@@ -1578,6 +1642,7 @@ export default function WorkerTimesheetsPage() {
             Company Timesheet rules are shown in Worker Settings.
           </p>
         </>
+        )
       ) : (
         <WorkerTimesheetHistoryList
           workerId={worker.id}

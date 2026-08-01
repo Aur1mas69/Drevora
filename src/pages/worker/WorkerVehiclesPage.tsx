@@ -89,7 +89,7 @@ function VehicleActionCard({
 }) {
   const toneStyles = VEHICLE_ACTION_TONE[tone]
   const className = cn(
-    'flex h-full min-h-[6.5rem] w-full flex-col justify-between rounded-[1.5rem] border p-4 text-left shadow-sm transition-colors',
+    'worker-list-card flex h-full min-h-[5.25rem] w-full flex-col justify-between text-left transition-colors',
     disabled
       ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400 shadow-none'
       : isDark
@@ -102,7 +102,7 @@ function VehicleActionCard({
       <div className="flex items-start justify-between gap-3">
         <div
           className={cn(
-            'flex size-10 items-center justify-center rounded-2xl',
+            'flex size-9 items-center justify-center rounded-xl',
             disabled
               ? 'bg-slate-100 text-slate-400'
               : isDark
@@ -112,7 +112,7 @@ function VehicleActionCard({
         >
           <Icon
             className={cn(
-              'size-5',
+              'size-4',
               disabled ? 'text-slate-400' : !isDark && toneStyles.icon,
             )}
             strokeWidth={1.75}
@@ -128,7 +128,7 @@ function VehicleActionCard({
       <div>
         <p
           className={cn(
-            'text-base font-semibold leading-snug',
+            'text-sm font-semibold leading-snug',
             disabled
               ? 'text-slate-400'
               : isDark
@@ -140,7 +140,7 @@ function VehicleActionCard({
         </p>
         <p
           className={cn(
-            'mt-1 text-sm leading-snug',
+            'mt-0.5 text-xs leading-snug',
             disabled
               ? 'text-slate-400'
               : isDark

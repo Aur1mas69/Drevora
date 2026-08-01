@@ -59,7 +59,7 @@ function SettingsRowLink({
     <Link
       to={to}
       className={cn(
-        'flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors',
+        'flex min-h-11 w-full min-w-0 items-center gap-2.5 worker-list-row',
         !isDark &&
           'active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
         className,
@@ -67,12 +67,12 @@ function SettingsRowLink({
     >
       <span
         className={cn(
-          'worker-accent-icon-well flex size-10 shrink-0 items-center justify-center rounded-2xl',
+          'worker-accent-icon-well flex size-9 shrink-0 items-center justify-center rounded-xl',
           !isDark &&
             'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
         )}
       >
-        <Icon className="size-5" aria-hidden />
+        <Icon className="size-4" aria-hidden />
       </span>
       <span className="min-w-0 flex-1 text-left">
         <span
@@ -523,7 +523,7 @@ export default function WorkerSettingsPage() {
           to="/worker/settings/contact-office"
           icon={Contact}
           title="Contact Office"
-          subtitle="Phone and email when shared"
+          subtitle="Work, rota and company questions"
           isDark={isDark}
         />
 
@@ -531,7 +531,7 @@ export default function WorkerSettingsPage() {
           to="/worker/settings/help"
           icon={CircleHelp}
           title="Help & Support"
-          subtitle="Ask your office for assistance"
+          subtitle="Guides, bugs, feedback and legal"
           className={cn(
             'worker-accent-divider border-t',
             !isDark && 'border-[color:var(--worker-border)]',
@@ -541,7 +541,7 @@ export default function WorkerSettingsPage() {
 
         <div
           className={cn(
-            'worker-accent-divider flex min-h-14 w-full min-w-0 items-center justify-between gap-3 border-t px-4 py-3.5',
+            'worker-accent-divider worker-list-row justify-between border-t',
             !isDark && 'border-[color:var(--worker-border)]',
           )}
         >

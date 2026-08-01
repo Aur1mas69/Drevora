@@ -3,6 +3,7 @@ import {
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
+import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
 import { resolveEffectiveTimesheetSettings } from '@/lib/resolveEffectiveTimesheetSettings'
 import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
 import { fetchDriverTimesheetSettingsByDriverIds } from '@/services/workerTimesheetSettingsService'
@@ -982,6 +983,20 @@ export function canWorkerEditTimesheetStatus(status: TimesheetStatus): boolean {
   return status === 'Draft' || status === 'Rejected'
 }
 
+function assertWorkersManageOwnTimesheets(): void {
+  const scope = getGlobalCompanySettings()?.timesheetManagementScope
+  if (!workersManageOwnTimesheets(scope)) {
+    throw new TimesheetsServiceError(
+      'Your Office manages Timesheets. Workers can view them but cannot create or edit.',
+    )
+  }
+}
+
+export type WorkerTimesheetMutationOptions = {
+  /** When true, enforce company "Workers manage their own Timesheets" permission. */
+  asWorkerSelfService?: boolean
+}
+
 /** Apply Current / History / All cleaned_at visibility to a timesheets query. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyTimesheetsCleanedAtViewFilter(request: any, viewMode: TimesheetsQuery['viewMode']): any {
@@ -1231,7 +1246,27 @@ async function resolveExistingTimesheetAfterDuplicate(
   return fetchTimesheetRowById(existingId, companyId)
 }
 
-export async function createTimesheet(input: CreateTimesheetInput): Promise<CreateTimesheetResult> {
+/** Load an existing Timesheet for a Worker/week without creating one. */
+export async function fetchTimesheetForDriverWeek(
+  driverId: string,
+  weekStart: string,
+): Promise<Timesheet | null> {
+  const companyId = requireVerifiedCompanyId()
+  await assertDriverInCompany(driverId, companyId)
+  const normalizedWeek = normalizeWeekStartForCompany(weekStart)
+  const existingId = await fetchActiveTimesheetIdForDriverWeek(
+    driverId,
+    normalizedWeek,
+    companyId,
+  )
+  if (!existingId) return null
+  return fetchTimesheetRowById(existingId, companyId)
+}
+
+export async function createTimesheet(
+  input: CreateTimesheetInput,
+  options?: WorkerTimesheetMutationOptions,
+): Promise<CreateTimesheetResult> {
   const companyId = requireVerifiedCompanyId()
   await assertDriverInCompany(input.driverId, companyId)
   const weekStart = normalizeWeekStartForCompany(input.weekStart)
@@ -1242,6 +1277,10 @@ export async function createTimesheet(input: CreateTimesheetInput): Promise<Crea
       timesheet: await fetchTimesheetRowById(existingId, companyId),
       created: false,
     }
+  }
+
+  if (options?.asWorkerSelfService) {
+    assertWorkersManageOwnTimesheets()
   }
 
   try {
@@ -1498,10 +1537,15 @@ export async function deleteTimesheet(id: string): Promise<void> {
 export async function upsertTimesheetEntries(
   timesheetId: string,
   entries: TimesheetEntryInput[],
+  options?: WorkerTimesheetMutationOptions,
 ): Promise<Timesheet> {
   const companyId = requireVerifiedCompanyId()
   if (entries.length === 0) {
     throw new TimesheetsServiceError('No timesheet entries to save')
+  }
+
+  if (options?.asWorkerSelfService) {
+    assertWorkersManageOwnTimesheets()
   }
 
   const supabase = requireSupabase()
@@ -1721,10 +1765,15 @@ export type SubmitTimesheetConfirmation = {
 export async function submitTimesheet(
   id: string,
   confirmation: SubmitTimesheetConfirmation,
+  options?: WorkerTimesheetMutationOptions,
 ): Promise<Timesheet> {
   const companyId = requireVerifiedCompanyId()
   const supabase = requireSupabase()
   const now = new Date().toISOString()
+
+  if (options?.asWorkerSelfService) {
+    assertWorkersManageOwnTimesheets()
+  }
 
   if (!confirmation?.workerConfirmed || !confirmation.confirmedByDriverId?.trim()) {
     throw new TimesheetsServiceError(
@@ -1926,6 +1975,7 @@ export const timesheetsService = {
   fetchTimesheetWeekStats,
   fetchTimesheets,
   fetchTimesheetById,
+  fetchTimesheetForDriverWeek,
   createTimesheet,
   bulkCreateTimesheets,
   updateTimesheet,

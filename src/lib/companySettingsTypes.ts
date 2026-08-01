@@ -119,6 +119,18 @@ export const DEFAULT_TIMESHEET_WEEK_SETTINGS: TimesheetWeekSettings = {
 export type WeekendRulesScope = 'company' | 'worker'
 export const DEFAULT_WEEKEND_RULES_SCOPE: WeekendRulesScope = 'company'
 
+/** Company-wide Timesheet workflow ownership (not per-Worker). */
+export type TimesheetManagementScope = 'office' | 'worker'
+/** Default preserves existing Worker create/edit/submit behaviour. */
+export const DEFAULT_TIMESHEET_MANAGEMENT_SCOPE: TimesheetManagementScope = 'worker'
+
+/** True when Workers may create, edit, save and submit their own Timesheets. */
+export function workersManageOwnTimesheets(
+  scope: TimesheetManagementScope | null | undefined,
+): boolean {
+  return scope !== 'office'
+}
+
 export type CompanyTheme = 'light' | 'dark' | 'system'
 export type DefaultBreakMinutes = 30 | 45 | 60
 export type OvertimeAfterHours = number
@@ -336,9 +348,12 @@ export type CompanySettings = {
   sundayGuaranteedPaidHours: number
   sundayUseCompanyDefaultBreak: boolean
   weekendRulesScope: WeekendRulesScope
+  /** Who manages Timesheet create/edit/submit: Office or Workers. */
+  timesheetManagementScope: TimesheetManagementScope
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
+  consumableDefaultPrices: ConsumableDefaultPricesMap
   /** Legal / controller identity (optional until legal migration). */
   legalCompanyName: string | null
   businessAddressLine1: string | null
@@ -349,7 +364,6 @@ export type CompanySettings = {
   workerPrivacyNoticeContent: string | null
   workerPrivacyNoticeVersion: string | null
   workerPrivacyNoticeUpdatedAt: string | null
-  consumableDefaultPrices: ConsumableDefaultPricesMap
 }
 
 export type CompanySettingsInput = {
@@ -400,6 +414,7 @@ export type CompanySettingsInput = {
   sundayGuaranteedPaidHours: number
   sundayUseCompanyDefaultBreak: boolean
   weekendRulesScope: WeekendRulesScope
+  timesheetManagementScope: TimesheetManagementScope
   timesheetWeekStartDay: TimesheetWeekStartDay
   timesheetWeekResetMonth: number
   timesheetWeekResetDay: number
@@ -462,6 +477,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   sundayGuaranteedPaidHours: DEFAULT_SUNDAY_GUARANTEED_PAID_HOURS,
   sundayUseCompanyDefaultBreak: true,
   weekendRulesScope: DEFAULT_WEEKEND_RULES_SCOPE,
+  timesheetManagementScope: DEFAULT_TIMESHEET_MANAGEMENT_SCOPE,
   ...DEFAULT_TIMESHEET_WEEK_SETTINGS,
   legalCompanyName: '',
   businessAddressLine1: '',

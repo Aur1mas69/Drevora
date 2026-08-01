@@ -99,6 +99,117 @@ html:not(.worker-dark) .worker-mobile-layout {
   color: var(--worker-text);
 }
 
+/* -----------------------------------------------------------------------------
+ * Shared compact Worker list cards (Contacts, Timesheet History, Documents,
+ * Consumables, Help / Contact Office, Settings rows).
+ * Keep tap targets ≥ 44px; do not use on forms, day cubes, holiday balance, CTAs.
+ * ----------------------------------------------------------------------------- */
+.worker-mobile-layout .worker-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.worker-mobile-layout .worker-list-card {
+  box-sizing: border-box;
+  min-height: 2.75rem; /* 44px */
+  border-radius: 1rem;
+  border: 1px solid var(--worker-border);
+  background-color: var(--worker-card);
+  color: var(--worker-text);
+  padding: 0.625rem 0.75rem; /* 10px 12px */
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.worker-mobile-layout .worker-list-card--interactive {
+  width: 100%;
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.worker-mobile-layout .worker-list-card--interactive:hover {
+  border-color: var(--worker-border-strong);
+  background-color: var(--worker-row-hover);
+}
+
+.worker-mobile-layout .worker-list-card--interactive:active {
+  background-color: var(--worker-row-hover);
+}
+
+.worker-mobile-layout .worker-list-card--interactive:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--worker-card),
+    0 0 0 4px color-mix(in srgb, var(--worker-primary) 45%, transparent);
+}
+
+.worker-mobile-layout .worker-list-card__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.worker-mobile-layout .worker-list-card__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.worker-mobile-layout .worker-list-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.375rem;
+}
+
+.worker-mobile-layout .worker-list-card__tap {
+  display: inline-flex;
+  min-height: 2.75rem; /* 44px */
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  padding: 0.25rem 0.25rem;
+}
+
+.worker-mobile-layout .worker-list-row {
+  display: flex;
+  min-height: 2.75rem; /* 44px — was 56px */
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  transition: background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.worker-mobile-layout .worker-list-row:hover {
+  background-color: var(--worker-row-hover);
+}
+
+.worker-mobile-layout .worker-list-row:active {
+  background-color: var(--worker-row-hover);
+}
+
+.worker-dark .worker-mobile-layout .worker-list-card--interactive:hover,
+.worker-dark .worker-mobile-layout .worker-list-card--interactive:active {
+  /* Keep mint/indigo accent fills; only soften via filter. */
+  filter: brightness(1.04);
+  background-color: inherit;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-list-card {
+  /* Accent fill wins; keep compact padding/radius from .worker-list-card */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
 .worker-mobile-layout .worker-input {
   background-color: var(--worker-input);
   border: 1px solid var(--worker-border);
@@ -575,19 +686,103 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   content: none;
 }
 
+/*
+ * Raised-arm wave: same transparent robot-only WebP twice.
+ * Body uses evenodd mask to cut the arm hole; arm layer is clipped and rotates
+ * from the shoulder. Rest pose aligns with the hole (no static ghost arm).
+ * Figure is absolutely positioned; aspect matches the cropped asset (1264×975).
+ */
+.worker-mobile-layout .worker-robot-hero__figure {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  aspect-ratio: 1264 / 975;
+}
+
+.worker-mobile-layout .worker-robot-hero__body,
+.worker-mobile-layout .worker-robot-hero__arm {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  object-position: right bottom;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Full figure minus raised-arm polygon (coords for cropped robot-only asset). */
+.worker-mobile-layout .worker-robot-hero__body {
+  z-index: 1;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M0 0H100V100H0zM0 34.9L0 24.4 0.3 16 10.1 13.9 19.8 18.1 27.1 26.5 31.9 37 35.6 47.5 39.2 58 41.7 66.4 42.9 73.7 36.8 79 27.1 81.1 14.9 79 5.2 72.7 0 62.2 0 49.6 0 41.2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M0 0H100V100H0zM0 34.9L0 24.4 0.3 16 10.1 13.9 19.8 18.1 27.1 26.5 31.9 37 35.6 47.5 39.2 58 41.7 66.4 42.9 73.7 36.8 79 27.1 81.1 14.9 79 5.2 72.7 0 62.2 0 49.6 0 41.2z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.worker-mobile-layout .worker-robot-hero__arm {
+  z-index: 2;
+  clip-path: polygon(
+    0% 34.9%,
+    0% 24.4%,
+    0.3% 16%,
+    10.1% 13.9%,
+    19.8% 18.1%,
+    27.1% 26.5%,
+    31.9% 37%,
+    35.6% 47.5%,
+    39.2% 58%,
+    41.7% 66.4%,
+    42.9% 73.7%,
+    36.8% 79%,
+    27.1% 81.1%,
+    14.9% 79%,
+    5.2% 72.7%,
+    0% 62.2%,
+    0% 49.6%,
+    0% 41.2%
+  );
+  transform-origin: 36.8% 74.8%;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .worker-mobile-layout .worker-robot-hero__image {
-    animation: worker-robot-float 5s ease-in-out infinite;
+  .worker-mobile-layout .worker-robot-hero__arm {
+    animation: worker-robot-wave 2.8s ease-in-out infinite;
   }
 }
 
-@keyframes worker-robot-float {
+@media (prefers-reduced-motion: reduce) {
+  .worker-mobile-layout .worker-robot-hero__arm {
+    animation: none;
+  }
+}
+
+@keyframes worker-robot-wave {
   0%,
   100% {
-    transform: translateY(0);
+    transform: rotate(0deg);
   }
-  50% {
-    transform: translateY(-6px);
+  18% {
+    transform: rotate(7deg);
+  }
+  36% {
+    transform: rotate(-3deg);
+  }
+  54% {
+    transform: rotate(6deg);
+  }
+  72% {
+    transform: rotate(-2deg);
+  }
+  86% {
+    transform: rotate(3deg);
   }
 }
 
@@ -990,28 +1185,22 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 
 .worker-mobile-layout .worker-home-greeting-icon {
   display: flex;
-  width: 3rem;
-  height: 3rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   align-self: center;
-  border-radius: 9999px;
-  background-color: #ffffff;
-  color: #3b82f6;
-  box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.06),
-    0 10px 22px -8px rgba(59, 130, 246, 0.38),
-    0 4px 10px rgba(15, 23, 42, 0.05);
+  border-radius: 0;
+  background-color: transparent;
+  color: #eab308;
+  box-shadow: none;
 }
 
 .worker-dark .worker-mobile-layout .worker-home-greeting-icon {
-  background-color: var(--worker-elevated);
-  color: var(--worker-primary);
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 12px 24px -10px rgba(67, 68, 246, 0.45),
-    0 4px 12px rgba(0, 0, 0, 0.35);
+  background-color: transparent;
+  color: #facc15;
+  box-shadow: none;
 }
 
 .worker-mobile-layout .worker-home-greeting-script {

@@ -5,6 +5,7 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { getLegalManifestEntry } from '@/content/legal/legalManifest'
 import type { WorkerLegalStatus } from '@/lib/legalAcceptanceTypes'
+import { WORKER_LEGAL_ROUTES } from '@/lib/legalContent'
 import {
   addOnlineStatusListener,
   getOnlineStatus,
@@ -147,8 +148,13 @@ export default function WorkerLegalAgreementsPage({
 
       {!isOnline ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-          You’re offline. Reconnect to accept these agreements. You can still open the documents
-          from Help &amp; Support while offline.
+          <p className="font-semibold">Internet connection required</p>
+          <p className="mt-1">
+            An internet connection is required to confirm the latest Worker Terms and Privacy
+            Policy. You can still read the Worker Terms and Privacy Policy offline. Acceptance
+            stays disabled until you reconnect. Any Vehicle Checks already saved on this device
+            are kept.
+          </p>
         </div>
       ) : null}
 
@@ -165,6 +171,8 @@ export default function WorkerLegalAgreementsPage({
           <LegalAcceptancePanel
             mode="worker"
             versions={versions}
+            workerTermsHref={WORKER_LEGAL_ROUTES.worker_terms}
+            privacyHref={WORKER_LEGAL_ROUTES.privacy_policy}
             disabled={!isOnline || !worker}
             isSubmitting={isSubmitting}
             onSubmit={handleSubmit}

@@ -411,6 +411,7 @@ create table if not exists public.companies (
   sunday_guaranteed_paid_hours numeric not null default 10.0,
   sunday_use_company_default_break boolean not null default true,
   weekend_rules_scope text not null default 'company',
+  timesheet_management_scope text not null default 'worker',
   timesheet_week_start_day text not null default 'monday',
   timesheet_week_reset_month integer not null default 4,
   timesheet_week_reset_day integer not null default 5,
@@ -500,6 +501,9 @@ create table if not exists public.companies (
   ),
   constraint companies_weekend_rules_scope_check check (
     weekend_rules_scope in ('company', 'worker')
+  ),
+  constraint companies_timesheet_management_scope_check check (
+    timesheet_management_scope in ('office', 'worker')
   ),
   constraint companies_timesheet_week_start_day_check check (
     timesheet_week_start_day in ('monday', 'sunday')
@@ -2896,6 +2900,78 @@ create trigger vehicles_enforce_vehicle_plan_allowance
   execute function public.drevora_enforce_vehicle_plan_allowance();
 
 
+-- -----------------------------------------------------------------------------
+-- Worker Support Requests (Help & Support)
+-- Canonical migration: 20260801130000_create_support_requests.sql
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.support_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  company_id uuid not null references public.companies (id) on delete cascade,
+  driver_id uuid not null references public.drivers (id) on delete cascade,
+  request_type text not null,
+  category text not null,
+  title text not null,
+  description text not null,
+  steps_to_reproduce text null,
+  rating smallint null,
+  status text not null default 'submitted',
+  support_response text null,
+  responded_at timestamptz null,
+  resolved_at timestamptz null,
+  reference text not null,
+  app_version text not null,
+  platform text not null,
+  route text null,
+  network_state text not null default 'online',
+  device_metadata jsonb not null default '{}'::jsonb,
+  attachment_paths text[] not null default '{}'::text[],
+  constraint support_requests_type_check check (
+    request_type in ('bug', 'feedback')
+  ),
+  constraint support_requests_status_check check (
+    status in ('submitted', 'in_progress', 'resolved', 'closed')
+  ),
+  constraint support_requests_rating_check check (
+    rating is null or (rating >= 1 and rating <= 5)
+  ),
+  constraint support_requests_title_len_check check (
+    char_length(trim(title)) >= 1 and char_length(title) <= 200
+  ),
+  constraint support_requests_description_len_check check (
+    char_length(trim(description)) >= 1 and char_length(description) <= 4000
+  ),
+  constraint support_requests_steps_len_check check (
+    steps_to_reproduce is null or char_length(steps_to_reproduce) <= 4000
+  ),
+  constraint support_requests_reference_unique unique (reference),
+  constraint support_requests_network_state_check check (
+    network_state in ('online', 'offline')
+  ),
+  constraint support_requests_platform_check check (
+    platform in ('android', 'web', 'pwa')
+  ),
+  constraint support_requests_bug_rating_null_check check (
+    request_type <> 'bug' or rating is null
+  ),
+  constraint support_requests_attachments_len_check check (
+    cardinality(attachment_paths) <= 3
+  )
+);
+
+create index if not exists support_requests_driver_created_idx
+  on public.support_requests (driver_id, created_at desc);
+
+create index if not exists support_requests_company_status_idx
+  on public.support_requests (company_id, status);
+
+create index if not exists support_requests_company_created_idx
+  on public.support_requests (company_id, created_at desc);
+
+
+-- -----------------------------------------------------------------------------
 -- Legal documents + company legal controller fields
 -- Canonical: migrations/20260801140000_legal_documents_and_acceptances.sql
 -- Hardening: migrations/20260801150000_harden_legal_acceptance_audit.sql
@@ -3072,6 +3148,8 @@ create index if not exists legal_acceptances_batch_idx
 --   20260727200000_worker_set_default_vehicle_rpc.sql
 -- Tyre Check configurable axle layout + save-layout RPC: apply migration
 --   20260728090000_tyre_check_configurable_axle_layout.sql
+-- Support requests: apply migration
+--   20260801130000_create_support_requests.sql
 -- Legal documents + acceptances: apply migration
 --   20260801140000_legal_documents_and_acceptances.sql
 -- Legal acceptance audit hardening (Admin accept, immutability, constraints):

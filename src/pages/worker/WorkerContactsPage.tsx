@@ -1,7 +1,7 @@
 import { type Contact } from '@/lib/contactTypes'
 import { getCategoryLabel } from '@/lib/contactUtils'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
-import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
 import {
   ContactsServiceError,
@@ -55,7 +55,7 @@ export default function WorkerContactsPage() {
   }, [])
 
   return (
-    <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-2xl">
+    <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-4 overflow-x-clip lg:max-w-2xl">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
           Contacts
@@ -67,19 +67,19 @@ export default function WorkerContactsPage() {
 
       {isLoading ? (
         <div
-          className="min-h-[12rem] rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)]"
+          className="min-h-[12rem] rounded-[1rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)]"
           role="status"
           aria-label="Loading contacts"
         />
       ) : error ? (
-        <div className="rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-5">
+        <div className="worker-list-card px-3 py-4">
           <p className="text-sm font-medium text-[color:var(--worker-text)]">
             Unable to load contacts
           </p>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">{error}</p>
         </div>
       ) : contacts.length === 0 ? (
-        <div className="rounded-[1.5rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-8 text-center">
+        <div className="rounded-[1rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-6 text-center">
           <p className="text-base font-semibold text-[color:var(--worker-text)]">
             No contacts have been shared with Workers yet.
           </p>
@@ -88,7 +88,7 @@ export default function WorkerContactsPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="worker-list-stack">
           {contacts.map((contact, index) => {
             const phone = contact.phone?.trim() || null
             const email = contact.email?.trim() || null
@@ -97,19 +97,12 @@ export default function WorkerContactsPage() {
               contact.roleTitle?.trim() || contact.organisation?.trim() || null
 
             return (
-              <li
-                key={contact.id}
-                className={workerAccentCardClass(
-                  index,
-                  isDark,
-                  'rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm',
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
+              <li key={contact.id} className={workerListCardClass(index, isDark)}>
+                <div className="worker-list-card__meta">
                   <div className="min-w-0 flex-1">
                     <p
                       className={cn(
-                        'worker-accent-title truncate text-[15px] font-semibold',
+                        'worker-accent-title truncate text-sm font-semibold',
                         !isDark && 'text-[color:var(--worker-text)]',
                       )}
                     >
@@ -118,7 +111,7 @@ export default function WorkerContactsPage() {
                     {roleOrOrg ? (
                       <p
                         className={cn(
-                          'worker-accent-secondary mt-0.5 truncate text-sm',
+                          'worker-accent-secondary truncate text-xs',
                           !isDark && 'text-[color:var(--worker-text-secondary)]',
                         )}
                       >
@@ -128,7 +121,7 @@ export default function WorkerContactsPage() {
                   </div>
                   <span
                     className={cn(
-                      'worker-accent-badge shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      'worker-accent-badge shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
                       !isDark &&
                         'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
                     )}
@@ -137,12 +130,12 @@ export default function WorkerContactsPage() {
                   </span>
                 </div>
 
-                <div className="mt-3 space-y-2">
+                <div className="worker-list-card__actions">
                   {phone ? (
                     <a
                       href={telHref(phone)}
                       className={cn(
-                        'worker-accent-link flex items-center gap-2.5 rounded-xl px-1 py-1 text-sm font-medium transition-colors',
+                        'worker-accent-link worker-list-card__tap text-sm font-medium transition-colors',
                         !isDark &&
                           'text-[color:var(--worker-link)] active:bg-[color:var(--worker-primary-soft)]',
                       )}
@@ -154,7 +147,7 @@ export default function WorkerContactsPage() {
                             'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
                         )}
                       >
-                        <Phone className="size-4" strokeWidth={1.85} aria-hidden />
+                        <Phone className="size-3.5" strokeWidth={1.85} aria-hidden />
                       </span>
                       <span className="min-w-0 break-all">{phone}</span>
                     </a>
@@ -164,7 +157,7 @@ export default function WorkerContactsPage() {
                     <a
                       href={`mailto:${email}`}
                       className={cn(
-                        'worker-accent-link flex items-center gap-2.5 rounded-xl px-1 py-1 text-sm font-medium transition-colors',
+                        'worker-accent-link worker-list-card__tap text-sm font-medium transition-colors',
                         !isDark &&
                           'text-[color:var(--worker-link)] active:bg-[color:var(--worker-primary-soft)]',
                       )}
@@ -176,7 +169,7 @@ export default function WorkerContactsPage() {
                             'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
                         )}
                       >
-                        <Mail className="size-4" strokeWidth={1.85} aria-hidden />
+                        <Mail className="size-3.5" strokeWidth={1.85} aria-hidden />
                       </span>
                       <span className="min-w-0 break-all">{email}</span>
                     </a>
@@ -185,7 +178,7 @@ export default function WorkerContactsPage() {
                   {!phone && !email ? (
                     <p
                       className={cn(
-                        'worker-accent-muted text-sm',
+                        'worker-accent-muted py-1 text-xs',
                         !isDark && 'text-[color:var(--worker-text-muted)]',
                       )}
                     >
@@ -197,7 +190,7 @@ export default function WorkerContactsPage() {
                 {notes ? (
                   <p
                     className={cn(
-                      'worker-accent-divider worker-accent-secondary mt-3 border-t pt-3 text-sm leading-relaxed',
+                      'worker-accent-divider worker-accent-secondary mt-2 border-t pt-2 text-xs leading-snug',
                       !isDark &&
                         'border-[color:var(--worker-border)] text-[color:var(--worker-text-secondary)]',
                     )}
