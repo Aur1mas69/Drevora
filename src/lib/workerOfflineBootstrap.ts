@@ -185,7 +185,28 @@ export async function saveWorkerOfflineBootstrap(
   if (!cache.userId.trim() || !cache.companyId.trim()) return
   if (!isDriverShape(cache.worker)) return
 
-  const sanitized = sanitizeCache(cache)
+  // Harden empty-fleet writes: never replace a prepared vehicle list with [].
+  // Shell updates (Worker profile only) must preserve cached registrations so
+  // offline Vehicle Checks keep showing the assigned/default vehicle.
+  let cacheToWrite = cache
+  if (cache.vehicles.length === 0) {
+    const existing = await readWorkerOfflineBootstrap(cache.userId, cache.companyId)
+    if (existing && existing.vehicles.length > 0) {
+      const incomingTemplates = cache.templateItemsByVehicleType
+      const incomingHasTemplates = Object.values(incomingTemplates).some(
+        (items) => Array.isArray(items) && items.length > 0,
+      )
+      cacheToWrite = {
+        ...cache,
+        vehicles: existing.vehicles,
+        templateItemsByVehicleType: incomingHasTemplates
+          ? incomingTemplates
+          : existing.templateItemsByVehicleType,
+      }
+    }
+  }
+
+  const sanitized = sanitizeCache(cacheToWrite)
   await touchBootstrapHeartbeat(`save:${sanitized.vehicles.length}`)
   await writeBootstrapJson(JSON.stringify(sanitized))
 }

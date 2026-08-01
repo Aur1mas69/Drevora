@@ -3,11 +3,9 @@ import { getOnlineStatus } from '@/lib/networkStatus'
 import { readNativeOfflineMembershipSnapshot } from '@/lib/nativeOfflineMembership'
 import {
   readWorkerOfflineBootstrap,
-  saveWorkerOfflineBootstrap,
   touchBootstrapHeartbeat,
   warmWorkerOfflineBootstrap,
   WORKER_OFFLINE_BOOTSTRAP_FETCH_TIMEOUT_MS,
-  WORKER_OFFLINE_BOOTSTRAP_VERSION,
 } from '@/lib/workerOfflineBootstrap'
 import { fetchDriverByEmail, type Driver } from '@/services/driversService'
 import { useCallback, useEffect, useState } from 'react'
@@ -168,15 +166,9 @@ export function useCurrentWorker(): UseCurrentWorkerResult {
             await touchBootstrapHeartbeat(snap ? 'snap-ok' : 'snap-null')
             const companyId = snap?.companyId?.trim()
             if (!uid || !companyId) return
-            await saveWorkerOfflineBootstrap({
-              version: WORKER_OFFLINE_BOOTSTRAP_VERSION,
-              userId: uid,
-              companyId,
-              savedAt: new Date().toISOString(),
-              worker: matchedWorker,
-              vehicles: [],
-              templateItemsByVehicleType: {},
-            })
+            // Update Worker shell only through warm — never write vehicles:[] via
+            // saveWorkerOfflineBootstrap (that bypasses the empty-fleet preserve
+            // guard and wipes a prepared offline Vehicle Check fleet).
             await warmWorkerOfflineBootstrap({
               userId: uid,
               companyId,
