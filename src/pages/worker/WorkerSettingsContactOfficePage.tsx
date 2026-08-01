@@ -2,6 +2,9 @@ import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLi
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Contact } from '@/lib/contactTypes'
 import { getCategoryLabel, getContactPrimaryName } from '@/lib/contactUtils'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { cn } from '@/lib/utils'
 import {
   ContactsServiceError,
   fetchWorkerVisibleContacts,
@@ -13,32 +16,67 @@ function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
 }
 
-function ContactActionCard({ contact }: { contact: Contact }) {
+function ContactActionCard({
+  contact,
+  index,
+  isDark,
+}: {
+  contact: Contact
+  index: number
+  isDark: boolean
+}) {
   const phone = contact.phone?.trim() || null
   const email = contact.email?.trim() || null
   const roleOrOrg =
     contact.roleTitle?.trim() || contact.organisation?.trim() || null
 
   return (
-    <li className="rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm">
+    <li
+      className={workerAccentCardClass(
+        index,
+        isDark,
+        'rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm',
+      )}
+    >
       <div className="min-w-0">
-        <p className="text-base font-semibold text-[color:var(--worker-text)]">
+        <p
+          className={cn(
+            'worker-accent-title text-base font-semibold',
+            !isDark && 'text-[color:var(--worker-text)]',
+          )}
+        >
           {getContactPrimaryName(contact)}
         </p>
-        <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--worker-text-muted)]">
+        <p
+          className={cn(
+            'worker-accent-muted mt-0.5 text-xs font-medium uppercase tracking-[0.08em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           {getCategoryLabel(contact.category)}
         </p>
         {roleOrOrg ? (
-          <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">{roleOrOrg}</p>
+          <p
+            className={cn(
+              'worker-accent-secondary mt-1 text-sm',
+              !isDark && 'text-[color:var(--worker-text-secondary)]',
+            )}
+          >
+            {roleOrOrg}
+          </p>
         ) : null}
       </div>
 
-      {(phone || email) ? (
+      {phone || email ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {phone ? (
             <a
               href={telHref(phone)}
-              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[#89CFF0] bg-[#E8F3FE] px-3 text-sm font-semibold text-[#0B68BE] transition-colors hover:bg-[#DCEEFF]"
+              className={cn(
+                'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                !isDark &&
+                  'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE] hover:bg-[#DCEEFF]',
+              )}
             >
               <Phone className="size-4" aria-hidden />
               Call
@@ -47,7 +85,11 @@ function ContactActionCard({ contact }: { contact: Contact }) {
           {email ? (
             <a
               href={`mailto:${email}`}
-              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-3 text-sm font-semibold text-[color:var(--worker-text)] transition-colors hover:bg-[color:var(--worker-input)]"
+              className={cn(
+                'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                !isDark &&
+                  'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] text-[color:var(--worker-text)] hover:bg-[color:var(--worker-input)]',
+              )}
             >
               <Mail className="size-4" aria-hidden />
               Email
@@ -55,18 +97,33 @@ function ContactActionCard({ contact }: { contact: Contact }) {
           ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-[color:var(--worker-text-muted)]">
+        <p
+          className={cn(
+            'worker-accent-muted mt-3 text-sm',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           No phone or email shared for this contact.
         </p>
       )}
 
       {phone ? (
-        <p className="mt-2 text-sm font-medium text-[color:var(--worker-text-secondary)]">
+        <p
+          className={cn(
+            'worker-accent-secondary mt-2 text-sm font-medium',
+            !isDark && 'text-[color:var(--worker-text-secondary)]',
+          )}
+        >
           {phone}
         </p>
       ) : null}
       {email ? (
-        <p className="mt-0.5 break-all text-sm font-medium text-[color:var(--worker-text-secondary)]">
+        <p
+          className={cn(
+            'worker-accent-secondary mt-0.5 break-all text-sm font-medium',
+            !isDark && 'text-[color:var(--worker-text-secondary)]',
+          )}
+        >
           {email}
         </p>
       ) : null}
@@ -76,6 +133,7 @@ function ContactActionCard({ contact }: { contact: Contact }) {
 
 /** Company office contacts shared with Workers (no invented details). */
 export default function WorkerSettingsContactOfficePage() {
+  const isDark = useIsWorkerDarkMode()
   const { companyName } = useCompanySettings()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -161,8 +219,13 @@ export default function WorkerSettingsContactOfficePage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {officeContacts.map((contact) => (
-            <ContactActionCard key={contact.id} contact={contact} />
+          {officeContacts.map((contact, index) => (
+            <ContactActionCard
+              key={contact.id}
+              contact={contact}
+              index={index}
+              isDark={isDark}
+            />
           ))}
         </ul>
       )}

@@ -6,8 +6,10 @@ import type {
 } from '@/lib/tyreCheckTypes'
 import {
   compareTyrePositions,
+  TREAD_WEAR_LEGEND,
   tyreStatusClasses,
   tyreStatusLabel,
+  tyreTreadVisualClasses,
 } from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import { TriangleAlert } from 'lucide-react'
@@ -31,25 +33,9 @@ type TyreCheckDiagramProps = {
   vehicleUnitTitle?: string
 }
 
-const STATUS_RING: Record<TyreStatus, string> = {
-  good: 'ring-emerald-500',
-  attention: 'ring-amber-500',
-  critical: 'ring-rose-500',
-  dirty: 'ring-yellow-400',
-  not_checked: 'ring-slate-400',
-}
-
-const STATUS_GLOW: Record<TyreStatus, string> = {
-  good: 'shadow-[0_0_0_3px_rgba(16,185,129,0.18)]',
-  attention: 'shadow-[0_0_0_3px_rgba(245,158,11,0.20)]',
-  critical: 'shadow-[0_0_0_3px_rgba(244,63,94,0.20)]',
-  dirty: 'shadow-[0_0_0_3px_rgba(250,204,21,0.28)]',
-  not_checked: 'shadow-[0_0_0_3px_rgba(148,163,184,0.22)]',
-}
-
-/** Worker selected tyre: 3px cyan outline + restrained glow (does not replace status ring). */
+/** Worker selected tyre: crisp outline, minimal glow (no soft blur wash). */
 const WORKER_SELECTED_OUTLINE =
-  'outline outline-[3px] outline-[#38BDF8] outline-offset-[3px] shadow-[0_0_0_3px_rgba(56,189,248,0.22),0_0_14px_rgba(56,189,248,0.42)]'
+  'outline outline-[3px] outline-[#38BDF8] outline-offset-[2px] shadow-[0_0_0_2px_rgba(56,189,248,0.35)]'
 
 function TyreShape({
   tyre,
@@ -64,7 +50,10 @@ function TyreShape({
   emphasizeSelection: boolean
   palette: TyreStatusPalette
 }) {
-  const colours = tyreStatusClasses(tyre.status, palette)
+  const colours = tyreTreadVisualClasses(tyre.treadDepthMm, {
+    dirty: Boolean(tyre.isDirty) || tyre.status === 'dirty',
+    palette,
+  })
   const depthLabel =
     tyre.treadDepthMm == null ? '—' : `${tyre.treadDepthMm.toFixed(1)} mm`
 
@@ -79,7 +68,7 @@ function TyreShape({
         selected ? 'scale-[1.03]' : 'hover:scale-[1.02]',
         emphasizeSelection &&
           selected &&
-          'bg-[#E0F2FE]/75 ring-1 ring-[#38BDF8]/35 dark:bg-sky-950/40 dark:ring-sky-400/30',
+          'bg-[#E0F2FE]/90 ring-1 ring-[#38BDF8]/50 dark:bg-[#1a2740] dark:ring-[#38BDF8]/55',
       )}
     >
       <div
@@ -90,19 +79,19 @@ function TyreShape({
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_10px_rgba(33,62,110,0.16)]',
           emphasizeSelection
             ? cn(
-                // Status ring always stays (green completed remains visible when selected).
-                'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900',
-                STATUS_RING[tyre.status],
-                STATUS_GLOW[tyre.status],
+                // Wear-legend ring always stays visible when selected.
+                'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-[#10141c]',
+                colours.ringClass,
+                colours.glowClass,
                 selected && WORKER_SELECTED_OUTLINE,
               )
             : cn(
-                STATUS_GLOW[tyre.status],
+                colours.glowClass,
                 selected
-                  ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF] dark:ring-offset-slate-900'
+                  ? 'ring-2 ring-[#218EE7] ring-offset-2 ring-offset-[#F8FBFF] dark:ring-offset-[#10141c]'
                   : cn(
-                      'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-slate-900',
-                      STATUS_RING[tyre.status],
+                      'ring-2 ring-offset-1 ring-offset-[#F8FBFF] dark:ring-offset-[#10141c]',
+                      colours.ringClass,
                     ),
               ),
         )}
@@ -111,7 +100,7 @@ function TyreShape({
         {emphasizeSelection && selected ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[999px] bg-[#38BDF8]/18"
+            className="pointer-events-none absolute inset-0 rounded-[999px] bg-[#38BDF8]/12"
           />
         ) : null}
 
@@ -130,16 +119,16 @@ function TyreShape({
         <div className="pointer-events-none absolute inset-y-2 right-[3px] w-[3px] rounded-full bg-black/25" />
 
         {/* Centre info chip */}
-        <div className="relative z-[1] flex w-[2.15rem] flex-col items-center rounded-[10px] bg-[#F8FBFF]/95 px-1 py-1.5 text-center shadow-sm ring-1 ring-white/40 dark:bg-slate-800/95 dark:ring-white/10 sm:w-[2.35rem]">
+        <div className="relative z-[1] flex w-[2.15rem] flex-col items-center rounded-[10px] bg-[#F8FBFF] px-1 py-1.5 text-center shadow-sm ring-1 ring-[#C5DFFB] dark:bg-[#1a1f2b] dark:ring-white/20 sm:w-[2.35rem]">
           <span className={cn('mb-1 size-2 rounded-full', colours.dot)} />
-          <span className="text-[10px] font-bold leading-tight tabular-nums text-[#2A376F] dark:text-slate-100 sm:text-[11px]">
+          <span className="tyre-diagram-depth text-[10px] font-bold leading-tight tabular-nums text-[#0B1F3A] sm:text-[11px]">
             {depthLabel}
           </span>
         </div>
       </div>
 
       <div className="min-h-[2.6rem] w-full text-center">
-        <p className="text-[10px] font-semibold leading-tight text-[#113C69] dark:text-slate-100 sm:text-[11px]">
+        <p className="tyre-diagram-position text-[10px] font-bold leading-tight text-[#0B1F3A] sm:text-[11px]">
           {tyre.position}
         </p>
         <p
@@ -183,16 +172,16 @@ function AxleRow({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#D3E9FC] dark:bg-white/10" />
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5499BF]">
+        <div className="h-px flex-1 bg-[#89CFF0] dark:bg-white/35" />
+        <p className="tyre-diagram-axle-label text-[11px] font-bold uppercase tracking-[0.12em] text-[#0B68BE]">
           {label}
         </p>
-        <div className="h-px flex-1 bg-[#D3E9FC] dark:bg-white/10" />
+        <div className="h-px flex-1 bg-[#89CFF0] dark:bg-white/35" />
       </div>
 
       <div className="relative flex items-center justify-center gap-1 sm:gap-2">
-        <div className="pointer-events-none absolute left-[12%] right-[12%] top-[2.7rem] h-[6px] rounded-full bg-gradient-to-r from-transparent via-[#89CFF0]/70 to-transparent sm:top-[3.1rem]" />
-        <div className="pointer-events-none absolute left-1/2 top-[2.4rem] h-3 w-3 -translate-x-1/2 rounded-full bg-[#89CFF0] ring-2 ring-white sm:top-[2.8rem]" />
+        <div className="pointer-events-none absolute left-[12%] right-[12%] top-[2.7rem] h-[3px] rounded-full bg-[#5BA3D9] dark:bg-[#6f80ff] sm:top-[3.1rem]" />
+        <div className="pointer-events-none absolute left-1/2 top-[2.45rem] h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[#4344F6] ring-2 ring-white dark:ring-[#10141c] sm:top-[2.85rem]" />
 
         <div className="relative z-[1] flex items-start justify-end gap-0.5 sm:gap-1">
           {leftTyres.map((tyre) => (
@@ -251,17 +240,17 @@ function UnitDiagram({
   )
 
   return (
-    <div className="rounded-[18px] border border-[#D3E9FC] bg-gradient-to-b from-[#F3F8FF] to-[#EAF4FF] p-3 shadow-[0_2px_10px_rgba(33,142,231,0.06)] dark:border-white/10 dark:from-slate-900/80 dark:to-slate-900/60 dark:shadow-black/20 sm:p-4">
+    <div className="rounded-[18px] border border-[#D3E9FC] bg-gradient-to-b from-[#F3F8FF] to-[#EAF4FF] p-3 shadow-[0_2px_10px_rgba(33,142,231,0.06)] dark:border-white/20 dark:bg-[#10141c] dark:bg-none dark:shadow-none sm:p-4">
       <div className="mb-3 flex items-center justify-center">
-        <div className="rounded-[12px] bg-white/90 px-4 py-2 text-sm font-semibold text-[#2A376F] shadow-sm ring-1 ring-blue-100 dark:bg-slate-800/90 dark:text-slate-100 dark:ring-white/10">
+        <div className="rounded-[12px] bg-white px-4 py-2 text-sm font-semibold text-[#0B1F3A] shadow-sm ring-1 ring-[#C5DFFB] dark:bg-[#1a1f2b] dark:text-white dark:ring-white/20">
           {title}
         </div>
       </div>
 
       <div className="mx-auto mb-4 flex w-full max-w-[16rem] flex-col items-center">
-        <div className="h-4 w-16 rounded-t-[10px] border border-b-0 border-[#89CFF0] bg-[#DDF0FF]" />
-        <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner dark:border-blue-500/40 dark:from-slate-800 dark:to-slate-900" />
-        <div className="mt-1 h-2 w-10 rounded-full bg-[#BFE3F5]" />
+        <div className="h-4 w-16 rounded-t-[10px] border border-b-0 border-[#89CFF0] bg-[#DDF0FF] dark:border-[#4344F6]/50 dark:bg-[#1a1f2b]" />
+        <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner dark:border-[#4344F6]/55 dark:bg-[#151922] dark:bg-none dark:shadow-none" />
+        <div className="mt-1 h-2 w-10 rounded-full bg-[#BFE3F5] dark:bg-[#4344F6]/70" />
       </div>
 
       <div className="space-y-5">
@@ -285,17 +274,6 @@ function UnitDiagram({
   )
 }
 
-const TREAD_WEAR_SCALE = [
-  { depth: '8 mm', worn: '0% worn', row: 'bg-[#0F7A3A]', text: 'text-white' },
-  { depth: '7 mm', worn: '16% worn', row: 'bg-[#22A34A]', text: 'text-white' },
-  { depth: '6 mm', worn: '31% worn', row: 'bg-[#8BC34A]', text: 'text-[#14301A]' },
-  { depth: '5 mm', worn: '47% worn', row: 'bg-[#F6D23A]', text: 'text-[#3A2E05]' },
-  { depth: '4 mm', worn: '62% worn', row: 'bg-[#F0A020]', text: 'text-[#2E1F05]' },
-  { depth: '3 mm', worn: '78% worn', row: 'bg-[#E86B12]', text: 'text-white' },
-  { depth: '2 mm', worn: '94% worn', row: 'bg-[#E04A2F]', text: 'text-white' },
-  { depth: '1.6 mm', worn: '100% worn', row: 'bg-[#9B1C1C]', text: 'text-white' },
-] as const
-
 function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 md:items-start">
@@ -318,20 +296,19 @@ function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
           </div>
 
           <div className="space-y-1 p-1.5">
-            {TREAD_WEAR_SCALE.map((item) => (
+            {TREAD_WEAR_LEGEND.map((item) => (
               <div
-                key={item.depth}
+                key={item.depthLabel}
                 className={cn(
                   'grid grid-cols-2 items-center gap-2 rounded-[10px] px-3 py-1.5',
-                  item.row,
-                  item.text,
+                  item.rowClass,
                 )}
               >
                 <span className="min-w-0 text-xs font-bold tabular-nums leading-tight">
-                  {item.depth}
+                  {item.depthLabel}
                 </span>
                 <span className="min-w-0 text-right text-xs font-semibold tabular-nums leading-tight">
-                  {item.worn}
+                  {item.wornLabel}
                 </span>
               </div>
             ))}

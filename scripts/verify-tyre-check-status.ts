@@ -10,10 +10,12 @@ import {
   positionsForWheelLayout,
   resolveFallbackTrailerAxleWheelLayouts,
   resolveFallbackTruckAxleWheelLayouts,
+  resolveTreadWearLegendEntry,
   treadDepthBand,
   treadDepthToStatus,
   tyreAxleTypeFor,
   tyrePositionToDb,
+  tyreTreadVisualClasses,
   validateTyreAxleCounts,
   type TyreMeasurement,
 } from '../src/lib/tyreCheckTypes.ts'
@@ -26,9 +28,25 @@ assert(treadDepthBand(null) === 'not_checked', 'null → not_checked')
 assert(treadDepthBand(6) === 'good', '6.0 → good')
 assert(treadDepthBand(5.9) === 'attention', '5.9 → attention')
 assert(treadDepthBand(4) === 'attention', '4.0 → attention')
-assert(treadDepthBand(3.9) === 'critical', '3.9 → critical')
+assert(treadDepthBand(3) === 'attention', '3.0 → attention (not critical)')
+assert(treadDepthBand(2.9) === 'critical', '2.9 → critical')
+assert(treadDepthBand(2) === 'critical', '2.0 → critical')
+assert(treadDepthBand(1.6) === 'critical', '1.6 → critical')
 assert(treadDepthToStatus(7.5, true) === 'dirty', 'dirty overrides display status')
 assert(treadDepthToStatus(7.5, false) === 'good', '7.5 clean → good')
+
+assert(resolveTreadWearLegendEntry(4).color === '#F0A020', '4 mm legend orange')
+assert(resolveTreadWearLegendEntry(3).color === '#E86B12', '3 mm legend red-orange')
+assert(resolveTreadWearLegendEntry(2).color === '#E04A2F', '2 mm legend red')
+assert(resolveTreadWearLegendEntry(1.6).color === '#9B1C1C', '1.6 mm legend dark red')
+assert(
+  tyreTreadVisualClasses(3).badge.includes('#E86B12'),
+  '3 mm badge uses legend red-orange',
+)
+assert(
+  tyreTreadVisualClasses(4).dot.includes('#F0A020'),
+  '4 mm dot uses legend orange',
+)
 
 assert(parseTyreTreadDepthMm('7.5').ok === true, '7.5 accepted')
 assert(parseTyreTreadDepthMm('1.6').ok === true, '1.6 accepted')

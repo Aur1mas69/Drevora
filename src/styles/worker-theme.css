@@ -606,6 +606,384 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
     inset 0 1px 0 rgba(163, 241, 171, 0.35);
 }
 
+/* Dark Home: mint → blue CTA (palette #A3F1AB / #4344F6). */
+.worker-dark .worker-mobile-layout .worker-cta-gradient {
+  background: linear-gradient(90deg, #a3f1ab 0%, #4344f6 100%);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(11, 13, 18, 0.35);
+  box-shadow:
+    0 16px 32px -18px rgba(67, 68, 246, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* -----------------------------------------------------------------------------
+ * Shared dark-mode accent cards (mint #A3F1AB / blue #4344F6) — Home + modules.
+ * Markup: .worker-accent-card + .worker-accent-mint | .worker-accent-indigo
+ * Optional children: .worker-accent-title, .worker-accent-secondary,
+ * .worker-accent-muted, .worker-accent-badge, .worker-accent-icon-well,
+ * .worker-accent-link, .worker-accent-pill, .worker-accent-divider
+ * ----------------------------------------------------------------------------- */
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint {
+  border-color: #8ad994 !important;
+  background-color: #a3f1ab !important;
+  background-image: none !important;
+  color: #0b0d12;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo {
+  border-color: #3536d4 !important;
+  background-color: #4344f6 !important;
+  background-image: none !important;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-title,
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-value {
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-secondary {
+  color: rgba(11, 13, 18, 0.72) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-muted {
+  color: rgba(11, 13, 18, 0.55) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-badge {
+  background-color: rgba(11, 13, 18, 0.12) !important;
+  border-color: transparent !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-icon-well {
+  background-color: rgba(11, 13, 18, 0.12) !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-link {
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-pill {
+  border-color: rgba(11, 13, 18, 0.2) !important;
+  background-color: rgba(11, 13, 18, 0.1) !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint .worker-accent-divider {
+  border-color: rgba(11, 13, 18, 0.18) !important;
+}
+
+/* Vehicle Checks — tachograph reminder readable in worker-dark */
+.worker-dark .worker-mobile-layout .worker-vc-tacho-reminder {
+  background-color: rgba(251, 191, 36, 0.16) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  box-shadow: none !important;
+  color: #fef3c7 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-tacho-reminder .worker-vc-tacho-icon {
+  background-color: rgba(251, 191, 36, 0.28) !important;
+  color: #fbbf24 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-tacho-reminder .worker-vc-tacho-title {
+  color: #fef3c7 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-tacho-reminder .worker-vc-tacho-body {
+  color: #fde68a !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-tacho-reminder .worker-vc-tacho-hint {
+  color: #fcd34d !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-title,
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-value {
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-secondary {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-muted {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-badge {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-icon-well {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-link {
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-pill {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo .worker-accent-divider {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint a:hover,
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-mint a:active {
+  background-color: rgba(11, 13, 18, 0.08) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo a:hover,
+.worker-dark .worker-mobile-layout .worker-accent-card.worker-accent-indigo a:active {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Worker Change password — brighter contrast under worker-dark (not Admin .dark). */
+.worker-dark .worker-mobile-layout .secure-password-form {
+  border-color: rgba(67, 68, 246, 0.45) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(67, 68, 246, 0.22) 0%,
+    #151922 42%,
+    #10141c 100%
+  ) !important;
+  box-shadow:
+    0 0 0 1px rgba(163, 241, 171, 0.18),
+    0 16px 36px -18px rgba(67, 68, 246, 0.55) !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__icon {
+  background: linear-gradient(135deg, #a3f1ab 0%, #4344f6 100%) !important;
+  color: #0b0d12 !important;
+  box-shadow:
+    0 0 0 4px rgba(163, 241, 171, 0.18),
+    0 12px 28px -8px rgba(67, 68, 246, 0.65) !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__title {
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__subtitle {
+  color: #cbd5e1 !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form label > span {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form input {
+  border-color: rgba(163, 241, 171, 0.35) !important;
+  background-color: #0b0d12 !important;
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form input:focus-visible {
+  border-color: #a3f1ab !important;
+  box-shadow: 0 0 0 3px rgba(163, 241, 171, 0.25) !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__submit {
+  background-image: linear-gradient(90deg, #b6ffbf 0%, #6d6eff 48%, #4344f6 100%) !important;
+  background-color: #4344f6 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(163, 241, 171, 0.35),
+    0 14px 32px -10px rgba(67, 68, 246, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__submit:disabled {
+  opacity: 0.92 !important;
+  filter: none;
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__submit:hover:not(:disabled) {
+  filter: brightness(1.08) saturate(1.1);
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__checks {
+  background-color: #1a1f2b !important;
+  ring-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__check-ok {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__check-pending {
+  color: #e2e8f0 !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form__check-idle {
+  color: #94a3b8 !important;
+}
+
+.worker-dark .worker-mobile-layout .secure-password-form p.text-xs,
+.worker-dark .worker-mobile-layout .secure-password-form .text-xs.font-semibold.uppercase {
+  color: #cbd5e1 !important;
+}
+
+/* Tyre diagram — Worker dark uses worker-dark (not Tailwind .dark). */
+.worker-dark .worker-mobile-layout .tyre-diagram-depth {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .tyre-diagram-position {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .tyre-diagram-axle-label {
+  color: #ffffff !important;
+}
+
+/* -----------------------------------------------------------------------------
+ * Holidays module — Worker dark readable text (worker-dark ≠ Tailwind .dark).
+ * ----------------------------------------------------------------------------- */
+
+.worker-dark .worker-mobile-layout .my-holiday-card {
+  border-color: var(--worker-border) !important;
+  background: var(--worker-card) !important;
+  background-image: none !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-title,
+.worker-dark .worker-mobile-layout .my-holiday-body,
+.worker-dark .worker-mobile-layout .my-holiday-chip,
+.worker-dark .worker-mobile-layout .my-holiday-day,
+.worker-dark .worker-mobile-layout .my-holiday-stat-value {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-eyebrow {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-muted,
+.worker-dark .worker-mobile-layout .my-holiday-weekday {
+  color: #94a3b8 !important;
+}
+
+/* Catch remaining light-theme hex / Tailwind text on Holidays (worker-dark ≠ .dark). */
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#113C69\],
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#0F172A\],
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#0B477F\] {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#5499BF\],
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#3D7A9C\],
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#A8C4DC\] {
+  color: #94a3b8 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#218EE7\],
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-\[\#0B68BE\] {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-slate-700,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-emerald-700,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-emerald-800,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-amber-700,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-amber-800,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-teal-700,
+.worker-dark .worker-mobile-layout .my-holiday-surface .text-rose-700 {
+  color: #e2e8f0 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-nav {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-elevated) !important;
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day:hover:not(.my-holiday-day-selected) {
+  background-color: var(--worker-row-hover) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day-selected {
+  background-color: #4344f6 !important;
+  color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day-selected:hover {
+  background-color: #3637d4 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day-approved {
+  background-color: rgba(163, 241, 171, 0.2) !important;
+  color: #a3f1ab !important;
+  box-shadow: inset 0 0 0 1px rgba(163, 241, 171, 0.35);
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day-pending {
+  background-color: rgba(251, 191, 36, 0.18) !important;
+  color: #fbbf24 !important;
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-day-rejected {
+  background-color: rgba(251, 113, 133, 0.18) !important;
+  color: #fb7185 !important;
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.35);
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-selected-panel,
+.worker-dark .worker-mobile-layout .my-holiday-notice {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-elevated) !important;
+  color: #e2e8f0 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-balance-wash {
+  background: linear-gradient(
+    105deg,
+    rgba(15, 23, 42, 0.88) 0%,
+    rgba(15, 23, 42, 0.55) 34%,
+    rgba(15, 23, 42, 0.18) 58%,
+    rgba(15, 23, 42, 0) 100%
+  ) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-surface input,
+.worker-dark .worker-mobile-layout .my-holiday-surface textarea {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-input) !important;
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-surface input::placeholder,
+.worker-dark .worker-mobile-layout .my-holiday-surface textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Book-holiday date picker popover (shared component; dark: utilities skip worker-dark). */
+.worker-dark .worker-mobile-layout .my-holiday-datepicker-popover {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-elevated) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;
+}
+
 /* -----------------------------------------------------------------------------
  * Worker Home — greeting header (typography / spacing polish only).
  * ----------------------------------------------------------------------------- */
@@ -697,9 +1075,23 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 }
 
 .worker-dark .worker-mobile-layout .worker-home-default-vehicle {
-  border-color: rgba(127, 179, 211, 0.45);
-  background-color: rgba(127, 179, 211, 0.12);
+  border-color: #8ad994;
+  background-color: #a3f1ab;
   background-image: none;
+  color: #0b0d12;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-default-vehicle .worker-home-icon-well {
+  background-color: rgba(11, 13, 18, 0.12);
+  color: #0b0d12;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-default-vehicle .worker-home-dv-label {
+  color: rgba(11, 13, 18, 0.62);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-default-vehicle .worker-home-dv-value {
+  color: #0b0d12;
 }
 
 .worker-mobile-layout .worker-home-icon-well {
@@ -756,6 +1148,49 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
+/* Dark Home Quick actions — solid mint / blue fills (checkerboard via JS classes). */
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint {
+  border-color: #8ad994;
+  background-color: #a3f1ab;
+  background-image: none;
+  color: #0b0d12;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint .worker-home-icon-well {
+  background-color: rgba(11, 13, 18, 0.12);
+  color: #0b0d12;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint .worker-home-chevron {
+  color: rgba(11, 13, 18, 0.55);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint .worker-home-qa-label {
+  color: #0b0d12;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo {
+  border-color: #3536d4;
+  background-color: #4344f6;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo .worker-home-icon-well {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo .worker-home-chevron {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo .worker-home-qa-label {
+  color: #ffffff;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .worker-mobile-layout .worker-home-quick-action:hover,
   .worker-mobile-layout .worker-home-surface--interactive:hover {
@@ -797,6 +1232,42 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   .worker-dark .worker-mobile-layout .worker-home-surface--interactive:hover .worker-home-chevron {
     color: var(--worker-primary);
   }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:hover {
+    background-color: #92e89c;
+    border-color: #6fc97c;
+    filter: brightness(1.02);
+    box-shadow:
+      0 10px 22px -14px rgba(163, 241, 171, 0.55),
+      0 2px 6px rgba(0, 0, 0, 0.28);
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:hover .worker-home-icon-well {
+    background-color: rgba(11, 13, 18, 0.16);
+    color: #0b0d12;
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:hover .worker-home-chevron {
+    color: #0b0d12;
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:hover {
+    background-color: #5253f8;
+    border-color: #3a3bd8;
+    filter: brightness(1.03);
+    box-shadow:
+      0 10px 22px -14px rgba(67, 68, 246, 0.65),
+      0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:hover .worker-home-icon-well {
+    background-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:hover .worker-home-chevron {
+    color: #ffffff;
+  }
 }
 
 .worker-mobile-layout .worker-home-quick-action:active,
@@ -816,6 +1287,28 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 .worker-dark .worker-mobile-layout .worker-home-surface--interactive:active .worker-home-icon-well {
   background-color: rgba(163, 241, 171, 0.22);
   color: var(--worker-success);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:active {
+  background-color: #86de92;
+  border-color: #6fc97c;
+  filter: brightness(0.98);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:active .worker-home-icon-well {
+  background-color: rgba(11, 13, 18, 0.16);
+  color: #0b0d12;
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:active {
+  background-color: #3a3bd8;
+  border-color: #2f30b8;
+  filter: brightness(0.98);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:active .worker-home-icon-well {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 .worker-mobile-layout .worker-home-cta {
@@ -1058,6 +1551,7 @@ html.worker-dark {
   --worker-holiday-donut-progress: #a3f1ab;
   --worker-holiday-donut-text: #f8fafc;
   --worker-holiday-donut-label: #94a3b8;
+  color-scheme: dark;
 }
 
 html.worker-dark .worker-theme-surface .bg-white,
@@ -1109,6 +1603,61 @@ html.worker-dark .worker-theme-surface textarea {
   background-color: var(--worker-input) !important;
   color: var(--worker-text) !important;
   border-color: var(--worker-border) !important;
+}
+
+/* Native date/time fields: WebKit edit segments ignore inherited color without this. */
+html.worker-dark .worker-theme-surface input[type='date'],
+html.worker-dark .worker-theme-surface input[type='time'],
+html.worker-dark .worker-theme-surface input[type='datetime-local'] {
+  color-scheme: dark;
+  color: var(--worker-text) !important;
+  background-color: var(--worker-input) !important;
+  border-color: var(--worker-border-strong) !important;
+  min-height: 2.5rem;
+}
+
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit,
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit-fields-wrapper,
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit-text,
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit-month-field,
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit-day-field,
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-datetime-edit-year-field,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit-fields-wrapper,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit-text,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit-hour-field,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit-minute-field,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-datetime-edit-ampm-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-fields-wrapper,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-text,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-month-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-day-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-year-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-hour-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-minute-field,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-datetime-edit-ampm-field {
+  color: var(--worker-text) !important;
+}
+
+html.worker-dark .worker-theme-surface input[type='date']::-webkit-calendar-picker-indicator,
+html.worker-dark .worker-theme-surface input[type='time']::-webkit-calendar-picker-indicator,
+html.worker-dark .worker-theme-surface input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+  filter: invert(1) brightness(1.25);
+}
+
+/* Outline / Cancel — bg-background stays light while inherited text is white. */
+html.worker-dark .worker-theme-surface [data-slot='button'][data-variant='outline'] {
+  background-color: transparent !important;
+  border-color: var(--worker-border-strong) !important;
+  color: var(--worker-text) !important;
+}
+
+html.worker-dark .worker-theme-surface [data-slot='button'][data-variant='outline']:hover {
+  background-color: var(--worker-row-hover) !important;
+  color: var(--worker-text) !important;
 }
 
 html.worker-dark .worker-theme-surface table,
@@ -1337,3 +1886,187 @@ html.worker-dark .worker-toast-error {
 .worker-dark .worker-mobile-layout a:not(.worker-nav-item):not([class*='bg-']) {
   color: var(--worker-link);
 }
+
+/* -----------------------------------------------------------------------------
+ * Holiday balance StatChips — beat global emerald/amber remaps; consistent dark.
+ * ----------------------------------------------------------------------------- */
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip {
+  box-shadow: none !important;
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip .my-holiday-stat-value {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--green {
+  background-color: rgba(163, 241, 171, 0.14) !important;
+  border-color: rgba(163, 241, 171, 0.4) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--green .my-holiday-stat-label {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--green .my-holiday-stat-dot {
+  background-color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--amber {
+  background-color: rgba(251, 191, 36, 0.14) !important;
+  border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--amber .my-holiday-stat-label {
+  color: #fbbf24 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--amber .my-holiday-stat-dot {
+  background-color: #fbbf24 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--blue {
+  background-color: rgba(33, 142, 231, 0.18) !important;
+  border-color: rgba(33, 142, 231, 0.45) !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--blue .my-holiday-stat-label {
+  color: #5eb8f5 !important;
+}
+
+.worker-dark .worker-mobile-layout .my-holiday-card .my-holiday-stat-chip--blue .my-holiday-stat-dot {
+  background-color: #218ee7 !important;
+}
+
+/* -----------------------------------------------------------------------------
+ * Vehicle Checks checklist + completion — readable dark palette (mint / white).
+ * Beats global hex remaps that force #113C69 → indigo (too dark on navy cards).
+ * ----------------------------------------------------------------------------- */
+.worker-dark .worker-mobile-layout .worker-vc-flow .worker-vc-panel,
+.worker-dark .worker-mobile-layout .worker-vc-completion,
+.worker-dark .worker-mobile-layout .worker-vc-section,
+.worker-dark .worker-mobile-layout .worker-vc-progress {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-card) !important;
+  background-image: none !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-section-head {
+  background-image: none !important;
+  background-color: var(--worker-elevated) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-title,
+.worker-dark .worker-mobile-layout .worker-vc-label,
+.worker-dark .worker-mobile-layout .worker-vc-item-title,
+.worker-dark .worker-mobile-layout .worker-vc-progress-value {
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-muted {
+  color: #94a3b8 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-item-num,
+.worker-dark .worker-mobile-layout .worker-vc-progress-eyebrow,
+.worker-dark .worker-mobile-layout .worker-vc-progress-pct,
+.worker-dark .worker-mobile-layout .worker-vc-link {
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-notice {
+  background-color: rgba(67, 68, 246, 0.18) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(111, 128, 255, 0.35);
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-progress-track {
+  background-color: var(--worker-input) !important;
+  --tw-ring-color: var(--worker-border) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-progress-fill {
+  background-color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-help {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-elevated) !important;
+  color: #a3f1ab !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-unit-toggle {
+  border-color: var(--worker-border) !important;
+  background-color: var(--worker-input) !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-unit-idle {
+  color: #94a3b8 !important;
+  background-color: transparent !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-unit-selected {
+  background-color: #a3f1ab !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-btn-back {
+  background-color: transparent !important;
+  border-color: var(--worker-border-strong) !important;
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-btn-back:hover {
+  background-color: var(--worker-row-hover) !important;
+  color: #f8fafc !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-btn-complete {
+  background-color: #a3f1ab !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-btn-complete:hover:not(:disabled) {
+  background-color: #8ad994 !important;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-btn-complete:disabled {
+  opacity: 0.55;
+  color: #0b0d12 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-left-pill {
+  background-color: rgba(251, 191, 36, 0.2) !important;
+  color: #fbbf24 !important;
+  --tw-ring-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+/* Strengthen OK selected = solid mint (already via worker-result-ok; ensure fill wins). */
+.worker-dark .worker-mobile-layout .worker-vc-checklist .worker-result-ok[data-selected='true'] {
+  background-color: #a3f1ab !important;
+  color: #0b0d12 !important;
+  border-color: #8ad994 !important;
+}
+
+/* Defect notes — beat text-[#113C69] → indigo remap; clear white typing. */
+.worker-dark .worker-mobile-layout .worker-vc-defect-notes {
+  background-color: var(--worker-input) !important;
+  border-color: var(--worker-border-strong) !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-defect-notes::placeholder {
+  color: #94a3b8 !important;
+}
+
+.worker-dark .worker-mobile-layout .worker-vc-add-photo {
+  border-color: rgba(163, 241, 171, 0.45) !important;
+  background-color: var(--worker-elevated) !important;
+  color: #a3f1ab !important;
+}
+

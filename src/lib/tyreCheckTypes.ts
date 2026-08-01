@@ -186,23 +186,170 @@ export const DEFAULT_TRUCK_AXLE_COUNT = 3
 export const DEFAULT_TRAILER_AXLE_COUNT = 3
 
 /**
+ * Shared wear-legend + status colour source of truth.
+ * Legend colours drive tyre ring, centre dot, status badge, and the wear scale UI.
+ * Status bands (label only):
+ *   8–6 mm → Good | 5–3 mm → Attention | 2–1.6 mm → Critical | null → Not Checked
+ * Aligns with DB `drevora_tyre_tread_status` (>=6 good, >=3 attention, else critical).
+ */
+export type TreadWearLegendEntry = {
+  depthMm: number
+  depthLabel: string
+  wornLabel: string
+  /** Exact hex used by the wear legend row. */
+  color: string
+  textColor: string
+  rowClass: string
+  tileClass: string
+  ringClass: string
+  glowClass: string
+  dotClass: string
+  badgeClass: string
+}
+
+export const TREAD_WEAR_LEGEND: readonly TreadWearLegendEntry[] = [
+  {
+    depthMm: 8,
+    depthLabel: '8 mm',
+    wornLabel: '0% worn',
+    color: '#0F7A3A',
+    textColor: '#FFFFFF',
+    rowClass: 'bg-[#0F7A3A] text-white',
+    tileClass: 'border-[#0F7A3A] bg-[#0F7A3A] text-white',
+    ringClass: 'ring-[#0F7A3A]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(15,122,58,0.22)]',
+    dotClass: 'bg-[#0F7A3A]',
+    badgeClass: 'bg-[#0F7A3A] text-white ring-1 ring-black/25',
+  },
+  {
+    depthMm: 7,
+    depthLabel: '7 mm',
+    wornLabel: '16% worn',
+    color: '#22A34A',
+    textColor: '#FFFFFF',
+    rowClass: 'bg-[#22A34A] text-white',
+    tileClass: 'border-[#22A34A] bg-[#22A34A] text-white',
+    ringClass: 'ring-[#22A34A]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(34,163,74,0.22)]',
+    dotClass: 'bg-[#22A34A]',
+    badgeClass: 'bg-[#22A34A] text-white ring-1 ring-black/25',
+  },
+  {
+    depthMm: 6,
+    depthLabel: '6 mm',
+    wornLabel: '31% worn',
+    color: '#8BC34A',
+    textColor: '#14301A',
+    rowClass: 'bg-[#8BC34A] text-[#14301A]',
+    tileClass: 'border-[#8BC34A] bg-[#8BC34A] text-[#14301A]',
+    ringClass: 'ring-[#8BC34A]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(139,195,74,0.28)]',
+    dotClass: 'bg-[#8BC34A]',
+    badgeClass: 'bg-[#8BC34A] text-[#14301A] ring-1 ring-black/20',
+  },
+  {
+    depthMm: 5,
+    depthLabel: '5 mm',
+    wornLabel: '47% worn',
+    color: '#F6D23A',
+    textColor: '#3A2E05',
+    rowClass: 'bg-[#F6D23A] text-[#3A2E05]',
+    tileClass: 'border-[#F6D23A] bg-[#F6D23A] text-[#3A2E05]',
+    ringClass: 'ring-[#F6D23A]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(246,210,58,0.30)]',
+    dotClass: 'bg-[#F6D23A]',
+    badgeClass: 'bg-[#F6D23A] text-[#3A2E05] ring-1 ring-black/15',
+  },
+  {
+    depthMm: 4,
+    depthLabel: '4 mm',
+    wornLabel: '62% worn',
+    color: '#F0A020',
+    textColor: '#2E1F05',
+    rowClass: 'bg-[#F0A020] text-[#2E1F05]',
+    tileClass: 'border-[#F0A020] bg-[#F0A020] text-[#2E1F05]',
+    ringClass: 'ring-[#F0A020]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(240,160,32,0.30)]',
+    dotClass: 'bg-[#F0A020]',
+    badgeClass: 'bg-[#F0A020] text-[#2E1F05] ring-1 ring-black/15',
+  },
+  {
+    depthMm: 3,
+    depthLabel: '3 mm',
+    wornLabel: '78% worn',
+    color: '#E86B12',
+    textColor: '#FFFFFF',
+    rowClass: 'bg-[#E86B12] text-white',
+    tileClass: 'border-[#E86B12] bg-[#E86B12] text-white',
+    ringClass: 'ring-[#E86B12]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(232,107,18,0.28)]',
+    dotClass: 'bg-[#E86B12]',
+    badgeClass: 'bg-[#E86B12] text-white ring-1 ring-black/25',
+  },
+  {
+    depthMm: 2,
+    depthLabel: '2 mm',
+    wornLabel: '94% worn',
+    color: '#E04A2F',
+    textColor: '#FFFFFF',
+    rowClass: 'bg-[#E04A2F] text-white',
+    tileClass: 'border-[#E04A2F] bg-[#E04A2F] text-white',
+    ringClass: 'ring-[#E04A2F]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(224,74,47,0.28)]',
+    dotClass: 'bg-[#E04A2F]',
+    badgeClass: 'bg-[#E04A2F] text-white ring-1 ring-black/25',
+  },
+  {
+    depthMm: 1.6,
+    depthLabel: '1.6 mm',
+    wornLabel: '100% worn',
+    color: '#9B1C1C',
+    textColor: '#FFFFFF',
+    rowClass: 'bg-[#9B1C1C] text-white',
+    tileClass: 'border-[#9B1C1C] bg-[#9B1C1C] text-white',
+    ringClass: 'ring-[#9B1C1C]',
+    glowClass: 'shadow-[0_0_0_3px_rgba(155,28,28,0.30)]',
+    dotClass: 'bg-[#9B1C1C]',
+    badgeClass: 'bg-[#9B1C1C] text-white ring-1 ring-black/25',
+  },
+] as const
+
+/** Representative legend depth used when only a status band is known (no exact mm). */
+const STATUS_BAND_LEGEND_DEPTH: Record<Exclude<TyreStatus, 'dirty'>, number | null> = {
+  good: 6,
+  attention: 4,
+  critical: 2,
+  not_checked: null,
+}
+
+/**
+ * Map a measured depth to the wear-legend step colour.
+ * Uses the legend row at or just below the value (8→1.6), so 3.0 → 3 mm red-orange,
+ * 4.0 → 4 mm orange, 2.0 → 2 mm red, 1.6 → dark red.
+ */
+export function resolveTreadWearLegendEntry(depthMm: number): TreadWearLegendEntry {
+  for (const entry of TREAD_WEAR_LEGEND) {
+    if (depthMm + 1e-9 >= entry.depthMm) return entry
+  }
+  return TREAD_WEAR_LEGEND[TREAD_WEAR_LEGEND.length - 1]!
+}
+
+/**
  * Aligns with DB `drevora_tyre_tread_status`:
- * not_checked | good (>=6.0) | attention (4.0–5.9) | critical (<4.0).
+ * not_checked | good (>=6.0) | attention (3.0–5.9) | critical (<3.0).
  * Dirty is a separate flag — when `dirty` is true the UI may prefer Dirty over tread colour.
  */
 export function treadDepthToStatus(depthMm: number | null, dirty: boolean): TyreStatus {
   if (depthMm == null || Number.isNaN(depthMm)) return 'not_checked'
   if (dirty) return 'dirty'
-  if (depthMm >= 6) return 'good'
-  if (depthMm >= 4) return 'attention'
-  return 'critical'
+  return treadDepthBand(depthMm)
 }
 
 /** Pure tread band (ignores dirty) — matches generated DB tread_status. */
 export function treadDepthBand(depthMm: number | null): Exclude<TyreStatus, 'dirty'> {
   if (depthMm == null || Number.isNaN(depthMm)) return 'not_checked'
   if (depthMm >= 6) return 'good'
-  if (depthMm >= 4) return 'attention'
+  if (depthMm >= 3) return 'attention'
   return 'critical'
 }
 
@@ -302,108 +449,83 @@ export function tyreStatusLabel(status: TyreStatus): string {
 /** Colour intensity for tyre status tiles/badges/dots. */
 export type TyreStatusPalette = 'vivid' | 'pastel'
 
-/** Outdoor-readable status colours for tyre tiles (Worker mobile — always vivid). */
-function tyreStatusClassesVivid(status: TyreStatus): {
+export type TyreVisualClasses = {
   tile: string
   badge: string
   dot: string
-} {
-  switch (status) {
-    case 'good':
-      return {
-        tile:
-          'border-emerald-700 bg-emerald-500 text-white dark:border-emerald-400 dark:bg-emerald-600',
-        badge:
-          'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white ring-1 ring-emerald-900/40',
-        dot: 'bg-emerald-700 dark:bg-emerald-300',
-      }
-    case 'attention':
-      return {
-        tile:
-          'border-amber-700 bg-amber-500 text-amber-950 dark:border-amber-400 dark:bg-amber-500',
-        badge:
-          'bg-amber-500 text-amber-950 dark:bg-amber-400 dark:text-amber-950 ring-1 ring-amber-900/40',
-        dot: 'bg-amber-700 dark:bg-amber-200',
-      }
-    case 'critical':
-      return {
-        tile: 'border-red-800 bg-red-600 text-white dark:border-red-400 dark:bg-red-600',
-        badge:
-          'bg-red-600 text-white dark:bg-red-500 dark:text-white ring-1 ring-red-950/40',
-        dot: 'bg-red-800 dark:bg-red-300',
-      }
-    case 'dirty':
-      return {
-        tile:
-          'border-yellow-700 bg-yellow-400 text-yellow-950 dark:border-yellow-300 dark:bg-yellow-400',
-        badge:
-          'bg-yellow-400 text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950 ring-1 ring-yellow-900/40',
-        dot: 'bg-yellow-600 dark:bg-yellow-200',
-      }
-    case 'not_checked':
-      return {
-        tile: 'border-slate-500 bg-slate-200 text-slate-800 dark:border-slate-400 dark:bg-slate-700 dark:text-slate-100',
-        badge:
-          'bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-slate-100 ring-1 ring-slate-500/40',
-        dot: 'bg-slate-500 dark:bg-slate-300',
-      }
-  }
+  ringClass: string
+  glowClass: string
 }
 
-/** Softer semantic colours for Admin Configuration / History (readable, still on-brand). */
-function tyreStatusClassesPastel(status: TyreStatus): {
-  tile: string
-  badge: string
-  dot: string
-} {
-  switch (status) {
-    case 'good':
-      return {
-        tile:
-          'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-200',
-        badge:
-          'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 ring-1 ring-emerald-200 dark:ring-emerald-800/60',
-        dot: 'bg-emerald-500 dark:bg-emerald-400',
-      }
-    case 'attention':
-      return {
-        tile:
-          'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200',
-        badge:
-          'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 ring-1 ring-amber-200 dark:ring-amber-800/60',
-        dot: 'bg-amber-500 dark:bg-amber-400',
-      }
-    case 'critical':
-      return {
-        tile:
-          'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-200',
-        badge:
-          'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200 ring-1 ring-rose-200 dark:ring-rose-800/60',
-        dot: 'bg-rose-500 dark:bg-rose-400',
-      }
-    case 'dirty':
-      return {
-        tile:
-          'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800/50 dark:bg-yellow-950/30 dark:text-yellow-200',
-        badge:
-          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 ring-1 ring-yellow-200 dark:ring-yellow-800/60',
-        dot: 'bg-yellow-400 dark:bg-yellow-300',
-      }
-    case 'not_checked':
-      return {
-        tile:
-          'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-slate-800/40 dark:text-slate-300',
-        badge:
-          'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-white/10',
-        dot: 'bg-slate-400 dark:bg-slate-400',
-      }
+const NOT_CHECKED_VISUAL: Record<TyreStatusPalette, TyreVisualClasses> = {
+  vivid: {
+    tile: 'border-slate-500 bg-slate-200 text-slate-800 dark:border-slate-400 dark:bg-slate-700 dark:text-slate-100',
+    badge:
+      'bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-slate-100 ring-1 ring-slate-500/40',
+    dot: 'bg-slate-500 dark:bg-slate-300',
+    ringClass: 'ring-slate-400',
+    glowClass: 'shadow-[0_0_0_3px_rgba(148,163,184,0.22)]',
+  },
+  pastel: {
+    tile:
+      'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-slate-800/40 dark:text-slate-300',
+    badge:
+      'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-white/10',
+    dot: 'bg-slate-400 dark:bg-slate-400',
+    ringClass: 'ring-slate-400',
+    glowClass: 'shadow-[0_0_0_3px_rgba(148,163,184,0.22)]',
+  },
+}
+
+const DIRTY_VISUAL: Record<TyreStatusPalette, TyreVisualClasses> = {
+  vivid: {
+    tile:
+      'border-yellow-700 bg-yellow-400 text-yellow-950 dark:border-yellow-300 dark:bg-yellow-400',
+    badge:
+      'bg-yellow-400 text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950 ring-1 ring-yellow-900/40',
+    dot: 'bg-yellow-600 dark:bg-yellow-200',
+    ringClass: 'ring-yellow-400',
+    glowClass: 'shadow-[0_0_0_3px_rgba(250,204,21,0.28)]',
+  },
+  pastel: {
+    tile:
+      'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800/50 dark:bg-yellow-950/30 dark:text-yellow-200',
+    badge:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200 ring-1 ring-yellow-200 dark:ring-yellow-800/60',
+    dot: 'bg-yellow-400 dark:bg-yellow-300',
+    ringClass: 'ring-yellow-400',
+    glowClass: 'shadow-[0_0_0_3px_rgba(250,204,21,0.28)]',
+  },
+}
+
+function visualFromLegend(entry: TreadWearLegendEntry): TyreVisualClasses {
+  return {
+    tile: entry.tileClass,
+    badge: entry.badgeClass,
+    dot: entry.dotClass,
+    ringClass: entry.ringClass,
+    glowClass: entry.glowClass,
   }
 }
 
 /**
- * Semantic status colours for tyre tiles/badges/dots.
- * palette 'vivid' (default) is outdoor-readable for Worker mobile.
- * palette 'pastel' is the softer tone used on Admin Configuration / History.
+ * Colours for a tyre measurement: exact wear-legend colour for the depth,
+ * or Dirty / Not Checked overrides. Shared by ring, dot, badge, and legend.
+ */
+export function tyreTreadVisualClasses(
+  depthMm: number | null,
+  options: { dirty?: boolean; palette?: TyreStatusPalette } = {},
+): TyreVisualClasses {
+  const palette = options.palette ?? 'vivid'
+  if (options.dirty) return DIRTY_VISUAL[palette]
+  if (depthMm == null || Number.isNaN(depthMm)) return NOT_CHECKED_VISUAL[palette]
+  return visualFromLegend(resolveTreadWearLegendEntry(depthMm))
+}
+
+/**
+ * Semantic status colours for summary tiles / condition indicators.
+ * Good / Attention / Critical use representative wear-legend depths (6 / 4 / 2 mm)
+ * so they stay on the same palette as the tread scale.
  */
 export function tyreStatusClasses(
   status: TyreStatus,
@@ -413,7 +535,19 @@ export function tyreStatusClasses(
   badge: string
   dot: string
 } {
-  return palette === 'pastel' ? tyreStatusClassesPastel(status) : tyreStatusClassesVivid(status)
+  if (status === 'dirty') {
+    const dirty = DIRTY_VISUAL[palette]
+    return { tile: dirty.tile, badge: dirty.badge, dot: dirty.dot }
+  }
+  if (status === 'not_checked') {
+    const unchecked = NOT_CHECKED_VISUAL[palette]
+    return { tile: unchecked.tile, badge: unchecked.badge, dot: unchecked.dot }
+  }
+
+  const depth = STATUS_BAND_LEGEND_DEPTH[status]
+  const entry = resolveTreadWearLegendEntry(depth ?? 2)
+  const visual = visualFromLegend(entry)
+  return { tile: visual.tile, badge: visual.badge, dot: visual.dot }
 }
 
 /** Per-axle wheel layout. Single = 2 tyres; Dual = 4 tyres. */

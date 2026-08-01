@@ -55,13 +55,13 @@ function resolveDayStatus(requests: HolidayRequest[]): HolidayRequestStatus | nu
 function dayStatusClass(status: HolidayRequestStatus | null): string {
   switch (status) {
     case 'Approved':
-      return 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+      return 'my-holiday-day-approved bg-emerald-100 text-emerald-800 ring-emerald-200'
     case 'Pending':
-      return 'bg-amber-100 text-amber-800 ring-amber-200'
+      return 'my-holiday-day-pending bg-amber-100 text-amber-800 ring-amber-200'
     case 'Rejected':
-      return 'bg-rose-100 text-rose-800 ring-rose-200'
+      return 'my-holiday-day-rejected bg-rose-100 text-rose-800 ring-rose-200'
     default:
-      return 'text-[#113C69] hover:bg-[#EEF6FF]'
+      return 'my-holiday-day text-[#113C69] hover:bg-[#EEF6FF]'
   }
 }
 
@@ -112,7 +112,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
           <button
             type="button"
             onClick={() => moveMonth(-1)}
-            className="inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
+            className="my-holiday-nav inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
             aria-label="Previous month"
           >
             <ChevronLeft className="size-4" />
@@ -120,7 +120,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
           <button
             type="button"
             onClick={() => moveMonth(1)}
-            className="inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
+            className="my-holiday-nav inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
             aria-label="Next month"
           >
             <ChevronRight className="size-4" />
@@ -129,14 +129,14 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
       </div>
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-[#5499BF]">Loading calendar…</p>
+        <p className="my-holiday-muted mt-4 text-sm text-[#5499BF]">Loading calendar…</p>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-7 gap-1">
             {weekdayLabels.map((label) => (
               <div
                 key={label}
-                className="py-1 text-center text-[10px] font-bold uppercase tracking-[0.06em] text-[#5499BF]"
+                className="my-holiday-weekday py-1 text-center text-[10px] font-bold uppercase tracking-[0.06em] text-[#5499BF]"
               >
                 {label}
               </div>
@@ -153,7 +153,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
                   type="button"
                   onClick={() => setSelectedIso(day.iso)}
                   className={cn(
-                    'flex h-10 flex-col items-center justify-center rounded-[10px] text-xs font-semibold tabular-nums ring-1 ring-transparent transition-colors',
+                    'my-holiday-day flex h-10 flex-col items-center justify-center rounded-[10px] text-xs font-semibold tabular-nums ring-1 ring-transparent transition-colors',
                     !day.inMonth && 'opacity-40',
                     status ? dayStatusClass(status) : 'text-[#113C69] hover:bg-[#EEF6FF]',
                     isSelected && 'ring-2 ring-[#218EE7]',
@@ -166,7 +166,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
             })}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-[#5499BF]">
+          <div className="my-holiday-muted mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-[#5499BF]">
             <span className="inline-flex items-center gap-1">
               <span className="size-2.5 rounded-full bg-emerald-400" />
               Approved
@@ -182,14 +182,14 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
           </div>
 
           {selectedIso && selectedRequests.length > 0 ? (
-            <div className="mt-4 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#218EE7]">
+            <div className="my-holiday-selected-panel mt-4 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] p-3">
+              <p className="my-holiday-eyebrow text-xs font-bold uppercase tracking-[0.08em] text-[#218EE7]">
                 {formatDate(selectedIso)}
               </p>
               {selectedRequests.map((request) => (
-                <div key={request.id} className="mt-2 text-sm text-[#113C69]">
+                <div key={request.id} className="my-holiday-body mt-2 text-sm text-[#113C69]">
                   <p className="font-semibold">{statusLabel(request.status)}</p>
-                  <p className="mt-0.5 text-xs text-[#5499BF]">
+                  <p className="my-holiday-muted mt-0.5 text-xs text-[#5499BF]">
                     {formatDate(normalizeHolidayIsoDate(request.startDate))} –{' '}
                     {formatDate(normalizeHolidayIsoDate(request.endDate))}
                     {' · '}

@@ -13,8 +13,9 @@ type UseWorkerVehicleCheckExitGuardOptions = {
 }
 
 /**
- * Shared exit-confirmation wiring for an active Worker Vehicle Check.
+ * Shared exit-confirmation wiring for an active Worker check (Vehicle / Tyre).
  * Registers with WorkerNavigationGuardProvider; owns the confirm modal state.
+ * Back while the modal is open dismisses the modal only (no leave / no loop).
  */
 export function useWorkerVehicleCheckExitGuard({
   isCheckActive,

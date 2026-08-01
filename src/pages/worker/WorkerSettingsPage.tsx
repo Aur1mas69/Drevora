@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { getAppVersionLabel } from '@/lib/appVersion'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
@@ -13,6 +14,7 @@ import {
   writeWorkerAppearancePreference,
   type WorkerAppearance,
 } from '@/lib/workerAppearance'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
 import { formatWorkerTimesheetSettingsSummary } from '@/lib/workerTimesheetSettingsSummary'
 import { cn } from '@/lib/utils'
 import {
@@ -44,43 +46,98 @@ function SettingsRowLink({
   title,
   subtitle,
   className,
+  isDark,
 }: {
   to: string
   icon: typeof Clock
   title: string
   subtitle?: string
   className?: string
+  isDark: boolean
 }) {
   return (
     <Link
       to={to}
       className={cn(
-        'flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
+        'flex min-h-14 w-full min-w-0 items-center gap-3 px-4 py-3.5 transition-colors',
+        !isDark &&
+          'active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
         className,
       )}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
+      <span
+        className={cn(
+          'worker-accent-icon-well flex size-10 shrink-0 items-center justify-center rounded-2xl',
+          !isDark &&
+            'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
+        )}
+      >
         <Icon className="size-5" aria-hidden />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-sm font-semibold text-[color:var(--worker-text)]">
+        <span
+          className={cn(
+            'worker-accent-title block text-sm font-semibold',
+            !isDark && 'text-[color:var(--worker-text)]',
+          )}
+        >
           {title}
         </span>
         {subtitle ? (
-          <span className="mt-0.5 block truncate text-xs font-medium text-[color:var(--worker-text-secondary)]">
+          <span
+            className={cn(
+              'worker-accent-secondary mt-0.5 block truncate text-xs font-medium',
+              !isDark && 'text-[color:var(--worker-text-secondary)]',
+            )}
+          >
             {subtitle}
           </span>
         ) : null}
       </span>
       <ChevronRight
-        className="size-5 shrink-0 text-[color:var(--worker-text-muted)]"
+        className={cn(
+          'worker-accent-muted size-5 shrink-0',
+          !isDark && 'text-[color:var(--worker-text-muted)]',
+        )}
         aria-hidden
       />
     </Link>
   )
 }
 
+function ProfileField({
+  label,
+  value,
+  isDark,
+}: {
+  label: string
+  value: string
+  isDark: boolean
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <dt
+        className={cn(
+          'worker-accent-secondary text-sm font-medium',
+          !isDark && 'text-[color:var(--worker-text-secondary)]',
+        )}
+      >
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          'worker-accent-value max-w-[60%] text-right text-sm font-semibold',
+          !isDark && 'text-[color:var(--worker-text)]',
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  )
+}
+
 export default function WorkerSettingsPage() {
+  const isDark = useIsWorkerDarkMode()
   const navigate = useNavigate()
   const { signOut, session } = useAuth()
   const { worker, isLoading, error, reload } = useCurrentWorker()
@@ -182,10 +239,16 @@ export default function WorkerSettingsPage() {
         </h1>
       </header>
 
-      <section className="worker-card rounded-[1.75rem] p-5" aria-labelledby="worker-settings-profile">
+      <section
+        className={workerAccentCardClass(0, isDark, 'worker-card rounded-[1.75rem] p-5')}
+        aria-labelledby="worker-settings-profile"
+      >
         <h2
           id="worker-settings-profile"
-          className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
         >
           Profile
         </h2>
@@ -197,30 +260,68 @@ export default function WorkerSettingsPage() {
             size="md"
           />
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-[color:var(--worker-text)]">
+            <p
+              className={cn(
+                'worker-accent-title truncate text-lg font-semibold',
+                !isDark && 'text-[color:var(--worker-text)]',
+              )}
+            >
               {fullName}
             </p>
-            <p className="truncate text-sm text-[color:var(--worker-text-secondary)]">{email}</p>
+            <p
+              className={cn(
+                'worker-accent-secondary truncate text-sm',
+                !isDark && 'text-[color:var(--worker-text-secondary)]',
+              )}
+            >
+              {email}
+            </p>
           </div>
         </div>
-        <dl className="mt-4 space-y-3 border-t border-[color:var(--worker-border)] pt-4">
-          <ProfileField label="Company" value={company} />
-          <ProfileField label="Phone" value={phone} />
+        <dl
+          className={cn(
+            'worker-accent-divider mt-4 space-y-3 border-t pt-4',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
+          <ProfileField label="Company" value={company} isDark={isDark} />
+          <ProfileField label="Phone" value={phone} isDark={isDark} />
           <ProfileField
             label="Default vehicle"
             value={defaultVehicleLabel ?? 'Not set'}
+            isDark={isDark}
           />
         </dl>
-        <p className="mt-4 text-xs text-[color:var(--worker-text-muted)]">
+        <p
+          className={cn(
+            'worker-accent-muted mt-4 text-xs',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           Profile details are managed by your office.
         </p>
       </section>
 
-      <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-preferences">
-        <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
+      <section
+        className={workerAccentCardClass(
+          1,
+          isDark,
+          'worker-card overflow-hidden rounded-[1.75rem]',
+        )}
+        aria-labelledby="worker-settings-preferences"
+      >
+        <div
+          className={cn(
+            'worker-accent-divider border-b px-4 py-3',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
           <h2
             id="worker-settings-preferences"
-            className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
+            className={cn(
+              'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+              !isDark && 'text-[color:var(--worker-text-muted)]',
+            )}
           >
             Preferences
           </h2>
@@ -231,24 +332,50 @@ export default function WorkerSettingsPage() {
           icon={Clock}
           title="Timesheet Settings"
           subtitle={timesheetSummary}
+          isDark={isDark}
         />
 
-        <div className="border-t border-[color:var(--worker-border)] px-4 py-3.5">
+        <div
+          className={cn(
+            'worker-accent-divider border-t px-4 py-3.5',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
           <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]">
+            <span
+              className={cn(
+                'worker-accent-icon-well flex size-10 shrink-0 items-center justify-center rounded-2xl',
+                !isDark &&
+                  'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
+              )}
+            >
               <Truck className="size-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[color:var(--worker-text)]">
+              <p
+                className={cn(
+                  'worker-accent-title text-sm font-semibold',
+                  !isDark && 'text-[color:var(--worker-text)]',
+                )}
+              >
                 Default Vehicle
               </p>
-              <p className="mt-0.5 truncate text-xs font-medium text-[color:var(--worker-text-secondary)]">
+              <p
+                className={cn(
+                  'worker-accent-secondary mt-0.5 truncate text-xs font-medium',
+                  !isDark && 'text-[color:var(--worker-text-secondary)]',
+                )}
+              >
                 {defaultVehicleLabel ?? 'No default vehicle'}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
                   to="/worker/vehicles"
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[#89CFF0] bg-[#E8F3FE] px-3 text-xs font-semibold text-[#0B68BE] transition-colors hover:bg-[#DCEEFF] active:bg-[#D3E9FC]"
+                  className={cn(
+                    'worker-accent-pill inline-flex h-10 items-center justify-center rounded-2xl border px-3 text-xs font-semibold transition-colors',
+                    !isDark &&
+                      'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE] hover:bg-[#DCEEFF] active:bg-[#D3E9FC]',
+                  )}
                 >
                   Change default vehicle
                 </Link>
@@ -270,10 +397,27 @@ export default function WorkerSettingsPage() {
           </div>
         </div>
 
-        <div className="border-t border-[color:var(--worker-border)] px-4 py-3.5">
-          <p className="text-sm font-semibold text-[color:var(--worker-text)]">Appearance</p>
+        <div
+          className={cn(
+            'worker-accent-divider border-t px-4 py-3.5',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
+          <p
+            className={cn(
+              'worker-accent-title text-sm font-semibold',
+              !isDark && 'text-[color:var(--worker-text)]',
+            )}
+          >
+            Appearance
+          </p>
           <div
-            className="mt-3 grid grid-cols-2 gap-1 rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] p-1"
+            className={cn(
+              'mt-3 grid grid-cols-2 gap-1 rounded-2xl border p-1',
+              isDark
+                ? 'worker-accent-pill border-transparent'
+                : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)]',
+            )}
             role="radiogroup"
             aria-label="Appearance"
           >
@@ -296,8 +440,12 @@ export default function WorkerSettingsPage() {
                   className={cn(
                     'worker-appearance-option inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--worker-card)]',
                     selected
-                      ? 'bg-[color:var(--worker-card)] text-[color:var(--worker-text)] shadow-sm'
-                      : 'text-[color:var(--worker-text-secondary)] hover:text-[color:var(--worker-text)]',
+                      ? isDark
+                        ? 'bg-white/90 text-[#0b0d12] shadow-sm'
+                        : 'bg-[color:var(--worker-card)] text-[color:var(--worker-text)] shadow-sm'
+                      : isDark
+                        ? 'text-inherit opacity-80 hover:opacity-100'
+                        : 'text-[color:var(--worker-text-secondary)] hover:text-[color:var(--worker-text)]',
                   )}
                 >
                   <Icon className="size-4" aria-hidden />
@@ -309,11 +457,26 @@ export default function WorkerSettingsPage() {
         </div>
       </section>
 
-      <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-security">
-        <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
+      <section
+        className={workerAccentCardClass(
+          2,
+          isDark,
+          'worker-card overflow-hidden rounded-[1.75rem]',
+        )}
+        aria-labelledby="worker-settings-security"
+      >
+        <div
+          className={cn(
+            'worker-accent-divider border-b px-4 py-3',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
           <h2
             id="worker-settings-security"
-            className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
+            className={cn(
+              'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+              !isDark && 'text-[color:var(--worker-text-muted)]',
+            )}
           >
             Security
           </h2>
@@ -327,14 +490,30 @@ export default function WorkerSettingsPage() {
               ? 'Password and biometric app lock'
               : 'Change your sign-in password'
           }
+          isDark={isDark}
         />
       </section>
 
-      <section className="worker-card overflow-hidden rounded-[1.75rem]" aria-labelledby="worker-settings-help">
-        <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
+      <section
+        className={workerAccentCardClass(
+          3,
+          isDark,
+          'worker-card overflow-hidden rounded-[1.75rem]',
+        )}
+        aria-labelledby="worker-settings-help"
+      >
+        <div
+          className={cn(
+            'worker-accent-divider border-b px-4 py-3',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
           <h2
             id="worker-settings-help"
-            className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
+            className={cn(
+              'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+              !isDark && 'text-[color:var(--worker-text-muted)]',
+            )}
           >
             Help &amp; Information
           </h2>
@@ -345,6 +524,7 @@ export default function WorkerSettingsPage() {
           icon={Contact}
           title="Contact Office"
           subtitle="Phone and email when shared"
+          isDark={isDark}
         />
 
         <SettingsRowLink
@@ -352,14 +532,33 @@ export default function WorkerSettingsPage() {
           icon={CircleHelp}
           title="Help & Support"
           subtitle="Ask your office for assistance"
-          className="border-t border-[color:var(--worker-border)]"
+          className={cn(
+            'worker-accent-divider border-t',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+          isDark={isDark}
         />
 
-        <div className="flex min-h-14 w-full min-w-0 items-center justify-between gap-3 border-t border-[color:var(--worker-border)] px-4 py-3.5">
-          <span className="text-sm font-semibold text-[color:var(--worker-text)]">
+        <div
+          className={cn(
+            'worker-accent-divider flex min-h-14 w-full min-w-0 items-center justify-between gap-3 border-t px-4 py-3.5',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
+          <span
+            className={cn(
+              'worker-accent-title text-sm font-semibold',
+              !isDark && 'text-[color:var(--worker-text)]',
+            )}
+          >
             App Version
           </span>
-          <span className="text-sm font-medium text-[color:var(--worker-text-secondary)]">
+          <span
+            className={cn(
+              'worker-accent-secondary text-sm font-medium',
+              !isDark && 'text-[color:var(--worker-text-secondary)]',
+            )}
+          >
             {getAppVersionLabel()}
           </span>
         </div>
@@ -374,17 +573,6 @@ export default function WorkerSettingsPage() {
         <LogOut className="size-4" aria-hidden />
         Sign out
       </Button>
-    </div>
-  )
-}
-
-function ProfileField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <dt className="text-sm font-medium text-[color:var(--worker-text-secondary)]">{label}</dt>
-      <dd className="max-w-[60%] text-right text-sm font-semibold text-[color:var(--worker-text)]">
-        {value}
-      </dd>
     </div>
   )
 }

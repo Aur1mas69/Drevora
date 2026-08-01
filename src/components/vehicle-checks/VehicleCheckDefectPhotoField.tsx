@@ -136,7 +136,7 @@ export function VehicleCheckDefectPhotoField({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || isProcessing}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] border border-dashed border-[#C5DFFB] bg-white px-3 py-2 text-xs font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] disabled:opacity-60"
+          className="worker-vc-add-photo inline-flex min-h-11 items-center gap-1.5 rounded-[10px] border border-dashed border-[#C5DFFB] bg-white px-3 py-2 text-xs font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] disabled:opacity-60"
         >
           {isProcessing ? (
             <Loader2 className="size-3.5 animate-spin" />

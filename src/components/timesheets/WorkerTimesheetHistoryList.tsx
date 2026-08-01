@@ -98,7 +98,7 @@ export function WorkerTimesheetHistoryList({
               'hover:border-[#89CFF0] hover:bg-[#F0F7FF] active:bg-[#E8F3FE]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED]/40',
             )}
-            aria-label={`Open week ${item.weekNumber} timesheet, ${getStatusLabel(item.status)}`}
+            aria-label={`View week ${item.weekNumber} timesheet, ${getStatusLabel(item.status)}`}
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">

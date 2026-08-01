@@ -1,6 +1,9 @@
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
 import type { Contact } from '@/lib/contactTypes'
 import { getCategoryLabel, getContactPrimaryName } from '@/lib/contactUtils'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { cn } from '@/lib/utils'
 import {
   ContactsServiceError,
   fetchWorkerVisibleContacts,
@@ -37,6 +40,7 @@ function looksLikeSupport(contact: Contact): boolean {
  * like support/office help. Never invents phone/email.
  */
 export default function WorkerSettingsHelpPage() {
+  const isDark = useIsWorkerDarkMode()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -126,25 +130,43 @@ export default function WorkerSettingsHelpPage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {supportContacts.map((contact) => {
+          {supportContacts.map((contact, index) => {
             const phone = contact.phone?.trim() || null
             const email = contact.email?.trim() || null
             return (
               <li
                 key={contact.id}
-                className="rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm"
+                className={workerAccentCardClass(
+                  index,
+                  isDark,
+                  'rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm',
+                )}
               >
-                <p className="text-base font-semibold text-[color:var(--worker-text)]">
+                <p
+                  className={cn(
+                    'worker-accent-title text-base font-semibold',
+                    !isDark && 'text-[color:var(--worker-text)]',
+                  )}
+                >
                   {getContactPrimaryName(contact)}
                 </p>
-                <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--worker-text-muted)]">
+                <p
+                  className={cn(
+                    'worker-accent-muted mt-0.5 text-xs font-medium uppercase tracking-[0.08em]',
+                    !isDark && 'text-[color:var(--worker-text-muted)]',
+                  )}
+                >
                   {getCategoryLabel(contact.category)}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {phone ? (
                     <a
                       href={telHref(phone)}
-                      className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[#89CFF0] bg-[#E8F3FE] px-3 text-sm font-semibold text-[#0B68BE]"
+                      className={cn(
+                        'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold',
+                        !isDark &&
+                          'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE]',
+                      )}
                     >
                       <Phone className="size-4" aria-hidden />
                       Call
@@ -153,7 +175,11 @@ export default function WorkerSettingsHelpPage() {
                   {email ? (
                     <a
                       href={`mailto:${email}`}
-                      className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[color:var(--worker-border)] px-3 text-sm font-semibold text-[color:var(--worker-text)]"
+                      className={cn(
+                        'worker-accent-pill inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold',
+                        !isDark &&
+                          'border-[color:var(--worker-border)] text-[color:var(--worker-text)]',
+                      )}
                     >
                       <Mail className="size-4" aria-hidden />
                       Email
@@ -161,10 +187,22 @@ export default function WorkerSettingsHelpPage() {
                   ) : null}
                 </div>
                 {phone ? (
-                  <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">{phone}</p>
+                  <p
+                    className={cn(
+                      'worker-accent-secondary mt-2 text-sm',
+                      !isDark && 'text-[color:var(--worker-text-secondary)]',
+                    )}
+                  >
+                    {phone}
+                  </p>
                 ) : null}
                 {email ? (
-                  <p className="mt-0.5 break-all text-sm text-[color:var(--worker-text-secondary)]">
+                  <p
+                    className={cn(
+                      'worker-accent-secondary mt-0.5 break-all text-sm',
+                      !isDark && 'text-[color:var(--worker-text-secondary)]',
+                    )}
+                  >
                     {email}
                   </p>
                 ) : null}

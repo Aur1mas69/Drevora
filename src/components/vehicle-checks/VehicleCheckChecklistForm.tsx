@@ -17,7 +17,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 const RESULT_OPTIONS: VehicleCheckItemResult[] = ['Pass', 'Advisory', 'Fail']
 
 const commentClassName =
-  'min-h-10 w-full rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-3 py-2 text-sm text-[#113C69] outline-none placeholder:text-[#7FAFCC] focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30'
+  'worker-vc-defect-notes min-h-10 w-full rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-3 py-2 text-sm text-[#113C69] outline-none placeholder:text-[#7FAFCC] focus:border-[#218EE7] focus:ring-2 focus:ring-[#89CFF0]/30'
 
 /**
  * Outdoor / bright-sunlight status controls (Worker mobile first).
@@ -266,28 +266,28 @@ export function VehicleCheckChecklistForm({
   const helpGuidance = helpItem ? getVehicleCheckTemplateGuidance(helpItem) : null
 
   return (
-    <div className="space-y-2 sm:space-y-3">
+    <div className="worker-vc-checklist space-y-2 sm:space-y-3">
       {!readOnly && totalCount > 0 ? (
-        <div className="sticky top-0 z-10 rounded-[12px] border border-[#BFE3F5] bg-[#EAF4FF]/95 px-3 py-2 shadow-[0_4px_14px_rgba(33,142,231,0.12)] backdrop-blur-md">
+        <div className="worker-vc-progress sticky top-0 z-10 rounded-[12px] border border-[#BFE3F5] bg-[#EAF4FF]/95 px-3 py-2 shadow-[0_4px_14px_rgba(33,142,231,0.12)] backdrop-blur-md">
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#0B68BE]">
+              <p className="worker-vc-progress-eyebrow text-[10px] font-bold uppercase tracking-[0.1em] text-[#0B68BE]">
                 Check {currentCheckNumber} of {totalCount}
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums leading-none text-[#113C69]">
+              <p className="worker-vc-progress-value mt-0.5 text-sm font-bold tabular-nums leading-none text-[#113C69]">
                 {answeredCount}
-                <span className="font-semibold text-[#5499BF]"> answered</span>
-                <span className="ml-2 text-[#0B68BE]">{progressPercent}% complete</span>
+                <span className="worker-vc-muted font-semibold text-[#5499BF]"> answered</span>
+                <span className="worker-vc-progress-pct ml-2 text-[#0B68BE]">{progressPercent}% complete</span>
               </p>
             </div>
             {highlightUnanswered && answeredCount < totalCount ? (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
+              <span className="worker-vc-left-pill shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
                 {totalCount - answeredCount} left
               </span>
             ) : null}
           </div>
           <div
-            className="mt-2 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-[#C5DFFB]"
+            className="worker-vc-progress-track mt-2 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-[#C5DFFB]"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -295,7 +295,7 @@ export function VehicleCheckChecklistForm({
             aria-label={`Check ${currentCheckNumber} of ${totalCount}, ${progressPercent} percent complete`}
           >
             <div
-              className="h-full rounded-full bg-[#218EE7] transition-all duration-200"
+              className="worker-vc-progress-fill h-full rounded-full bg-[#218EE7] transition-all duration-200"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -305,10 +305,10 @@ export function VehicleCheckChecklistForm({
       {[...grouped.entries()].map(([category, categoryItems]) => (
         <section
           key={category}
-          className="overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_4px_14px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
+          className="worker-vc-section overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_4px_14px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
         >
-          <div className="bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
-            <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
+          <div className="worker-vc-section-head bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
+            <h3 className="worker-vc-muted text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               {category}
             </h3>
           </div>
@@ -335,8 +335,8 @@ export function VehicleCheckChecklistForm({
                   <div className="flex items-start gap-1.5">
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-start gap-1.5">
-                        <h4 className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-[#113C69] sm:text-sm">
-                          <span className="mr-1.5 font-bold tabular-nums text-[#218EE7]">
+                        <h4 className="worker-vc-item-title min-w-0 flex-1 text-[13px] font-semibold leading-5 text-[#113C69] sm:text-sm">
+                          <span className="worker-vc-item-num mr-1.5 font-bold tabular-nums text-[#218EE7]">
                             {itemNumber}.
                           </span>
                           {item.itemName}
@@ -349,7 +349,7 @@ export function VehicleCheckChecklistForm({
                         <button
                           type="button"
                           onClick={() => setHelpItem(item)}
-                          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE] sm:size-9"
+                          className="worker-vc-help flex size-11 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE] sm:size-9"
                           aria-label={`Show guidance for ${item.itemName}`}
                         >
                           <Info className="size-3.5" />
@@ -440,7 +440,7 @@ export function VehicleCheckChecklistForm({
                             <div className="min-h-0 overflow-hidden">
                               {shouldShowDefectPhoto ? (
                                 <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#5499BF]">
+                                  <p className="worker-vc-muted mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#5499BF]">
                                     <Camera className="size-3.5" />
                                     Defect photo
                                   </p>

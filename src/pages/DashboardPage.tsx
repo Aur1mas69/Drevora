@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { WorkerHomeRoadBackground } from '@/components/worker/WorkerHomeRoadBackground'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { getSentenceTimeGreeting, resolveGreetingFullName } from '@/lib/greeting'
 import {
   addOnlineStatusListener,
@@ -25,7 +26,7 @@ import {
   Truck,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /** Existing 51 KB WebP asset — rendered directly, never duplicated or inlined,
  * shown in both Light and Dark mode. */
@@ -37,34 +38,6 @@ function getGreetingPeriodIcon(date = new Date()): LucideIcon {
   // Morning + afternoon: sun. Evening + night: moon.
   if (hour >= 5 && hour < 17) return Sun
   return MoonStar
-}
-
-function subscribeWorkerDarkMode(onChange: () => void): () => void {
-  const root = document.documentElement
-  const observer = new MutationObserver(onChange)
-  observer.observe(root, { attributes: true, attributeFilter: ['class'] })
-  return () => observer.disconnect()
-}
-
-function getWorkerDarkModeSnapshot(): boolean {
-  return document.documentElement.classList.contains('worker-dark')
-}
-
-function getWorkerDarkModeServerSnapshot(): boolean {
-  return false
-}
-
-/**
- * Reactive read of the `worker-dark` class toggled by `src/lib/workerAppearance.ts`
- * (Worker Settings → Appearance). Uses `useSyncExternalStore` so Home updates
- * immediately on theme change without polling or duplicating theme state.
- */
-function useIsWorkerDarkMode(): boolean {
-  return useSyncExternalStore(
-    subscribeWorkerDarkMode,
-    getWorkerDarkModeSnapshot,
-    getWorkerDarkModeServerSnapshot,
-  )
 }
 
 function resetHorizontalScrollOffset() {
@@ -180,7 +153,7 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
         ) : null}
       </div>
 
-      <div className="relative z-[2] min-w-0 max-w-[calc(100%-7.5rem)] flex-1 space-y-1 self-end pr-2 pl-0.5 pb-1 min-[380px]:max-w-[calc(100%-9.75rem)] sm:max-w-[calc(100%-12rem)] sm:space-y-1.5 sm:pr-3 sm:pb-1.5 lg:max-w-[calc(100%-14.5rem)]">
+      <div className="relative z-[2] min-w-0 max-w-[calc(100%-7.5rem)] flex-1 space-y-1 self-end pr-2 pl-0.5 pb-1 mb-2.5 min-[380px]:max-w-[calc(100%-9.75rem)] sm:max-w-[calc(100%-12rem)] sm:space-y-1.5 sm:pr-3 sm:pb-1.5 sm:mb-3.5 lg:max-w-[calc(100%-14.5rem)]">
         <h2
           className={cn(
             'break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:700]',
@@ -403,10 +376,20 @@ function DashboardPage() {
                 <Truck className="size-6" strokeWidth={1.75} aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+                <p
+                  className={cn(
+                    'worker-home-dv-label text-[11px] font-medium uppercase tracking-[0.14em]',
+                    !isDark && 'text-[color:var(--worker-text-muted)]',
+                  )}
+                >
                   Default vehicle
                 </p>
-                <p className="mt-0.5 truncate text-[15px] font-semibold leading-snug text-[color:var(--worker-text)]">
+                <p
+                  className={cn(
+                    'worker-home-dv-value mt-0.5 truncate text-[15px] font-semibold leading-snug',
+                    !isDark && 'text-[color:var(--worker-text)]',
+                  )}
+                >
                   {defaultVehicleLabel}
                 </p>
               </div>
@@ -418,13 +401,18 @@ function DashboardPage() {
               Quick actions
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              {quickActionItems.map((item) => {
+              {quickActionItems.map((item, index) => {
                 const Icon = item.icon
+                const accentClass = isDark
+                  ? index % 2 === 0
+                    ? 'worker-quick-action-mint'
+                    : 'worker-quick-action-indigo'
+                  : null
                 return (
                   <Link
                     key={item.id}
                     to={item.to}
-                    className="worker-home-quick-action"
+                    className={cn('worker-home-quick-action', accentClass)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="worker-home-icon-well">
@@ -432,7 +420,12 @@ function DashboardPage() {
                       </div>
                       <ChevronRight className="worker-home-chevron mt-0.5" aria-hidden />
                     </div>
-                    <p className="text-[15px] font-semibold leading-snug text-[color:var(--worker-text)]">
+                    <p
+                      className={cn(
+                        'worker-home-qa-label text-[15px] font-semibold leading-snug',
+                        !isDark && 'text-[color:var(--worker-text)]',
+                      )}
+                    >
                       {item.label}
                     </p>
                   </Link>

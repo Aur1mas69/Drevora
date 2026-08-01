@@ -167,12 +167,12 @@ export function VehicleCheckSignaturePad({
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2 sm:mt-2">
-        <p className="text-[11px] text-[#5499BF]">Sign with your finger</p>
+        <p className="worker-vc-muted text-[11px] text-[#5499BF]">Sign with your finger</p>
         <button
           type="button"
           onClick={handleClear}
           disabled={disabled}
-          className="inline-flex min-h-11 items-center px-1 text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60 sm:min-h-0"
+          className="worker-vc-link inline-flex min-h-11 items-center px-1 text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60 sm:min-h-0"
         >
           Clear signature
         </button>

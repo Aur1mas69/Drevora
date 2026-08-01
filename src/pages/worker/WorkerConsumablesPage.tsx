@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import type { Consumable, ConsumableFormSubmitPayload } from '@/lib/consumableTypes'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { cn } from '@/lib/utils'
 import {
   formatConsumableEntryDateTime,
   formatConsumableItemCost,
@@ -31,6 +34,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 export default function WorkerConsumablesPage() {
+  const isDark = useIsWorkerDarkMode()
   const { formatDate, formatTime, settings } = useCompanySettings()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
@@ -274,29 +278,50 @@ export default function WorkerConsumablesPage() {
         </div>
       ) : (
         <ul className="mt-4 space-y-3">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <li
               key={item.id}
-              className="rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4"
+              className={workerAccentCardClass(
+                index,
+                isDark,
+                'rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4',
+              )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <span
-                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getConsumableTypeBadgeClass(item.consumableType)}`}
+                    className={cn(
+                      'worker-accent-badge inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
+                      !isDark && getConsumableTypeBadgeClass(item.consumableType),
+                    )}
                   >
                     {item.consumableType}
                   </span>
-                  <p className="mt-2 truncate text-base font-semibold text-[color:var(--worker-text)]">
+                  <p
+                    className={cn(
+                      'worker-accent-title mt-2 truncate text-base font-semibold',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
                     {item.itemName?.trim() || item.consumableType}
                   </p>
-                  <p className="mt-0.5 text-sm text-[color:var(--worker-text-muted)]">
+                  <p
+                    className={cn(
+                      'worker-accent-muted mt-0.5 text-sm',
+                      !isDark && 'text-[color:var(--worker-text-muted)]',
+                    )}
+                  >
                     {item.vehicleLabel ?? 'No vehicle'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => openEdit(item)}
-                  className="inline-flex size-9 items-center justify-center rounded-xl text-[color:var(--worker-text-muted)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]"
+                  className={cn(
+                    'worker-accent-muted inline-flex size-9 items-center justify-center rounded-xl',
+                    !isDark &&
+                      'text-[color:var(--worker-text-muted)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]',
+                  )}
                   aria-label="Edit consumable"
                 >
                   <Pencil className="size-4" />
@@ -305,14 +330,38 @@ export default function WorkerConsumablesPage() {
 
               <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                 <div>
-                  <dt className="text-[color:var(--worker-text-muted)]">Quantity</dt>
-                  <dd className="font-semibold text-[color:var(--worker-text)]">
+                  <dt
+                    className={cn(
+                      'worker-accent-muted',
+                      !isDark && 'text-[color:var(--worker-text-muted)]',
+                    )}
+                  >
+                    Quantity
+                  </dt>
+                  <dd
+                    className={cn(
+                      'worker-accent-value font-semibold',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
                     {formatQuantityWithUnit(item.quantity, item.unit)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[color:var(--worker-text-muted)]">Total</dt>
-                  <dd className="font-semibold text-[color:var(--worker-text)]">
+                  <dt
+                    className={cn(
+                      'worker-accent-muted',
+                      !isDark && 'text-[color:var(--worker-text-muted)]',
+                    )}
+                  >
+                    Total
+                  </dt>
+                  <dd
+                    className={cn(
+                      'worker-accent-value font-semibold',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
                     {formatConsumableItemCost(
                       item,
                       settings?.consumableDefaultPrices ?? {},
@@ -321,8 +370,20 @@ export default function WorkerConsumablesPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[color:var(--worker-text-muted)]">When</dt>
-                  <dd className="font-medium text-[color:var(--worker-text)]">
+                  <dt
+                    className={cn(
+                      'worker-accent-muted',
+                      !isDark && 'text-[color:var(--worker-text-muted)]',
+                    )}
+                  >
+                    When
+                  </dt>
+                  <dd
+                    className={cn(
+                      'worker-accent-value font-medium',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
                     {formatConsumableEntryDateTime(
                       item.entryDate,
                       item.entryTime,
@@ -332,8 +393,20 @@ export default function WorkerConsumablesPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[color:var(--worker-text-muted)]">Location</dt>
-                  <dd className="truncate font-medium text-[color:var(--worker-text)]">
+                  <dt
+                    className={cn(
+                      'worker-accent-muted',
+                      !isDark && 'text-[color:var(--worker-text-muted)]',
+                    )}
+                  >
+                    Location
+                  </dt>
+                  <dd
+                    className={cn(
+                      'worker-accent-value truncate font-medium',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
                     {formatSupplierSite(item.supplier, item.site)}
                   </dd>
                 </div>

@@ -1,3 +1,4 @@
+import workerHolidayBgUrl from '@/assets/worker-holiday-bg.png'
 import {
   buildWorkerHolidayBalanceView,
   formatWorkerHolidayDayCount,
@@ -125,35 +126,62 @@ function StatChip({
   const styles =
     accent === 'green'
       ? {
-          box: 'border-emerald-200/80 bg-emerald-50/90',
+          chip: 'my-holiday-stat-chip--green border-emerald-200/80 bg-emerald-50/90',
           label: 'text-emerald-700',
           dot: 'bg-emerald-500',
         }
       : accent === 'amber'
         ? {
-            box: 'border-amber-200/80 bg-amber-50/90',
+            chip: 'my-holiday-stat-chip--amber border-amber-200/80 bg-amber-50/90',
             label: 'text-amber-800',
             dot: 'bg-amber-500',
           }
         : {
-            box: 'border-[#BFE3F5] bg-[#E8F3FE]/95',
+            chip: 'my-holiday-stat-chip--blue border-[#BFE3F5] bg-[#E8F3FE]/95',
             label: 'text-[#0B68BE]',
             dot: 'bg-[#218EE7]',
           }
 
   return (
     <div
-      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl border px-2.5 py-2 shadow-[0_1px_3px_rgba(15,23,42,0.06)] ${styles.box}`}
+      className={`my-holiday-stat-chip flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl border px-2.5 py-2 shadow-[0_1px_3px_rgba(15,23,42,0.06)] ${styles.chip}`}
     >
       <span
-        className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] ${styles.label}`}
+        className={`my-holiday-stat-label flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] ${styles.label}`}
       >
-        <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} aria-hidden />
+        <span className={`my-holiday-stat-dot size-1.5 shrink-0 rounded-full ${styles.dot}`} aria-hidden />
         {label}
       </span>
-      <span className="text-sm font-bold leading-tight tabular-nums text-[#0F172A]">
+      <span className="my-holiday-stat-value text-sm font-bold leading-tight tabular-nums text-[#0F172A]">
         {value}
       </span>
+    </div>
+  )
+}
+
+/** Subtle holiday photo bg — island/palms on the right; white wash keeps chart readable. */
+function HolidayBalanceDecor() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
+      aria-hidden
+    >
+      <div
+        className="absolute inset-0 opacity-[0.65]"
+        style={{
+          backgroundImage: `url(${workerHolidayBgUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'right center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+      <div
+        className="my-holiday-balance-wash absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(105deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.48) 34%, rgba(255,255,255,0.12) 58%, rgba(255,255,255,0) 100%)',
+        }}
+      />
     </div>
   )
 }
@@ -165,39 +193,43 @@ export function MyHolidayBalanceHero({
   const view: WorkerHolidayBalanceView = buildWorkerHolidayBalanceView(balance)
 
   return (
-    <section className={`${myHolidayCardClass} overflow-hidden`}>
-      <p className={myHolidaySectionEyebrowClass}>Holiday balance</p>
+    <section className={`relative ${myHolidayCardClass} overflow-hidden`}>
+      <HolidayBalanceDecor />
 
-      {showManagedMessage ? (
-        <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
-          Your holiday balance is managed by your company.
-        </p>
-      ) : null}
+      <div className="relative z-10">
+        <p className={myHolidaySectionEyebrowClass}>Holiday balance</p>
 
-      <div className="mt-5">
-        <DonutRing
-          used={view.usedDays}
-          remaining={view.remainingDays}
-          total={view.totalEntitlement}
-        />
-      </div>
+        {showManagedMessage ? (
+          <p className="my-holiday-notice mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
+            Your holiday balance is managed by your company.
+          </p>
+        ) : null}
 
-      <div className="mt-5 flex gap-2.5">
-        <StatChip
-          label="Used"
-          value={formatWorkerHolidayDayCount(view.usedDays)}
-          accent="green"
-        />
-        <StatChip
-          label="Pending"
-          value={formatWorkerHolidayDayCount(view.pendingDays)}
-          accent="amber"
-        />
-        <StatChip
-          label="Total"
-          value={formatWorkerHolidayDayCount(view.totalEntitlement)}
-          accent="blue"
-        />
+        <div className="mt-5">
+          <DonutRing
+            used={view.usedDays}
+            remaining={view.remainingDays}
+            total={view.totalEntitlement}
+          />
+        </div>
+
+        <div className="mt-5 flex gap-2.5">
+          <StatChip
+            label="Used"
+            value={formatWorkerHolidayDayCount(view.usedDays)}
+            accent="green"
+          />
+          <StatChip
+            label="Pending"
+            value={formatWorkerHolidayDayCount(view.pendingDays)}
+            accent="amber"
+          />
+          <StatChip
+            label="Total"
+            value={formatWorkerHolidayDayCount(view.totalEntitlement)}
+            accent="blue"
+          />
+        </div>
       </div>
     </section>
   )

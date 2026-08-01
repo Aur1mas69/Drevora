@@ -9,8 +9,11 @@ import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCh
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useOfflineVehicleChecksQueue } from '@/hooks/useOfflineVehicleChecksQueue'
 import { addOnlineStatusListener, getOnlineStatus } from '@/lib/networkStatus'
+import { cn } from '@/lib/utils'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
 import {
   formatInspectionDuration,
   isValidInspectionStartedAt,
@@ -86,14 +89,35 @@ function VehicleSummaryCard({
   /** Omit to render a read-only summary (e.g. once the checklist is in progress). */
   onClear?: () => void
 }) {
+  const isDark = useIsWorkerDarkMode()
+
   return (
-    <div className="rounded-[1.25rem] border border-[#C5DFFB]/80 bg-[#F5FAFF] px-3.5 py-3">
+    <div
+      className={cn(
+        workerAccentCardClass(
+          0,
+          isDark,
+          'rounded-[1.25rem] border px-3.5 py-3',
+        ),
+        !isDark && 'border-[#C5DFFB]/80 bg-[#F5FAFF]',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#5499BF]">
+          <p
+            className={cn(
+              'worker-accent-muted text-[10px] font-semibold uppercase tracking-[0.1em]',
+              !isDark && 'text-[#5499BF]',
+            )}
+          >
             Selected vehicle
           </p>
-          <p className="mt-1 text-base font-bold tracking-[0.04em] text-[#113C69]">
+          <p
+            className={cn(
+              'worker-accent-title mt-1 text-base font-bold tracking-[0.04em]',
+              !isDark && 'text-[#113C69]',
+            )}
+          >
             {vehicle.registration}
           </p>
         </div>
@@ -102,14 +126,30 @@ function VehicleSummaryCard({
             type="button"
             onClick={onClear}
             aria-label="Change vehicle"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#5499BF] transition-colors hover:bg-[#E3F0FF] hover:text-[#113C69]"
+            className={cn(
+              'worker-accent-icon-well flex size-8 shrink-0 items-center justify-center rounded-full transition-colors',
+              !isDark &&
+                'text-[#5499BF] hover:bg-[#E3F0FF] hover:text-[#113C69]',
+            )}
           >
             <X className="size-4" />
           </button>
         ) : null}
       </div>
-      <p className="mt-1 text-sm font-medium text-[#3D7A9C]">{getVehicleMakeModelLabel(vehicle)}</p>
-      <p className="mt-0.5 text-sm text-[#5499BF]">
+      <p
+        className={cn(
+          'worker-accent-secondary mt-1 text-sm font-medium',
+          !isDark && 'text-[#3D7A9C]',
+        )}
+      >
+        {getVehicleMakeModelLabel(vehicle)}
+      </p>
+      <p
+        className={cn(
+          'worker-accent-muted mt-0.5 text-sm',
+          !isDark && 'text-[#5499BF]',
+        )}
+      >
         Type: {vehicle.vehicleType?.trim() || 'Not set on vehicle record'}
       </p>
     </div>
@@ -930,22 +970,22 @@ export default function WorkerVehicleChecksPage() {
         <aside
           role="note"
           aria-label="Tachograph driver card reminder"
-          className="flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm"
+          className="worker-vc-tacho-reminder flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm"
         >
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-800"
+            className="worker-vc-tacho-icon flex size-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-800"
             aria-hidden="true"
           >
             <CreditCard className="size-5" />
           </span>
           <div className="min-w-0 text-left">
-            <p className="font-semibold text-amber-950">
+            <p className="worker-vc-tacho-title font-semibold text-amber-950">
               Before starting your Daily Vehicle Check
             </p>
-            <p className="mt-0.5 text-amber-900/85">
+            <p className="worker-vc-tacho-body mt-0.5 text-amber-900/85">
               Make sure your driver card is inserted into the tachograph.
             </p>
-            <p className="mt-1 text-xs text-amber-800/80">
+            <p className="worker-vc-tacho-hint mt-1 text-xs text-amber-800/80">
               Do this before beginning the walkaround inspection.
             </p>
           </div>
@@ -1050,21 +1090,21 @@ export default function WorkerVehicleChecksPage() {
       ) : null}
 
       {step === 'checklist' ? (
-        <section className="space-y-4">
+        <section className="worker-vc-flow space-y-4">
           {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
 
           <form
             onSubmit={(event) => void handleSave(event)}
-            className="space-y-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm"
+            className="worker-vc-panel space-y-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm"
           >
             {isLoadingChecklist ? (
-              <p className="text-sm text-slate-500">Loading checklist…</p>
+              <p className="worker-vc-muted text-sm text-slate-500">Loading checklist…</p>
             ) : null}
 
             {startLocationStatus !== 'idle' ? (
               <p
                 role="status"
-                className="flex items-center gap-1.5 rounded-[10px] bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500"
+                className="worker-vc-muted flex items-center gap-1.5 rounded-[10px] bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500"
               >
                 <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
                 {startLocationStatus === 'capturing'
@@ -1076,7 +1116,7 @@ export default function WorkerVehicleChecksPage() {
             ) : null}
 
             {checklistNotice ? (
-              <p className="rounded-[10px] bg-[#EEF6FF] px-3 py-2 text-sm text-[#0B68BE]">
+              <p className="worker-vc-notice rounded-[10px] bg-[#EEF6FF] px-3 py-2 text-sm text-[#0B68BE]">
                 {checklistNotice}
               </p>
             ) : null}
@@ -1089,7 +1129,7 @@ export default function WorkerVehicleChecksPage() {
               highlightUnanswered={showChecklistValidation}
             />
 
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="worker-vc-label block text-sm font-medium text-slate-700">
               Overall notes
               <textarea
                 value={notes}
@@ -1101,9 +1141,9 @@ export default function WorkerVehicleChecksPage() {
             </label>
 
             {items.length > 0 ? (
-              <p className="text-sm text-slate-600">
+              <p className="worker-vc-muted text-sm text-slate-600">
                 Overall result:{' '}
-                <span className="font-semibold text-[#2A376F]">
+                <span className="worker-vc-title font-semibold text-[#2A376F]">
                   {overallResult === 'Advisory' ? 'Defects found' : 'Passed'}
                 </span>
                 {overallResult === 'Advisory' ? (
@@ -1133,7 +1173,7 @@ export default function WorkerVehicleChecksPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 rounded-2xl"
+                className="worker-vc-btn-back h-12 rounded-2xl"
                 disabled={isSaving}
                 onClick={() => {
                   requestExitToSetup()
@@ -1145,7 +1185,7 @@ export default function WorkerVehicleChecksPage() {
               <Button
                 type="submit"
                 disabled={isSaving || isLoadingChecklist || !canSaveInspection}
-                className="h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+                className="worker-vc-btn-complete h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
                 {isSaving ? 'Completing Vehicle Check…' : 'Complete'}

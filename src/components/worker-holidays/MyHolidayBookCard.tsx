@@ -53,7 +53,7 @@ export function MyHolidayBookCard({
       <h2 className={`mt-1.5 ${myHolidaySectionTitleClass}`}>Request time off</h2>
 
       {showManagedMessage ? (
-        <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
+        <p className="my-holiday-notice mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
           Your holiday balance is managed by your company.
         </p>
       ) : null}
@@ -61,73 +61,73 @@ export function MyHolidayBookCard({
       <HolidayDatePickerGroup>
         <div className="mt-5 space-y-3.5">
           <label className="block min-w-0 space-y-1.5">
-            <span className="text-xs font-semibold text-[#5499BF]">Start date</span>
+            <span className="my-holiday-muted text-xs font-semibold text-[#5499BF]">Start date</span>
             <HolidayDateInput
               value={startDate}
               onChange={onStartDateChange}
-              className="h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
+              className="my-holiday-input h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
               layout="modal"
               blurOnSelect
               aria-label="Start date"
             />
           </label>
           <label className="block min-w-0 space-y-1.5">
-            <span className="text-xs font-semibold text-[#5499BF]">End date</span>
+            <span className="my-holiday-muted text-xs font-semibold text-[#5499BF]">End date</span>
             <HolidayDateInput
               value={endDate}
               onChange={onEndDateChange}
               min={startDate || undefined}
-              className="h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
+              className="my-holiday-input h-11 rounded-2xl border-[#C5DFFB]/80 bg-white"
               layout="modal"
               blurOnSelect
               aria-label="End date"
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs font-semibold text-[#5499BF]">Reason (optional)</span>
+            <span className="my-holiday-muted text-xs font-semibold text-[#5499BF]">Reason (optional)</span>
             <textarea
               value={reason}
               onChange={(event) => onReasonChange(event.target.value)}
               rows={3}
               placeholder="Add a short note for your manager"
-              className="w-full resize-none rounded-2xl border border-[#C5DFFB]/80 bg-white px-3 py-2.5 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors placeholder:text-[#5499BF]/70 focus:border-[#89CFF0] focus:ring-2 focus:ring-[#BFE3F5]/70"
+              className="my-holiday-input my-holiday-body w-full resize-none rounded-2xl border border-[#C5DFFB]/80 bg-white px-3 py-2.5 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors placeholder:text-[#5499BF]/70 focus:border-[#89CFF0] focus:ring-2 focus:ring-[#BFE3F5]/70"
             />
           </label>
         </div>
       </HolidayDatePickerGroup>
 
       {hasDates ? (
-        <div className="mt-5 rounded-2xl border border-[#D3E9FC] bg-white/80 p-3.5 shadow-[0_1px_3px_rgba(33,142,231,0.06)]">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#218EE7]">
+        <div className="my-holiday-selected-panel mt-5 rounded-2xl border border-[#D3E9FC] bg-white/80 p-3.5 shadow-[0_1px_3px_rgba(33,142,231,0.06)]">
+          <p className="my-holiday-eyebrow text-xs font-bold uppercase tracking-[0.1em] text-[#218EE7]">
             Request summary
           </p>
           {isPreviewLoading ? (
-            <p className="mt-2 text-sm text-[#5499BF]">Calculating days…</p>
+            <p className="my-holiday-muted mt-2 text-sm text-[#5499BF]">Calculating days…</p>
           ) : preview ? (
             <dl className="mt-2.5 grid grid-cols-3 gap-2 text-center">
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
+                <dt className="my-holiday-muted text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
                   Calendar
                 </dt>
-                <dd className="mt-0.5 text-sm font-bold tabular-nums text-[#113C69]">
+                <dd className="my-holiday-body mt-0.5 text-sm font-bold tabular-nums text-[#113C69]">
                   {formatDayCount(preview.calendarDaysTotal)}
                 </dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
+                <dt className="my-holiday-muted text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
                   Holiday days
                 </dt>
-                <dd className="mt-0.5 text-sm font-bold tabular-nums text-[#113C69]">
+                <dd className="my-holiday-body mt-0.5 text-sm font-bold tabular-nums text-[#113C69]">
                   {formatDayCount(preview.holidayDaysDeducted)}
                 </dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
+                <dt className="my-holiday-muted text-[10px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
                   Remaining
                 </dt>
                 <dd
                   className={`mt-0.5 text-sm font-bold tabular-nums ${
-                    exceedsBalance ? 'text-rose-600' : 'text-[#113C69]'
+                    exceedsBalance ? 'text-rose-600' : 'my-holiday-body text-[#113C69]'
                   }`}
                 >
                   {preview.allowanceKnown && Number.isFinite(preview.remainingAfterRequest)

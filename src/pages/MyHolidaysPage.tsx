@@ -168,13 +168,13 @@ export default function MyHolidaysPage() {
   return (
     <div className={myHolidayPageClass}>
       <header className="space-y-1">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#218EE7]">
+        <p className="my-holiday-eyebrow text-xs font-bold uppercase tracking-[0.14em] text-[#218EE7]">
           Time off
         </p>
-        <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
+        <h1 className="my-holiday-title text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
           My Holidays
         </h1>
-        <p className="text-sm text-[#5499BF]">
+        <p className="my-holiday-muted text-sm text-[#5499BF]">
           View your balance, book time off, and track your requests.
         </p>
       </header>
@@ -186,7 +186,7 @@ export default function MyHolidaysPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-[1.75rem] border border-[#D3E9FC] bg-white px-4 py-10 text-center text-sm text-[#5499BF]">
+        <div className="my-holiday-card my-holiday-muted rounded-[1.75rem] border border-[#D3E9FC] bg-white px-4 py-10 text-center text-sm text-[#5499BF]">
           Loading your holidays…
         </div>
       ) : worker ? (

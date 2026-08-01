@@ -36,8 +36,8 @@ import {
   resolveFallbackTrailerAxleWheelLayouts,
   resolveFallbackTruckAxleWheelLayouts,
   summarizeAxleLayoutFromMeasurements,
-  tyreStatusClasses,
   tyreStatusLabel,
+  tyreTreadVisualClasses,
   type AxleWheelLayout,
   type SavedTyreCheck,
   type TyreCheckAdminOverviewStats,
@@ -628,7 +628,10 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-xs font-semibold',
-                        tyreStatusClasses(tyre.status, 'pastel').badge,
+                        tyreTreadVisualClasses(tyre.treadDepthMm, {
+                          dirty: Boolean(tyre.isDirty) || tyre.status === 'dirty',
+                          palette: 'pastel',
+                        }).badge,
                       )}
                     >
                       {tyreStatusLabel(tyre.status)}

@@ -2,9 +2,12 @@ import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLi
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import { TIMESHEET_WEEK_START_DAY_OPTIONS } from '@/lib/timesheetWeekNumber'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { cn } from '@/lib/utils'
 import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,18 +26,49 @@ function weekStartLabel(day: EffectiveTimesheetSettings['timesheetWeekStartDay']
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  isDark,
+}: {
+  label: string
+  value: string
+  isDark: boolean
+}) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[color:var(--worker-border)] py-3 last:border-b-0">
-      <dt className="text-sm font-medium text-[color:var(--worker-text-secondary)]">{label}</dt>
-      <dd className="max-w-[58%] text-right text-sm font-semibold text-[color:var(--worker-text)]">
+    <div
+      className={cn(
+        'worker-accent-divider flex items-start justify-between gap-4 border-b py-3 last:border-b-0',
+        !isDark && 'border-[color:var(--worker-border)]',
+      )}
+    >
+      <dt
+        className={cn(
+          'worker-accent-secondary text-sm font-medium',
+          !isDark && 'text-[color:var(--worker-text-secondary)]',
+        )}
+      >
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          'worker-accent-value max-w-[58%] text-right text-sm font-semibold',
+          !isDark && 'text-[color:var(--worker-text)]',
+        )}
+      >
         {value}
       </dd>
     </div>
   )
 }
 
-function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheetSettings }) {
+function ReadOnlyTimesheetDetails({
+  effective,
+  isDark,
+}: {
+  effective: EffectiveTimesheetSettings
+  isDark: boolean
+}) {
   const sourceLabel =
     effective.source === 'worker'
       ? 'Personal override'
@@ -44,29 +78,49 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
 
   return (
     <div className="space-y-4">
-      <section className="worker-card rounded-[1.5rem] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+      <section
+        className={workerAccentCardClass(0, isDark, 'worker-card rounded-[1.5rem] p-4')}
+      >
+        <p
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           Applied rules
         </p>
-        <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
+        <p
+          className={cn(
+            'worker-accent-secondary mt-2 text-sm',
+            !isDark && 'text-[color:var(--worker-text-secondary)]',
+          )}
+        >
           These are the company timesheet rules currently applied to your account.
           Only your office can change them.
         </p>
         <dl className="mt-2">
-          <DetailRow label="Source" value={sourceLabel} />
+          <DetailRow label="Source" value={sourceLabel} isDark={isDark} />
           <DetailRow
             label="Personal override"
             value={yesNo(effective.hasWorkerOverride)}
+            isDark={isDark}
           />
         </dl>
       </section>
 
-      <section className="worker-card rounded-[1.5rem] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+      <section
+        className={workerAccentCardClass(1, isDark, 'worker-card rounded-[1.5rem] p-4')}
+      >
+        <p
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           Overtime
         </p>
         <dl className="mt-1">
-          <DetailRow label="Mode" value={effective.overtimeMode} />
+          <DetailRow label="Mode" value={effective.overtimeMode} isDark={isDark} />
           {effective.overtimeMode === 'Automatic' ? (
             <>
               <DetailRow
@@ -78,38 +132,50 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
                       ? 'Weekly'
                       : String(effective.overtimeCalculationMethod)
                 }
+                isDark={isDark}
               />
               {effective.overtimeCalculationMethod === 'daily' ? (
                 <DetailRow
                   label="Daily OT after"
                   value={formatHours(effective.overtimeAfterHours)}
+                  isDark={isDark}
                 />
               ) : null}
               {effective.overtimeCalculationMethod === 'weekly' ? (
                 <DetailRow
                   label="Weekly OT after"
                   value={formatHours(effective.weeklyOvertimeAfterHours)}
+                  isDark={isDark}
                 />
               ) : null}
               <DetailRow
                 label="OT multiplier"
                 value={`${effective.overtimeMultiplier}×`}
+                isDark={isDark}
               />
             </>
           ) : null}
         </dl>
       </section>
 
-      <section className="worker-card rounded-[1.5rem] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+      <section
+        className={workerAccentCardClass(2, isDark, 'worker-card rounded-[1.5rem] p-4')}
+      >
+        <p
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           Breaks &amp; time
         </p>
         <dl className="mt-1">
           <DetailRow
             label="Default break"
             value={`${effective.defaultBreakMinutes} min`}
+            isDark={isDark}
           />
-          <DetailRow label="Paid breaks" value={yesNo(effective.paidBreaks)} />
+          <DetailRow label="Paid breaks" value={yesNo(effective.paidBreaks)} isDark={isDark} />
           <DetailRow
             label="Round time"
             value={
@@ -117,17 +183,26 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
                 ? 'None'
                 : `${effective.roundTimeMinutes} min`
             }
+            isDark={isDark}
           />
-          <DetailRow label="Currency" value={effective.currency} />
+          <DetailRow label="Currency" value={effective.currency} isDark={isDark} />
           <DetailRow
             label="Week starts"
             value={weekStartLabel(effective.timesheetWeekStartDay)}
+            isDark={isDark}
           />
         </dl>
       </section>
 
-      <section className="worker-card rounded-[1.5rem] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+      <section
+        className={workerAccentCardClass(3, isDark, 'worker-card rounded-[1.5rem] p-4')}
+      >
+        <p
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
           Weekend
         </p>
         <dl className="mt-1">
@@ -138,10 +213,12 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
                 ? `On · after ${formatHours(effective.saturdayOvertimeAfterHours)} · ${effective.saturdayOvertimeMultiplier}×`
                 : 'Off'
             }
+            isDark={isDark}
           />
           <DetailRow
             label="Saturday guaranteed"
             value={formatHours(effective.saturdayGuaranteedPaidHours)}
+            isDark={isDark}
           />
           <DetailRow
             label="Sunday OT"
@@ -150,10 +227,12 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
                 ? `On · after ${formatHours(effective.sundayOvertimeAfterHours)} · ${effective.sundayOvertimeMultiplier}×`
                 : 'Off'
             }
+            isDark={isDark}
           />
           <DetailRow
             label="Sunday guaranteed"
             value={formatHours(effective.sundayGuaranteedPaidHours)}
+            isDark={isDark}
           />
         </dl>
       </section>
@@ -166,6 +245,7 @@ function ReadOnlyTimesheetDetails({ effective }: { effective: EffectiveTimesheet
  * Workers cannot edit company timesheet rules here.
  */
 export default function WorkerTimesheetSettingsPage() {
+  const isDark = useIsWorkerDarkMode()
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const { worker, isLoading, error } = useCurrentWorker()
@@ -237,7 +317,7 @@ export default function WorkerTimesheetSettingsPage() {
               {settingsError} Showing the best available rules until settings reload.
             </p>
           ) : null}
-          <ReadOnlyTimesheetDetails effective={effective} />
+          <ReadOnlyTimesheetDetails effective={effective} isDark={isDark} />
         </>
       )}
     </div>

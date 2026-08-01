@@ -5,16 +5,25 @@ type WorkerExitVehicleCheckDialogProps = {
   open: boolean
   onContinue: () => void
   onExit: () => void
+  /** Defaults preserve Vehicle Check copy; Tyre Check passes its own title/message. */
+  title?: string
+  message?: string
 }
 
+const DEFAULT_TITLE = 'Exit Vehicle Check?'
+const DEFAULT_MESSAGE =
+  'Your current Vehicle Check is not completed. If you exit, your unsaved progress will be lost.'
+
 /**
- * Confirm leaving an in-progress Worker Vehicle Check.
+ * Confirm leaving an in-progress Worker Vehicle / Tyre Check.
  * Escape / backdrop / Continue keep the Worker in the check with form state intact.
  */
 export function WorkerExitVehicleCheckDialog({
   open,
   onContinue,
   onExit,
+  title = DEFAULT_TITLE,
+  message = DEFAULT_MESSAGE,
 }: WorkerExitVehicleCheckDialogProps) {
   useEffect(() => {
     if (!open) return
@@ -37,26 +46,25 @@ export function WorkerExitVehicleCheckDialog({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
-        aria-label="Continue Vehicle Check"
+        aria-label="Continue check"
         onClick={onContinue}
       />
 
       <section
         role="dialog"
         aria-modal="true"
-        aria-labelledby="worker-exit-vehicle-check-title"
+        aria-labelledby="worker-exit-active-check-title"
         className="relative w-full max-w-md overflow-hidden rounded-[20px] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)]"
       >
         <div className="border-b border-[color:var(--worker-border)] px-5 py-4">
           <h2
-            id="worker-exit-vehicle-check-title"
+            id="worker-exit-active-check-title"
             className="text-lg font-semibold tracking-[-0.03em] text-[color:var(--worker-text)] sm:text-xl"
           >
-            Exit Vehicle Check?
+            {title}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-            Your current Vehicle Check is not completed. If you exit, your unsaved
-            progress will be lost.
+            {message}
           </p>
         </div>
 

@@ -2,9 +2,11 @@ import { AxleLayoutEditor } from '@/components/vehicle-checks/AxleLayoutEditor'
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { WorkerExitVehicleCheckDialog } from '@/components/worker/WorkerExitVehicleCheckDialog'
 import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useWorkerVehicleCheckExitGuard } from '@/hooks/useWorkerVehicleCheckExitGuard'
 import {
   DEFAULT_TRAILER_AXLE_COUNT,
   DEFAULT_TRUCK_AXLE_COUNT,
@@ -44,7 +46,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 type FlowStep = 'setup' | 'inspect' | 'review' | 'done'
@@ -484,6 +486,30 @@ export default function WorkerTyreCheckPage() {
     }
   }
 
+  const discardActiveCheckToSetup = useCallback(() => {
+    setDraft(null)
+    setTyreIndex(0)
+    setDepthInput('')
+    setIsDirty(false)
+    setHasDefect(false)
+    setDefectNotes('')
+    setItemNotes('')
+    setError(null)
+    submitLockRef.current = false
+    setStep('setup')
+  }, [])
+
+  const {
+    exitOpen,
+    handleContinueCheck,
+    handleExitCheck,
+    requestExitToSetup,
+  } = useWorkerVehicleCheckExitGuard({
+    // Active only after start and before successful submit.
+    isCheckActive: step === 'inspect' || step === 'review',
+    onDiscardToSetup: discardActiveCheckToSetup,
+  })
+
   if (companyLoading || workerLoading || vehiclesLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
@@ -518,9 +544,15 @@ export default function WorkerTyreCheckPage() {
         <button
           type="button"
           onClick={() => {
-            if (step === 'inspect') setStep('setup')
-            else if (step === 'review') setStep('inspect')
-            else navigate('/worker/vehicles')
+            if (step === 'inspect') {
+              requestExitToSetup()
+              return
+            }
+            if (step === 'review') {
+              setStep('inspect')
+              return
+            }
+            navigate('/worker/vehicles')
           }}
           className="flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
           aria-label="Back"
@@ -783,11 +815,11 @@ export default function WorkerTyreCheckPage() {
 
       {step === 'inspect' && draft && currentTyre ? (
         <section className="space-y-4">
-          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+          <div className="rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-3 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
               Progress
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
+            <p className="mt-1 text-sm font-semibold text-[color:var(--worker-text)]">
               Tyre {tyreIndex + 1} of {draft.items.length} · {currentTyre.axleLabel}
             </p>
             <div className="mt-3 overflow-x-auto pb-2">
@@ -808,18 +840,18 @@ export default function WorkerTyreCheckPage() {
             </div>
           </div>
 
-          <div className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="space-y-3 rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm">
             <div>
-              <p className="text-lg font-semibold text-slate-950">
+              <p className="text-lg font-semibold text-[color:var(--worker-text)]">
                 {currentTyre.axleLabel} · {currentTyre.position}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[color:var(--worker-text-secondary)]">
                 Thresholds: Good ≥ 6.0 mm · Attention 4.0–5.9 mm · Critical &lt; 4.0 mm
               </p>
             </div>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                 Tread depth (mm)
               </span>
               <Input
@@ -830,7 +862,7 @@ export default function WorkerTyreCheckPage() {
                 step={0.5}
                 value={depthInput}
                 onChange={(event) => setDepthInput(event.target.value)}
-                className="h-14 rounded-2xl text-lg font-bold"
+                className="h-14 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-lg font-bold text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
                 placeholder="e.g. 7.5"
               />
             </label>
@@ -866,33 +898,33 @@ export default function WorkerTyreCheckPage() {
 
             {hasDefect ? (
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                   Defect notes (required)
                 </span>
                 <textarea
                   value={defectNotes}
                   onChange={(event) => setDefectNotes(event.target.value)}
                   rows={3}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  className="w-full rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-3 py-2 text-sm text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
                   placeholder="Describe the defect…"
                 />
               </label>
             ) : null}
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                 Notes (optional)
               </span>
               <textarea
                 value={itemNotes}
                 onChange={(event) => setItemNotes(event.target.value)}
                 rows={2}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                className="w-full rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-3 py-2 text-sm text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
                 placeholder="Optional tyre notes"
               />
             </label>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[color:var(--worker-text-muted)]">
               Photos are not available yet for Tyre Checks (storage bucket pending).
             </p>
 
@@ -900,7 +932,7 @@ export default function WorkerTyreCheckPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 rounded-2xl"
+                className="h-12 rounded-2xl border-[color:var(--worker-border-strong)] bg-[color:var(--worker-elevated)] font-semibold text-[color:var(--worker-text)] hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)] disabled:opacity-40"
                 disabled={busy || tyreIndex === 0}
                 onClick={() => setTyreIndex((index) => Math.max(0, index - 1))}
               >
@@ -909,7 +941,7 @@ export default function WorkerTyreCheckPage() {
               </Button>
               <Button
                 type="button"
-                className="h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8]"
+                className="h-12 rounded-2xl bg-[#4344F6] font-semibold text-white hover:bg-[#3536D4]"
                 disabled={busy}
                 onClick={() => {
                   if (tyreIndex >= draft.items.length - 1) {
@@ -928,7 +960,7 @@ export default function WorkerTyreCheckPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 rounded-2xl"
+                className="h-12 rounded-2xl border-[color:var(--worker-border-strong)] bg-[color:var(--worker-elevated)] font-semibold text-[color:var(--worker-text)] hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)] disabled:opacity-40"
                 disabled={busy}
                 onClick={() => void saveCurrentTyre({ goToReview: true })}
               >
@@ -1020,7 +1052,7 @@ export default function WorkerTyreCheckPage() {
             <Button
               type="button"
               variant="outline"
-              className="h-12 rounded-2xl"
+              className="h-12 rounded-2xl border-[color:var(--worker-border-strong)] bg-[color:var(--worker-elevated)] font-semibold text-[color:var(--worker-text)] hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)]"
               disabled={busy}
               onClick={() => setStep('inspect')}
             >
@@ -1028,7 +1060,7 @@ export default function WorkerTyreCheckPage() {
             </Button>
             <Button
               type="button"
-              className="h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8]"
+              className="h-12 rounded-2xl bg-[#4344F6] font-semibold text-white hover:bg-[#3536D4]"
               disabled={busy || draft.notCheckedCount > 0}
               onClick={() => void handleSubmit()}
             >
@@ -1080,6 +1112,14 @@ export default function WorkerTyreCheckPage() {
           </Button>
         </section>
       ) : null}
+
+      <WorkerExitVehicleCheckDialog
+        open={exitOpen}
+        title="Exit Tyre Check?"
+        message="Your Tyre Check is not completed. If you exit, your unsaved progress will be lost."
+        onContinue={handleContinueCheck}
+        onExit={handleExitCheck}
+      />
     </div>
   )
 }

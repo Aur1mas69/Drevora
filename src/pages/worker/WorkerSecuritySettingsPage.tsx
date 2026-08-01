@@ -2,12 +2,16 @@ import { NativeBiometricAppLockSettings } from '@/components/worker/NativeBiomet
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
 import { useAuth } from '@/contexts/AuthContext'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
+import { cn } from '@/lib/utils'
 
 /**
  * Worker Password & Security — change password via Supabase auth;
  * Native Android also shows biometric App Lock controls.
  */
 export default function WorkerSecuritySettingsPage() {
+  const isDark = useIsWorkerDarkMode()
   const { session } = useAuth()
   const email = session?.user.email?.trim() || null
 
@@ -32,14 +36,30 @@ export default function WorkerSecuritySettingsPage() {
         </div>
       </header>
 
-      <section className="worker-card overflow-hidden rounded-[1.5rem] p-4">
+      <section className="overflow-hidden rounded-[1.5rem]">
         <ChangePasswordCard />
       </section>
 
       {import.meta.env.MODE === 'native' ? (
-        <section className="worker-card overflow-hidden rounded-[1.5rem]">
-          <div className="border-b border-[color:var(--worker-border)] px-4 py-3">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
+        <section
+          className={workerAccentCardClass(
+            1,
+            isDark,
+            'worker-card overflow-hidden rounded-[1.5rem]',
+          )}
+        >
+          <div
+            className={cn(
+              'worker-accent-divider border-b px-4 py-3',
+              !isDark && 'border-[color:var(--worker-border)]',
+            )}
+          >
+            <h2
+              className={cn(
+                'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+                !isDark && 'text-[color:var(--worker-text-muted)]',
+              )}
+            >
               Device lock
             </h2>
           </div>

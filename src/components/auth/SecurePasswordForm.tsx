@@ -161,16 +161,16 @@ export function SecurePasswordForm({
   }
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-[rgba(75,120,220,0.12)] bg-gradient-to-b from-white to-[#F8FBFF] p-6 shadow-[0_8px_32px_rgba(47,115,255,0.06)] sm:p-8 dark:border-white/10 dark:from-slate-900 dark:to-slate-900/95 dark:shadow-none">
+    <div className="secure-password-form overflow-hidden rounded-[20px] border border-[rgba(75,120,220,0.12)] bg-gradient-to-b from-white to-[#F8FBFF] p-6 shadow-[0_8px_32px_rgba(47,115,255,0.06)] sm:p-8 dark:border-white/10 dark:from-slate-900 dark:to-slate-900/95 dark:shadow-none">
       <div className="mx-auto max-w-md">
         <div className="flex flex-col items-center text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F8DFF] to-[#6366F1] text-white shadow-[0_10px_28px_rgba(79,141,255,0.35)]">
+          <div className="secure-password-form__icon flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F8DFF] to-[#6366F1] text-white shadow-[0_10px_28px_rgba(79,141,255,0.35)]">
             <Lock className="size-5" strokeWidth={2} />
           </div>
-          <h3 className="mt-4 text-xl font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
+          <h3 className="secure-password-form__title mt-4 text-xl font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
             {copy.title}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="secure-password-form__subtitle mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
             Use a strong password to protect your DREVORA account.
           </p>
         </div>
@@ -236,7 +236,7 @@ export function SecurePasswordForm({
           ) : null}
 
           {newPassword.length > 0 ? (
-            <ul className="space-y-2 rounded-[14px] bg-[#F1F5F9]/60 px-4 py-3 ring-1 ring-[#E2E8F0]/80 dark:bg-slate-800/60 dark:ring-slate-700/80">
+            <ul className="secure-password-form__checks space-y-2 rounded-[14px] bg-[#F1F5F9]/60 px-4 py-3 ring-1 ring-[#E2E8F0]/80 dark:bg-slate-800/60 dark:ring-slate-700/80">
               {validation.checks.map((check) => (
                 <li key={check.id} className="flex items-start gap-2.5 text-sm">
                   {check.satisfied ? (
@@ -247,7 +247,7 @@ export function SecurePasswordForm({
                     />
                   ) : (
                     <Circle
-                      className="mt-0.5 size-4 shrink-0 text-slate-300 dark:text-slate-600"
+                      className="secure-password-form__check-idle mt-0.5 size-4 shrink-0 text-slate-300 dark:text-slate-600"
                       strokeWidth={2}
                       aria-hidden="true"
                     />
@@ -256,8 +256,8 @@ export function SecurePasswordForm({
                     className={cn(
                       'leading-5',
                       check.satisfied
-                        ? 'font-medium text-emerald-700 dark:text-emerald-300'
-                        : 'text-slate-500 dark:text-slate-400',
+                        ? 'secure-password-form__check-ok font-medium text-emerald-700 dark:text-emerald-300'
+                        : 'secure-password-form__check-pending text-slate-500 dark:text-slate-400',
                     )}
                   >
                     {check.label}
@@ -285,7 +285,7 @@ export function SecurePasswordForm({
           <Button
             type="submit"
             disabled={!canSubmit}
-            className="h-11 w-full rounded-[14px] bg-gradient-to-r from-[#4F8DFF] to-[#6366F1] text-sm font-semibold text-white shadow-[0_10px_28px_rgba(79,141,255,0.28)] hover:from-[#4580ef] hover:to-[#5b5ee8] disabled:opacity-50"
+            className="secure-password-form__submit h-11 w-full rounded-[14px] bg-gradient-to-r from-[#A3F1AB] via-[#6D6EFF] to-[#4344F6] text-sm font-semibold text-white shadow-[0_10px_28px_rgba(67,68,246,0.4)] hover:brightness-105 disabled:opacity-90"
           >
             {isSubmitting
               ? variant === 'change'

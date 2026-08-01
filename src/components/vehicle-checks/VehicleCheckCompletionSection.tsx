@@ -40,25 +40,28 @@ export function VehicleCheckCompletionSection({
   const isSignatureMissing = !signatureFile
 
   return (
-    <section className="mt-3 rounded-[14px] border border-[#D3E9FC] bg-[#FAFCFF] p-2.5 sm:mt-4 sm:p-3.5">
+    <section className="worker-vc-completion mt-3 rounded-[14px] border border-[#D3E9FC] bg-[#FAFCFF] p-2.5 sm:mt-4 sm:p-3.5">
       <div className="mb-2 flex items-start justify-between gap-3 sm:mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-[#113C69]">Complete inspection</h3>
-          <p className="mt-0.5 text-[11px] text-[#5499BF] sm:text-xs">
+          <h3 className="worker-vc-title text-sm font-semibold text-[#113C69]">Complete inspection</h3>
+          <p className="worker-vc-muted mt-0.5 text-[11px] text-[#5499BF] sm:text-xs">
             Mileage and signature required.
           </p>
         </div>
         {durationLabel ? (
-          <p className="shrink-0 text-[11px] font-semibold text-[#5499BF]">
+          <p className="worker-vc-muted shrink-0 text-[11px] font-semibold text-[#5499BF]">
             Duration{' '}
-            <span className="tabular-nums text-[#113C69]">{durationLabel}</span>
+            <span className="worker-vc-title tabular-nums text-[#113C69]">{durationLabel}</span>
           </p>
         ) : null}
       </div>
 
       <div className="space-y-2.5 sm:space-y-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="vehicle-check-odometer">
+          <label
+            className="worker-vc-label block text-sm font-medium text-slate-700"
+            htmlFor="vehicle-check-odometer"
+          >
             Odometer / mileage
           </label>
           <div className="mt-1 flex gap-2 sm:mt-1.5">
@@ -74,17 +77,17 @@ export function VehicleCheckCompletionSection({
               className="h-11 min-w-0 flex-1 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-white"
               aria-invalid={showValidation && (isOdometerMissing || isOdometerInvalid)}
             />
-            <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-[12px] border border-[#C5DFFB] bg-white p-0.5">
+            <div className="worker-vc-unit-toggle grid shrink-0 grid-cols-2 overflow-hidden rounded-[12px] border border-[#C5DFFB] bg-white p-0.5">
               {unitOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   disabled={disabled}
                   onClick={() => onOdometerUnitChange(option.value)}
-                  className={`min-h-11 min-w-[3.25rem] rounded-[10px] px-2 text-xs font-semibold transition-colors sm:min-h-10 ${
+                  className={`worker-vc-unit min-h-11 min-w-[3.25rem] rounded-[10px] px-2 text-xs font-semibold transition-colors sm:min-h-10 ${
                     odometerUnit === option.value
-                      ? 'bg-[#218EE7] text-white'
-                      : 'text-[#5499BF] hover:bg-[#F5FAFF]'
+                      ? 'worker-vc-unit-selected bg-[#218EE7] text-white'
+                      : 'worker-vc-unit-idle text-[#5499BF] hover:bg-[#F5FAFF]'
                   }`}
                   aria-pressed={odometerUnit === option.value}
                 >
@@ -94,7 +97,7 @@ export function VehicleCheckCompletionSection({
             </div>
           </div>
           {lastRecordedOdometer != null ? (
-            <p className="mt-1 text-[11px] text-[#5499BF]">
+            <p className="worker-vc-muted mt-1 text-[11px] text-[#5499BF]">
               Last recorded: {lastRecordedOdometer.toLocaleString()} {odometerUnit}
             </p>
           ) : null}
@@ -111,7 +114,7 @@ export function VehicleCheckCompletionSection({
         </div>
 
         <div>
-          <p className="text-sm font-medium text-slate-700">Worker signature</p>
+          <p className="worker-vc-label text-sm font-medium text-slate-700">Worker signature</p>
           <div className="mt-1 sm:mt-1.5">
             <VehicleCheckSignaturePad
               onChange={onSignatureChange}

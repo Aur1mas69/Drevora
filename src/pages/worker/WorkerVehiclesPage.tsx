@@ -2,12 +2,14 @@ import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
+import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { isRetryableNetworkError } from '@/lib/networkError'
 import {
   addOnlineStatusListener,
   getOnlineStatus,
 } from '@/lib/networkStatus'
 import { cn } from '@/lib/utils'
+import { workerAccentCardClass } from '@/lib/workerDarkAccent'
 import { readWorkerOfflineBootstrap } from '@/lib/workerOfflineBootstrap'
 import {
   DriversServiceError,
@@ -72,6 +74,8 @@ function VehicleActionCard({
   disabled,
   comingSoon,
   tone,
+  accentIndex = 0,
+  isDark = false,
 }: {
   title: string
   description: string
@@ -80,13 +84,17 @@ function VehicleActionCard({
   disabled?: boolean
   comingSoon?: boolean
   tone: VehicleActionTone
+  accentIndex?: number
+  isDark?: boolean
 }) {
   const toneStyles = VEHICLE_ACTION_TONE[tone]
   const className = cn(
     'flex h-full min-h-[6.5rem] w-full flex-col justify-between rounded-[1.5rem] border p-4 text-left shadow-sm transition-colors',
     disabled
       ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400 shadow-none'
-      : cn(toneStyles.card, 'shadow-slate-200/40', toneStyles.hover, toneStyles.active),
+      : isDark
+        ? workerAccentCardClass(accentIndex, true)
+        : cn(toneStyles.card, 'shadow-slate-200/40', toneStyles.hover, toneStyles.active),
   )
 
   const body = (
@@ -95,11 +103,18 @@ function VehicleActionCard({
         <div
           className={cn(
             'flex size-10 items-center justify-center rounded-2xl',
-            disabled ? 'bg-slate-100 text-slate-400' : toneStyles.iconWell,
+            disabled
+              ? 'bg-slate-100 text-slate-400'
+              : isDark
+                ? 'worker-accent-icon-well'
+                : toneStyles.iconWell,
           )}
         >
           <Icon
-            className={cn('size-5', disabled ? 'text-slate-400' : toneStyles.icon)}
+            className={cn(
+              'size-5',
+              disabled ? 'text-slate-400' : !isDark && toneStyles.icon,
+            )}
             strokeWidth={1.75}
             aria-hidden
           />
@@ -111,8 +126,28 @@ function VehicleActionCard({
         ) : null}
       </div>
       <div>
-        <p className="text-base font-semibold leading-snug text-slate-950">{title}</p>
-        <p className={cn('mt-1 text-sm leading-snug', disabled ? 'text-slate-400' : 'text-slate-600')}>
+        <p
+          className={cn(
+            'text-base font-semibold leading-snug',
+            disabled
+              ? 'text-slate-400'
+              : isDark
+                ? 'worker-accent-title'
+                : 'text-slate-950',
+          )}
+        >
+          {title}
+        </p>
+        <p
+          className={cn(
+            'mt-1 text-sm leading-snug',
+            disabled
+              ? 'text-slate-400'
+              : isDark
+                ? 'worker-accent-secondary'
+                : 'text-slate-600',
+          )}
+        >
           {description}
         </p>
       </div>
@@ -150,6 +185,7 @@ function vehicleRegistrationLabel(vehicle: Vehicle): string {
 }
 
 export default function WorkerVehiclesPage() {
+  const isDark = useIsWorkerDarkMode()
   const { session } = useAuth()
   const {
     worker,
@@ -543,28 +579,52 @@ export default function WorkerVehiclesPage() {
 
       {selectedVehicle ? (
         <section
-          className="rounded-[1.5rem] border border-[#89CFF0] p-4 shadow-[0_1px_3px_rgba(33,142,231,0.12)]"
-          style={{
-            backgroundImage:
-              'linear-gradient(135deg, #9FD0F0 0%, #BFE3F5 35%, #E8F3FE 68%, #FFFFFF 100%)',
-          }}
+          className={cn(
+            workerAccentCardClass(
+              0,
+              isDark,
+              'rounded-[1.35rem] border p-3.5 shadow-[0_1px_3px_rgba(33,142,231,0.12)]',
+            ),
+            !isDark && 'border-[#89CFF0]',
+          )}
+          style={
+            isDark
+              ? undefined
+              : {
+                  backgroundImage:
+                    'linear-gradient(135deg, #9FD0F0 0%, #BFE3F5 35%, #E8F3FE 68%, #FFFFFF 100%)',
+                }
+          }
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-2.5">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#5499BF]">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p
+                  className={cn(
+                    'worker-accent-muted text-[10px] font-semibold uppercase tracking-[0.14em]',
+                    !isDark && 'text-[#0B68BE]',
+                  )}
+                >
                   Selected vehicle
                 </p>
                 {isSelectedDefault ? (
                   <span
-                    className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-emerald-700"
+                    className={cn(
+                      'worker-accent-badge inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em]',
+                      !isDark && 'bg-emerald-200 text-emerald-900',
+                    )}
                     role="status"
                   >
                     Default vehicle
                   </span>
                 ) : null}
               </div>
-              <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+              <p
+                className={cn(
+                  'worker-accent-title mt-1 truncate text-lg font-bold tracking-tight sm:text-xl',
+                  !isDark && 'text-[#0B1F3A]',
+                )}
+              >
                 {selectedRegistration}
               </p>
             </div>
@@ -572,26 +632,38 @@ export default function WorkerVehiclesPage() {
               type="button"
               onClick={clearSelection}
               aria-label={`Remove selected vehicle ${selectedRegistration}`}
-              className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#89CFF0] bg-white/80 text-slate-600 transition-colors hover:bg-white hover:text-slate-900"
+              className={cn(
+                'worker-accent-icon-well flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors',
+                !isDark &&
+                  'border-[#89CFF0] bg-white/80 text-slate-700 hover:bg-white hover:text-slate-950',
+              )}
             >
-              <X className="size-4" aria-hidden="true" />
+              <X className="size-3.5" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="mt-2 space-y-0.5 text-sm text-slate-600">
+          <div
+            className={cn(
+              'worker-accent-secondary mt-1.5 space-y-0.5 text-[13px] font-medium leading-snug',
+              !isDark && 'text-[#1B4F8A]',
+            )}
+          >
             {selectedMakeModel ? <p>{selectedMakeModel}</p> : null}
             {selectedType ? <p>Type: {selectedType}</p> : null}
             {selectedFleet ? <p>{selectedFleet}</p> : null}
           </div>
 
           {isSelectedDefault ? (
-            <div className="mt-3">
+            <div className="mt-2.5">
               <button
                 type="button"
                 disabled={isSavingDefault}
                 onClick={() => void handleRemoveDefault()}
                 aria-label={`Remove ${selectedRegistration} as default vehicle`}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline disabled:opacity-60"
+                className={cn(
+                  'worker-accent-link inline-flex items-center gap-1.5 text-[13px] font-semibold underline-offset-2 transition-colors hover:underline disabled:opacity-60',
+                  !isDark && 'text-[#0B477F] hover:text-[#083A66]',
+                )}
               >
                 {isSavingDefault ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
                 Remove default
@@ -603,18 +675,25 @@ export default function WorkerVehiclesPage() {
               disabled={isSavingDefault}
               onClick={() => void handleSaveDefault()}
               aria-label={`Set ${selectedRegistration} as default vehicle`}
-              className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F80ED] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:opacity-60"
+              className="mt-2.5 inline-flex h-8 items-center justify-center gap-2 rounded-xl bg-[#2F80ED] px-3 text-[13px] font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:opacity-60"
             >
-              {isSavingDefault ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              {isSavingDefault ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
               Set as default
             </button>
           )}
 
           {defaultMessage ? (
-            <p className="mt-2 text-sm font-medium text-emerald-700">{defaultMessage}</p>
+            <p
+              className={cn(
+                'worker-accent-value mt-1.5 text-[13px] font-semibold',
+                !isDark && 'text-emerald-800',
+              )}
+            >
+              {defaultMessage}
+            </p>
           ) : null}
           {defaultError ? (
-            <p className="mt-2 text-sm font-medium text-rose-600">{defaultError}</p>
+            <p className="mt-1.5 text-[13px] font-semibold text-rose-700">{defaultError}</p>
           ) : null}
         </section>
       ) : (
@@ -628,7 +707,10 @@ export default function WorkerVehiclesPage() {
         {selectedVehicle ? (
           <Link
             to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
-            className="worker-home-cta worker-btn-primary w-full text-white"
+            className={cn(
+              'worker-home-cta w-full text-white',
+              isDark ? 'worker-cta-gradient' : 'worker-btn-primary',
+            )}
           >
             <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
               <span className="flex min-w-0 items-center gap-2.5">
@@ -643,7 +725,10 @@ export default function WorkerVehiclesPage() {
           </Link>
         ) : (
           <div
-            className="worker-home-cta worker-btn-primary w-full cursor-not-allowed text-white opacity-60"
+            className={cn(
+              'worker-home-cta w-full cursor-not-allowed text-white opacity-60',
+              isDark ? 'worker-cta-gradient' : 'worker-btn-primary',
+            )}
             aria-disabled="true"
           >
             <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
@@ -665,6 +750,8 @@ export default function WorkerVehiclesPage() {
             description="Tyre inspection workflow."
             icon={CircleDot}
             tone="violet"
+            accentIndex={0}
+            isDark={isDark}
             disabled={!selectedVehicle}
             to={vehicleHref('/worker/tyre-checks/new', selectedVehicleId)}
           />
@@ -673,6 +760,8 @@ export default function WorkerVehiclesPage() {
             description="Record fuel, AdBlue or other consumables."
             icon={Fuel}
             tone="amber"
+            accentIndex={1}
+            isDark={isDark}
             disabled={!selectedVehicle}
             to={vehicleHref('/worker/consumables', selectedVehicleId)}
           />
@@ -681,6 +770,8 @@ export default function WorkerVehiclesPage() {
             description="Report a defect or operational issue."
             icon={FileWarning}
             tone="rose"
+            accentIndex={2}
+            isDark={isDark}
             disabled={!selectedVehicle}
             to={vehicleHref('/worker/driver-reports', selectedVehicleId)}
           />

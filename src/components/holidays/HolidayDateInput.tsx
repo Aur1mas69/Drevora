@@ -93,23 +93,23 @@ function DatePickerPanel({
   }
 
   return (
-    <div className={cn('min-w-0', layout === 'modal' ? 'w-full' : 'w-full')}>
+    <div className={cn('my-holiday-datepicker min-w-0', layout === 'modal' ? 'w-full' : 'w-full')}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <button
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => moveMonth(-1)}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
+          className="my-holiday-nav inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
           aria-label="Previous month"
         >
           <ChevronLeft className="size-4" />
         </button>
-        <p className="truncate text-sm font-semibold text-[#113C69] dark:text-slate-100">{monthLabel}</p>
+        <p className="my-holiday-body truncate text-sm font-semibold text-[#113C69] dark:text-slate-100">{monthLabel}</p>
         <button
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => moveMonth(1)}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
+          className="my-holiday-nav inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
           aria-label="Next month"
         >
           <ChevronRight className="size-4" />
@@ -121,7 +121,7 @@ function DatePickerPanel({
         {weekdayLabels.map((label) => (
           <div
             key={label}
-            className="flex h-7 min-w-0 items-center justify-center text-[10px] font-semibold uppercase leading-none tracking-wide text-[#5499BF]"
+            className="my-holiday-weekday flex h-7 min-w-0 items-center justify-center text-[10px] font-semibold uppercase leading-none tracking-wide text-[#5499BF]"
           >
             <span className="block w-full truncate text-center">{label}</span>
           </div>
@@ -139,12 +139,12 @@ function DatePickerPanel({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect(day.iso)}
               className={cn(
-                'h-8 rounded-[8px] text-xs font-medium tabular-nums transition-colors sm:h-9',
+                'my-holiday-day h-8 rounded-[8px] text-xs font-medium tabular-nums transition-colors sm:h-9',
                 isDisabled && 'cursor-not-allowed opacity-35',
                 !isDisabled && !day.inMonth && 'text-[#A8C4DC]',
                 !isDisabled && day.inMonth && 'text-[#113C69] hover:bg-[#EEF6FF] dark:text-slate-100 dark:hover:bg-slate-800/50',
                 isToday && !isSelected && !isDisabled && 'ring-1 ring-[#89CFF0]',
-                isSelected && 'bg-[#218EE7] text-white hover:bg-[#1B7FD0]',
+                isSelected && 'my-holiday-day-selected bg-[#218EE7] text-white hover:bg-[#1B7FD0]',
               )}
               aria-label={day.iso}
               aria-pressed={isSelected}
@@ -331,7 +331,7 @@ export function HolidayDateInput({
         <div
           ref={popoverRef}
           className={cn(
-            'absolute z-[130] rounded-[12px] border border-[#D3E9FC] bg-white p-2.5 shadow-[0_12px_32px_rgba(11,38,70,0.14)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 sm:p-3',
+            'my-holiday-datepicker-popover absolute z-[130] rounded-[12px] border border-[#D3E9FC] bg-white p-2.5 shadow-[0_12px_32px_rgba(11,38,70,0.14)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 sm:p-3',
             layout === 'modal'
               ? 'left-0 right-0 top-[calc(100%+4px)] w-full max-w-full'
               : cn(

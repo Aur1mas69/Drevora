@@ -6,11 +6,11 @@ import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
+import { WorkerTimesheetHistoryDetailModal } from '@/components/timesheets/WorkerTimesheetHistoryDetailModal'
 import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesheetHistoryList'
 import type {
   Timesheet,
   TimesheetEntryInput,
-  TimesheetListItem,
   TimesheetStatus,
 } from '@/lib/timesheetTypes'
 import {
@@ -811,7 +811,7 @@ export default function WorkerTimesheetsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
-  const [viewingFromHistory, setViewingFromHistory] = useState(false)
+  const [historyDetailId, setHistoryDetailId] = useState<string | null>(null)
   const loadGenerationRef = useRef(0)
   const submitLockRef = useRef(false)
 
@@ -1273,24 +1273,16 @@ export default function WorkerTimesheetsPage() {
 
   function handleWeekChange(deltaWeeks: number) {
     if (!confirmDiscardIfDirty()) return
-    setViewingFromHistory(false)
     setWeekStart((current) => shiftWeekStart(current, deltaWeeks, weekSettings))
   }
 
-  function handleOpenHistoryWeek(item: TimesheetListItem) {
-    if (!confirmDiscardIfDirty()) return
-    setViewingFromHistory(true)
-    setWeekStart(item.weekStart)
-    setActiveTab('current')
-    setActionError(null)
-    setActionMessage(null)
-  }
+  const handleOpenHistoryWeek = useCallback((timesheetId: string) => {
+    setHistoryDetailId(timesheetId)
+  }, [])
 
-  function handleBackToHistory() {
-    if (!confirmDiscardIfDirty()) return
-    setViewingFromHistory(false)
-    setActiveTab('history')
-  }
+  const handleCloseHistoryDetail = useCallback(() => {
+    setHistoryDetailId(null)
+  }, [])
 
   if (workerLoading || companyLoading || (isLoading && !timesheet && !loadError)) {
     return (
@@ -1464,15 +1456,6 @@ export default function WorkerTimesheetsPage() {
               </div>
             ) : null}
           </dl>
-          {viewingFromHistory ? (
-            <button
-              type="button"
-              onClick={handleBackToHistory}
-              className="mt-1 inline-flex min-h-10 items-center text-sm font-semibold text-[#0B68BE] hover:underline"
-            >
-              ← Back to History
-            </button>
-          ) : null}
         </div>
       ) : null}
 
@@ -1486,7 +1469,6 @@ export default function WorkerTimesheetsPage() {
           role="tab"
           aria-selected={activeTab === 'current'}
           onClick={() => {
-            setViewingFromHistory(false)
             setActiveTab('current')
           }}
           className={cn(
@@ -1504,7 +1486,6 @@ export default function WorkerTimesheetsPage() {
           aria-selected={activeTab === 'history'}
           onClick={() => {
             if (!confirmDiscardIfDirty()) return
-            setViewingFromHistory(false)
             setActiveTab('history')
           }}
           className={cn(
@@ -1600,7 +1581,7 @@ export default function WorkerTimesheetsPage() {
       ) : (
         <WorkerTimesheetHistoryList
           workerId={worker.id}
-          onOpenWeek={handleOpenHistoryWeek}
+          onOpenWeek={(item) => handleOpenHistoryWeek(item.id)}
         />
       )}
 
@@ -1613,6 +1594,14 @@ export default function WorkerTimesheetsPage() {
         isSubmitting={isSubmitting}
         onCancel={handleSubmitDialogCancel}
         onConfirm={() => void handleSubmitConfirm()}
+      />
+
+      <WorkerTimesheetHistoryDetailModal
+        timesheetId={historyDetailId}
+        overtimeMode={overtimeMode}
+        overtimeRules={overtimeRules}
+        paidBreaks={paidBreaks}
+        onClose={handleCloseHistoryDetail}
       />
     </div>
   )

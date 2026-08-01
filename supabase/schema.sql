@@ -1394,7 +1394,7 @@ as $$
   select case
     when p_depth is null then 'not_checked'
     when p_depth >= 6.0 then 'good'
-    when p_depth >= 4.0 then 'attention'
+    when p_depth >= 3.0 then 'attention'
     else 'critical'
   end;
 $$;
@@ -1403,7 +1403,7 @@ comment on function public.drevora_tyre_wear_percent(numeric) is
   'Tyre wear % from tread depth mm using the DREVORA 8.0→1.6 reference scale with linear interpolation.';
 
 comment on function public.drevora_tyre_tread_status(numeric) is
-  'Derived tread_status only: not_checked / good (>=6.0) / attention (4.0–5.9) / critical (<4.0).';
+  'Derived tread_status only: not_checked / good (>=6.0) / attention (3.0–5.9) / critical (<3.0).';
 
 create table if not exists public.tyre_checks (
   id uuid primary key default gen_random_uuid(),
