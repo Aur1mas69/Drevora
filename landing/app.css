@@ -319,9 +319,9 @@ button {
 
     .hero-mobile-frame {
         position: static;
-        width: min(38vw, 130px);
+        width: min(49vw, 169px);
         min-width: 0;
-        max-width: 130px;
+        max-width: 169px;
         align-self: center;
         filter: none;
         transform: none;
@@ -403,7 +403,7 @@ button {
 
 .footer-logo-link {
   display: block;
-  width: 168px;
+  width: 218px;
   max-width: 100%;
   height: auto;
   flex: 0 0 auto;
@@ -417,7 +417,7 @@ button {
 
 footer .footer-logo {
   display: block !important;
-  width: 168px !important;
+  width: 218px !important;
   max-width: 100% !important;
   height: auto !important;
   object-fit: contain !important;
@@ -505,11 +505,11 @@ footer .footer-logo {
   }
 
   .footer-logo-link {
-    width: 148px;
+    width: 192px;
   }
 
   footer .footer-logo {
-    width: 148px !important;
+    width: 192px !important;
     max-width: 100% !important;
   }
 }
@@ -1437,7 +1437,8 @@ footer .footer-logo {
 }
 
 .pricing-section__stage {
-  padding: 1.5rem 1.15rem 1.65rem;
+  overflow: visible;
+  padding: 1.85rem 1.15rem 1.65rem;
   border-radius: 1.25rem;
   background-color: #f8fafc;
   border: 1px solid #f1f5f9;
@@ -1445,7 +1446,7 @@ footer .footer-logo {
 
 @media (min-width: 768px) {
   .pricing-section__stage {
-    padding: 1.75rem 1.5rem 1.9rem;
+    padding: 2rem 1.5rem 1.9rem;
   }
 }
 
@@ -1510,6 +1511,7 @@ footer .footer-logo {
 }
 
 .pricing-card--popular {
+  overflow: visible;
   border: 2px solid color-mix(in srgb, var(--color-primary) 42%, #e5e7eb);
   box-shadow:
     0 8px 24px rgba(15, 23, 42, 0.06),
@@ -1517,9 +1519,15 @@ footer .footer-logo {
 }
 
 .pricing-card__badge-slot {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 0.85rem;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  display: block;
+  width: max-content;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .pricing-card__badge {
@@ -1533,6 +1541,7 @@ footer .footer-logo {
   text-transform: uppercase;
   padding: 0.3rem 0.7rem;
   border-radius: 9999px;
+  pointer-events: auto;
 }
 
 .pricing-card__header {
