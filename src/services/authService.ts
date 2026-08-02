@@ -173,10 +173,37 @@ export async function updatePassword(newPassword: string): Promise<void> {
   }
 }
 
+export async function requestPasswordReset(
+  email: string,
+  redirectTo: string,
+): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new AuthServiceError(
+      'Password reset is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const normalizedEmail = email.trim().toLowerCase()
+
+  if (!normalizedEmail) {
+    throw new AuthServiceError('Email is required.')
+  }
+
+  const { error } = await requireSupabase().auth.resetPasswordForEmail(
+    normalizedEmail,
+    { redirectTo },
+  )
+
+  if (error) {
+    throw new AuthServiceError(error.message)
+  }
+}
+
 export const authService = {
   signIn,
   signOut,
   getCurrentUser,
   getCurrentSession,
   updatePassword,
+  requestPasswordReset,
 }

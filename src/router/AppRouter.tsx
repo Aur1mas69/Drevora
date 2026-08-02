@@ -41,6 +41,8 @@ const DriverDetailsPage = lazy(() => import('@/pages/DriverDetailsPage'))
 const LoginTwilightPreviewPage = lazy(
   () => import('@/pages/LoginTwilightPreviewPage'),
 )
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
 const CompanyOnboardingPage = lazy(
   () => import('@/pages/CompanyOnboardingPage'),
 )
@@ -259,6 +261,8 @@ function AppRouter() {
         <Routes>
         <Route path="/" element={<RootToLoginRedirect />} />
         <Route path={LOGIN_PATH} element={<LoginTwilightPreviewPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/admin/login" element={<Navigate to={LOGIN_PATH} replace />} />
         <Route path="/admin-login" element={<Navigate to={LOGIN_PATH} replace />} />
         <Route path="/worker-login" element={<Navigate to={LOGIN_PATH} replace />} />

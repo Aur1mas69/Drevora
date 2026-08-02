@@ -15,7 +15,7 @@ import {
 } from '@/services/authService'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 const previewInputClassName =
   'h-11 w-full rounded-xl border border-sky-200/80 bg-white/75 pl-10 pr-4 text-sm text-[#0F1B35] shadow-sm outline-none placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 lg:h-[60px] lg:rounded-[10px] lg:border-sky-300/85 lg:bg-white/80 lg:pl-12 lg:pr-5 lg:text-base lg:focus:ring-[3px] lg:focus:ring-[#2563EB]/28'
@@ -267,12 +267,12 @@ function LoginTwilightPreviewPage() {
                       Remember me
                     </span>
                   </label>
-                  <button
-                    type="button"
+                  <Link
+                    to="/forgot-password"
                     className="shrink-0 text-sm font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
                   >
                     Forgot Password?
-                  </button>
+                  </Link>
                 </div>
 
                 {errorMessage ? (
