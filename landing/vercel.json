@@ -2,6 +2,13 @@
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/privacy",
+      "destination": "/privacy-policy",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

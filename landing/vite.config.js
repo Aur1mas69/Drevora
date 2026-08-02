@@ -37,6 +37,7 @@ export default defineConfig({
                 main: 'index.html',
                 terms: 'terms.html',
                 privacy: 'privacy.html',
+                'privacy-policy': 'privacy-policy.html',
                 cookies: 'cookies.html',
                 app_css: 'app.css',
                 app_js: 'app.js',
