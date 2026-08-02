@@ -258,20 +258,6 @@
                     <div
                         class="hero-glow-blur absolute inset-0 bg-primary/10 blur-[120px] rounded-full z-10 w-4/5 h-4/5 m-auto pointer-events-none">
                     </div>
-                    <div
-                        class="hidden lg:block absolute top-[-8%] left-[5%] z-40 bg-surface-container-lowest p-3 rounded-2xl shadow-level-2 border border-outline-variant/60 animate-bounce [animation-duration:4s]">
-                        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                            </path>
-                        </svg>
-                    </div>
-
-                    <div
-                        class="hidden lg:block absolute bottom-[25%] left-[-8%] z-40 bg-surface-container-lowest p-3 rounded-2xl shadow-level-2 border border-outline-variant/60 animate-bounce [animation-duration:5s]">
-                        <i class="fa-regular fa-truck text-xl text-primary"></i>
-                    </div>
-
                     <div class="hero-mockup-wrap relative w-full z-20 flex items-center justify-center">
                         <div
                             class="hero-dashboard-frame w-full bg-transparent overflow-visible">
@@ -299,79 +285,55 @@
 
         <!-- Problems Section -->
 
-        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low"
+        <section class="forest-green-section challenges-section w-full px-margin-mobile md:px-margin-desktop py-section-gap"
             id="problems">
-            <div class="max-w-container-max mx-auto">
-                <div class="text-center mb-12">
+            <div class="forest-green-backdrop" aria-hidden="true">
+                <span class="forest-green-backdrop__glow"></span>
+                <span class="forest-green-backdrop__curve forest-green-backdrop__curve--tl"></span>
+                <span class="forest-green-backdrop__curve forest-green-backdrop__curve--br"></span>
+                <span class="forest-green-backdrop__dots forest-green-backdrop__dots--tl"></span>
+                <span class="forest-green-backdrop__dots forest-green-backdrop__dots--br"></span>
+            </div>
+            <div class="forest-green-section__inner max-w-container-max mx-auto">
+                <div class="challenges-section__intro text-center mb-12">
                     <span
-                        class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Common
-                        problems</span>
-                    <h2 class="font-headline-md text-headline-md text-on-surface mb-4">The friction slowing you down
+                        class="challenges-section__eyebrow font-label-caps text-label-caps tracking-widest uppercase mb-2 block">Common
+                        Challenges</span>
+                    <h2 class="challenges-section__heading font-headline-md text-headline-md mb-4">Running your fleet shouldn't be this complicated.
                     </h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">Running a transport
-                        business is complex enough without fighting disconnected systems.</p>
+                    <p class="challenges-section__description font-body-lg text-body-lg max-w-2xl mx-auto">Daily transport operations become harder when information is spread across paper, messages and disconnected systems.</p>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-component-gap">
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-error-container flex items-center justify-center text-on-error-container">
-                            <span class="material-symbols-outlined">description</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Too much paperwork</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Endless manual entry and lost
-                            physical sheets slow down billing and payroll.</p>
-                    </div>
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-accent-warning/20 flex items-center justify-center text-accent-warning">
-                            <span class="material-symbols-outlined">minor_crash</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Missed vehicle checks</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Inconsistent daily walkarounds put
-                            your fleet at risk and risk compliance failures.</p>
-                    </div>
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
-                            <span class="material-symbols-outlined">event_busy</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Holiday requests lost</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Juggling emails and texts leads to
-                            scheduling conflicts and unhappy drivers.</p>
-                    </div>
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined">wrong_location</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Hard to track assets</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Not knowing exactly where your
-                            workers and vehicles are leads to missed deadlines and logistics gaps.</p>
-                    </div>
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-accent-danger/20 flex items-center justify-center text-accent-danger">
-                            <span class="material-symbols-outlined">notification_important</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Compliance forgotten</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Missing critical MOT, service, or
-                            license renewal dates results in hefty fines and grounded vehicles.</p>
-                    </div>
-                    <div
-                        class="bg-surface-container-lowest p-6 rounded-xl shadow-level-1 flex flex-col items-start gap-4">
-                        <div
-                            class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
-                            <span class="material-symbols-outlined">receipt_long</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Costs untracked</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Failing to properly monitor fuel,
-                            parts, and consumables slowly drains your company's profit margins.</p>
-                    </div>
+                <div class="challenges-notes">
+                    <article class="challenges-note challenges-note--1">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">pending_actions</span>
+                        <h3 class="challenges-note__title font-headline-sm">Paper timesheets slow payroll</h3>
+                        <p class="challenges-note__body font-body-sm">Manual timesheets delay payroll and create unnecessary office work.</p>
+                    </article>
+                    <article class="challenges-note challenges-note--2">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">assignment_turned_in</span>
+                        <h3 class="challenges-note__title font-headline-sm">Vehicle checks are inconsistent</h3>
+                        <p class="challenges-note__body font-body-sm">Vehicle checks are skipped, rushed or completed differently by each Worker.</p>
+                    </article>
+                    <article class="challenges-note challenges-note--3">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">assignment_late</span>
+                        <h3 class="challenges-note__title font-headline-sm">Documents expire unnoticed</h3>
+                        <p class="challenges-note__body font-body-sm">Driving licences, CPC, Tachograph and other essential documents are difficult to manage manually.</p>
+                    </article>
+                    <article class="challenges-note challenges-note--4">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">folder_open</span>
+                        <h3 class="challenges-note__title font-headline-sm">Fleet paperwork is scattered</h3>
+                        <p class="challenges-note__body font-body-sm">Vehicle checks, reports, receipts and documents are stored in different places.</p>
+                    </article>
+                    <article class="challenges-note challenges-note--5">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">forum</span>
+                        <h3 class="challenges-note__title font-headline-sm">Office and Workers lose time</h3>
+                        <p class="challenges-note__body font-body-sm">Phone calls, messages and paper forms slow everyday communication.</p>
+                    </article>
+                    <article class="challenges-note challenges-note--6">
+                        <span class="material-symbols-outlined challenges-note__icon" aria-hidden="true">dashboard</span>
+                        <h3 class="challenges-note__title font-headline-sm">No daily operations overview</h3>
+                        <p class="challenges-note__body font-body-sm">Managers spend too much time chasing information instead of running the business.</p>
+                    </article>
                 </div>
             </div>
         </section>
@@ -379,226 +341,231 @@
             <div class="max-w-container-max mx-auto text-center flex flex-col items-center gap-6">
                 <span class="material-symbols-outlined text-4xl text-primary-fixed-dim"
                     style="font-variation-settings: 'FILL' 1;">dashboard_customize</span>
-                <h2 class="font-headline-md text-headline-md text-on-primary max-w-3xl">One simple dashboard for daily
-                    transport operations.</h2>
-                <p class="font-body-lg text-body-lg text-secondary-fixed-dim max-w-2xl">Replace spreadsheets, paper
-                    trails, and multiple apps with a single source of truth for your entire fleet.</p>
+                <span
+                    class="font-label-caps text-label-caps text-primary-fixed-dim tracking-widest uppercase">ONE CONNECTED PLATFORM</span>
+                <h2 class="font-headline-md text-headline-md text-on-primary max-w-3xl">Run your entire transport operation from one connected platform.</h2>
+                <div class="font-body-lg text-body-lg text-secondary-fixed-dim max-w-2xl flex flex-col gap-4">
+                    <p>From Timesheets and Vehicle Checks to Driver Documents, Holiday Requests, Driver Reports and Fleet Management, DREVORA brings your office and workforce together in one secure platform.</p>
+                    <p>Everything stays organised, easier to manage and accessible from one place, helping your team save time, reduce paperwork and stay compliant every day.</p>
+                </div>
             </div>
         </section>
-        <section
-            class="w-full px-margin-mobile md:px-margin-desktop py-section-gap max-w-container-max mx-auto relative overflow-hidden"
+        <section class="features-section w-full px-margin-mobile md:px-margin-desktop py-section-gap"
             id="features">
-            <div class="absolute -inset-0 bg-primary-fixed opacity-10 blur-3xl rounded-full z-0 pointer-events-none">
-            </div>
-
-            <div class="relative z-10">
-                <div class="text-center mb-16">
+            <div class="features-section__inner max-w-container-max mx-auto">
+                <div class="features-section__intro text-center">
                     <span
-                        class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Features</span>
-                    <h2 class="font-headline-md text-headline-md text-on-surface">Everything in one place</h2>
+                        class="features-section__eyebrow font-label-caps text-label-caps tracking-widest uppercase mb-2 block">Features</span>
+                    <h2 class="features-section__heading font-headline-md text-headline-md">Everything your transport business needs.</h2>
+                    <p class="features-section__description font-body-lg text-body-lg max-w-2xl mx-auto">Manage your office, Workers and fleet from one secure platform without switching between multiple systems.</p>
                 </div>
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-12">
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">groups</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Workers</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Manage your team
-                            information, roles and qualifications.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">local_shipping</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Vehicles</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Keep all your
-                            vehicles, trailers and documents in one place.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">schedule</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Timesheets</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Drivers submit
-                            timesheets and you stay compliant with ease.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">beach_access</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Holidays</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Request, approve and
-                            track holidays in real time.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">fact_check</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Vehicle Checks</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Daily vehicle
-                            inspections from drivers, straight to your dashboard.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">warning</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Driver Reports</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Drivers report issues
-                            and incidents on the go.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">folder_open</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Documents</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Store and manage all
-                            your important documents securely.</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center text-center p-4 group transition-transform duration-200 hover:-translate-y-1">
-                        <div
-                            class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary mb-5 group-hover:bg-primary-fixed transition-colors">
-                            <span class="material-symbols-outlined text-3xl">receipt_long</span>
-                        </div>
-                        <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-2">Consumables</h3>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[220px]">Track fuel, AdBlue
-                            and other consumables effortlessly.</p>
-                    </div>
 
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">groups</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Workers</h3>
+                        <p class="feature-card__body font-body-sm">Manage Workers, licences, qualifications and employment records.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">local_shipping</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Vehicles</h3>
+                        <p class="feature-card__body font-body-sm">Keep vehicle information, compliance records and fleet details organised.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">schedule</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Timesheets</h3>
+                        <p class="feature-card__body font-body-sm">Workers submit digital timesheets while Managers review, approve and export payroll.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">beach_access</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Holidays</h3>
+                        <p class="feature-card__body font-body-sm">Request, approve and manage annual leave with live balances and calendars.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">fact_check</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Vehicle Checks</h3>
+                        <p class="feature-card__body font-body-sm">Digital daily walkaround inspections with photos, signatures and defect reporting.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">warning</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Driver Reports</h3>
+                        <p class="feature-card__body font-body-sm">Report incidents, defects and operational issues directly from the mobile app.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">folder_open</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Documents</h3>
+                        <p class="feature-card__body font-body-sm">Store licences, CPC, Tachograph, Medical certificates and company documents securely.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                        </div>
+                        <h3 class="feature-card__title font-headline-sm">Consumables</h3>
+                        <p class="feature-card__body font-body-sm">Track diesel, AdBlue, oils and other consumables with complete usage history.</p>
+                    </article>
+                </div>
+
+                <div class="features-benefits" role="list" aria-label="Platform benefits">
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Cloud based</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Mobile friendly</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Secure</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>UK ready</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Multi-company</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Real-time</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>GDPR compliant</span>
+                    </div>
+                    <div class="features-benefits__item" role="listitem">
+                        <span class="material-symbols-outlined features-benefits__check" aria-hidden="true">check</span>
+                        <span>Built for transport</span>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Dashboard Preview section -->
 
-        <section class="w-full px-4 sm:px-6 lg:px-10 py-section-gap bg-surface-container-low overflow-hidden relative"
+        <section class="dashboard-preview-section w-full px-4 sm:px-6 lg:px-10 py-section-gap bg-surface-container-low overflow-hidden relative"
             id="dashboard-preview">
             <div
-                class="absolute right-0 top-1/4 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-primary-fixed opacity-20 blur-3xl rounded-full z-0 pointer-events-none">
+                class="dashboard-preview-section__ambient absolute right-0 top-1/4 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-primary-fixed opacity-20 blur-3xl rounded-full z-0 pointer-events-none"
+                aria-hidden="true">
             </div>
 
             <div
                 class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
                 <div class="lg:col-span-5 flex flex-col items-start space-y-8">
-                    <div>
+                    <div class="dashboard-preview-section__intro">
                         <span
                             class="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">Dashboard
                             preview</span>
-                        <h2 class="font-headline-md text-headline-md text-on-surface leading-tight">
-                            A clean dashboard <br class="hidden sm:block">Built for speed
+                        <h2 class="dashboard-preview-section__heading font-headline-md text-headline-md text-on-surface">
+                            One dashboard. Total fleet control.
                         </h2>
+                        <p class="dashboard-preview-section__subtitle font-body-lg text-body-lg">
+                            Monitor vehicles, Workers, inspections, documents, reports and daily operations from one simple dashboard.
+                        </p>
                     </div>
-                    <div class="space-y-4 w-full">
-                        <div
-                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
-                            <span
-                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">01</span>
+                    <div class="dashboard-preview-features space-y-4 w-full">
+                        <div class="dashboard-preview-feature flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span class="dashboard-preview-feature__num" aria-hidden="true">01</span>
                             <div>
-                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Real-time
-                                    Overview</h3>
-                                <p class="font-body-sm text-body-sm text-on-surface-variant">See active vehicles,
-                                    pending timesheets, and today's status at a single glance.</p>
+                                <h3 class="dashboard-preview-feature__title font-label-bold text-body-md font-bold text-on-surface">Real-time fleet overview</h3>
+                                <p class="dashboard-preview-feature__body font-body-sm text-body-sm">Instantly see vehicle status, Workers, inspections, documents and today's activity.</p>
                             </div>
                         </div>
-                        <div
-                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
-                            <span
-                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">02</span>
+                        <div class="dashboard-preview-feature flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span class="dashboard-preview-feature__num" aria-hidden="true">02</span>
                             <div>
-                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Beautiful
-                                    dashboard</h3>
-                                <p class="font-body-sm text-body-sm text-on-surface-variant">A visually appealing and
-                                    intuitive interface that provides a comprehensive view of all your operations.</p>
+                                <h3 class="dashboard-preview-feature__title font-label-bold text-body-md font-bold text-on-surface">Designed for busy transport offices</h3>
+                                <p class="dashboard-preview-feature__body font-body-sm text-body-sm">A clean interface that helps your office work faster with less training.</p>
                             </div>
                         </div>
-                        <div
-                            class="flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
-                            <span
-                                class="font-display-lg text-headline-md font-black text-primary/20 group-hover:text-primary/40 transition-colors leading-none">03</span>
+                        <div class="dashboard-preview-feature flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant/30 group">
+                            <span class="dashboard-preview-feature__num" aria-hidden="true">03</span>
                             <div>
-                                <h3 class="font-label-bold text-body-md font-bold text-on-surface mb-1">Easy management
-                                </h3>
-                                <p class="font-body-sm text-body-sm text-on-surface-variant">Simplify your workflow with
-                                    intuitive controls and seamless navigation.</p>
+                                <h3 class="dashboard-preview-feature__title font-label-bold text-body-md font-bold text-on-surface">Built to save office hours</h3>
+                                <p class="dashboard-preview-feature__body font-body-sm text-body-sm">Reduce paperwork, repetitive admin and phone calls every single day.</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="lg:col-span-7 w-full flex flex-col items-center">
-                    <div
-                        class="w-full bg-surface-container-lowest p-2 rounded-2xl border border-outline-variant shadow-2xl ring-4 ring-primary/5 overflow-hidden">
-                        <div class="flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-b border-surface-container">
-                            <div class="w-2 h-2 rounded-full bg-error/60"></div>
-                            <div class="w-2 h-2 rounded-full bg-accent-warning/60"></div>
-                            <div class="w-2 h-2 rounded-full bg-accent-success/60"></div>
-                        </div>
-                        <div id="dashboard-slider"
-                            class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth rounded-xl bg-surface-container"
-                            style="scrollbar-width: none; -ms-overflow-style: none;">
-                            <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
-                                <picture>
-                                    <source srcset="images/drevora-dashboard-2.webp" type="image/webp">
-                                    <img src="images/drevora-dashboard-2.png"
-                                        alt="DREVORA Holiday Requests module showing pending, approved and declined leave requests"
-                                        width="2496" height="1664" loading="eager" fetchpriority="high"
-                                        decoding="async" class="product-screenshot block">
-                                </picture>
-                            </figure>
-                            <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
-                                <picture>
-                                    <source srcset="images/drevora-dashboard-3.webp" type="image/webp">
-                                    <img src="images/drevora-dashboard-3.png"
-                                        alt="DREVORA Vehicle Checks module with DVSA walkaround results and defect review status"
-                                        width="2496" height="1664" loading="lazy" decoding="async"
-                                        class="product-screenshot block">
-                                </picture>
-                            </figure>
-                            <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
-                                <picture>
-                                    <source srcset="images/drevora-dashboard-4.webp" type="image/webp">
-                                    <img src="images/drevora-dashboard-4.png"
-                                        alt="DREVORA Timesheets module showing weekly hour summaries and worker timesheet status"
-                                        width="2496" height="1664" loading="lazy" decoding="async"
-                                        class="product-screenshot block">
-                                </picture>
-                            </figure>
-                            <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
-                                <picture>
-                                    <source srcset="images/drevora-dashboard-5.webp" type="image/webp">
-                                    <img src="images/drevora-dashboard-5.png"
-                                        alt="DREVORA Consumables module with usage charts, cost insights and detailed breakdown"
-                                        width="2688" height="1792" loading="lazy" decoding="async"
-                                        class="product-screenshot block">
-                                </picture>
-                            </figure>
+                    <div class="dashboard-preview-monitor relative w-full">
+                        <div class="dashboard-preview-monitor__glow" aria-hidden="true"></div>
+                        <div class="dashboard-preview-monitor__frame w-full bg-surface-container-lowest p-2 rounded-2xl border border-outline-variant overflow-hidden">
+                            <div class="flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-b border-surface-container">
+                                <div class="w-2 h-2 rounded-full bg-error/60"></div>
+                                <div class="w-2 h-2 rounded-full bg-accent-warning/60"></div>
+                                <div class="w-2 h-2 rounded-full bg-accent-success/60"></div>
+                            </div>
+                            <div id="dashboard-slider"
+                                class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth rounded-xl bg-surface-container"
+                                style="scrollbar-width: none; -ms-overflow-style: none;">
+                                <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
+                                    <picture>
+                                        <source srcset="images/drevora-dashboard-2.webp" type="image/webp">
+                                        <img src="images/drevora-dashboard-2.png"
+                                            alt="DREVORA Holiday Requests module showing pending, approved and declined leave requests"
+                                            width="2496" height="1664" loading="eager" fetchpriority="high"
+                                            decoding="async" class="product-screenshot block">
+                                    </picture>
+                                </figure>
+                                <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
+                                    <picture>
+                                        <source srcset="images/drevora-dashboard-3.webp" type="image/webp">
+                                        <img src="images/drevora-dashboard-3.png"
+                                            alt="DREVORA Vehicle Checks module with DVSA walkaround results and defect review status"
+                                            width="2496" height="1664" loading="lazy" decoding="async"
+                                            class="product-screenshot block">
+                                    </picture>
+                                </figure>
+                                <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
+                                    <picture>
+                                        <source srcset="images/drevora-dashboard-4.webp" type="image/webp">
+                                        <img src="images/drevora-dashboard-4.png"
+                                            alt="DREVORA Timesheets module showing weekly hour summaries and worker timesheet status"
+                                            width="2496" height="1664" loading="lazy" decoding="async"
+                                            class="product-screenshot block">
+                                    </picture>
+                                </figure>
+                                <figure class="w-full shrink-0 snap-start m-0 overflow-hidden">
+                                    <picture>
+                                        <source srcset="images/drevora-dashboard-5.webp" type="image/webp">
+                                        <img src="images/drevora-dashboard-5.png"
+                                            alt="DREVORA Consumables module with usage charts, cost insights and detailed breakdown"
+                                            width="2688" height="1792" loading="lazy" decoding="async"
+                                            class="product-screenshot block">
+                                    </picture>
+                                </figure>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2.5 mt-6" id="slider-dots">
-                        <button data-index="0" class="dot w-7 h-2.5 rounded-full bg-primary transition-all duration-300"
-                            aria-label="Go to slide 1"></button>
-                        <button data-index="1"
-                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
-                            aria-label="Go to slide 2"></button>
-                        <button data-index="2"
-                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
-                            aria-label="Go to slide 3"></button>
-                        <button data-index="3"
-                            class="dot w-2.5 h-2.5 rounded-full bg-neutral-300 hover:bg-neutral-400 transition-all duration-300"
-                            aria-label="Go to slide 4"></button>
+                    <div class="dashboard-preview-dots flex items-center gap-2 mt-6" id="slider-dots">
+                        <button type="button" data-index="0" class="dot is-active" aria-label="Go to slide 1" aria-current="true"></button>
+                        <button type="button" data-index="1" class="dot" aria-label="Go to slide 2"></button>
+                        <button type="button" data-index="2" class="dot" aria-label="Go to slide 3"></button>
+                        <button type="button" data-index="3" class="dot" aria-label="Go to slide 4"></button>
                     </div>
 
                 </div>
@@ -608,19 +575,17 @@
         <!-- Benefits Section -->
 
         <section
-            class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-lowest border-t border-outline-variant/30"
+            class="benefits-section w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-lowest border-t border-outline-variant/30"
             id="benefits">
             <div class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                 <div class="lg:col-span-5 flex flex-col items-start space-y-6 lg:sticky lg:top-28">
                     <span class="font-label-caps text-label-caps text-primary tracking-widest uppercase block">Why
                         Choose Drevora (Benefits)</span>
-                    <h2 class="font-headline-md text-headline-md text-on-surface leading-tight">
-                        Built to transform your <br>
-                        <span class="text-primary">transport operations</span>
+                    <h2 class="benefits-section__heading font-headline-md text-headline-md text-on-surface leading-tight">
+                        Everything your transport business needs.
                     </h2>
-                    <p class="font-body-lg text-body-md text-on-surface-variant max-w-md">
-                        Move away from chaotic spreadsheets and lost messages. Experience a smarter way to manage your
-                        fleet, drivers, and daily business compliance.
+                    <p class="benefits-section__description font-body-lg text-body-md text-on-surface-variant max-w-md">
+                        DREVORA replaces paperwork, spreadsheets and disconnected tools with one secure platform for managing Workers, vehicles and daily operations.
                     </p>
                     <div class="pt-2">
                         <a href="#pricing"
@@ -629,306 +594,273 @@
                         </a>
                     </div>
                 </div>
-                <div class="lg:col-span-7 space-y-4">
-                    <div
-                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                            <span class="material-symbols-outlined text-2xl">auto_delete</span>
+                <div class="benefits-cards lg:col-span-7 space-y-4">
+                    <article class="benefit-card">
+                        <div class="benefit-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">schedule</span>
                         </div>
                         <div>
-                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Reduce paperwork
-                            </h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">Eliminate heavy folders and
-                                manual data entry. Move everything to digital forms that your drivers can fill out in
-                                seconds.</p>
+                            <h3 class="benefit-card__title">Digital Timesheets</h3>
+                            <p class="benefit-card__body">Workers submit timesheets from their phone. Managers approve them in seconds.</p>
                         </div>
-                    </div>
-                    <div
-                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                            <span class="material-symbols-outlined text-2xl">folder_managed</span>
+                    </article>
+                    <article class="benefit-card">
+                        <div class="benefit-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">fact_check</span>
                         </div>
                         <div>
-                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Keep records
-                                organised</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">No more searching through lost
-                                text messages. Timesheets, holiday requests, and vehicle histories are instantly
-                                searchable and securely backed up.</p>
+                            <h3 class="benefit-card__title">Vehicle Checks</h3>
+                            <p class="benefit-card__body">Daily inspections with photos, signatures and instant defect reporting.</p>
                         </div>
-                    </div>
-                    <div
-                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                            <span class="material-symbols-outlined text-2xl">visibility</span>
+                    </article>
+                    <article class="benefit-card">
+                        <div class="benefit-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">badge</span>
                         </div>
                         <div>
-                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Improve visibility
-                            </h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">Know exactly who is working,
-                                which vehicles are on the road, and who is on leave at any given moment through a clean,
-                                real-time dashboard.</p>
+                            <h3 class="benefit-card__title">Driver Documents</h3>
+                            <p class="benefit-card__body">Track Driving Licence, CPC, Tachograph and Medical expiry dates automatically.</p>
                         </div>
-                    </div>
-                    <div
-                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                            <span class="material-symbols-outlined text-2xl">gavel</span>
+                    </article>
+                    <article class="benefit-card">
+                        <div class="benefit-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">beach_access</span>
                         </div>
                         <div>
-                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">Help with
-                                compliance</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">Stay ahead of law regulations.
-                                Get proactive alerts for upcoming MOTs, service dates, and expiring driver
-                                qualifications to avoid fines.</p>
+                            <h3 class="benefit-card__title">Holidays &amp; Leave</h3>
+                            <p class="benefit-card__body">Workers request leave while managers approve requests in one click.</p>
                         </div>
-                    </div>
-                    <div
-                        class="p-6 rounded-2xl bg-background border border-outline-variant/40 flex items-start gap-4 transition-all duration-200 hover:border-primary/30 hover:shadow-level-1">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
-                            <span class="material-symbols-outlined text-2xl">hub</span>
+                    </article>
+                    <article class="benefit-card">
+                        <div class="benefit-card__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">dashboard</span>
                         </div>
                         <div>
-                            <h3 class="font-headline-sm text-body-lg font-bold text-on-surface mb-1">One central
-                                operations hub</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">Bring your entire transport
-                                business into a single, cohesive workspace. Run payroll, approve holidays, and check
-                                fleet health without switching tabs.</p>
+                            <h3 class="benefit-card__title">Fleet Overview</h3>
+                            <p class="benefit-card__body">See vehicles, Workers, reports and compliance from one live dashboard.</p>
                         </div>
-                    </div>
-
+                    </article>
                 </div>
             </div>
         </section>
 
         <!-- Pricing Section -->
 
-        <section class="w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low"
+        <section class="pricing-section w-full px-margin-mobile md:px-margin-desktop py-section-gap"
             id="pricing">
             <div class="max-w-container-max mx-auto">
-                <div class="text-center mb-16">
-                    <h2 class="font-headline-md text-headline-md text-on-surface mb-4">Simple, transparent pricing</h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant">Choose the plan that fits your fleet
-                        size. Scale as you grow.</p>
+                <div class="pricing-section__intro text-center">
+                    <h2 class="pricing-section__heading font-headline-md text-headline-md mb-4">Simple, transparent pricing</h2>
+                    <p class="pricing-section__subtitle font-body-lg text-body-lg max-w-2xl mx-auto">All plans include every DREVORA feature. Simply choose the fleet size that fits your business.</p>
                 </div>
+                <div class="pricing-section__stage">
                 <div class="pricing-grid">
                     <article class="pricing-card pricing-card--standard" aria-labelledby="pricing-starter-title">
-                        <div class="pricing-card__glow" aria-hidden="true"></div>
-                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
                         <div class="pricing-card__header">
-                            <div class="pricing-card__icon">
-                                <i class="fa-solid fa-truck" aria-hidden="true"></i>
-                            </div>
                             <h3 id="pricing-starter-title"
-                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Starter
-                                Fleet</h3>
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Starter Fleet</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount">£69.99</span>
+                                <span class="pricing-card__period">/month</span>
+                            </div>
                             <div class="pricing-card__limits font-body-sm text-body-sm">
                                 <p>Up to 10 vehicles</p>
-                                <p>Up to 20 active Workers</p>
-                            </div>
-                            <div class="pricing-card__price">
-                                <span class="pricing-card__amount font-display-lg text-display-lg">£69.99</span>
-                                <span class="pricing-card__period">/mo</span>
+                                <p>Up to 20 Workers</p>
                             </div>
                         </div>
                         <ul class="pricing-card__features">
                             <!-- partial:pricing-features -->
                         </ul>
                         <div class="pricing-card__footer">
-                            <div class="pricing-card__offer">
-                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
-                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
-                                    1 month free
-                                </span>
-                            </div>
                             <a href="https://app.drevora.app/login?plan=starter"
-                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start
-                                Free Trial</a>
+                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start Free Trial</a>
                         </div>
                     </article>
 
-                    <article class="pricing-card pricing-card--popular" aria-labelledby="pricing-growing-title">
-                        <div class="pricing-card__glow" aria-hidden="true"></div>
+                    <article class="pricing-card pricing-card--popular" aria-labelledby="pricing-growth-title">
                         <div class="pricing-card__badge-slot">
-                            <span class="pricing-card__badge">
-                                <i class="fa-solid fa-star text-[10px]" aria-hidden="true"></i>
-                                Most Popular
-                            </span>
+                            <span class="pricing-card__badge">Most Popular</span>
                         </div>
                         <div class="pricing-card__header">
-                            <div class="pricing-card__icon">
-                                <i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i>
+                            <h3 id="pricing-growth-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Growth Fleet</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount">£149.99</span>
+                                <span class="pricing-card__period">/month</span>
                             </div>
-                            <h3 id="pricing-growing-title"
-                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Growing
-                                Fleet</h3>
                             <div class="pricing-card__limits font-body-sm text-body-sm">
                                 <p>Up to 25 vehicles</p>
-                                <p>Up to 50 active Workers</p>
-                            </div>
-                            <div class="pricing-card__price">
-                                <span class="pricing-card__amount font-display-lg text-display-lg">£119.99</span>
-                                <span class="pricing-card__period">/mo</span>
+                                <p>Up to 50 Workers</p>
                             </div>
                         </div>
                         <ul class="pricing-card__features">
                             <!-- partial:pricing-features -->
                         </ul>
                         <div class="pricing-card__footer">
-                            <div class="pricing-card__offer">
-                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
-                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
-                                    1 month free
-                                </span>
-                            </div>
                             <a href="https://app.drevora.app/login?plan=growing"
-                                class="pricing-card__cta pricing-card__cta--filled font-label-bold text-label-bold">Start
-                                Free Trial</a>
+                                class="pricing-card__cta pricing-card__cta--filled font-label-bold text-label-bold">Start Free Trial</a>
                         </div>
                     </article>
 
                     <article class="pricing-card pricing-card--standard" aria-labelledby="pricing-pro-title">
-                        <div class="pricing-card__glow" aria-hidden="true"></div>
-                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
                         <div class="pricing-card__header">
-                            <div class="pricing-card__icon">
-                                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-                            </div>
                             <h3 id="pricing-pro-title"
-                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Pro Fleet
-                            </h3>
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Professional Fleet</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount">£249.99</span>
+                                <span class="pricing-card__period">/month</span>
+                            </div>
                             <div class="pricing-card__limits font-body-sm text-body-sm">
                                 <p>Up to 50 vehicles</p>
-                                <p>Up to 100 active Workers</p>
-                            </div>
-                            <div class="pricing-card__price">
-                                <span class="pricing-card__amount font-display-lg text-display-lg">£199.99</span>
-                                <span class="pricing-card__period">/mo</span>
+                                <p>Up to 100 Workers</p>
                             </div>
                         </div>
                         <ul class="pricing-card__features">
                             <!-- partial:pricing-features -->
                         </ul>
                         <div class="pricing-card__footer">
-                            <div class="pricing-card__offer">
-                                <span class="pricing-card__offer-badge font-label-caps text-label-caps">
-                                    <i class="fa-solid fa-gift text-xs" aria-hidden="true"></i>
-                                    1 month free
-                                </span>
-                            </div>
                             <a href="https://app.drevora.app/login?plan=pro"
-                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start
-                                Free Trial</a>
+                                class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold">Start Free Trial</a>
                         </div>
                     </article>
 
-                    <article class="pricing-card pricing-card--custom" aria-labelledby="pricing-custom-title">
-                        <div class="pricing-card__glow" aria-hidden="true"></div>
-                        <div class="pricing-card__badge-slot" aria-hidden="true"></div>
+                    <article class="pricing-card pricing-card--custom" aria-labelledby="pricing-enterprise-title">
                         <div class="pricing-card__header">
-                            <div class="pricing-card__icon">
-                                <i class="fa-solid fa-building" aria-hidden="true"></i>
+                            <h3 id="pricing-enterprise-title"
+                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Enterprise</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__amount pricing-card__amount--contact">Contact us</span>
                             </div>
-                            <h3 id="pricing-custom-title"
-                                class="pricing-card__title font-headline-sm text-headline-sm text-on-surface">Custom
-                                Fleet</h3>
                             <div class="pricing-card__limits font-body-sm text-body-sm">
                                 <p>50+ vehicles</p>
-                                <p>100+ active Workers</p>
-                            </div>
-                            <div class="pricing-card__price">
-                                <span class="pricing-card__amount font-display-lg text-display-lg">Custom</span>
-                                <span class="pricing-card__period">pricing</span>
+                                <p>100+ Workers</p>
                             </div>
                         </div>
                         <ul class="pricing-card__features">
                             <!-- partial:pricing-features -->
                         </ul>
                         <div class="pricing-card__footer">
-                            <div class="pricing-card__offer" aria-hidden="true"></div>
-                            <a href="mailto:admin@drevora.uk?subject=DREVORA%20Custom%20Fleet%20enquiry"
+                            <a href="mailto:admin@drevora.uk?subject=DREVORA%20Enterprise%20enquiry"
                                 class="pricing-card__cta pricing-card__cta--outline font-label-bold text-label-bold"
-                                aria-label="Contact us about Custom Fleet pricing">Contact Us</a>
+                                aria-label="Contact us about Enterprise pricing">Contact Us</a>
                         </div>
                     </article>
+                </div>
+
+                <div class="pricing-included" aria-label="Included with every plan">
+                    <p class="pricing-included__label">Included with every plan</p>
+                    <ul class="pricing-included__list">
+                        <li class="pricing-included__item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Free updates</span>
+                        </li>
+                        <li class="pricing-included__item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Secure cloud hosting</span>
+                        </li>
+                        <li class="pricing-included__item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Daily backups</span>
+                        </li>
+                        <li class="pricing-included__item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>UK support</span>
+                        </li>
+                        <li class="pricing-included__item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>No setup fee</span>
+                        </li>
+                    </ul>
+                </div>
                 </div>
             </div>
         </section>
 
         <!-- Contact Section -->
 
-        <section class="demo-request-section w-full px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto"
-            id="contact">
-            <div class="demo-request-card">
-                <div class="demo-request-header">
-                    <h2 class="font-headline-md text-headline-md text-on-surface">Ready to streamline your fleet?
-                    </h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant">Request a personalized demo and see how
-                        DREVORA fits your operations.</p>
-                    <p class="demo-request-email-pill font-body-sm text-body-sm">
-                        Prefer email? Contact us at
-                        <a href="mailto:admin@drevora.uk"
-                            class="text-primary hover:underline font-medium">admin@drevora.uk</a>
+        <section class="forest-green-section demo-request-section" id="contact">
+            <div class="forest-green-backdrop" aria-hidden="true">
+                <span class="forest-green-backdrop__glow"></span>
+                <span class="forest-green-backdrop__curve forest-green-backdrop__curve--tl"></span>
+                <span class="forest-green-backdrop__curve forest-green-backdrop__curve--br"></span>
+                <span class="forest-green-backdrop__dots forest-green-backdrop__dots--tl"></span>
+                <span class="forest-green-backdrop__dots forest-green-backdrop__dots--br"></span>
+            </div>
+            <div class="forest-green-section__inner demo-request-section__inner w-full px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+                <div class="demo-request-card">
+                    <div class="demo-request-header">
+                        <span class="demo-request-header__icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">calendar_month</span>
+                        </span>
+                        <h2 class="font-headline-md text-headline-md text-on-surface">Ready to streamline your fleet?
+                        </h2>
+                        <p class="demo-request-header__subtitle font-body-lg text-body-lg text-on-surface-variant">Request a personalized demo and see how
+                            DREVORA fits your operations.</p>
+                        <p class="demo-request-email-pill font-body-sm text-body-sm">
+                            Prefer email? Contact us at
+                            <a href="mailto:admin@drevora.uk"
+                                class="demo-request-email-pill__link">admin@drevora.uk</a>
+                        </p>
+                    </div>
+                    <form id="demo-request-form" class="demo-request-form" novalidate>
+                        <div class="demo-request-grid">
+                            <div class="demo-request-field">
+                                <label class="demo-request-label"
+                                    for="demo-full-name">Full Name</label>
+                                <input id="demo-full-name" name="fullName"
+                                    class="demo-request-input"
+                                    placeholder="John Doe" type="text" required>
+                            </div>
+                            <div class="demo-request-field">
+                                <label class="demo-request-label"
+                                    for="demo-company-name">Company
+                                    Name</label>
+                                <input id="demo-company-name" name="companyName"
+                                    class="demo-request-input"
+                                    placeholder="Transport Co." type="text" required>
+                            </div>
+                            <div class="demo-request-field">
+                                <label class="demo-request-label"
+                                    for="demo-work-email">Work Email</label>
+                                <input id="demo-work-email" name="workEmail"
+                                    class="demo-request-input"
+                                    placeholder="john@company.com" type="email" required>
+                            </div>
+                            <div class="demo-request-field">
+                                <label class="demo-request-label"
+                                    for="demo-vehicle-count">Number of
+                                    Vehicles</label>
+                                <select id="demo-vehicle-count" name="vehicleCount"
+                                    class="demo-request-input demo-request-select"
+                                    required>
+                                    <option value="1 - 10">1 - 10</option>
+                                    <option value="11 - 25">11 - 25</option>
+                                    <option value="26 - 50">26 - 50</option>
+                                    <option value="50+">50+</option>
+                                </select>
+                            </div>
+                            <div class="demo-request-field demo-request-field--full">
+                                <label class="demo-request-label"
+                                    for="demo-message">Message
+                                    (Optional)</label>
+                                <textarea id="demo-message" name="message"
+                                    class="demo-request-input demo-request-textarea"
+                                    placeholder="Tell us about your specific needs..." rows="4"></textarea>
+                            </div>
+                        </div>
+                        <div id="demo-request-status" class="hidden rounded-lg px-4 py-3 text-sm font-medium" role="status"
+                            aria-live="polite"></div>
+                        <button id="demo-request-submit"
+                            class="demo-request-submit"
+                            type="submit">
+                            Request Demo
+                        </button>
+                    </form>
+                    <p class="demo-request-secure">
+                        <span class="material-symbols-outlined demo-request-secure__icon" aria-hidden="true">lock</span>
+                        <span>Your information is secure and will never be shared.</span>
                     </p>
                 </div>
-                <form id="demo-request-form" class="demo-request-form" novalidate>
-                    <div class="demo-request-grid">
-                        <div class="demo-request-field">
-                            <label class="demo-request-label"
-                                for="demo-full-name">Full Name</label>
-                            <input id="demo-full-name" name="fullName"
-                                class="demo-request-input"
-                                placeholder="John Doe" type="text" required>
-                        </div>
-                        <div class="demo-request-field">
-                            <label class="demo-request-label"
-                                for="demo-company-name">Company
-                                Name</label>
-                            <input id="demo-company-name" name="companyName"
-                                class="demo-request-input"
-                                placeholder="Transport Co." type="text" required>
-                        </div>
-                        <div class="demo-request-field">
-                            <label class="demo-request-label"
-                                for="demo-work-email">Work Email</label>
-                            <input id="demo-work-email" name="workEmail"
-                                class="demo-request-input"
-                                placeholder="john@company.com" type="email" required>
-                        </div>
-                        <div class="demo-request-field">
-                            <label class="demo-request-label"
-                                for="demo-vehicle-count">Number of
-                                Vehicles</label>
-                            <select id="demo-vehicle-count" name="vehicleCount"
-                                class="demo-request-input demo-request-select"
-                                required>
-                                <option value="1 - 10">1 - 10</option>
-                                <option value="11 - 25">11 - 25</option>
-                                <option value="26 - 50">26 - 50</option>
-                                <option value="50+">50+</option>
-                            </select>
-                        </div>
-                        <div class="demo-request-field demo-request-field--full">
-                            <label class="demo-request-label"
-                                for="demo-message">Message
-                                (Optional)</label>
-                            <textarea id="demo-message" name="message"
-                                class="demo-request-input demo-request-textarea"
-                                placeholder="Tell us about your specific needs..." rows="4"></textarea>
-                        </div>
-                    </div>
-                    <div id="demo-request-status" class="hidden rounded-lg px-4 py-3 text-sm font-medium" role="status"
-                        aria-live="polite"></div>
-                    <button id="demo-request-submit"
-                        class="demo-request-submit"
-                        type="submit">
-                        Request Demo
-                    </button>
-                </form>
             </div>
         </section>
     </main>

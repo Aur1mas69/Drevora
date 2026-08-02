@@ -294,12 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateDots(activeIndex) {
         dots.forEach((dot, idx) => {
-            if (idx === activeIndex) {
-                dot.classList.add('w-7', 'bg-primary')
-                dot.classList.remove('w-2.5', 'bg-neutral-300')
+            const isActive = idx === activeIndex
+            dot.classList.toggle('is-active', isActive)
+            if (isActive) {
+                dot.setAttribute('aria-current', 'true')
             } else {
-                dot.classList.remove('w-7', 'bg-primary')
-                dot.classList.add('w-2.5', 'bg-neutral-300')
+                dot.removeAttribute('aria-current')
             }
         })
     }

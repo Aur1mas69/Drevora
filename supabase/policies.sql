@@ -343,8 +343,61 @@ grant select, insert, update, delete on public.vehicle_availability to anon, aut
 grant select, insert, update, delete on public.companies to anon, authenticated;
 grant select, insert, update, delete on public.timesheets to anon, authenticated;
 grant select, insert, update, delete on public.timesheet_entries to anon, authenticated;
-grant select, insert on public.timesheet_submission_confirmations to anon, authenticated;
-revoke update, delete on public.timesheet_submission_confirmations from anon, authenticated;
+-- timesheet_submission_confirmations — Model B INSERT-only (see
+-- 20260802140000_timesheet_submission_confirmations_rls.sql). Append-only audit;
+-- clients do not SELECT/UPDATE/DELETE. Writes come from submitTimesheet.
+alter table public.timesheet_submission_confirmations enable row level security;
+revoke all on table public.timesheet_submission_confirmations from public;
+revoke all on table public.timesheet_submission_confirmations from anon;
+revoke all on table public.timesheet_submission_confirmations from authenticated;
+grant insert on table public.timesheet_submission_confirmations to authenticated;
+revoke update, delete, truncate on table public.timesheet_submission_confirmations from authenticated;
+revoke update, delete, truncate on table public.timesheet_submission_confirmations from anon;
+
+drop policy if exists timesheet_submission_confirmations_worker_insert_own
+  on public.timesheet_submission_confirmations;
+create policy timesheet_submission_confirmations_worker_insert_own
+  on public.timesheet_submission_confirmations
+  for insert
+  to authenticated
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and confirmed_by_driver_id is not null
+    and confirmed_by_driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_driver_in_company(confirmed_by_driver_id, company_id)
+    and exists (
+      select 1
+      from public.timesheets t
+      where t.id = timesheet_id
+        and t.company_id = company_id
+        and t.driver_id = confirmed_by_driver_id
+        and t.week_start = week_start
+        and t.deleted_at is null
+    )
+  );
+
+drop policy if exists timesheet_submission_confirmations_office_insert
+  on public.timesheet_submission_confirmations;
+create policy timesheet_submission_confirmations_office_insert
+  on public.timesheet_submission_confirmations
+  for insert
+  to authenticated
+  with check (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and confirmed_by_driver_id is not null
+    and public.drevora_driver_in_company(confirmed_by_driver_id, company_id)
+    and exists (
+      select 1
+      from public.timesheets t
+      where t.id = timesheet_id
+        and t.company_id = company_id
+        and t.driver_id = confirmed_by_driver_id
+        and t.week_start = week_start
+        and t.deleted_at is null
+    )
+  );
 -- Timesheet retention: column REVOKE is defense-in-depth only (see 20260726200000).
 -- Table-level INSERT/UPDATE above still confers effective column access in PostgreSQL;
 -- drevora_timesheets_retention_guard overwrites any client-supplied retention_expires_at.
@@ -815,6 +868,8 @@ grant select, insert, update, delete on public.notification_reads to authenticat
 -- -----------------------------------------------------------------------------
 -- Support requests (Worker Help & Support)
 -- Applied by 20260801130000_create_support_requests.sql
+-- Anon EXECUTE revoke on storage helpers:
+--   20260802150000_revoke_anon_support_attachment_storage_execute.sql
 -- -----------------------------------------------------------------------------
 alter table public.support_requests enable row level security;
 
@@ -822,6 +877,16 @@ revoke all on table public.support_requests from anon;
 revoke all on table public.support_requests from authenticated;
 
 grant select, insert on table public.support_requests to authenticated;
+
+-- support-attachments storage helpers (SECURITY DEFINER; used by storage.objects
+-- policies TO authenticated only). Anonymous EXECUTE intentionally denied.
+revoke all privileges on function public.drevora_storage_can_access_support_attachment(text) from anon;
+revoke all privileges on function public.drevora_storage_can_access_support_attachment(text) from public;
+grant execute on function public.drevora_storage_can_access_support_attachment(text) to authenticated;
+
+revoke all privileges on function public.drevora_storage_can_write_support_attachment(text) from anon;
+revoke all privileges on function public.drevora_storage_can_write_support_attachment(text) from public;
+grant execute on function public.drevora_storage_can_write_support_attachment(text) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Production — enable RLS and add policies (NOT active during MVP)
@@ -1157,3 +1222,71 @@ create policy legal_acceptances_worker_select_own
     and company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
   );
+
+-- -----------------------------------------------------------------------------
+-- Auth/company SECURITY DEFINER helper EXECUTE
+-- Canonical: migrations/20260802160000_restrict_internal_auth_company_helper_execute.sql
+-- Internal-only (no authenticated EXECUTE): company_ids, driver_company_text,
+-- has_office_role(), resolve_unique_company_id, vehicle_check_company_matches_auth_user.
+-- RLS / INVOKER-trigger helpers keep authenticated EXECUTE.
+-- -----------------------------------------------------------------------------
+revoke all privileges on function public.drevora_auth_user_company_ids() from public;
+revoke all privileges on function public.drevora_auth_user_company_ids() from anon;
+revoke all privileges on function public.drevora_auth_user_company_ids() from authenticated;
+grant execute on function public.drevora_auth_user_company_ids() to service_role;
+
+revoke all privileges on function public.drevora_auth_user_driver_company_text() from public;
+revoke all privileges on function public.drevora_auth_user_driver_company_text() from anon;
+revoke all privileges on function public.drevora_auth_user_driver_company_text() from authenticated;
+grant execute on function public.drevora_auth_user_driver_company_text() to service_role;
+
+revoke all privileges on function public.drevora_auth_user_has_office_role() from public;
+revoke all privileges on function public.drevora_auth_user_has_office_role() from anon;
+revoke all privileges on function public.drevora_auth_user_has_office_role() from authenticated;
+grant execute on function public.drevora_auth_user_has_office_role() to service_role;
+
+revoke all privileges on function public.drevora_resolve_unique_company_id(text) from public;
+revoke all privileges on function public.drevora_resolve_unique_company_id(text) from anon;
+revoke all privileges on function public.drevora_resolve_unique_company_id(text) from authenticated;
+grant execute on function public.drevora_resolve_unique_company_id(text) to service_role;
+
+revoke all privileges on function public.drevora_vehicle_check_company_matches_auth_user(text) from public;
+revoke all privileges on function public.drevora_vehicle_check_company_matches_auth_user(text) from anon;
+revoke all privileges on function public.drevora_vehicle_check_company_matches_auth_user(text) from authenticated;
+grant execute on function public.drevora_vehicle_check_company_matches_auth_user(text) to service_role;
+
+revoke all privileges on function public.drevora_auth_user_belongs_to_company_id(uuid) from public;
+revoke all privileges on function public.drevora_auth_user_belongs_to_company_id(uuid) from anon;
+grant execute on function public.drevora_auth_user_belongs_to_company_id(uuid) to authenticated;
+
+revoke all privileges on function public.drevora_auth_user_driver_id() from public;
+revoke all privileges on function public.drevora_auth_user_driver_id() from anon;
+grant execute on function public.drevora_auth_user_driver_id() to authenticated;
+
+revoke all privileges on function public.drevora_auth_user_has_office_role_for_company(uuid) from public;
+revoke all privileges on function public.drevora_auth_user_has_office_role_for_company(uuid) from anon;
+grant execute on function public.drevora_auth_user_has_office_role_for_company(uuid) to authenticated;
+
+revoke all privileges on function public.drevora_current_company_id() from public;
+revoke all privileges on function public.drevora_current_company_id() from anon;
+grant execute on function public.drevora_current_company_id() to authenticated;
+
+revoke all privileges on function public.drevora_current_company_name() from public;
+revoke all privileges on function public.drevora_current_company_name() from anon;
+grant execute on function public.drevora_current_company_name() to authenticated;
+
+revoke all privileges on function public.drevora_company_text_matches_current(text) from public;
+revoke all privileges on function public.drevora_company_text_matches_current(text) from anon;
+grant execute on function public.drevora_company_text_matches_current(text) to authenticated;
+
+revoke all privileges on function public.drevora_driver_in_company(uuid, uuid) from public;
+revoke all privileges on function public.drevora_driver_in_company(uuid, uuid) from anon;
+grant execute on function public.drevora_driver_in_company(uuid, uuid) to authenticated;
+
+revoke all privileges on function public.drevora_vehicle_in_company(uuid, uuid) from public;
+revoke all privileges on function public.drevora_vehicle_in_company(uuid, uuid) from anon;
+grant execute on function public.drevora_vehicle_in_company(uuid, uuid) to authenticated;
+
+revoke all privileges on function public.drevora_is_trusted_tenant_writer() from public;
+revoke all privileges on function public.drevora_is_trusted_tenant_writer() from anon;
+grant execute on function public.drevora_is_trusted_tenant_writer() to authenticated;

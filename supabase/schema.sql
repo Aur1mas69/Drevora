@@ -702,7 +702,7 @@ create table if not exists public.timesheet_submission_confirmations (
 );
 
 comment on table public.timesheet_submission_confirmations is
-  'Append-only audit of Worker Timesheet submission confirmations. Survives Office return/reject resets of timesheets.worker_confirmed.';
+  'Append-only audit of Worker Timesheet submission confirmations. Survives Office return/reject resets of timesheets.worker_confirmed. RLS: authenticated INSERT only (Worker own / Office company); no client SELECT/UPDATE/DELETE.';
 
 create index if not exists timesheet_submission_confirmations_timesheet_id_idx
   on public.timesheet_submission_confirmations (timesheet_id);
@@ -717,7 +717,7 @@ create index if not exists timesheets_confirmed_at_idx
   on public.timesheets (confirmed_at)
   where confirmed_at is not null;
 
-alter table public.timesheet_submission_confirmations disable row level security;
+alter table public.timesheet_submission_confirmations enable row level security;
 
 alter table public.timesheet_entries
   add column if not exists timesheet_id uuid references public.timesheets (id) on delete cascade,
@@ -3150,8 +3150,14 @@ create index if not exists legal_acceptances_batch_idx
 --   20260728090000_tyre_check_configurable_axle_layout.sql
 -- Support requests: apply migration
 --   20260801130000_create_support_requests.sql
+-- Support-attachment storage helpers: revoke anon EXECUTE
+--   20260802150000_revoke_anon_support_attachment_storage_execute.sql
+-- Auth/company helper EXECUTE restriction + search_path harden:
+--   20260802160000_restrict_internal_auth_company_helper_execute.sql
 -- Legal documents + acceptances: apply migration
 --   20260801140000_legal_documents_and_acceptances.sql
 -- Legal acceptance audit hardening (Admin accept, immutability, constraints):
 --   20260801150000_harden_legal_acceptance_audit.sql
+-- Timesheet submission confirmations RLS (INSERT-only Model B):
+--   20260802140000_timesheet_submission_confirmations_rls.sql
 -- -----------------------------------------------------------------------------
