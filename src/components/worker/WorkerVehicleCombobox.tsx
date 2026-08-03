@@ -155,19 +155,33 @@ export function WorkerVehicleCombobox({
       })
     }
 
+    function handleDocumentScroll(event: Event) {
+      // Internal list scrolling must not recalculate anchor position (avoids jump/close).
+      const listbox = document.getElementById(listId)
+      const target = event.target
+      if (
+        listbox &&
+        target instanceof Node &&
+        (target === listbox || listbox.contains(target))
+      ) {
+        return
+      }
+      updatePosition()
+    }
+
     updatePosition()
     window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('scroll', handleDocumentScroll, true)
     const vv = window.visualViewport
     vv?.addEventListener('resize', updatePosition)
     vv?.addEventListener('scroll', updatePosition)
     return () => {
       window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('scroll', handleDocumentScroll, true)
       vv?.removeEventListener('resize', updatePosition)
       vv?.removeEventListener('scroll', updatePosition)
     }
-  }, [showResults, searchQuery, filteredVehicles.length])
+  }, [showResults, searchQuery, filteredVehicles.length, listId])
 
   function handleSelect(vehicle: Vehicle) {
     onSelect(vehicle)
@@ -204,6 +218,10 @@ export function WorkerVehicleCombobox({
               left: listboxPosition.left,
               width: listboxPosition.width,
               maxHeight: listboxPosition.maxHeight,
+              overflowY: 'auto',
+              touchAction: 'pan-y',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             }}
             className="worker-theme-surface z-[200] max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)] py-1 shadow-lg"
           >
@@ -223,11 +241,7 @@ export function WorkerVehicleCombobox({
                     role="option"
                     aria-selected={selected}
                     aria-label={`Select vehicle ${registration}${secondary ? `, ${secondary}` : ''}`}
-                    onPointerDown={(event) => {
-                      // Commit before blur / outside-dismiss handlers run.
-                      event.preventDefault()
-                      handleSelect(vehicle)
-                    }}
+                    onClick={() => handleSelect(vehicle)}
                     className={cn(
                       'flex min-h-12 w-full flex-col items-start px-3 py-2.5 text-left text-sm transition-colors hover:bg-[color:var(--worker-row-hover)]',
                       selected ? 'bg-[color:var(--worker-primary-soft)]' : '',
