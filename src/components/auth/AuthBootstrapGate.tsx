@@ -1,5 +1,6 @@
 import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
 import {
+  AccountDeletionScheduledBlocked,
   MembershipAccessBlocked,
   useMembershipAccessState,
 } from '@/components/auth/MembershipAccessGate'
@@ -24,6 +25,11 @@ export function AuthBootstrapGate({ children }: { children: ReactNode }) {
   }
 
   if (isAuthenticated) {
+    if (access.status === 'deletion_scheduled') {
+      return (
+        <AccountDeletionScheduledBlocked scheduledFor={access.scheduledFor} />
+      )
+    }
     if (access.status === 'blocked') {
       return <MembershipAccessBlocked message={access.message} />
     }

@@ -32,6 +32,7 @@ export function useRoleBasedAuthRedirect(): void {
       return
     }
 
+    // deletion_scheduled: stay on a blocked screen — never send to onboarding.
     if (access.status === 'unlinked') {
       navigate('/onboarding', { replace: true })
     }

@@ -9,6 +9,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { RequireWorkerLegalAcceptance } from '@/components/legal/RequireWorkerLegalAcceptance'
 import { AppLockGate } from '@/components/auth/AppLockGate'
 import {
+  AccountDeletionScheduledBlocked,
   MembershipAccessBlocked,
   MembershipLoadingScreen,
   useMembershipAccessState,
@@ -151,6 +152,12 @@ function RequireWorkerAccess() {
     access.status === 'unlinked'
   ) {
     return <NativeWorkerAccessBlocked />
+  }
+
+  if (access.status === 'deletion_scheduled') {
+    return (
+      <AccountDeletionScheduledBlocked scheduledFor={access.scheduledFor} />
+    )
   }
 
   if (access.status === 'blocked') {

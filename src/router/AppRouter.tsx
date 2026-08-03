@@ -9,6 +9,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { RequireCustomerLegalAcceptance } from '@/components/legal/RequireCustomerLegalAcceptance'
 import { RequireWorkerLegalAcceptance } from '@/components/legal/RequireWorkerLegalAcceptance'
 import {
+  AccountDeletionScheduledBlocked,
   MembershipAccessBlocked,
   MembershipLoadingScreen,
   useMembershipAccessState,
@@ -168,6 +169,12 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
     return <Navigate to="/onboarding" replace />
   }
 
+  if (access.status === 'deletion_scheduled') {
+    return (
+      <AccountDeletionScheduledBlocked scheduledFor={access.scheduledFor} />
+    )
+  }
+
   if (access.status === 'blocked') {
     return <MembershipAccessBlocked message={access.message} />
   }
@@ -223,6 +230,12 @@ function RequireWorkerAccess() {
 
   if (access.status === 'unlinked') {
     return <Navigate to="/onboarding" replace />
+  }
+
+  if (access.status === 'deletion_scheduled') {
+    return (
+      <AccountDeletionScheduledBlocked scheduledFor={access.scheduledFor} />
+    )
   }
 
   if (access.status === 'blocked') {

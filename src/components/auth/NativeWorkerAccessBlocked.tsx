@@ -1,4 +1,5 @@
 import {
+  AccountDeletionScheduledBlocked,
   MembershipAccessBlocked,
   MembershipLoadingScreen,
   useMembershipAccessState,
@@ -26,6 +27,12 @@ export function NativeWorkerAccessBlocked() {
 
   if (access.status === 'worker') {
     return <Navigate to={WORKER_HOME_PATH} replace />
+  }
+
+  if (access.status === 'deletion_scheduled') {
+    return (
+      <AccountDeletionScheduledBlocked scheduledFor={access.scheduledFor} />
+    )
   }
 
   return <MembershipAccessBlocked message={NATIVE_WORKER_ONLY_MESSAGE} />

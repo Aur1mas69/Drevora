@@ -1290,3 +1290,25 @@ grant execute on function public.drevora_vehicle_in_company(uuid, uuid) to authe
 revoke all privileges on function public.drevora_is_trusted_tenant_writer() from public;
 revoke all privileges on function public.drevora_is_trusted_tenant_writer() from anon;
 grant execute on function public.drevora_is_trusted_tenant_writer() to authenticated;
+
+-- -----------------------------------------------------------------------------
+-- Account deletion requests (SELECT-own only)
+-- Canonical: migrations/20260803180000_create_account_deletion_requests.sql
+-- Writes go through Edge Function delete-account (service_role) — no client INSERT/UPDATE/DELETE.
+-- -----------------------------------------------------------------------------
+alter table public.account_deletion_requests enable row level security;
+
+revoke all on table public.account_deletion_requests from public;
+revoke all on table public.account_deletion_requests from anon;
+revoke all on table public.account_deletion_requests from authenticated;
+
+grant select on table public.account_deletion_requests to authenticated;
+grant all on table public.account_deletion_requests to service_role;
+
+drop policy if exists account_deletion_requests_select_own
+  on public.account_deletion_requests;
+create policy account_deletion_requests_select_own
+  on public.account_deletion_requests
+  for select
+  to authenticated
+  using (auth_user_id = auth.uid());

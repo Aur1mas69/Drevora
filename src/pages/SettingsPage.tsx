@@ -6,7 +6,8 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import { Lock } from 'lucide-react'
+import { Lock, Trash2 } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import AdminLayout from '@/layouts/AdminLayout'
 import {
   SettingsField,
@@ -20,6 +21,7 @@ import {
   settingsSelectClassName,
   settingsStatusTextClassName,
 } from '@/components/settings/SettingsControls'
+import { AdminDeleteAccountDialog } from '@/components/settings/AdminDeleteAccountDialog'
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
 import { CompanyLegalAcceptanceSummary } from '@/components/settings/CompanyLegalAcceptanceSummary'
 import { SettingsPlanSummary } from '@/components/settings/SettingsPlanSummary'
@@ -31,7 +33,10 @@ import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAut
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { useAuth } from '@/contexts/AuthContext'
 import { adminCard, adminSkeletonPulse } from '@/lib/adminUiStyles'
+import { LOGIN_PATH } from '@/lib/membershipRoles'
+import { cn } from '@/lib/utils'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import {
@@ -43,7 +48,6 @@ import {
   type CompanySettingsInput,
   type CompanySettingsTab,
 } from '@/lib/companySettingsTypes'
-import { useSearchParams } from 'react-router-dom'
 import { formatClockTime, getDateFormatLabel, COMPANY_TIME_FORMAT_OPTIONS } from '@/lib/dateTimeFormat'
 
 import { companySettingsService } from '@/services/companySettingsService'
@@ -77,6 +81,9 @@ function formsEqual(left: CompanySettingsInput, right: CompanySettingsInput): bo
 
 function SettingsPage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { session, signOut } = useAuth()
+  const accountEmail = session?.user.email?.trim() || null
   const { settings, isLoading, isSaving, updateSettings, companyId } =
     useCompanySettings()
   const [activeTab, setActiveTab] = useState<CompanySettingsTab>('general')
@@ -84,6 +91,7 @@ function SettingsPage() {
   const [savedForm, setSavedForm] = useState<CompanySettingsInput>(DEFAULT_COMPANY_SETTINGS)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const isDirtyRef = useRef(false)
 
   const isDirty = !formsEqual(form, savedForm)
@@ -121,6 +129,18 @@ function SettingsPage() {
     setToastMessage(message)
     window.setTimeout(() => setToastMessage(null), 2400)
   }, [])
+
+  async function handleDeletionScheduled(scheduledFor: string) {
+    setDeleteOpen(false)
+    await signOut()
+    navigate(LOGIN_PATH, {
+      replace: true,
+      state: {
+        accountDeletionScheduled: true,
+        accountDeletionScheduledFor: scheduledFor,
+      },
+    })
+  }
 
   function updateForm(patch: Partial<CompanySettingsInput>) {
     setForm((current) => ({ ...current, ...patch }))
@@ -607,6 +627,41 @@ function SettingsPage() {
                     />
                   </SettingsField>
                 </div>
+
+                <section
+                  className={cn(
+                    'mt-4 rounded-[16px] border bg-white px-3.5 py-3 sm:col-span-2 dark:bg-slate-900',
+                    'border-rose-200/80 dark:border-rose-500/35',
+                  )}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h2 className="flex items-center gap-1.5 text-sm font-semibold text-rose-700 dark:text-rose-300">
+                        <Trash2 className="size-3.5 shrink-0" aria-hidden />
+                        Delete my account
+                      </h2>
+                      <p className="text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        Schedule permanent account deletion with a 30-day
+                        cancellation period. Your company and Workers are not
+                        closed.
+                      </p>
+                      {!accountEmail ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Sign in again to delete your account.
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!accountEmail}
+                      onClick={() => setDeleteOpen(true)}
+                      className="h-9 w-full shrink-0 rounded-xl border-rose-300 px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 sm:w-auto dark:border-rose-400/45 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                    >
+                      Delete my account
+                    </Button>
+                  </div>
+                </section>
               </SettingsSection>
             ) : null}
 
@@ -641,6 +696,17 @@ function SettingsPage() {
         <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
           {toastMessage}
         </div>
+      ) : null}
+
+      {accountEmail ? (
+        <AdminDeleteAccountDialog
+          open={deleteOpen}
+          accountEmail={accountEmail}
+          onCancel={() => setDeleteOpen(false)}
+          onScheduled={(scheduledFor) => {
+            void handleDeletionScheduled(scheduledFor)
+          }}
+        />
       ) : null}
     </AdminLayout>
   )

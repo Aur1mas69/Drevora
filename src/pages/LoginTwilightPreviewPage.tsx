@@ -15,7 +15,7 @@ import {
 } from '@/services/authService'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 const previewInputClassName =
   'h-11 w-full rounded-xl border border-sky-200/80 bg-white/75 pl-10 pr-4 text-sm text-[#0F1B35] shadow-sm outline-none placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 lg:h-[60px] lg:rounded-[10px] lg:border-sky-300/85 lg:bg-white/80 lg:pl-12 lg:pr-5 lg:text-base lg:focus:ring-[3px] lg:focus:ring-[#2563EB]/28'
@@ -43,6 +43,7 @@ function OrbitDecoration() {
 function LoginTwilightPreviewPage() {
   const { setAuthenticatedSession } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   useRoleBasedAuthRedirect()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,6 +51,7 @@ function LoginTwilightPreviewPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [deletionNotice, setDeletionNotice] = useState<string | null>(null)
   const [selectedPlanCode, setSelectedPlanCode] =
     useState<SubscriptionPlanCode | null>(() => readPendingPlanCode())
 
@@ -57,6 +59,37 @@ function LoginTwilightPreviewPage() {
     const captured = capturePendingPlanFromSearch(location.search)
     setSelectedPlanCode(captured ?? readPendingPlanCode())
   }, [location.search])
+
+  useEffect(() => {
+    const state = location.state as {
+      accountDeletionScheduled?: boolean
+      accountDeletionScheduledFor?: string
+    } | null
+
+    if (!state?.accountDeletionScheduled) return
+
+    const scheduledFor = state.accountDeletionScheduledFor
+    let dateLabel = 'the scheduled date'
+    if (typeof scheduledFor === 'string' && scheduledFor.trim()) {
+      const date = new Date(scheduledFor)
+      if (!Number.isNaN(date.getTime())) {
+        dateLabel = date.toLocaleDateString('en-GB', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'UTC',
+        })
+      }
+    }
+
+    setDeletionNotice(
+      `Your account access has been disabled. Personal data deletion is scheduled for ${dateLabel} (UTC). Contact admin@drevora.uk to cancel before then.`,
+    )
+    navigate(location.pathname + location.search + location.hash, {
+      replace: true,
+      state: null,
+    })
+  }, [location.hash, location.pathname, location.search, location.state, navigate])
 
   const selectedPlan = selectedPlanCode
     ? getSubscriptionPlan(selectedPlanCode)
@@ -166,6 +199,15 @@ function LoginTwilightPreviewPage() {
                   >
                     Change plan
                   </a>
+                </div>
+              ) : null}
+
+              {deletionNotice ? (
+                <div
+                  className="mt-4 w-full rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-3.5 py-3 text-left text-sm leading-relaxed text-[#14532d] lg:mt-5"
+                  role="status"
+                >
+                  {deletionNotice}
                 </div>
               ) : null}
 

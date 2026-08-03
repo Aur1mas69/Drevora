@@ -3139,6 +3139,54 @@ create index if not exists legal_acceptances_driver_type_idx
 create index if not exists legal_acceptances_batch_idx
   on public.legal_acceptances (acceptance_batch_id);
 
+-- Account deletion requests (Worker self-service; Edge Function writes).
+-- Canonical: migrations/20260803180000_create_account_deletion_requests.sql
+create table if not exists public.account_deletion_requests (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null,
+  company_id uuid not null references public.companies (id) on delete restrict,
+  driver_id uuid null references public.drivers (id) on delete set null,
+  role_context text not null,
+  status text not null,
+  requested_at timestamptz not null default timezone('utc', now()),
+  scheduled_for timestamptz not null,
+  processed_at timestamptz null,
+  cancelled_at timestamptz null,
+  processing_error text null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint account_deletion_requests_role_context_check check (
+    role_context in ('worker', 'office')
+  ),
+  constraint account_deletion_requests_status_check check (
+    status in ('pending', 'processing', 'completed', 'cancelled', 'failed')
+  ),
+  constraint account_deletion_requests_scheduled_after_requested_check check (
+    scheduled_for >= requested_at
+  )
+);
+
+create unique index if not exists account_deletion_requests_one_active_per_user_idx
+  on public.account_deletion_requests (auth_user_id)
+  where status in ('pending', 'processing');
+
+create index if not exists account_deletion_requests_pending_scheduled_idx
+  on public.account_deletion_requests (scheduled_for)
+  where status = 'pending';
+
+create index if not exists account_deletion_requests_company_id_idx
+  on public.account_deletion_requests (company_id);
+
+create index if not exists account_deletion_requests_auth_user_id_idx
+  on public.account_deletion_requests (auth_user_id);
+
+drop trigger if exists account_deletion_requests_set_updated_at
+  on public.account_deletion_requests;
+create trigger account_deletion_requests_set_updated_at
+  before update on public.account_deletion_requests
+  for each row
+  execute function public.drevora_set_updated_at();
+
 
 -- -----------------------------------------------------------------------------
 -- Next steps
@@ -3160,4 +3208,6 @@ create index if not exists legal_acceptances_batch_idx
 --   20260801150000_harden_legal_acceptance_audit.sql
 -- Timesheet submission confirmations RLS (INSERT-only Model B):
 --   20260802140000_timesheet_submission_confirmations_rls.sql
+-- Account deletion requests (Worker self-service, SELECT-own only):
+--   20260803180000_create_account_deletion_requests.sql
 -- -----------------------------------------------------------------------------
