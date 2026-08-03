@@ -1,4 +1,8 @@
 import { Input } from '@/components/ui/input'
+import {
+  WorkerVehicleMobilePicker,
+  vehicleSecondaryLabel,
+} from '@/components/worker/WorkerVehicleMobilePicker'
 import { cn } from '@/lib/utils'
 import { vehicleMatchesWorkerVehicleQuery } from '@/lib/vehicleRegistrationSearch'
 import type { Vehicle } from '@/services/vehiclesService'
@@ -34,21 +38,33 @@ export type WorkerVehicleComboboxProps = {
   error?: string | null
 }
 
-function vehicleSecondaryLabel(vehicle: Vehicle): string {
-  const makeModel = [vehicle.make, vehicle.model].filter(Boolean).join(' ')
-  const parts = [
-    makeModel || null,
-    vehicle.fleetNumber ? `Fleet ${vehicle.fleetNumber}` : null,
-    vehicle.vehicleType?.trim() || null,
-  ].filter(Boolean)
-  return parts.join(' · ') || 'Vehicle'
-}
-
 type ListboxPosition = {
   top: number
   left: number
   width: number
   maxHeight: number
+}
+
+/** Mobile full-screen picker below this width; desktop dropdown at and above. */
+const MOBILE_PICKER_MAX_WIDTH_PX = 767
+
+function useIsMobileVehiclePickerViewport(): boolean {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia(`(max-width: ${MOBILE_PICKER_MAX_WIDTH_PX}px)`).matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia(`(max-width: ${MOBILE_PICKER_MAX_WIDTH_PX}px)`)
+    function sync() {
+      setIsMobile(media.matches)
+    }
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+
+  return isMobile
 }
 
 /**
@@ -58,6 +74,9 @@ type ListboxPosition = {
  * - typing only updates the search filter;
  * - selection changes only when a result is chosen;
  * - clearing selection requires onClear / a parent Remove action — never typing.
+ *
+ * Mobile (<768px): full-screen portal picker.
+ * Desktop/tablet (≥768px): anchored dropdown.
  */
 export function WorkerVehicleCombobox({
   vehicles,
@@ -75,13 +94,15 @@ export function WorkerVehicleCombobox({
   className,
   error = null,
 }: WorkerVehicleComboboxProps) {
+  const isMobile = useIsMobileVehiclePickerViewport()
   const autoId = useId()
   const inputId = idProp ?? `worker-vehicle-combobox-${autoId}`
   const listId = `${inputId}-listbox`
+  const mobilePickerId = `${inputId}-mobile-picker`
   const rootRef = useRef<HTMLDivElement>(null)
   const inputWrapRef = useRef<HTMLDivElement>(null)
 
-  /** Search filter only — never mirrors the selected/default registration. */
+  /** Search filter only — never mirrors the selected/default registration. Desktop only. */
   const [searchQuery, setSearchQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [listboxPosition, setListboxPosition] = useState<ListboxPosition | null>(null)
@@ -91,7 +112,10 @@ export function WorkerVehicleCombobox({
     [selectedVehicleId, vehicles],
   )
 
+  // Desktop outside-dismiss only — never active while mobile picker mode is on.
   useEffect(() => {
+    if (isMobile || !open) return
+
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node
       if (rootRef.current?.contains(target)) return
@@ -104,7 +128,15 @@ export function WorkerVehicleCombobox({
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [listId])
+  }, [isMobile, open, listId])
+
+  // Close desktop dropdown if the viewport crosses into mobile mode.
+  useEffect(() => {
+    if (!isMobile) return
+    setOpen(false)
+    setSearchQuery('')
+    setListboxPosition(null)
+  }, [isMobile])
 
   const filteredVehicles = useMemo(() => {
     const matches = vehicles.filter((vehicle) =>
@@ -115,11 +147,12 @@ export function WorkerVehicleCombobox({
     )
   }, [searchQuery, vehicles])
 
-  const showResults =
-    open && !disabled && (showAllWhenEmpty || searchQuery.trim().length > 0)
+  const showDesktopResults =
+    !isMobile && open && !disabled && (showAllWhenEmpty || searchQuery.trim().length > 0)
 
+  // Desktop anchored listbox positioning only — skipped entirely on mobile.
   useLayoutEffect(() => {
-    if (!showResults) {
+    if (!showDesktopResults) {
       setListboxPosition(null)
       return
     }
@@ -128,7 +161,6 @@ export function WorkerVehicleCombobox({
       const anchor = inputWrapRef.current
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
-      // Use visualViewport so the list stays visible above the mobile keyboard.
       const vv = window.visualViewport
       const viewportTop = vv?.offsetTop ?? 0
       const viewportHeight = vv?.height ?? window.innerHeight
@@ -156,7 +188,6 @@ export function WorkerVehicleCombobox({
     }
 
     function handleDocumentScroll(event: Event) {
-      // Internal list scrolling must not recalculate anchor position (avoids jump/close).
       const listbox = document.getElementById(listId)
       const target = event.target
       if (
@@ -181,7 +212,7 @@ export function WorkerVehicleCombobox({
       vv?.removeEventListener('resize', updatePosition)
       vv?.removeEventListener('scroll', updatePosition)
     }
-  }, [showResults, searchQuery, filteredVehicles.length, listId])
+  }, [showDesktopResults, searchQuery, filteredVehicles.length, listId])
 
   function handleSelect(vehicle: Vehicle) {
     onSelect(vehicle)
@@ -206,8 +237,18 @@ export function WorkerVehicleCombobox({
     }, 0)
   }
 
-  const listbox =
-    showResults && listboxPosition && typeof document !== 'undefined'
+  function handleOpenMobilePicker() {
+    if (disabled) return
+    setOpen(true)
+  }
+
+  function handleCloseMobilePicker() {
+    setOpen(false)
+    setSearchQuery('')
+  }
+
+  const desktopListbox =
+    showDesktopResults && listboxPosition && typeof document !== 'undefined'
       ? createPortal(
           <div
             id={listId}
@@ -258,6 +299,9 @@ export function WorkerVehicleCombobox({
         )
       : null
 
+  const triggerClassName =
+    'flex h-12 w-full items-center rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-left text-base font-semibold tracking-[0.04em] uppercase transition-colors focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-3 focus-visible:ring-[color:var(--worker-primary)]/50 focus-visible:outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm'
+
   return (
     <div ref={rootRef} className={cn('relative space-y-2', className)}>
       {showSelectedSummary && selectedVehicle ? (
@@ -298,25 +342,47 @@ export function WorkerVehicleCombobox({
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[color:var(--worker-text-muted)]"
             aria-hidden="true"
           />
-          <Input
-            id={inputId}
-            type="text"
-            role="combobox"
-            aria-label={inputAriaLabel}
-            aria-expanded={showResults}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            aria-invalid={Boolean(error)}
-            disabled={disabled}
-            required={required && !selectedVehicleId}
-            value={searchQuery}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={placeholder}
-            onChange={(event) => handleSearchChange(event.target.value)}
-            onFocus={() => setOpen(true)}
-            className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-base font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase sm:text-sm focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-[color:var(--worker-primary)]"
-          />
+          {isMobile ? (
+            <button
+              id={inputId}
+              type="button"
+              role="combobox"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              aria-controls={mobilePickerId}
+              aria-label={inputAriaLabel}
+              aria-invalid={Boolean(error)}
+              aria-required={required && !selectedVehicleId}
+              disabled={disabled}
+              onClick={handleOpenMobilePicker}
+              className={cn(
+                triggerClassName,
+                'text-[color:var(--worker-text-muted)]',
+              )}
+            >
+              <span className="truncate">{placeholder}</span>
+            </button>
+          ) : (
+            <Input
+              id={inputId}
+              type="text"
+              role="combobox"
+              aria-label={inputAriaLabel}
+              aria-expanded={showDesktopResults}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              aria-invalid={Boolean(error)}
+              disabled={disabled}
+              required={required && !selectedVehicleId}
+              value={searchQuery}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={placeholder}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              onFocus={() => setOpen(true)}
+              className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-base font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase sm:text-sm focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-[color:var(--worker-primary)]"
+            />
+          )}
         </div>
       </label>
 
@@ -324,7 +390,21 @@ export function WorkerVehicleCombobox({
         <p className="text-xs font-medium text-rose-600">{error}</p>
       ) : null}
 
-      {listbox}
+      {desktopListbox}
+
+      {isMobile ? (
+        <WorkerVehicleMobilePicker
+          id={mobilePickerId}
+          open={open && !disabled}
+          vehicles={vehicles}
+          selectedVehicleId={selectedVehicleId}
+          showAllWhenEmpty={showAllWhenEmpty}
+          onClose={handleCloseMobilePicker}
+          onSelect={(vehicle) => {
+            handleSelect(vehicle)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
