@@ -1,5 +1,9 @@
 import drevoraLogoFull from '@/assets/drevora-logo-full.png'
 import {
+  PasswordMatchStatusMessage,
+  PasswordRequirementsChecklist,
+} from '@/components/auth/PasswordRequirementsChecklist'
+import {
   authService,
   AuthServiceError,
 } from '@/services/authService'
@@ -7,9 +11,11 @@ import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
   evaluatePassword,
+  getPasswordMatchStatus,
+  getPasswordPolicyError,
   passwordsMatch,
 } from '@/lib/passwordValidation'
-import { Check, Circle, Eye, EyeOff, Lock } from 'lucide-react'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -38,8 +44,8 @@ function ResetPasswordPage() {
   const [signOutFailed, setSignOutFailed] = useState(false)
 
   const validation = useMemo(() => evaluatePassword(newPassword), [newPassword])
+  const matchStatus = getPasswordMatchStatus(newPassword, confirmPassword)
   const confirmMatches = passwordsMatch(newPassword, confirmPassword)
-  const confirmTouched = confirmPassword.length > 0
   const canSubmit =
     status === 'ready' && validation.isValid && confirmMatches
 
@@ -103,16 +109,7 @@ function ResetPasswordPage() {
   }, [])
 
   function validatePasswords(): string | null {
-    if (!newPassword || !confirmPassword) {
-      return 'Both password fields are required.'
-    }
-    if (!evaluatePassword(newPassword).isValid) {
-      return 'Password does not meet all requirements.'
-    }
-    if (!passwordsMatch(newPassword, confirmPassword)) {
-      return 'Passwords do not match.'
-    }
-    return null
+    return getPasswordPolicyError(newPassword, confirmPassword)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -265,50 +262,12 @@ function ResetPasswordPage() {
                   </div>
                 </div>
 
-                {newPassword.length > 0 ? (
-                  <div
-                    id={REQUIREMENTS_ID}
-                    className="space-y-2 rounded-xl bg-sky-50/80 px-3.5 py-3 ring-1 ring-sky-100"
-                    aria-live="polite"
-                  >
-                    <ul className="space-y-2">
-                      {validation.checks.map((check) => (
-                        <li
-                          key={check.id}
-                          className="flex min-w-0 items-start gap-2.5 text-sm"
-                        >
-                          {check.satisfied ? (
-                            <Check
-                              className="mt-0.5 size-4 shrink-0 text-emerald-600"
-                              strokeWidth={2.5}
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Circle
-                              className="mt-0.5 size-4 shrink-0 text-slate-300"
-                              strokeWidth={2}
-                              aria-hidden="true"
-                            />
-                          )}
-                          <span
-                            className={
-                              check.satisfied
-                                ? 'font-medium text-emerald-700'
-                                : 'text-[#64748B]'
-                            }
-                          >
-                            <span className="sr-only">
-                              {check.satisfied
-                                ? 'Completed: '
-                                : 'Incomplete: '}
-                            </span>
-                            {check.label}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                <PasswordRequirementsChecklist
+                  id={REQUIREMENTS_ID}
+                  validation={validation}
+                  visible={newPassword.length > 0}
+                  tone="public"
+                />
 
                 <div className="space-y-2">
                   <label
@@ -359,23 +318,7 @@ function ResetPasswordPage() {
                   </div>
                 </div>
 
-                {confirmTouched && confirmMatches ? (
-                  <p
-                    aria-live="polite"
-                    className="text-sm font-medium text-emerald-700"
-                  >
-                    Passwords match
-                  </p>
-                ) : null}
-
-                {confirmTouched && !confirmMatches ? (
-                  <p
-                    aria-live="polite"
-                    className="text-sm font-medium text-rose-600"
-                  >
-                    Passwords do not match
-                  </p>
-                ) : null}
+                <PasswordMatchStatusMessage status={matchStatus} tone="public" />
 
                 {fieldError ? (
                   <p

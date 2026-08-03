@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
+import { evaluatePassword } from '@/lib/passwordValidation'
 import {
   readNativeStoredAuthSession,
   recoverNativeSessionAfterRefreshFailure,
@@ -162,6 +163,10 @@ export async function updatePassword(newPassword: string): Promise<void> {
     throw new AuthServiceError(
       'Password update is unavailable because Supabase environment variables are not configured.',
     )
+  }
+
+  if (!evaluatePassword(newPassword).isValid) {
+    throw new AuthServiceError('Password does not meet all requirements.')
   }
 
   const { error } = await requireSupabase().auth.updateUser({
