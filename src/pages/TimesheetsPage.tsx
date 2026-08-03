@@ -20,7 +20,12 @@ import {
 } from '@/lib/export/exportDateRange'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
 import { resolveExportMeta } from '@/lib/export/exportMeta'
-import { downloadTimesheetPdf, exportTimesheetsExcel } from '@/lib/export/modules/timesheetsExport'
+import {
+  downloadTimesheetPdf,
+  exportSelectedTimesheetsPdfZip,
+  exportTimesheetsExcel,
+  exportTimesheetsFilteredPdfs,
+} from '@/lib/export/modules/timesheetsExport'
 import type {
   Timesheet,
   TimesheetEntryInput,
@@ -605,24 +610,34 @@ export default function TimesheetsPage() {
     setIsExporting(true)
     try {
       const ids = [...selectedIds]
-      const timesheets = await Promise.all(ids.map((id) => fetchTimesheetById(id)))
-
-      if (timesheets.length === 0) {
-        showToast('No timesheets to export.')
-        return
-      }
-
-      const { exportTimesheetsToPdf } = await import('@/lib/timesheetPdfExport')
-      await exportTimesheetsToPdf(timesheets)
+      await exportSelectedTimesheetsPdfZip(ids)
       showToast(
-        timesheets.length === 1
+        ids.length === 1
           ? 'Exported timesheet to PDF'
-          : `Exported ${timesheets.length} timesheets to ZIP`,
+          : `Exported ${ids.length} timesheets to ZIP`,
       )
     } catch (error) {
       showToast(toExportUserMessage(error, 'Failed to export timesheets'))
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  function buildTimesheetExportQuery() {
+    const resolvedRange = resolveExportDateRange(exportDateRange, {
+      weekStarts,
+      timeZone: timezone,
+      formatDate,
+    })
+    return {
+      weekStartFrom: dateFrom || resolvedRange.dateFrom,
+      weekStartTo: dateTo || resolvedRange.dateTo,
+      search: debouncedSearch || undefined,
+      status: statusFilter,
+      role: roleFilter,
+      viewMode,
+      sortBy,
+      sortDir,
     }
   }
 
@@ -656,20 +671,24 @@ export default function TimesheetsPage() {
           .filter(Boolean)
           .join(' · '),
       })
-      await exportTimesheetsExcel(
-        {
-          weekStartFrom: dateFrom || resolvedRange.dateFrom,
-          weekStartTo: dateTo || resolvedRange.dateTo,
-          search: debouncedSearch || undefined,
-          status: statusFilter,
-          role: roleFilter,
-          viewMode,
-          sortBy,
-          sortDir,
-        },
-        meta,
-      )
+      await exportTimesheetsExcel(buildTimesheetExportQuery(), meta)
       showToast('Exported timesheets to Excel')
+    } catch (error) {
+      showToast(toExportUserMessage(error))
+    } finally {
+      setIsToolbarExporting(false)
+    }
+  }
+
+  async function handleExportFilteredPdfs() {
+    setIsToolbarExporting(true)
+    try {
+      await exportTimesheetsFilteredPdfs(buildTimesheetExportQuery())
+      showToast(
+        totalCount === 1
+          ? 'Exported timesheet to PDF'
+          : 'Exported timesheets to ZIP',
+      )
     } catch (error) {
       showToast(toExportUserMessage(error))
     } finally {
@@ -748,14 +767,21 @@ export default function TimesheetsPage() {
           secondaryActions={
             <ExportMenu
               busy={isToolbarExporting}
-              disabled={isLoading || isExporting}
+              disabled={isLoading || isExporting || totalCount === 0}
               dateRange={exportDateRange}
               onDateRangeChange={setExportDateRange}
               actions={[
                 {
                   id: 'excel',
                   label: 'Export filtered results to Excel',
+                  disabled: totalCount === 0,
                   onSelect: () => void handleExportExcel(),
+                },
+                {
+                  id: 'pdf-zip',
+                  label: 'Download PDFs (.zip)',
+                  disabled: totalCount === 0,
+                  onSelect: () => void handleExportFilteredPdfs(),
                 },
               ]}
             />

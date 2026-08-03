@@ -35,6 +35,7 @@ import {
   downloadVehicleCheckAttachmentsById,
   downloadVehicleCheckPdf,
   exportVehicleChecksCsv,
+  exportVehicleChecksFilteredPdfs,
 } from '@/lib/export/modules/vehicleChecksExport'
 import { isVehicleCheckEditable } from '@/lib/vehicleCheckUtils'
 import type {
@@ -654,6 +655,7 @@ export default function VehicleChecksPage() {
                 {
                   id: 'csv',
                   label: 'Export list (.csv)',
+                  disabled: totalCount === 0,
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
@@ -667,8 +669,29 @@ export default function VehicleChecksPage() {
                   },
                 },
                 {
+                  id: 'pdf-zip',
+                  label: 'Download PDFs (.zip)',
+                  disabled: totalCount === 0,
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      await exportVehicleChecksFilteredPdfs(exportQuery, exportMeta)
+                      showToast(
+                        totalCount === 1
+                          ? 'Exported vehicle check to PDF'
+                          : 'Exported vehicle checks to ZIP',
+                      )
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+                {
                   id: 'zip',
                   label: 'Download files (.zip)',
+                  disabled: totalCount === 0,
                   onSelect: async () => {
                     setIsExporting(true)
                     try {

@@ -29,6 +29,7 @@ import {
   downloadDriverReportPdf,
   downloadFilteredDriverReportsZip,
   exportDriverReportsCsv,
+  exportDriverReportsPdfs,
 } from '@/lib/export/modules/driverReportsExport'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -549,11 +550,45 @@ export default function DriverReportsPage() {
                 {
                   id: 'csv',
                   label: 'Export list (.csv)',
+                  disabled: getExportItems().length === 0,
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
                       exportDriverReportsCsv(getExportItems())
                       showToast('Exported driver reports list')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+                {
+                  id: 'pdf-zip',
+                  label: 'Download PDFs (.zip)',
+                  disabled: getExportItems().length === 0,
+                  onSelect: async () => {
+                    const exportItems = getExportItems()
+                    if (exportItems.length === 0) {
+                      showToast('No records found for this date range')
+                      return
+                    }
+                    setIsExporting(true)
+                    try {
+                      await exportDriverReportsPdfs(
+                        exportItems,
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: companySettings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Driver Report',
+                        }),
+                      )
+                      showToast(
+                        exportItems.length === 1
+                          ? 'Exported driver report to PDF'
+                          : 'Exported driver reports to ZIP',
+                      )
                     } catch (error) {
                       showToast(toExportUserMessage(error))
                     } finally {

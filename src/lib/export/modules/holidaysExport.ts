@@ -1,6 +1,13 @@
+import { MAX_ZIP_PDFS } from '@/lib/export/constants'
 import { downloadBlob } from '@/lib/export/downloadBlob'
 import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
 import type { ExportMeta } from '@/lib/export/exportMeta'
+import {
+  EXPORT_ERROR_EMPTY,
+  EXPORT_ERROR_TOO_LARGE,
+  EXPORT_ERROR_ZIP_TOO_LARGE,
+  ExportUserError,
+} from '@/lib/export/exportErrors'
 import { fetchAllFilteredRows } from '@/lib/export/fetchAllFiltered'
 import { buildExportFileName } from '@/lib/export/fileNames'
 import {
@@ -11,6 +18,7 @@ import {
   renderKeyValueSection,
   renderSectionTitle,
 } from '@/lib/export/pdfDocument'
+import { downloadPdfEntriesOrSingle } from '@/lib/export/zipPdfs'
 import type { HolidayRequest, HolidayRequestsQuery } from '@/lib/holidayRequestTypes'
 import { formatDateFromIso, formatDateTimeFromIso } from '@/lib/dateTimeFormat'
 import { fetchHolidayRequests } from '@/services/holidayRequestsService'
@@ -19,6 +27,14 @@ function leaveTypeLabel(request: HolidayRequest): string {
   if (request.leaveType === 'unpaid_leave') return 'Unpaid'
   if (request.leaveType === 'bank_holiday') return 'Bank holiday'
   return request.isPaidLeave ? 'Paid' : 'Unpaid'
+}
+
+function holidayRequestPdfFileName(request: HolidayRequest): string {
+  return buildExportFileName({
+    module: 'Holiday-Request',
+    parts: [request.workerName, request.startDate],
+    extension: 'pdf',
+  })
 }
 
 export async function exportHolidayRequestsExcel(
@@ -75,10 +91,10 @@ export async function exportHolidayRequestsExcel(
   )
 }
 
-export async function downloadHolidayRequestPdf(
+export async function generateHolidayRequestPdfBlob(
   request: HolidayRequest,
   meta: ExportMeta,
-): Promise<void> {
+): Promise<Blob> {
   const doc = createBrandedPdf()
   let y = await renderBrandedHeader(doc, {
     ...meta,
@@ -110,12 +126,64 @@ export async function downloadHolidayRequestPdf(
   doc.text(manager, 12, y)
 
   addBrandedFooters(doc, meta)
-  downloadBlob(
-    doc.output('blob'),
+  return doc.output('blob')
+}
+
+export async function downloadHolidayRequestPdf(
+  request: HolidayRequest,
+  meta: ExportMeta,
+): Promise<void> {
+  const blob = await generateHolidayRequestPdfBlob(request, meta)
+  downloadBlob(blob, holidayRequestPdfFileName(request))
+}
+
+/** Export filtered holiday requests as individual PDFs (1 → PDF, many → ZIP). */
+export async function exportHolidayRequestsFilteredPdfs(
+  query: Omit<HolidayRequestsQuery, 'page' | 'pageSize'>,
+  meta: ExportMeta,
+): Promise<void> {
+  let rows: HolidayRequest[]
+  try {
+    rows = await fetchAllFilteredRows({
+      baseQuery: query,
+      fetchPage: async (pageQuery) => {
+        const result = await fetchHolidayRequests(pageQuery)
+        return {
+          items: result.items,
+          totalCount: result.totalCount,
+          page: result.page,
+          pageSize: result.pageSize,
+        }
+      },
+      maxRows: MAX_ZIP_PDFS,
+    })
+  } catch (error) {
+    if (error instanceof ExportUserError && error.message === EXPORT_ERROR_TOO_LARGE) {
+      throw new ExportUserError(EXPORT_ERROR_ZIP_TOO_LARGE)
+    }
+    throw error
+  }
+
+  const entries: Array<{ fileName: string; blob: Blob }> = []
+  for (const request of rows) {
+    try {
+      const blob = await generateHolidayRequestPdfBlob(request, meta)
+      entries.push({ fileName: holidayRequestPdfFileName(request), blob })
+    } catch {
+      // Skip failed rows.
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError(EXPORT_ERROR_EMPTY)
+  }
+
+  await downloadPdfEntriesOrSingle(
+    entries,
     buildExportFileName({
-      module: 'Holiday-Request',
-      parts: [request.workerName, request.startDate],
-      extension: 'pdf',
+      module: 'Holiday-Requests',
+      parts: [query.dateFrom, query.dateTo],
+      extension: 'zip',
     }),
   )
 }

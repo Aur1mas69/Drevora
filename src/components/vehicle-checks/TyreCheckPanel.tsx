@@ -1,10 +1,12 @@
 import { timesheetKpiVisualStyles } from '@/components/timesheets/timesheetSummaryKpiStyles'
 import { AxleLayoutEditor } from '@/components/vehicle-checks/AxleLayoutEditor'
+import { TyreCheckAdminReport } from '@/components/vehicle-checks/TyreCheckAdminReport'
 import { TyreCheckAdminSectionTabs } from '@/components/vehicle-checks/TyreCheckAdminSectionTabs'
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import { TyreChecksPagination } from '@/components/vehicle-checks/TyreChecksPagination'
 import { TyreChecksToolbar } from '@/components/vehicle-checks/TyreChecksToolbar'
 import { ExportMenu } from '@/components/export/ExportMenu'
+import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -13,6 +15,7 @@ import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
   downloadTyreCheckPdfById,
   exportTyreChecksExcel,
+  exportTyreChecksFilteredPdfs,
 } from '@/lib/export/modules/tyreChecksExport'
 import {
   adminHeading,
@@ -29,15 +32,13 @@ import {
   buildTyreLayout,
   DEFAULT_TRUCK_AXLE_COUNT,
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
+  MAX_TYRE_CHECK_PAGE_SIZE,
   formatAxleCountLabel,
   formatTyreCheckResultLabel,
   MAX_COMBINED_TYRE_AXLES,
   resizeAxleWheelLayouts,
   resolveFallbackTrailerAxleWheelLayouts,
   resolveFallbackTruckAxleWheelLayouts,
-  summarizeAxleLayoutFromMeasurements,
-  tyreStatusLabel,
-  tyreTreadVisualClasses,
   type AxleWheelLayout,
   type SavedTyreCheck,
   type TyreCheckAdminOverviewStats,
@@ -67,10 +68,9 @@ import {
   Download,
   Loader2,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-
-const RECENT_TYRE_CHECKS_PAGE_SIZE = 10
 
 type TyreCheckPanelProps = {
   vehicles: Vehicle[]
@@ -136,6 +136,22 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
+  const detailReportRef = useRef<HTMLDivElement>(null)
+
+  useBodyScrollLock(Boolean(viewingCheck))
+
+  useEffect(() => {
+    if (!viewingCheck) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !isDownloadingPdf) {
+        setViewingCheck(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewingCheck, isDownloadingPdf])
 
   const hasActiveHistoryFilters =
     debouncedSearch.trim().length > 0 ||
@@ -150,10 +166,6 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const historyExpanded = activeSection === 'history'
   const showOverviewWorkspace =
     activeSection === 'overview' || activeSection === 'history'
-  const effectiveHistoryPage = historyExpanded ? page : 1
-  const effectiveHistoryPageSize = historyExpanded
-    ? pageSize
-    : RECENT_TYRE_CHECKS_PAGE_SIZE
 
   function setSection(section: TyreCheckAdminSection) {
     const next = new URLSearchParams(searchParams)
@@ -233,8 +245,8 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
         trailerVehicleId: trailerFilter,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-        page: effectiveHistoryPage,
-        pageSize: effectiveHistoryPageSize,
+        page,
+        pageSize,
         sortDir: 'desc',
       })
       setHistoryItems(result.items)
@@ -257,8 +269,8 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     dateTo,
     debouncedSearch,
     defectFocus,
-    effectiveHistoryPage,
-    effectiveHistoryPageSize,
+    page,
+    pageSize,
     resultFilter,
     trailerFilter,
     vehicleFilter,
@@ -404,21 +416,23 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
             historyError={historyError}
             historyItems={historyItems}
             historyTotalCount={historyTotalCount}
-            page={effectiveHistoryPage}
-            pageSize={effectiveHistoryPageSize}
+            page={page}
+            pageSize={pageSize}
             onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-            showPagination={historyExpanded}
+            onPageSizeChange={(nextSize) =>
+              setPageSize(Math.min(MAX_TYRE_CHECK_PAGE_SIZE, Math.max(10, nextSize)))
+            }
             isLoadingDetail={isLoadingDetail}
             isExporting={isExporting}
             exportMenu={
               <ExportMenu
                 busy={isExporting}
-                disabled={historyLoading}
+                disabled={historyLoading || historyTotalCount === 0}
                 actions={[
                   {
                     id: 'excel',
                     label: 'Export filtered results to Excel',
+                    disabled: historyTotalCount === 0,
                     onSelect: async () => {
                       setIsExporting(true)
                       try {
@@ -442,6 +456,44 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                           }),
                         )
                         showToast('Exported tyre checks to Excel')
+                      } catch (error) {
+                        showToast(toExportUserMessage(error))
+                      } finally {
+                        setIsExporting(false)
+                      }
+                    },
+                  },
+                  {
+                    id: 'pdf-zip',
+                    label: 'Download PDFs (.zip)',
+                    disabled: historyTotalCount === 0,
+                    onSelect: async () => {
+                      setIsExporting(true)
+                      try {
+                        await exportTyreChecksFilteredPdfs(
+                          {
+                            search: debouncedSearch || undefined,
+                            result: resultFilter,
+                            defectFocus,
+                            vehicleId: vehicleFilter,
+                            workerId: workerFilter,
+                            trailerVehicleId: trailerFilter,
+                            dateFrom: dateFrom || undefined,
+                            dateTo: dateTo || undefined,
+                            sortDir: 'desc',
+                          },
+                          resolveExportMeta({
+                            companyName,
+                            logoUrl: settings?.logoUrl,
+                            generatedBy: session?.user.email ?? null,
+                            documentTitle: 'Tyre Check',
+                          }),
+                        )
+                        showToast(
+                          historyTotalCount === 1
+                            ? 'Exported tyre check to PDF'
+                            : 'Exported tyre checks to ZIP',
+                        )
                       } catch (error) {
                         showToast(toExportUserMessage(error))
                       } finally {
@@ -477,7 +529,10 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                 type="button"
                 variant="ghost"
                 className="h-9 rounded-[12px] px-3 text-sm font-semibold text-[#2563EB]"
-                onClick={() => setSection('overview')}
+                onClick={() => {
+                  setPage(1)
+                  setSection('overview')
+                }}
               >
                 Show recent only
               </Button>
@@ -498,165 +553,111 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
         this Admin page is for configuration, monitoring, and review only.
       </div>
 
-      {viewingCheck ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[1px]">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[20px] bg-white p-5 shadow-xl dark:bg-slate-900/95 dark:shadow-black/50">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className={`text-lg font-semibold ${adminHeading}`}>
-                  Tyre check detail
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {formatCheckedAt(viewingCheck.checkedAt)} · {viewingCheck.vehicleLabel}
-                  {viewingCheck.trailerLabel ? ` + ${viewingCheck.trailerLabel}` : ''}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-9 rounded-[10px] px-2.5 text-xs font-semibold"
-                  disabled={isDownloadingPdf}
-                  aria-label="Download tyre check PDF"
-                  onClick={() => {
-                    setIsDownloadingPdf(true)
-                    void downloadTyreCheckPdfById(
-                      viewingCheck.id,
-                      resolveExportMeta({
-                        companyName,
-                        logoUrl: settings?.logoUrl,
-                        generatedBy: session?.user.email ?? null,
-                        documentTitle: 'Tyre Check',
-                      }),
-                    )
-                      .then(() => showToast('Exported tyre check to PDF'))
-                      .catch((error) => showToast(toExportUserMessage(error)))
-                      .finally(() => setIsDownloadingPdf(false))
-                  }}
-                >
-                  {isDownloadingPdf ? (
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Download className="size-3.5" aria-hidden="true" />
-                  )}
-                  PDF
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-9 rounded-[10px]"
-                  disabled={isDownloadingPdf}
-                  onClick={() => setViewingCheck(null)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-
-            <dl className="mt-4 grid grid-cols-2 gap-3 rounded-[14px] bg-[#F8FBFF] p-3 text-sm dark:bg-slate-800/60 sm:grid-cols-4">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-                  Vehicle
-                </dt>
-                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
-                  {viewingCheck.vehicleLabel}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-                  Worker
-                </dt>
-                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
-                  {viewingCheck.checkedBy}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-                  Completed
-                </dt>
-                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
-                  {formatCheckedAt(viewingCheck.checkedAt)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-                  Axle layout
-                </dt>
-                <dd className="mt-0.5 font-semibold text-[#2A376F] dark:text-slate-100">
-                  {summarizeAxleLayoutFromMeasurements(viewingCheck.measurements)}
-                </dd>
-              </div>
-            </dl>
-
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-              {viewingCheck.summaryLabel}
-            </p>
-            {viewingCheck.notes ? (
-              <p className="mt-2 rounded-[12px] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
-                {viewingCheck.notes}
-              </p>
-            ) : null}
-
-            <div className="mt-4">
-              <TyreCheckDiagram
-                measurements={viewingCheck.measurements}
-                selectedTyreId={null}
-                onSelectTyre={() => {}}
-                palette="pastel"
-                vehicleUnitTitle={`${viewingCheck.vehicleLabel} · top view`}
+      {viewingCheck
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+              role="presentation"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 cursor-default"
+                aria-label="Close tyre check detail"
+                disabled={isDownloadingPdf}
+                onClick={() => {
+                  if (!isDownloadingPdf) setViewingCheck(null)
+                }}
               />
-            </div>
 
-            <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-semibold text-[#2A376F] dark:text-slate-100">
-                Per-tyre detail
-              </h4>
-              {viewingCheck.measurements.map((tyre) => (
-                <div
-                  key={tyre.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[#D3E9FC] px-3 py-2 text-sm dark:border-white/10"
-                >
-                  <p className="font-semibold text-[#2A376F] dark:text-slate-100">
-                    {tyre.axleLabel} · {tyre.position}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <span>
-                      {tyre.treadDepthMm == null
-                        ? '—'
-                        : `${tyre.treadDepthMm.toFixed(1)} mm`}
-                    </span>
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-xs font-semibold',
-                        tyreTreadVisualClasses(tyre.treadDepthMm, {
-                          dirty: Boolean(tyre.isDirty) || tyre.status === 'dirty',
-                          palette: 'pastel',
-                        }).badge,
-                      )}
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="tyre-check-detail-title"
+                className="relative z-[1] flex max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[20px] bg-white shadow-xl dark:bg-slate-900/95 dark:shadow-black/50 sm:max-h-[90vh] sm:rounded-[20px]"
+              >
+                {/* Single sticky header — title, meta, actions */}
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#D3E9FC] px-5 py-4 dark:border-white/10">
+                  <div className="min-w-0">
+                    <h3
+                      id="tyre-check-detail-title"
+                      className={`text-lg font-semibold ${adminHeading}`}
                     >
-                      {tyreStatusLabel(tyre.status)}
-                    </span>
-                    {tyre.hasDefect ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                        <AlertTriangle className="size-3" aria-hidden="true" />
-                        Defect
-                      </span>
-                    ) : null}
-                    {(tyre.defectNotes || tyre.notes) ? (
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tyre.defectNotes || tyre.notes}
-                      </span>
-                    ) : null}
+                      Tyre check detail
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {formatCheckedAt(viewingCheck.checkedAt)} ·{' '}
+                      {viewingCheck.vehicleLabel}
+                      {viewingCheck.trailerLabel
+                        ? ` + ${viewingCheck.trailerLabel}`
+                        : ''}{' '}
+                      · {viewingCheck.checkedBy}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 rounded-[10px] px-2.5 text-xs font-semibold"
+                      disabled={isDownloadingPdf}
+                      aria-label="Download tyre check PDF"
+                      onClick={() => {
+                        setIsDownloadingPdf(true)
+                        void downloadTyreCheckPdfById(
+                          viewingCheck.id,
+                          resolveExportMeta({
+                            companyName,
+                            logoUrl: settings?.logoUrl,
+                            generatedBy: session?.user.email ?? null,
+                            documentTitle: 'Tyre Check',
+                          }),
+                          detailReportRef.current,
+                        )
+                          .then(() => showToast('Exported tyre check to PDF'))
+                          .catch((error) => showToast(toExportUserMessage(error)))
+                          .finally(() => setIsDownloadingPdf(false))
+                      }}
+                    >
+                      {isDownloadingPdf ? (
+                        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Download className="size-3.5" aria-hidden="true" />
+                      )}
+                      PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 rounded-[10px]"
+                      disabled={isDownloadingPdf}
+                      onClick={() => setViewingCheck(null)}
+                    >
+                      Close
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                  <div ref={detailReportRef}>
+                    <TyreCheckAdminReport
+                      id={viewingCheck.id}
+                      vehicleLabel={viewingCheck.vehicleLabel}
+                      trailerLabel={viewingCheck.trailerLabel}
+                      checkedBy={viewingCheck.checkedBy}
+                      completedLabel={formatCheckedAt(viewingCheck.checkedAt)}
+                      summaryLabel={viewingCheck.summaryLabel}
+                      notes={viewingCheck.notes}
+                      measurements={viewingCheck.measurements}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {toastMessage ? (
-        <div className="fixed bottom-6 right-6 z-[70] rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+        <div className="fixed bottom-6 right-6 z-[130] rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-sm font-medium text-white shadow-lg">
           {toastMessage}
         </div>
       ) : null}
@@ -810,7 +811,6 @@ function HistoryWorkspace({
   pageSize,
   onPageChange,
   onPageSizeChange,
-  showPagination,
   isLoadingDetail,
   isExporting,
   exportMenu,
@@ -848,7 +848,6 @@ function HistoryWorkspace({
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
-  showPagination: boolean
   isLoadingDetail: boolean
   isExporting: boolean
   exportMenu: ReactNode
@@ -986,16 +985,14 @@ function HistoryWorkspace({
           </table>
         </div>
 
-        {showPagination ? (
-          <TyreChecksPagination
-            page={page}
-            pageSize={pageSize}
-            totalCount={historyTotalCount}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
-            disabled={historyLoading}
-          />
-        ) : null}
+        <TyreChecksPagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={historyTotalCount}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          disabled={historyLoading}
+        />
       </div>
     </section>
   )

@@ -27,6 +27,7 @@ import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
   downloadHolidayRequestPdf,
   exportHolidayRequestsExcel,
+  exportHolidayRequestsFilteredPdfs,
 } from '@/lib/export/modules/holidaysExport'
 import type {
   HolidayRequest,
@@ -425,6 +426,7 @@ export default function HolidayRequestsPage() {
                 {
                   id: 'excel',
                   label: 'Export filtered results to Excel',
+                  disabled: totalCount === 0,
                   onSelect: async () => {
                     setIsExporting(true)
                     try {
@@ -450,6 +452,46 @@ export default function HolidayRequestsPage() {
                         }),
                       )
                       showToast('Exported holiday requests to Excel')
+                    } catch (error) {
+                      showToast(toExportUserMessage(error))
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  },
+                },
+                {
+                  id: 'pdf-zip',
+                  label: 'Download PDFs (.zip)',
+                  disabled: totalCount === 0,
+                  onSelect: async () => {
+                    setIsExporting(true)
+                    try {
+                      const resolvedRange = resolveExportDateRange(exportDateRange, {
+                        weekStarts,
+                        timeZone: timezone,
+                        formatDate,
+                      })
+                      await exportHolidayRequestsFilteredPdfs(
+                        {
+                          search: debouncedSearch || undefined,
+                          status: statusFilter,
+                          workerId: workerFilter,
+                          dateFrom: resolvedRange.dateFrom,
+                          dateTo: resolvedRange.dateTo,
+                        },
+                        resolveExportMeta({
+                          companyName,
+                          logoUrl: settings?.logoUrl,
+                          generatedBy: session?.user.email ?? null,
+                          documentTitle: 'Holiday Request',
+                          filterSummary: `Date ${resolvedRange.label}`,
+                        }),
+                      )
+                      showToast(
+                        totalCount === 1
+                          ? 'Exported holiday request to PDF'
+                          : 'Exported holiday requests to ZIP',
+                      )
                     } catch (error) {
                       showToast(toExportUserMessage(error))
                     } finally {

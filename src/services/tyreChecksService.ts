@@ -6,6 +6,7 @@ import {
   buildTyreLayout,
   compareTyrePositions,
   DEFAULT_TYRE_CHECK_PAGE_SIZE,
+  MAX_TYRE_CHECK_PAGE_SIZE,
   findExtraneousTyreMeasurements,
   formatTyreSummaryLabel,
   parseTyreTreadDepthMm,
@@ -472,7 +473,11 @@ export async function fetchTyreChecks(
 ): Promise<TyreChecksPageResult> {
   const companyId = requireVerifiedCompanyId()
   const page = Math.max(1, query.page ?? 1)
-  const pageSize = query.pageSize ?? DEFAULT_TYRE_CHECK_PAGE_SIZE
+  const requestedPageSize = query.pageSize ?? DEFAULT_TYRE_CHECK_PAGE_SIZE
+  const pageSize = Math.min(
+    MAX_TYRE_CHECK_PAGE_SIZE,
+    Math.max(1, requestedPageSize),
+  )
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
   const sortAscending = query.sortDir === 'asc'

@@ -18,7 +18,7 @@ import {
 } from '@/lib/export/exportErrors'
 import { fetchAllFilteredRows } from '@/lib/export/fetchAllFiltered'
 import { buildExportFileName, sanitizeFileNamePart } from '@/lib/export/fileNames'
-import { downloadPdfZip } from '@/lib/export/zipPdfs'
+import { downloadPdfEntriesOrSingle } from '@/lib/export/zipPdfs'
 import {
   addBrandedFooters,
   createBrandedPdf,
@@ -595,12 +595,7 @@ export async function exportVehicleChecksFilteredPdfs(
     throw new ExportUserError(EXPORT_ERROR_EMPTY)
   }
 
-  if (entries.length === 1) {
-    downloadBlob(entries[0].blob, entries[0].fileName)
-    return
-  }
-
-  await downloadPdfZip(
+  await downloadPdfEntriesOrSingle(
     entries,
     buildExportFileName({
       module: 'Vehicle-Checks',

@@ -5,11 +5,13 @@ import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
 import type { ExportMeta } from '@/lib/export/exportMeta'
 import {
   EXPORT_ERROR_EMPTY,
+  EXPORT_ERROR_TOO_LARGE,
   EXPORT_ERROR_ZIP_TOO_LARGE,
   ExportUserError,
 } from '@/lib/export/exportErrors'
 import { fetchAllFilteredRows } from '@/lib/export/fetchAllFiltered'
 import { buildExportFileName } from '@/lib/export/fileNames'
+import { downloadPdfEntriesOrSingle } from '@/lib/export/zipPdfs'
 import type { Timesheet, TimesheetListItem, TimesheetsQuery } from '@/lib/timesheetTypes'
 import {
   formatHours,
@@ -145,4 +147,62 @@ export async function exportSelectedTimesheetsPdfZip(ids: string[]): Promise<voi
   const timesheets = await Promise.all(ids.map((id) => fetchTimesheetById(id)))
   const { exportTimesheetsToPdf } = await import('@/lib/timesheetPdfExport')
   await exportTimesheetsToPdf(timesheets)
+}
+
+/** Export filtered timesheets as individual detailed PDFs (1 → PDF, many → ZIP). */
+export async function exportTimesheetsFilteredPdfs(
+  query: Omit<TimesheetsQuery, 'page' | 'pageSize'>,
+): Promise<void> {
+  let rows: TimesheetListItem[]
+  try {
+    rows = await fetchAllFilteredRows({
+      baseQuery: query,
+      fetchPage: async (pageQuery) => {
+        const result = await fetchTimesheetsPage(pageQuery)
+        return {
+          items: result.items,
+          totalCount: result.totalCount,
+          page: result.page,
+          pageSize: result.pageSize,
+        }
+      },
+      maxRows: MAX_ZIP_PDFS,
+    })
+  } catch (error) {
+    if (error instanceof ExportUserError && error.message === EXPORT_ERROR_TOO_LARGE) {
+      throw new ExportUserError(EXPORT_ERROR_ZIP_TOO_LARGE)
+    }
+    throw error
+  }
+
+  const {
+    formatSingleTimesheetPdfFileName,
+    generateSingleTimesheetPdfBlob,
+  } = await import('@/lib/timesheetPdfExport')
+
+  const entries: Array<{ fileName: string; blob: Blob }> = []
+  for (const row of rows) {
+    try {
+      const timesheet = await fetchTimesheetById(row.id)
+      entries.push({
+        fileName: formatSingleTimesheetPdfFileName(timesheet),
+        blob: generateSingleTimesheetPdfBlob(timesheet),
+      })
+    } catch {
+      // Skip inaccessible rows.
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError(EXPORT_ERROR_EMPTY)
+  }
+
+  await downloadPdfEntriesOrSingle(
+    entries,
+    buildExportFileName({
+      module: 'Timesheets',
+      parts: [query.weekStart, query.weekStartFrom, query.weekStartTo],
+      extension: 'zip',
+    }),
+  )
 }

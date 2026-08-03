@@ -1,3 +1,4 @@
+import { MAX_ZIP_PDFS } from '@/lib/export/constants'
 import { downloadCsvFile } from '@/lib/export/csvExport'
 import { downloadBlob } from '@/lib/export/downloadBlob'
 import {
@@ -8,7 +9,11 @@ import {
   type ZipFileEntry,
 } from '@/lib/export/downloadFiles'
 import { downloadExcelWorkbook, excelEmpty } from '@/lib/export/excelWorkbook'
-import { ExportUserError } from '@/lib/export/exportErrors'
+import {
+  EXPORT_ERROR_EMPTY,
+  EXPORT_ERROR_ZIP_TOO_LARGE,
+  ExportUserError,
+} from '@/lib/export/exportErrors'
 import type { ExportMeta } from '@/lib/export/exportMeta'
 import { assertExportNotEmpty } from '@/lib/export/fetchAllFiltered'
 import { buildExportFileName, sanitizeFileNamePart } from '@/lib/export/fileNames'
@@ -21,6 +26,7 @@ import {
   renderKeyValueSection,
   renderSectionTitle,
 } from '@/lib/export/pdfDocument'
+import { downloadPdfEntriesOrSingle } from '@/lib/export/zipPdfs'
 import { formatDateTimeFromIso } from '@/lib/dateTimeFormat'
 import { getDriverReportFileDisplayName } from '@/lib/driverReportFileStorage'
 import type { DriverReport } from '@/lib/driverReportTypes'
@@ -210,10 +216,10 @@ export async function downloadFilteredDriverReportsZip(
   )
 }
 
-export async function downloadDriverReportPdf(
+export async function generateDriverReportPdfBlob(
   report: DriverReport,
   meta: ExportMeta,
-): Promise<void> {
+): Promise<Blob> {
   const doc = createBrandedPdf()
   let y = await renderBrandedHeader(doc, {
     ...meta,
@@ -278,15 +284,60 @@ export async function downloadDriverReportPdf(
   }
 
   addBrandedFooters(doc, meta)
-  downloadBlob(
-    doc.output('blob'),
+  return doc.output('blob')
+}
+
+function driverReportPdfFileName(report: DriverReport): string {
+  return buildExportFileName({
+    module: 'Driver-Report',
+    parts: [
+      report.vehicleLabel || report.workerName,
+      (report.issueDatetime || report.createdAt).slice(0, 10),
+    ],
+    extension: 'pdf',
+  })
+}
+
+export async function downloadDriverReportPdf(
+  report: DriverReport,
+  meta: ExportMeta,
+): Promise<void> {
+  const blob = await generateDriverReportPdfBlob(report, meta)
+  downloadBlob(blob, driverReportPdfFileName(report))
+}
+
+/** Export visible/filtered driver reports as individual PDFs (1 → PDF, many → ZIP). */
+export async function exportDriverReportsPdfs(
+  reports: DriverReport[],
+  meta: ExportMeta,
+): Promise<void> {
+  if (reports.length === 0) {
+    throw new ExportUserError(EXPORT_ERROR_EMPTY)
+  }
+  if (reports.length > MAX_ZIP_PDFS) {
+    throw new ExportUserError(EXPORT_ERROR_ZIP_TOO_LARGE)
+  }
+
+  const entries: Array<{ fileName: string; blob: Blob }> = []
+  for (const report of reports) {
+    try {
+      const blob = await generateDriverReportPdfBlob(report, meta)
+      entries.push({ fileName: driverReportPdfFileName(report), blob })
+    } catch {
+      // Skip failed rows.
+    }
+  }
+
+  if (entries.length === 0) {
+    throw new ExportUserError(EXPORT_ERROR_EMPTY)
+  }
+
+  await downloadPdfEntriesOrSingle(
+    entries,
     buildExportFileName({
-      module: 'Driver-Report',
-      parts: [
-        report.vehicleLabel,
-        (report.issueDatetime || report.createdAt).slice(0, 10),
-      ],
-      extension: 'pdf',
+      module: 'Driver-Reports',
+      parts: [todayStamp()],
+      extension: 'zip',
     }),
   )
 }

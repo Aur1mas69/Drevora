@@ -170,7 +170,7 @@ function AxleRow({
     .sort((a, b) => compareTyrePositions(a.position, b.position))
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 bg-transparent">
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-[#89CFF0] dark:bg-white/35" />
         <p className="tyre-diagram-axle-label text-[11px] font-bold uppercase tracking-[0.12em] text-[#0B68BE]">
@@ -241,16 +241,18 @@ function UnitDiagram({
 
   return (
     <div className="rounded-[18px] border border-[#D3E9FC] bg-gradient-to-b from-[#F3F8FF] to-[#EAF4FF] p-3 shadow-[0_2px_10px_rgba(33,142,231,0.06)] dark:border-white/20 dark:bg-[#10141c] dark:bg-none dark:shadow-none sm:p-4">
-      <div className="mb-3 flex items-center justify-center">
-        <div className="rounded-[12px] bg-white px-4 py-2 text-sm font-semibold text-[#0B1F3A] shadow-sm ring-1 ring-[#C5DFFB] dark:bg-[#1a1f2b] dark:text-white dark:ring-white/20">
-          {title}
+      <div data-pdf-block="unit-heading">
+        <div className="mb-3 flex items-center justify-center">
+          <div className="rounded-[12px] bg-white px-4 py-2 text-sm font-semibold text-[#0B1F3A] shadow-sm ring-1 ring-[#C5DFFB] dark:bg-[#1a1f2b] dark:text-white dark:ring-white/20">
+            {title}
+          </div>
         </div>
-      </div>
 
-      <div className="mx-auto mb-4 flex w-full max-w-[16rem] flex-col items-center">
-        <div className="h-4 w-16 rounded-t-[10px] border border-b-0 border-[#89CFF0] bg-[#DDF0FF] dark:border-[#4344F6]/50 dark:bg-[#1a1f2b]" />
-        <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner dark:border-[#4344F6]/55 dark:bg-[#151922] dark:bg-none dark:shadow-none" />
-        <div className="mt-1 h-2 w-10 rounded-full bg-[#BFE3F5] dark:bg-[#4344F6]/70" />
+        <div className="mx-auto mb-4 flex w-full max-w-[16rem] flex-col items-center">
+          <div className="h-4 w-16 rounded-t-[10px] border border-b-0 border-[#89CFF0] bg-[#DDF0FF] dark:border-[#4344F6]/50 dark:bg-[#1a1f2b]" />
+          <div className="h-14 w-28 rounded-[16px] border-2 border-[#89CFF0] bg-gradient-to-b from-[#EAF4FF] to-white shadow-inner dark:border-[#4344F6]/55 dark:bg-[#151922] dark:bg-none dark:shadow-none" />
+          <div className="mt-1 h-2 w-10 rounded-full bg-[#BFE3F5] dark:bg-[#4344F6]/70" />
+        </div>
       </div>
 
       <div className="space-y-5">
@@ -258,15 +260,16 @@ function UnitDiagram({
           const tyres = unitTyres.filter((tyre) => tyre.axleNumber === axleNumber)
           const label = tyres[0]?.axleLabel ?? `Axle ${axleNumber}`
           return (
-            <AxleRow
-              key={`${unit}-${axleNumber}`}
-              label={label}
-              tyres={tyres}
-              selectedTyreId={selectedTyreId}
-              onSelectTyre={onSelectTyre}
-              emphasizeSelection={emphasizeSelection}
-              palette={palette}
-            />
+            <div key={`${unit}-${axleNumber}`} data-pdf-block="axle">
+              <AxleRow
+                label={label}
+                tyres={tyres}
+                selectedTyreId={selectedTyreId}
+                onSelectTyre={onSelectTyre}
+                emphasizeSelection={emphasizeSelection}
+                palette={palette}
+              />
+            </div>
           )
         })}
       </div>
@@ -276,7 +279,10 @@ function UnitDiagram({
 
 function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2 md:items-start">
+    <div
+      data-pdf-block="legends"
+      className="grid gap-3 md:grid-cols-2 md:items-start"
+    >
       <div className="rounded-[16px] border border-[#D3E9FC] bg-white/90 p-3.5 shadow-[0_2px_8px_rgba(40,80,140,0.04)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
         <h3 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F] dark:text-slate-100">
           Tyre Tread Depth & Wear Scale

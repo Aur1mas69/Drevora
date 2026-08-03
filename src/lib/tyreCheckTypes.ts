@@ -162,8 +162,9 @@ export type TyreChecksPageResult = {
   pageSize: number
 }
 
-export const TYRE_CHECK_PAGE_SIZE_OPTIONS = [25, 50, 100] as const
-export const DEFAULT_TYRE_CHECK_PAGE_SIZE = 25
+export const TYRE_CHECK_PAGE_SIZE_OPTIONS = [10, 25] as const
+export const DEFAULT_TYRE_CHECK_PAGE_SIZE = 10
+export const MAX_TYRE_CHECK_PAGE_SIZE = 25
 
 /** Display label aligned with the history table Result column. */
 export function formatTyreCheckResultLabel(result: TyreCheckOverallResult): string {

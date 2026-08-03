@@ -200,6 +200,164 @@ export async function fetchImageDataUrlForPdf(url: string): Promise<string | nul
   return tryLoadImageDataUrl(url)
 }
 
+/**
+ * Places a canvas image into the PDF starting at `startY`, slicing across pages
+ * when taller than the remaining printable area (above the branded footer).
+ * Prefer block-based placement for visual reports that must not cut mid-section.
+ */
+export function appendCanvasImageAcrossPages(
+  doc: jsPDF,
+  canvas: HTMLCanvasElement,
+  startY: number,
+  options?: { margin?: number; footerReserveMm?: number },
+): void {
+  const margin = options?.margin ?? PDF_MARGIN
+  const footerReserve = options?.footerReserveMm ?? 18
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const contentWidth = pageWidth - margin * 2
+  const fullImageHeightMm = (canvas.height * contentWidth) / canvas.width
+  const pxPerMm = canvas.height / fullImageHeightMm
+
+  let remainingHeightMm = fullImageHeightMm
+  let sourceYPx = 0
+  let y = startY
+
+  while (remainingHeightMm > 0.4) {
+    const availableMm = pageHeight - footerReserve - y
+    if (availableMm < 12) {
+      doc.addPage()
+      y = margin
+      continue
+    }
+
+    const sliceHeightMm = Math.min(remainingHeightMm, availableMm)
+    const sliceHeightPx = Math.max(1, Math.round(sliceHeightMm * pxPerMm))
+
+    const sliceCanvas = document.createElement('canvas')
+    sliceCanvas.width = canvas.width
+    sliceCanvas.height = sliceHeightPx
+    const context = sliceCanvas.getContext('2d')
+    if (!context) break
+
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+    context.drawImage(
+      canvas,
+      0,
+      sourceYPx,
+      canvas.width,
+      sliceHeightPx,
+      0,
+      0,
+      canvas.width,
+      sliceHeightPx,
+    )
+
+    doc.addImage(
+      sliceCanvas.toDataURL('image/png'),
+      'PNG',
+      margin,
+      y,
+      contentWidth,
+      sliceHeightMm,
+    )
+
+    remainingHeightMm -= sliceHeightMm
+    sourceYPx += sliceHeightPx
+
+    if (remainingHeightMm > 0.4) {
+      doc.addPage()
+      y = margin
+    }
+  }
+}
+
+/** Bottom Y of the printable content area (above branded footer). */
+export function pdfContentBottomY(
+  doc: jsPDF,
+  footerReserveMm = 18,
+): number {
+  return doc.internal.pageSize.getHeight() - footerReserveMm
+}
+
+/** Small title line for continuation pages of a multi-page visual report. */
+export function renderPdfContinuationHeader(
+  doc: jsPDF,
+  title: string,
+  startY = PDF_MARGIN,
+): number {
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...NAVY)
+  doc.text(title, PDF_MARGIN, startY + 3)
+
+  doc.setDrawColor(...BORDER)
+  doc.setLineWidth(0.25)
+  doc.line(
+    PDF_MARGIN,
+    startY + 5.5,
+    PDF_MARGIN + PDF_CONTENT_WIDTH,
+    startY + 5.5,
+  )
+
+  return startY + 9
+}
+
+/**
+ * Places one complete PNG image block without slicing.
+ * Starts a new page when the block does not fit the remaining space.
+ * Oversized blocks (taller than a full page) are scaled down to fit.
+ */
+export function appendPdfImageBlock(
+  doc: jsPDF,
+  imageDataUrl: string,
+  naturalWidthPx: number,
+  naturalHeightPx: number,
+  startY: number,
+  options?: {
+    margin?: number
+    footerReserveMm?: number
+    gapMm?: number
+    continuationTitle?: string | null
+    isFirstContentOnDoc?: boolean
+    /** 0–1 share of content width (default 1). */
+    widthRatio?: number
+  },
+): number {
+  const margin = options?.margin ?? PDF_MARGIN
+  const footerReserve = options?.footerReserveMm ?? 18
+  const gapMm = options?.gapMm ?? 2.5
+  const widthRatio = Math.min(1, Math.max(0.15, options?.widthRatio ?? 1))
+  const contentWidth = PDF_CONTENT_WIDTH * widthRatio
+  const pageBottom = pdfContentBottomY(doc, footerReserve)
+
+  let y = startY
+  let heightMm = (naturalHeightPx * contentWidth) / Math.max(naturalWidthPx, 1)
+  let widthMm = contentWidth
+
+  const available = pageBottom - y
+  if (heightMm > available + 0.2) {
+    const minUseful = options?.isFirstContentOnDoc ? 8 : 14
+    if (y > margin + minUseful) {
+      doc.addPage()
+      y = options?.continuationTitle
+        ? renderPdfContinuationHeader(doc, options.continuationTitle, margin)
+        : margin
+    }
+
+    const fullPageAvailable = pageBottom - y
+    if (heightMm > fullPageAvailable) {
+      const scale = fullPageAvailable / heightMm
+      widthMm = contentWidth * scale
+      heightMm = fullPageAvailable
+    }
+  }
+
+  doc.addImage(imageDataUrl, 'PNG', margin, y, widthMm, heightMm)
+  return y + heightMm + gapMm
+}
+
 export function pdfText(value: string | number | null | undefined): string {
   if (value == null) return '—'
   const text = String(value).trim()

@@ -27,3 +27,18 @@ export async function downloadPdfZip(entries: ZipPdfEntry[], zipFileName: string
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   downloadBlob(zipBlob, zipFileName)
 }
+
+/** One PDF downloads directly; multiple become a ZIP of one PDF per record. */
+export async function downloadPdfEntriesOrSingle(
+  entries: ZipPdfEntry[],
+  zipFileName: string,
+): Promise<void> {
+  if (entries.length === 0) {
+    throw new ExportUserError('No records selected for export.')
+  }
+  if (entries.length === 1) {
+    downloadBlob(entries[0].blob, entries[0].fileName)
+    return
+  }
+  await downloadPdfZip(entries, zipFileName)
+}
