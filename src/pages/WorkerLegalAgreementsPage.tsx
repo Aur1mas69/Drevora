@@ -5,6 +5,7 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { getLegalManifestEntry } from '@/content/legal/legalManifest'
 import type { WorkerLegalStatus } from '@/lib/legalAcceptanceTypes'
+import { readWorkerLegalLocalSummary } from '@/lib/legalAcceptanceTypes'
 import { WORKER_LEGAL_ROUTES } from '@/lib/legalContent'
 import {
   addOnlineStatusListener,
@@ -106,13 +107,14 @@ export default function WorkerLegalAgreementsPage({
     setIsSubmitting(true)
     setError(null)
     try {
+      const hadPreviousAcceptance = Boolean(readWorkerLegalLocalSummary())
       await acceptWorkerLegalDocuments({
         companyId,
         driverId: worker.id,
         acceptWorkerTerms: payload.acceptWorkerTerms,
         acknowledgePrivacy: payload.acknowledgePrivacy,
         acceptedByName: workerName || worker.email,
-        acceptanceSource: 'worker_first_login',
+        acceptanceSource: hadPreviousAcceptance ? 'legal_update' : 'worker_first_login',
         route: location.pathname,
       })
       await reload()

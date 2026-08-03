@@ -3,12 +3,20 @@ import { useLocation } from 'react-router-dom'
 import WorkerLegalAgreementsPage from '@/pages/WorkerLegalAgreementsPage'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { getLegalManifestEntry } from '@/content/legal/legalManifest'
-import { evaluateOfflineWorkerLegalAccess } from '@/lib/legalAcceptanceTypes'
+import {
+  evaluateOfflineWorkerLegalAccess,
+  shouldDeferWorkerLegalUpdate,
+  type WorkerLegalAccessState,
+} from '@/lib/legalAcceptanceTypes'
 import { WORKER_LEGAL_ROUTES } from '@/lib/legalContent'
 import {
   addOnlineStatusListener,
   getOnlineStatus,
 } from '@/lib/networkStatus'
+import {
+  isWorkerActiveCheckSession,
+  subscribeWorkerActiveCheckSession,
+} from '@/lib/workerActiveCheckSession'
 import {
   fetchWorkerLegalStatus,
   isLegalForbiddenError,
@@ -33,14 +41,22 @@ function isWorkerLegalAllowlisted(pathname: string): boolean {
   return false
 }
 
+function bundledVersions() {
+  return {
+    bundledWorkerTermsVersion: getLegalManifestEntry('worker_terms').version,
+    bundledPrivacyVersion: getLegalManifestEntry('privacy_policy').version,
+  }
+}
+
 type RequireWorkerLegalAcceptanceProps = {
   children: ReactNode
 }
 
 /**
  * Worker-only legal gate (Worker Terms + Privacy).
- * Never shows Customer Terms or DPA. Offline access uses a safe local summary
- * matched to bundled manifest versions — Supabase remains source of truth online.
+ * Never shows Customer Terms or DPA.
+ * Offline: accepted_previous still allows Vehicle Checks; never invents latest acceptance.
+ * Online: latest Terms required, deferred until any active check completes.
  */
 export function RequireWorkerLegalAcceptance({
   children,
@@ -50,7 +66,10 @@ export function RequireWorkerLegalAcceptance({
   const [isOnline, setIsOnline] = useState(true)
   const [requiresAcceptance, setRequiresAcceptance] = useState<boolean | null>(null)
   const [usingCachedAcceptance, setUsingCachedAcceptance] = useState(false)
+  const [accessState, setAccessState] = useState<WorkerLegalAccessState | null>(null)
+  const [deferredLatestRequired, setDeferredLatestRequired] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeCheckEpoch, setActiveCheckEpoch] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -73,31 +92,101 @@ export function RequireWorkerLegalAcceptance({
     }
   }, [])
 
-  const applyOfflineOrCacheDecision = useCallback((nextCompanyId: string) => {
-    const decision = evaluateOfflineWorkerLegalAccess({
-      companyId: nextCompanyId,
-      bundledWorkerTermsVersion: getLegalManifestEntry('worker_terms').version,
-      bundledPrivacyVersion: getLegalManifestEntry('privacy_policy').version,
+  useEffect(() => {
+    return subscribeWorkerActiveCheckSession(() => {
+      setActiveCheckEpoch((n) => n + 1)
     })
-    if (decision.kind === 'allow_cached') {
-      setRequiresAcceptance(false)
-      setUsingCachedAcceptance(true)
-      setError(null)
-      return
-    }
-    // No valid cache / outdated versions — Worker-only gate, not Customer docs.
-    setRequiresAcceptance(true)
-    setUsingCachedAcceptance(false)
-    setError(null)
   }, [])
+
+  const applyOfflineOrCacheDecision = useCallback(
+    (
+      nextCompanyId: string,
+      options?: { treatMissingAsUnavailable?: boolean },
+    ): WorkerLegalAccessState => {
+      const state = evaluateOfflineWorkerLegalAccess({
+        companyId: nextCompanyId,
+        ...bundledVersions(),
+        treatMissingAsUnavailable: options?.treatMissingAsUnavailable,
+      })
+      setAccessState(state)
+
+      if (state === 'accepted_latest' || state === 'accepted_previous') {
+        setRequiresAcceptance(false)
+        setUsingCachedAcceptance(true)
+        setError(null)
+        return state
+      }
+
+      if (state === 'unavailable_offline') {
+        // Network failure without usable proof — never treat as first-use Terms.
+        setRequiresAcceptance(null)
+        setUsingCachedAcceptance(false)
+        setError(
+          'Unable to verify legal acceptance while offline. Reconnect to continue, or try again.',
+        )
+        return state
+      }
+
+      // never_accepted — block first use (Terms screen; accept disabled offline).
+      setRequiresAcceptance(true)
+      setUsingCachedAcceptance(false)
+      setError(null)
+      return state
+    },
+    [],
+  )
+
+  const applyOnlineRequiresAcceptance = useCallback(
+    (nextCompanyId: string, serverRequiresAcceptance: boolean) => {
+      const offlineState = evaluateOfflineWorkerLegalAccess({
+        companyId: nextCompanyId,
+        ...bundledVersions(),
+      })
+      setAccessState(offlineState)
+
+      if (!serverRequiresAcceptance) {
+        setRequiresAcceptance(false)
+        setUsingCachedAcceptance(false)
+        setDeferredLatestRequired(false)
+        setError(null)
+        return
+      }
+
+      const hasActiveCheck = isWorkerActiveCheckSession()
+      if (
+        shouldDeferWorkerLegalUpdate({
+          requiresLatestAcceptance: true,
+          isOnline: true,
+          hasActiveCheck,
+          offlineState,
+        })
+      ) {
+        // Keep the active Vehicle Check mounted; require Terms after it finishes.
+        setRequiresAcceptance(false)
+        setUsingCachedAcceptance(false)
+        setDeferredLatestRequired(true)
+        setError(null)
+        return
+      }
+
+      setRequiresAcceptance(true)
+      setUsingCachedAcceptance(false)
+      setDeferredLatestRequired(false)
+      setError(null)
+    },
+    [],
+  )
 
   const refresh = useCallback(async () => {
     if (!companyReady || !companyId) {
       setRequiresAcceptance(null)
       setUsingCachedAcceptance(false)
+      setAccessState(null)
+      setDeferredLatestRequired(false)
       return
     }
 
+    // Offline path first — never wait on a network call before deciding.
     const online = await getOnlineStatus()
     if (!online) {
       applyOfflineOrCacheDecision(companyId)
@@ -107,26 +196,29 @@ export function RequireWorkerLegalAcceptance({
     setError(null)
     try {
       const status = await fetchWorkerLegalStatus(companyId)
-      setRequiresAcceptance(status.requiresAcceptance)
-      setUsingCachedAcceptance(false)
+      // fetchWorkerLegalStatus only writes cache when satisfied — previous proof is kept.
+      applyOnlineRequiresAcceptance(companyId, status.requiresAcceptance)
     } catch (err) {
       if (isLegalNotAvailableYetError(err)) {
         setRequiresAcceptance(false)
         setUsingCachedAcceptance(false)
+        setAccessState(null)
+        setDeferredLatestRequired(false)
         setError(null)
         return
       }
 
-      // Network failure after a prior acceptance — use cache; never invent acceptance.
+      // Network failure after a prior acceptance — use cache; never invent acceptance
+      // and never misclassify as never_accepted.
       if (isLegalNetworkError(err)) {
-        applyOfflineOrCacheDecision(companyId)
+        applyOfflineOrCacheDecision(companyId, { treatMissingAsUnavailable: true })
         return
       }
 
-      // Forbidden / auth — do not soft-pass.
       if (isLegalForbiddenError(err)) {
         setRequiresAcceptance(null)
         setUsingCachedAcceptance(false)
+        setDeferredLatestRequired(false)
         setError(
           err instanceof LegalAcceptanceServiceError
             ? err.message
@@ -140,9 +232,8 @@ export function RequireWorkerLegalAcceptance({
           ? err.message
           : 'Unable to verify legal acceptance status.'
 
-      // If the device is actually offline despite getOnlineStatus, prefer cache.
       if (!(await getOnlineStatus())) {
-        applyOfflineOrCacheDecision(companyId)
+        applyOfflineOrCacheDecision(companyId, { treatMissingAsUnavailable: true })
         return
       }
 
@@ -150,17 +241,26 @@ export function RequireWorkerLegalAcceptance({
       setUsingCachedAcceptance(false)
       setError(message)
     }
-  }, [applyOfflineOrCacheDecision, companyId, companyReady])
+  }, [applyOfflineOrCacheDecision, applyOnlineRequiresAcceptance, companyId, companyReady])
 
   useEffect(() => {
     void refresh()
   }, [refresh, isOnline])
 
+  // After an active check ends, apply any deferred latest-Terms requirement.
+  useEffect(() => {
+    if (!deferredLatestRequired) return
+    if (isWorkerActiveCheckSession()) return
+    if (!isOnline) return
+    setRequiresAcceptance(true)
+    setDeferredLatestRequired(false)
+  }, [activeCheckEpoch, deferredLatestRequired, isOnline])
+
   if (companyLoading || (companyReady && requiresAcceptance === null && !error && isOnline)) {
     return <AuthSplashScreen />
   }
 
-  if (error && isOnline && !usingCachedAcceptance) {
+  if (error && isOnline && !usingCachedAcceptance && requiresAcceptance !== false) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#F6F9FF] px-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -178,7 +278,16 @@ export function RequireWorkerLegalAcceptance({
     )
   }
 
+  // Evaluate offline / deferred path before replacing the tree with the Terms screen.
   if (requiresAcceptance && !isWorkerLegalAllowlisted(location.pathname)) {
+    if (isWorkerActiveCheckSession()) {
+      // Safety: never unmount an active check even if state races.
+      return (
+        <>
+          {children}
+        </>
+      )
+    }
     return (
       <div className="min-h-dvh bg-[#F6F9FF] dark:bg-slate-950">
         <WorkerLegalAgreementsPage onAccepted={() => void refresh()} />
@@ -193,7 +302,18 @@ export function RequireWorkerLegalAcceptance({
           role="status"
           className="legal-print-hide border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
         >
-          You’re offline. Your previously confirmed legal settings are being used.
+          {accessState === 'accepted_previous'
+            ? 'You’re offline. Continuing with your previously accepted Worker Terms. Confirm the latest version when you reconnect.'
+            : 'You’re offline. Your previously confirmed legal settings are being used.'}
+        </div>
+      ) : null}
+      {deferredLatestRequired && isOnline ? (
+        <div
+          role="status"
+          className="legal-print-hide border-b border-sky-200/80 bg-sky-50 px-4 py-2 text-center text-xs font-medium text-sky-950 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100"
+        >
+          Updated Worker Terms are available. You’ll be asked to confirm them after this check is
+          saved.
         </div>
       ) : null}
       {children}

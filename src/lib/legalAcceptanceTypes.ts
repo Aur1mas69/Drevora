@@ -93,9 +93,19 @@ export type WorkerLegalLocalSummary = {
   cachedAt: string
 }
 
-export type OfflineWorkerLegalDecision =
-  | { kind: 'allow_cached' }
-  | { kind: 'needs_online_acceptance' }
+/**
+ * Worker legal access state used by the offline / network-failure gate.
+ * - accepted_latest: cached proof matches bundled versions
+ * - accepted_previous: Worker accepted an earlier version (offline soft-pass)
+ * - never_accepted: no usable prior acceptance for this Worker/company
+ * - unavailable_offline: status could not be determined (e.g. network error) —
+ *   must never be collapsed into never_accepted
+ */
+export type WorkerLegalAccessState =
+  | 'accepted_latest'
+  | 'accepted_previous'
+  | 'never_accepted'
+  | 'unavailable_offline'
 
 export function detectLegalPlatform(): LegalPlatform {
   if (import.meta.env.MODE === 'native') return 'android'
@@ -194,38 +204,94 @@ export function clearWorkerLegalLocalSummary(): void {
 }
 
 /**
- * Compare a cached Worker acceptance summary to the currently bundled manifest
- * versions. Used only for offline / network-failure soft access — never as a
- * substitute for writing server acceptance.
+ * Pure classifier for cached Worker Terms proof vs bundled manifest versions.
+ * Does not write cache and never invents acceptance of the latest version.
  */
-export function evaluateOfflineWorkerLegalAccess(input: {
+export function classifyWorkerLegalAccessState(input: {
   companyId: string
   driverId?: string | null
   bundledWorkerTermsVersion: string
   bundledPrivacyVersion: string
-}): OfflineWorkerLegalDecision {
-  const summary = readWorkerLegalLocalSummary()
-  if (!summary) return { kind: 'needs_online_acceptance' }
+  summary: WorkerLegalLocalSummary | null
+  /**
+   * When true and there is no usable summary, return unavailable_offline
+   * instead of never_accepted (network failure must not look like first-use).
+   */
+  treatMissingAsUnavailable?: boolean
+}): WorkerLegalAccessState {
+  const summary = input.summary
+  if (!summary) {
+    return input.treatMissingAsUnavailable ? 'unavailable_offline' : 'never_accepted'
+  }
+
   if (summary.companyId !== input.companyId.trim()) {
-    return { kind: 'needs_online_acceptance' }
+    return input.treatMissingAsUnavailable ? 'unavailable_offline' : 'never_accepted'
   }
   if (
     input.driverId &&
     summary.driverId &&
     summary.driverId !== input.driverId.trim()
   ) {
-    return { kind: 'needs_online_acceptance' }
+    return input.treatMissingAsUnavailable ? 'unavailable_offline' : 'never_accepted'
   }
   if (!summary.workerTermsAccepted || !summary.privacyAcknowledged) {
-    return { kind: 'needs_online_acceptance' }
+    return input.treatMissingAsUnavailable ? 'unavailable_offline' : 'never_accepted'
   }
-  if (summary.workerTermsVersion !== input.bundledWorkerTermsVersion) {
-    return { kind: 'needs_online_acceptance' }
-  }
-  if (summary.privacyVersion !== input.bundledPrivacyVersion) {
-    return { kind: 'needs_online_acceptance' }
-  }
-  return { kind: 'allow_cached' }
+
+  const termsMatch =
+    summary.workerTermsVersion === input.bundledWorkerTermsVersion.trim()
+  const privacyMatch =
+    summary.privacyVersion === input.bundledPrivacyVersion.trim()
+
+  if (termsMatch && privacyMatch) return 'accepted_latest'
+  // Version bump: keep proof of the earlier acceptance; do not erase or upgrade it.
+  return 'accepted_previous'
+}
+
+/**
+ * Compare a cached Worker acceptance summary to the currently bundled manifest
+ * versions. Used for offline soft access — never as a substitute for writing
+ * server acceptance, and never upgrades the cache to the latest version.
+ */
+export function evaluateOfflineWorkerLegalAccess(input: {
+  companyId: string
+  driverId?: string | null
+  bundledWorkerTermsVersion: string
+  bundledPrivacyVersion: string
+  /** Injected summary for tests; defaults to localStorage. */
+  summary?: WorkerLegalLocalSummary | null
+  treatMissingAsUnavailable?: boolean
+}): WorkerLegalAccessState {
+  const summary =
+    input.summary !== undefined ? input.summary : readWorkerLegalLocalSummary()
+  return classifyWorkerLegalAccessState({
+    companyId: input.companyId,
+    driverId: input.driverId,
+    bundledWorkerTermsVersion: input.bundledWorkerTermsVersion,
+    bundledPrivacyVersion: input.bundledPrivacyVersion,
+    summary,
+    treatMissingAsUnavailable: input.treatMissingAsUnavailable,
+  })
+}
+
+/**
+ * Online gate helper: whether an accepted_previous Worker may continue while a
+ * check is active (defer Terms) vs must accept latest Terms now.
+ */
+export function shouldDeferWorkerLegalUpdate(input: {
+  requiresLatestAcceptance: boolean
+  isOnline: boolean
+  hasActiveCheck: boolean
+  offlineState: WorkerLegalAccessState
+}): boolean {
+  if (!input.requiresLatestAcceptance) return false
+  if (!input.isOnline) return false
+  if (!input.hasActiveCheck) return false
+  // Only defer when we have prior proof — never for first-use.
+  return (
+    input.offlineState === 'accepted_previous' ||
+    input.offlineState === 'accepted_latest'
+  )
 }
 
 /** Persist a safe summary after authoritative online Worker status or acceptance. */
@@ -237,6 +303,8 @@ export function cacheWorkerLegalStatusSummary(input: {
   const workerTerms = input.documents.find((doc) => doc.documentType === 'worker_terms')
   const privacy = input.documents.find((doc) => doc.documentType === 'privacy_policy')
   if (!workerTerms || !privacy) return
+  // Only persist when the server confirms the current versions are satisfied.
+  // Never invent "accepted latest" from an unsatisfied status (preserves previous proof).
   if (!workerTerms.isSatisfied || !privacy.isSatisfied) return
   if (!workerTerms.version.trim() || !privacy.version.trim()) return
 

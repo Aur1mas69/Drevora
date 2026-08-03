@@ -4,6 +4,7 @@ import {
   useWorkerNavigationGuard,
   type WorkerNavigationBlocker,
 } from '@/contexts/WorkerNavigationGuardContext'
+import { setWorkerActiveCheckSession } from '@/lib/workerActiveCheckSession'
 
 type UseWorkerVehicleCheckExitGuardOptions = {
   /** True only after the check has started and before successful completion. */
@@ -28,6 +29,13 @@ export function useWorkerVehicleCheckExitGuard({
   const exitOpenRef = useRef(false)
   const onDiscardToSetupRef = useRef(onDiscardToSetup)
   onDiscardToSetupRef.current = onDiscardToSetup
+
+  useEffect(() => {
+    setWorkerActiveCheckSession(isCheckActive)
+    return () => {
+      setWorkerActiveCheckSession(false)
+    }
+  }, [isCheckActive])
 
   const closeExitModal = useCallback(() => {
     pendingProceedRef.current = null
