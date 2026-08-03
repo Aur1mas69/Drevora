@@ -1,7 +1,7 @@
 # DREVORA PRIVACY POLICY
 
-**Version:** v0.2 Draft  
-**Effective date:** 1 August 2026  
+**Version:** v0.3 Draft  
+**Effective date:** 3 August 2026  
 **Operator:** Aurimas Jokubaitis, trading as DREVORA, sole trader  
 **Business address:** 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom  
 **Email:** admin@drevora.uk  
@@ -278,7 +278,13 @@ Where export functionality exists, Customers may export records in the available
 
 Before closing an account, the Customer should export records it wishes to retain.
 
-After account closure, access may continue for a limited paid or final-export period. Data may then be returned, deleted or anonymised under the DPA, retention framework and legal requirements.
+Individual account deletion may be requested inside DREVORA by an authorised Admin or Worker. When a deletion request is submitted, access for that user account is disabled immediately. Final deletion or anonymisation of personal account data is completed within 30 days, unless the request is cancelled before the scheduled date by an organisation Admin or DREVORA support at admin@drevora.uk.
+
+Operational, compliance and legal records may remain for applicable retention periods. Worker workforce records remain controlled by the Customer organisation. For Customer-controlled personal data processed on the Customer's behalf, DREVORA acts as Processor and the Customer organisation as Controller, as set out in the DPA.
+
+A sole Admin must appoint another Admin before deleting their own Admin account. Company closure is a separate process from individual account deletion.
+
+After company account closure, access may continue for a limited paid or final-export period. Data may then be returned, deleted or anonymised under the DPA, retention framework and legal requirements.
 
 DREVORA may retain limited controller records for billing, security, fraud prevention, legal claims, evidence of instructions and statutory duties.
 
@@ -350,4 +356,4 @@ Business structure: Sole trader
 Business address: 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom  
 Email: admin@drevora.uk  
 Website: drevora.app  
-Effective date: 1 August 2026
+Effective date: 3 August 2026

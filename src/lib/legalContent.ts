@@ -1,7 +1,7 @@
-import customerTermsMarkdown from '@/content/legal/customer-terms-v0.2.md?raw'
-import dpaMarkdown from '@/content/legal/dpa-v0.2.md?raw'
-import privacyPolicyMarkdown from '@/content/legal/privacy-policy-v0.2.md?raw'
-import workerTermsMarkdown from '@/content/legal/worker-terms-v0.1.md?raw'
+import customerTermsMarkdown from '@/content/legal/customer-terms-v0.3.md?raw'
+import dpaMarkdown from '@/content/legal/dpa-v0.3.md?raw'
+import privacyPolicyMarkdown from '@/content/legal/privacy-policy-v0.3.md?raw'
+import workerTermsMarkdown from '@/content/legal/worker-terms-v0.2.md?raw'
 import {
   getLegalManifestEntry,
   type LegalDocumentType,

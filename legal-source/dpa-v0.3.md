@@ -1,8 +1,8 @@
 # DREVORA DATA PROCESSING AGREEMENT
 
 **UK GDPR Controller-Processor Agreement**  
-**Version:** v0.2 Draft  
-**Effective date:** 1 August 2026
+**Version:** v0.3 Draft  
+**Effective date:** 3 August 2026
 
 > **DRAFT - NOT FOR SIGNATURE.** Complete Customer details, verify the active Sub-processor list and hosting regions, agree the final export period, and obtain UK legal review before first customer use.
 
@@ -185,15 +185,21 @@ This DPA forms part of the Main Agreement under which the Controller receives ac
 
 14.1 During the subscription, the Controller may use available export and deletion features or issue documented instructions.
 
-14.2 At the end of Processing services, DREVORA shall, at the Controller's choice and subject to the Main Agreement, return or delete Personal Data processed on the Controller's behalf, unless UK law requires continued storage.
+14.2 Individual Admin or Worker account deletion may be requested inside DREVORA. When a deletion request is submitted, access for that user account is disabled immediately. Final deletion or anonymisation of that user's personal account data is completed within 30 days, unless the request is cancelled before the scheduled date by an organisation Admin or DREVORA support at admin@drevora.uk.
 
-14.3 The Controller must request export before access ends or within an offered final export period.
+14.3 Operational, compliance and legal records may remain for applicable retention periods. Worker workforce records remain controlled by the Controller. For Personal Data processed on the Controller's behalf, DREVORA acts as Processor and the Customer organisation as Controller.
 
-14.4 Deletion from active systems may occur in stages. Protected backups may remain until the normal cycle expires, provided they are beyond ordinary use, protected and later deleted or overwritten.
+14.4 A sole Admin must appoint another Admin before deleting their own Admin account. Company closure is a separate process from individual account deletion.
 
-14.5 DREVORA may retain limited independent-controller records for billing, security, fraud prevention, legal claims, compliance and evidence of instructions.
+14.5 At the end of Processing services, DREVORA shall, at the Controller's choice and subject to the Main Agreement, return or delete Personal Data processed on the Controller's behalf, unless UK law requires continued storage.
 
-14.6 Schedule 4 describes the operational procedure.
+14.6 The Controller must request export before access ends or within an offered final export period.
+
+14.7 Deletion from active systems may occur in stages. Protected backups may remain until the normal cycle expires, provided they are beyond ordinary use, protected and later deleted or overwritten.
+
+14.8 DREVORA may retain limited independent-controller records for billing, security, fraud prevention, legal claims, compliance and evidence of instructions.
+
+14.9 Schedule 4 describes the operational procedure.
 
 ## 15. Controller responsibilities
 

@@ -1,7 +1,7 @@
 # DREVORA WORKER TERMS OF USE
 
-**Version:** v0.1 Draft  
-**Effective date:** 1 August 2026  
+**Version:** v0.2 Draft  
+**Effective date:** 3 August 2026  
 **Operator:** Aurimas Jokubaitis, trading as DREVORA  
 **Email:** admin@drevora.uk  
 **Website:** drevora.app
@@ -143,7 +143,17 @@ DREVORA may update these Terms for product, security, legal or operational chang
 
 Material changes may be shown in the application. Where acceptance is required, you may be asked to review the updated version before continuing.
 
-## 17. Governing law and contact
+## 17. Account deletion
+
+You may request deletion of your DREVORA Worker account inside the application where that control is available.
+
+When you submit a deletion request, your access is disabled immediately. Final deletion or anonymisation of your personal account data is completed within 30 days, unless the request is cancelled before the scheduled date by an organisation Admin or DREVORA support at admin@drevora.uk.
+
+Operational, compliance and legal records may remain for applicable retention periods. Your workforce records remain controlled by your Organisation. For Organisation-controlled personal data, DREVORA acts as Processor and your Organisation as Controller.
+
+Company closure is a separate process from individual account deletion and is handled by your Organisation with DREVORA, not through Worker self-service deletion.
+
+## 18. Governing law and contact
 
 These Terms are governed by the laws of England and Wales, except where mandatory law provides otherwise.
 

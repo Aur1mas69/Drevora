@@ -1,7 +1,7 @@
 # DREVORA CUSTOMER TERMS & CONDITIONS
 
-**Version:** v0.2 Draft  
-**Effective date:** 1 August 2026  
+**Version:** v0.3 Draft  
+**Effective date:** 3 August 2026  
 **Operator:** Aurimas Jokubaitis, trading as DREVORA, sole trader  
 **Business address:** 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom  
 **Email:** admin@drevora.uk  
@@ -318,6 +318,14 @@
 
 25.5 Customer Data may later be returned, deleted or anonymised under the DPA, Privacy Policy, retention framework and legal requirements.
 
+25.6 Individual account deletion may be requested inside DREVORA by an authorised Admin or Worker using the in-app deletion controls. Support for cancellation or assistance is available at admin@drevora.uk.
+
+25.7 When a deletion request is submitted, access for that user account is disabled immediately. Final deletion or anonymisation of personal account data is completed within 30 days, unless the request is cancelled before the scheduled date by an organisation Admin or DREVORA support.
+
+25.8 Operational, compliance and legal records may remain for applicable retention periods. Worker workforce records remain controlled by the Customer organisation. For Customer Data processed on the Customer's behalf, DREVORA acts as Processor and the Customer organisation as Controller, as set out in the DPA.
+
+25.9 A sole Admin must appoint another Admin before deleting their own Admin account. Company closure is a separate process from individual account deletion.
+
 ## 26. Warranties and disclaimers
 
 26.1 DREVORA will provide the Service with reasonable care and skill appropriate to an actively developed B2B SaaS product.
@@ -421,4 +429,4 @@ Business structure: Sole trader
 Business address: 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom  
 Email: admin@drevora.uk  
 Website: drevora.app  
-Effective date: 1 August 2026
+Effective date: 3 August 2026
