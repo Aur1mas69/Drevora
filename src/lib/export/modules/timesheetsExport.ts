@@ -12,11 +12,14 @@ import {
 import { fetchAllFilteredRows } from '@/lib/export/fetchAllFiltered'
 import { buildExportFileName } from '@/lib/export/fileNames'
 import { downloadPdfEntriesOrSingle } from '@/lib/export/zipPdfs'
+import { formatHolidayExportLine } from '@/lib/timesheetHoliday'
 import type { Timesheet, TimesheetListItem, TimesheetsQuery } from '@/lib/timesheetTypes'
 import {
+  formatDayLabel,
   formatHours,
   formatHoursFromMinutes,
   formatSubmittedAtDisplay,
+  getEntryPayableDisplayResult,
   getStatusLabel,
 } from '@/lib/timesheetUtils'
 import { fetchTimesheetById, fetchTimesheetsPage } from '@/services/timesheetsService'
@@ -53,6 +56,9 @@ export async function exportTimesheetsExcel(
     },
   })
 
+  const detailed = await Promise.all(rows.map((row) => fetchTimesheetById(row.id)))
+  const paidBreaks = getGlobalPaidBreaks()
+
   await downloadExcelWorkbook(
     [
       {
@@ -77,7 +83,6 @@ export async function exportTimesheetsExcel(
         ],
         rows: rows.map((row) => {
           const exportRow = row as TimesheetExportRow
-          const paidBreaks = getGlobalPaidBreaks()
           const paidBreakMinutes = paidBreaks
             ? (exportRow.paidBreakMinutes ?? 0)
             : 0
@@ -113,6 +118,58 @@ export async function exportTimesheetsExcel(
             notes: excelEmpty(row.notes),
           }
         }),
+      },
+      {
+        name: 'Daily',
+        columns: [
+          { header: 'Worker', key: 'worker', width: 22 },
+          { header: 'Week Start', key: 'weekStart', width: 14 },
+          { header: 'Day', key: 'day', width: 14 },
+          { header: 'Date', key: 'date', width: 12 },
+          { header: 'Type', key: 'type', width: 10 },
+          { header: 'Label', key: 'label', width: 12 },
+          { header: 'Hours', key: 'hours', width: 10 },
+          { header: 'Export line', key: 'exportLine', width: 36, wrap: true },
+        ],
+        rows: detailed.flatMap((timesheet) =>
+          timesheet.entries.map((entry) => {
+            const payable = getEntryPayableDisplayResult(entry, { paidBreaks })
+            const isFullHoliday = entry.dayType === 'holiday'
+            const isHalfHoliday =
+              entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm'
+            const isHoliday = isFullHoliday || isHalfHoliday
+            const typeCode =
+              entry.dayType === 'holiday'
+                ? 'H'
+                : entry.dayType === 'holiday_am'
+                  ? 'H-AM'
+                  : entry.dayType === 'holiday_pm'
+                    ? 'H-PM'
+                    : 'Work'
+            const label =
+              entry.dayType === 'holiday'
+                ? 'Full day holiday'
+                : entry.dayType === 'holiday_am'
+                  ? 'First half holiday'
+                  : entry.dayType === 'holiday_pm'
+                    ? 'Second half holiday'
+                    : 'Work'
+            return {
+              worker: excelEmpty(timesheet.driverName),
+              weekStart: timesheet.weekStart,
+              day: formatDayLabel(entry.dayDate),
+              date: entry.dayDate,
+              type: typeCode,
+              label,
+              hours: formatHours(
+                isHoliday ? payable.totalPaidHours : payable.totalPaidHours,
+              ),
+              exportLine: isHoliday
+                ? formatHolidayExportLine(entry, payable.workBasicHours)
+                : `${formatDayLabel(entry.dayDate)} — Work — ${formatHours(payable.totalPaidHours)} h`,
+            }
+          }),
+        ),
       },
     ],
     buildExportFileName({

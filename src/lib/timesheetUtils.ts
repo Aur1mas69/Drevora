@@ -23,6 +23,7 @@ import { formatTimesheetWeekDisplay } from '@/lib/timesheetWeekNumber'
 import type { OvertimeMode } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
+  TimesheetDayType,
   TimesheetEntry,
   TimesheetEntryInput,
   TimesheetListItem,
@@ -136,9 +137,11 @@ export function validateTimesheetTimePairs(
     dayDate: string
     startTime: string | null
     finishTime: string | null
+    dayType?: TimesheetDayType | null
   }>,
 ): string | null {
   for (const entry of entries) {
+    if (entry.dayType === 'holiday') continue
     if (isIncompleteTimePair(entry)) {
       return `${TIMESHEET_TIME_PAIR_MESSAGE} (${formatDayLabel(entry.dayDate)})`
     }
@@ -148,11 +151,33 @@ export function validateTimesheetTimePairs(
 
 const EMPTY_PAYABLE_DISPLAY = {
   basicHours: 0,
+  workBasicHours: 0,
+  holidayHours: 0,
   overtimeDisplayHours: 0,
   additionalHours: 0,
   totalPaidHours: 0,
   weekendGuaranteeDay: false,
 } as const
+
+function entryHolidayMinutes(entry: {
+  dayType?: TimesheetDayType | null
+  holidayMinutes?: number | null
+  totalMinutes?: number | null
+}): number {
+  const dayType = entry.dayType ?? 'work'
+  if (dayType !== 'holiday' && dayType !== 'holiday_am' && dayType !== 'holiday_pm') {
+    return 0
+  }
+  const explicit = entry.holidayMinutes
+  if (explicit != null && Number.isFinite(explicit) && explicit > 0) {
+    return explicit
+  }
+  // Legacy full-holiday rows stored hours in total_minutes.
+  if (dayType === 'holiday' && (entry.totalMinutes ?? 0) > 0 && (explicit ?? 0) === 0) {
+    return Math.max(0, entry.totalMinutes ?? 0)
+  }
+  return Math.max(0, explicit ?? 0)
+}
 
 function calculateShiftSpanMinutes(startMinutes: number, finishMinutes: number): number {
   if (finishMinutes < startMinutes) {
@@ -321,6 +346,8 @@ export function getEntryPayableDisplayResult(
     overtimeMinutes: number
     additionalHours: number
     breakMinutes: number
+    dayType?: TimesheetDayType | null
+    holidayMinutes?: number | null
   },
   options: {
     overtimeRules?: Partial<TimesheetOvertimeRules>
@@ -329,13 +356,33 @@ export function getEntryPayableDisplayResult(
   } = {},
 ): {
   basicHours: number
-  /** Actual OT worked hours (never multiplied). */
+  /** Work Basic only (excludes holiday). */
+  workBasicHours: number
+  /** Holiday payable hours (OT never applies). */
+  holidayHours: number
+  /** Actual OT worked hours (never multiplied). Work only. */
   overtimeDisplayHours: number
   /** Payable Additional Hours for this day (manual only on weekend guarantee days). */
   additionalHours: number
   totalPaidHours: number
   weekendGuaranteeDay: boolean
 } {
+  const holidayHours = entryHolidayMinutes(entry) / 60
+  const dayType = entry.dayType ?? 'work'
+
+  // Full Holiday (H): holiday hours only; clocks ignored; OT always 0.
+  if (dayType === 'holiday') {
+    return {
+      basicHours: holidayHours,
+      workBasicHours: 0,
+      holidayHours,
+      overtimeDisplayHours: 0,
+      additionalHours: 0,
+      totalPaidHours: holidayHours,
+      weekendGuaranteeDay: false,
+    }
+  }
+
   const overtimeMode =
     options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
   const rules = buildTimesheetOvertimeRules(options.overtimeRules)
@@ -345,24 +392,54 @@ export function getEntryPayableDisplayResult(
 
   // Incomplete Start/Finish pair: never invent midnight or payable hours.
   if (isIncompleteTimePair(entry)) {
+    if (holidayHours > 0) {
+      return {
+        basicHours: holidayHours,
+        workBasicHours: 0,
+        holidayHours,
+        overtimeDisplayHours: 0,
+        additionalHours: 0,
+        totalPaidHours: holidayHours,
+        weekendGuaranteeDay: false,
+      }
+    }
     return { ...EMPTY_PAYABLE_DISPLAY }
   }
 
   const hasCompletePair = entryHasStartAndFinish(entry)
 
+  const withHoliday = (work: {
+    basicHours: number
+    overtimeDisplayHours: number
+    additionalHours: number
+    totalPaidHours: number
+    weekendGuaranteeDay: boolean
+  }) => ({
+    basicHours: work.basicHours + holidayHours,
+    workBasicHours: work.basicHours,
+    holidayHours,
+    overtimeDisplayHours: work.overtimeDisplayHours,
+    additionalHours: work.additionalHours,
+    totalPaidHours: work.totalPaidHours + holidayHours,
+    weekendGuaranteeDay: work.weekendGuaranteeDay,
+  })
+
   // Manual mode: entered Basic / OT worked / Additional are authoritative.
-  // total_minutes stores Basic only; OT field stores worked hours (not multiplied).
-  // Total uses the shared formula with the same day multiplier as Automatic.
-  // Both clocks empty is allowed as an unworked draft day (Manual hours may still be entered).
+  // total_minutes stores Work Basic only; holiday_minutes stores holiday.
+  // OT never applies to holiday hours.
   if (overtimeMode === 'Manual') {
     if (!hasCompletePair) {
-      // Both empty: no clock-derived payable. Keep Manual hours only when explicitly entered.
       const basicHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
       const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
-      if (basicHours <= 0 && otWorkedHours <= 0 && manualAdditional <= 0) {
+      if (
+        basicHours <= 0 &&
+        otWorkedHours <= 0 &&
+        manualAdditional <= 0 &&
+        holidayHours <= 0
+      ) {
         return { ...EMPTY_PAYABLE_DISPLAY }
       }
-      return {
+      return withHoliday({
         basicHours,
         overtimeDisplayHours: otWorkedHours,
         additionalHours: manualAdditional,
@@ -373,12 +450,12 @@ export function getEntryPayableDisplayResult(
           dayRules.multiplier,
         ),
         weekendGuaranteeDay: false,
-      }
+      })
     }
 
     const basicHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
     const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
-    return {
+    return withHoliday({
       basicHours,
       overtimeDisplayHours: otWorkedHours,
       additionalHours: manualAdditional,
@@ -389,11 +466,22 @@ export function getEntryPayableDisplayResult(
         dayRules.multiplier,
       ),
       weekendGuaranteeDay: false,
-    }
+    })
   }
 
-  // Automatic: both Start and Finish required before any payable calculation.
+  // Automatic: both Start and Finish required before any work payable calculation.
   if (!hasCompletePair) {
+    if (holidayHours > 0) {
+      return {
+        basicHours: holidayHours,
+        workBasicHours: 0,
+        holidayHours,
+        overtimeDisplayHours: 0,
+        additionalHours: 0,
+        totalPaidHours: holidayHours,
+        weekendGuaranteeDay: false,
+      }
+    }
     return { ...EMPTY_PAYABLE_DISPLAY }
   }
 
@@ -405,7 +493,7 @@ export function getEntryPayableDisplayResult(
       dayRules.afterHours,
       dayRules.multiplier,
     )
-    return {
+    return withHoliday({
       basicHours: breakdown.basicHours,
       overtimeDisplayHours: breakdown.overtimeWorkedHours,
       additionalHours: manualAdditional,
@@ -416,7 +504,7 @@ export function getEntryPayableDisplayResult(
         dayRules.multiplier,
       ),
       weekendGuaranteeDay: true,
-    }
+    })
   }
 
   // Automatic weekday: total_minutes is gross worked (includes OT portion).
@@ -425,7 +513,7 @@ export function getEntryPayableDisplayResult(
   const grossWorkedHours = Math.max(0, (entry.totalMinutes ?? 0) / 60)
   const otWorkedHours = Math.max(0, (entry.overtimeMinutes ?? 0) / 60)
   const basicHours = Math.max(0, grossWorkedHours - otWorkedHours)
-  return {
+  return withHoliday({
     basicHours,
     overtimeDisplayHours: otWorkedHours,
     additionalHours: weekdayAdditional,
@@ -436,7 +524,7 @@ export function getEntryPayableDisplayResult(
       dayRules.multiplier,
     ),
     weekendGuaranteeDay: false,
-  }
+  })
 }
 
 /**
@@ -509,6 +597,8 @@ export function summarizeTimesheetEntries(
     additionalHours: number
     startTime: string | null
     finishTime: string | null
+    dayType?: TimesheetDayType | null
+    holidayMinutes?: number | null
   }>,
   options: SummarizeTimesheetEntriesOptions = {},
 ): {
@@ -540,7 +630,7 @@ export function summarizeTimesheetEntries(
     const paidBreakMinutes = getEntryPaidBreakMinutes(entry, paidBreaks)
     manualAdditionalHoursTotal += manualAdditional
 
-    if (entryHasStartAndFinish(entry)) {
+    if (entry.dayType !== 'holiday' && entryHasStartAndFinish(entry)) {
       breakMinutes += entry.breakMinutes
     }
 
@@ -554,7 +644,10 @@ export function summarizeTimesheetEntries(
       display.basicHours > 0 ||
       display.overtimeDisplayHours > 0 ||
       display.additionalHours > 0 ||
-      entry.totalMinutes > 0
+      entry.totalMinutes > 0 ||
+      entry.dayType === 'holiday' ||
+      entry.dayType === 'holiday_am' ||
+      entry.dayType === 'holiday_pm'
 
     if (!hasPayableHours) continue
 
@@ -564,7 +657,7 @@ export function summarizeTimesheetEntries(
     totalPayableHours += display.totalPaidHours
 
     // Paid-break minutes are tracked for weekday Additional breakdown only.
-    if (!display.weekendGuaranteeDay) {
+    if (!display.weekendGuaranteeDay && entry.dayType !== 'holiday') {
       paidBreakMinutesTotal += paidBreakMinutes
     }
   }
@@ -1064,6 +1157,13 @@ export function prepareEntryInputs(
         overtimeMinutes: existing.overtimeMinutes ?? 0,
         additionalHours: existing.additionalHours ?? 0,
         dailyComment: existing.dailyComment ?? '',
+        dayType:
+          existing.dayType === 'holiday' ||
+          existing.dayType === 'holiday_am' ||
+          existing.dayType === 'holiday_pm'
+            ? existing.dayType
+            : 'work',
+        holidayMinutes: existing.holidayMinutes ?? 0,
       }
     }
 
@@ -1080,6 +1180,8 @@ export function prepareEntryInputs(
       overtimeMinutes: 0,
       additionalHours: 0,
       dailyComment: '',
+      dayType: 'work',
+      holidayMinutes: 0,
     }
   })
 }
@@ -1106,20 +1208,103 @@ export function recalculateEntryInputs(
 
   // Manual: preserve entered Basic (total_minutes) and OT; do not overwrite from clocks/rules.
   if (overtimeMode === 'Manual') {
-    return entries.map((entry) => ({
-      ...entry,
-      totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
-      overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
-      additionalHours: Math.max(0, entry.additionalHours ?? 0),
-      breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
-    }))
+    return entries.map((entry) => {
+      if (entry.dayType === 'holiday') {
+        return {
+          ...entry,
+          dayType: 'holiday' as const,
+          startTime: null,
+          finishTime: null,
+          breakMinutes: 0,
+          totalMinutes: 0,
+          overtimeMinutes: 0,
+          additionalHours: 0,
+          holidayMinutes: Math.max(
+            0,
+            entry.holidayMinutes ?? entry.totalMinutes ?? 0,
+          ),
+        }
+      }
+      if (entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm') {
+        return {
+          ...entry,
+          dayType: entry.dayType,
+          holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+          totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+          overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+          additionalHours: Math.max(0, entry.additionalHours ?? 0),
+          breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
+        }
+      }
+      return {
+        ...entry,
+        dayType: 'work' as const,
+        holidayMinutes: 0,
+        totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+        overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+        additionalHours: Math.max(0, entry.additionalHours ?? 0),
+        breakMinutes: Math.max(0, entry.breakMinutes ?? 0),
+      }
+    })
   }
 
   // First pass: clock totals + weekend-guarantee OT. Weekday OT filled below.
   const prepared = entries.map((entry) => {
+    if (entry.dayType === 'holiday') {
+      return {
+        ...entry,
+        dayType: 'holiday' as const,
+        startTime: null,
+        finishTime: null,
+        breakMinutes: 0,
+        totalMinutes: 0,
+        overtimeMinutes: 0,
+        additionalHours: 0,
+        holidayMinutes: Math.max(
+          0,
+          entry.holidayMinutes ?? entry.totalMinutes ?? 0,
+        ),
+      }
+    }
+
+    if (entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm') {
+      if (!entryHasStartAndFinish(entry)) {
+        return {
+          ...entry,
+          dayType: entry.dayType,
+          holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+          totalMinutes: 0,
+          overtimeMinutes: 0,
+        }
+      }
+      const totalMinutes = calculateEntryTotalMinutes(entry, { paidBreaks })
+      const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
+      if (dayRules.guaranteedPaidHours != null) {
+        const grossHours = calculateGrossShiftHours(entry.startTime, entry.finishTime)
+        const overtimeWorkedHours =
+          grossHours >= dayRules.afterHours ? grossHours - dayRules.afterHours : 0
+        return {
+          ...entry,
+          dayType: entry.dayType,
+          holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+          totalMinutes,
+          overtimeMinutes: Math.round(overtimeWorkedHours * 60),
+        }
+      }
+      return {
+        ...entry,
+        dayType: entry.dayType,
+        holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+        totalMinutes,
+        overtimeMinutes: 0,
+      }
+    }
+
     if (!entryHasStartAndFinish(entry)) {
       return {
         ...entry,
+        dayType: 'work' as const,
+        holidayMinutes: 0,
         totalMinutes: 0,
         overtimeMinutes: 0,
       }
@@ -1152,6 +1337,7 @@ export function recalculateEntryInputs(
 
   if (method === 'daily') {
     return prepared.map((entry) => {
+      if (entry.dayType === 'holiday') return entry
       if (!entryHasStartAndFinish(entry)) return entry
       const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
       if (dayRules.guaranteedPaidHours != null) return entry
@@ -1173,6 +1359,7 @@ export function recalculateEntryInputs(
 
   const next = [...prepared]
   for (const { entry, index } of orderedIndexes) {
+    if (entry.dayType === 'holiday') continue
     if (!entryHasStartAndFinish(entry)) continue
     const dayRules = resolveDayOvertimeRules(entry.dayDate, rules)
     if (dayRules.guaranteedPaidHours != null) continue
@@ -1204,17 +1391,66 @@ export function applyViewModeEntryTotals(
     options.overtimeMode ?? getSetting('overtimeMode') ?? 'Manual'
 
   if (overtimeMode === 'Manual') {
-    return entries.map((entry) => ({
-      ...entry,
-      totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
-      overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
-    }))
+    return entries.map((entry) => {
+      if (entry.dayType === 'holiday') {
+        return {
+          ...entry,
+          startTime: null,
+          finishTime: null,
+          breakMinutes: 0,
+          totalMinutes: 0,
+          overtimeMinutes: 0,
+          additionalHours: 0,
+          holidayMinutes: Math.max(
+            0,
+            entry.holidayMinutes ?? entry.totalMinutes ?? 0,
+          ),
+        }
+      }
+      if (entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm') {
+        return {
+          ...entry,
+          holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+          totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+          overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+        }
+      }
+      return {
+        ...entry,
+        totalMinutes: Math.max(0, entry.totalMinutes ?? 0),
+        overtimeMinutes: Math.max(0, entry.overtimeMinutes ?? 0),
+      }
+    })
   }
 
-  return entries.map((entry) => ({
-    ...entry,
-    totalMinutes: calculateEntryTotalMinutes(entry, { paidBreaks }),
-  }))
+  return entries.map((entry) => {
+    if (entry.dayType === 'holiday') {
+      return {
+        ...entry,
+        startTime: null,
+        finishTime: null,
+        breakMinutes: 0,
+        totalMinutes: 0,
+        overtimeMinutes: 0,
+        additionalHours: 0,
+        holidayMinutes: Math.max(
+          0,
+          entry.holidayMinutes ?? entry.totalMinutes ?? 0,
+        ),
+      }
+    }
+    if (entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm') {
+      return {
+        ...entry,
+        holidayMinutes: Math.max(0, entry.holidayMinutes ?? 0),
+        totalMinutes: calculateEntryTotalMinutes(entry, { paidBreaks }),
+      }
+    }
+    return {
+      ...entry,
+      totalMinutes: calculateEntryTotalMinutes(entry, { paidBreaks }),
+    }
+  })
 }
 
 /** Convert decimal payroll hours to whole minutes for total_minutes / overtime_minutes. */

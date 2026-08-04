@@ -4,11 +4,14 @@ import type { EmploymentType } from '@/services/driversService'
 export type HolidayRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
 export type HolidayLeaveType = 'paid_holiday' | 'unpaid_leave' | 'bank_holiday'
 
+/** Leave portion for a request start/end date. */
+export type HolidayDayPortion = 'full' | 'first_half' | 'second_half'
+
 export type HolidayRequest = {
   id: string
   createdAt: string
   updatedAt: string
-  /** created_at + 6 years. Null until retention migration is applied. */
+  /** created_at + 6 years. Null until retention migration. */
   retentionExpiresAt: string | null
   workerId: string
   workerName: string
@@ -16,6 +19,8 @@ export type HolidayRequest = {
   workerEmploymentType: EmploymentType | null
   startDate: string
   endDate: string
+  startDayPortion: HolidayDayPortion
+  endDayPortion: HolidayDayPortion
   leaveType: HolidayLeaveType
   isPaidLeave: boolean
   totalDays: number
@@ -89,6 +94,8 @@ export type CreateHolidayRequestInput = {
   workerId: string
   startDate: string
   endDate: string
+  startDayPortion?: HolidayDayPortion
+  endDayPortion?: HolidayDayPortion
   leaveType?: HolidayLeaveType
   reason?: string | null
 }
@@ -96,6 +103,8 @@ export type CreateHolidayRequestInput = {
 export type UpdateHolidayRequestInput = {
   startDate?: string
   endDate?: string
+  startDayPortion?: HolidayDayPortion
+  endDayPortion?: HolidayDayPortion
   reason?: string | null
   status?: HolidayRequestStatus
   leaveType?: HolidayLeaveType

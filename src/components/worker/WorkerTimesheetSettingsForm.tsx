@@ -46,6 +46,8 @@ function formFromEffective(effective: EffectiveTimesheetSettings): WorkerTimeshe
     sundayOvertimeMultiplier: effective.sundayOvertimeMultiplier,
     sundayGuaranteedPaidHours: effective.sundayGuaranteedPaidHours,
     sundayUseCompanyDefaultBreak: effective.sundayUseCompanyDefaultBreak,
+    useCompanyDefaultHolidayHours: effective.useCompanyDefaultHolidayHours,
+    defaultPaidHolidayHours: effective.defaultPaidHolidayHours,
   }
 }
 
@@ -218,6 +220,41 @@ export function WorkerTimesheetSettingsForm({
             label="Paid breaks"
           />
         </div>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Holiday hours"
+        hint="Hours credited when a Timesheet day is marked Holiday (H). 0 = unpaid holiday."
+      >
+        <Segmented
+          value={form.useCompanyDefaultHolidayHours ? 'company' : 'custom'}
+          options={[
+            { value: 'company', label: 'Use company default' },
+            { value: 'custom', label: 'Custom holiday hours' },
+          ]}
+          onChange={(value) =>
+            patch({ useCompanyDefaultHolidayHours: value === 'company' })
+          }
+        />
+        {form.useCompanyDefaultHolidayHours ? (
+          <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            Using company default: {form.defaultPaidHolidayHours} h per Holiday day.
+          </p>
+        ) : (
+          <div className="mt-4">
+            <FieldLabel>Custom holiday hours per day</FieldLabel>
+            <NumberInput
+              value={form.defaultPaidHolidayHours}
+              min={0}
+              max={24}
+              step={0.25}
+              onChange={(value) => patch({ defaultPaidHolidayHours: value })}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Decimals allowed (e.g. 7.5). Use 0 for unpaid holiday.
+            </p>
+          </div>
+        )}
       </SettingsCard>
 
       <SettingsCard

@@ -31,6 +31,7 @@ import {
 } from '@/lib/export/modules/holidaysExport'
 import type {
   HolidayRequest,
+  HolidayDayPortion,
   HolidayLeaveType,
   HolidayRequestStatusFilter,
   HolidayRequestSummaryStats,
@@ -238,6 +239,8 @@ export default function HolidayRequestsPage() {
     workerId: string
     startDate: string
     endDate: string
+    startDayPortion: HolidayDayPortion
+    endDayPortion: HolidayDayPortion
     leaveType: HolidayLeaveType
     reason: string
   }) {
@@ -247,6 +250,8 @@ export default function HolidayRequestsPage() {
         workerId: input.workerId,
         startDate: input.startDate,
         endDate: input.endDate,
+        startDayPortion: input.startDayPortion,
+        endDayPortion: input.endDayPortion,
         leaveType: input.leaveType,
         reason: input.reason,
       })
@@ -265,6 +270,8 @@ export default function HolidayRequestsPage() {
   async function handleUpdate(input: {
     startDate: string
     endDate: string
+    startDayPortion: HolidayDayPortion
+    endDayPortion: HolidayDayPortion
     reason: string
     status: HolidayRequest['status']
     leaveType: HolidayRequest['leaveType']
@@ -276,6 +283,8 @@ export default function HolidayRequestsPage() {
       await updateHolidayRequest(editRequest.id, {
         startDate: input.startDate,
         endDate: input.endDate,
+        startDayPortion: input.startDayPortion,
+        endDayPortion: input.endDayPortion,
         reason: input.reason,
         status: input.status,
         leaveType: input.leaveType,

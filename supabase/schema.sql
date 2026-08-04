@@ -382,6 +382,7 @@ create table if not exists public.companies (
   default_vehicle_status text not null default 'Available',
   default_driver_role text not null default 'Driver',
   default_break_minutes integer not null default 30,
+  default_paid_holiday_hours numeric not null default 8,
   paid_breaks boolean not null default false,
   allow_medical_document_uploads boolean not null default false,
   overtime_after_hours numeric not null default 10.5,
@@ -453,6 +454,10 @@ create table if not exists public.companies (
   constraint companies_week_starts_on_check check (week_starts_on in ('monday', 'sunday')),
   constraint companies_theme_check check (theme in ('light', 'dark', 'system')),
   constraint companies_default_break_check check (default_break_minutes in (30, 45, 60)),
+  constraint companies_default_paid_holiday_hours_check check (
+    default_paid_holiday_hours >= 0
+    and default_paid_holiday_hours <= 24
+  ),
   constraint companies_overtime_after_hours_check check (
     overtime_after_hours >= 5.5
     and overtime_after_hours <= 15.5
@@ -564,6 +569,7 @@ create table if not exists public.driver_timesheet_settings (
   sunday_guaranteed_paid_hours numeric null,
   saturday_use_company_default_break boolean null,
   sunday_use_company_default_break boolean null,
+  default_paid_holiday_hours numeric null,
   constraint driver_timesheet_settings_overtime_mode_check
     check (overtime_mode is null or overtime_mode in ('Manual', 'Automatic')),
   constraint driver_timesheet_settings_ot_method_check
@@ -611,6 +617,14 @@ create table if not exists public.driver_timesheet_settings (
         overtime_multiplier >= 1.0
         and overtime_multiplier <= 3.0
       )
+    ),
+  constraint driver_timesheet_settings_holiday_hours_check
+    check (
+      default_paid_holiday_hours is null
+      or (
+        default_paid_holiday_hours >= 0
+        and default_paid_holiday_hours <= 24
+      )
     )
 );
 
@@ -655,9 +669,15 @@ create table if not exists public.timesheet_entries (
   payroll_minutes integer not null default 0,
   additional_hours numeric not null default 0,
   daily_comment text,
+  day_type text not null default 'work',
+  holiday_minutes integer not null default 0,
   deleted_at timestamptz,
   deleted_by uuid,
-  delete_reason text
+  delete_reason text,
+  constraint timesheet_entries_day_type_check check (
+    day_type in ('work', 'holiday', 'holiday_am', 'holiday_pm')
+  ),
+  constraint timesheet_entries_holiday_minutes_check check (holiday_minutes >= 0)
 );
 
 alter table public.timesheets
@@ -730,6 +750,8 @@ alter table public.timesheet_entries
   add column if not exists payroll_minutes integer not null default 0,
   add column if not exists additional_hours numeric not null default 0,
   add column if not exists daily_comment text,
+  add column if not exists day_type text not null default 'work',
+  add column if not exists holiday_minutes integer not null default 0,
   add column if not exists deleted_at timestamptz,
   add column if not exists deleted_by uuid,
   add column if not exists delete_reason text;
@@ -892,6 +914,8 @@ create table if not exists public.holiday_requests (
   holiday_days_deducted numeric,
   calendar_days_total numeric,
   non_working_days_excluded numeric,
+  start_day_portion text not null default 'full',
+  end_day_portion text not null default 'full',
   retention_expires_at timestamptz,
   constraint holiday_requests_end_after_start check (end_date >= start_date),
   constraint holiday_requests_status_check check (
@@ -899,11 +923,23 @@ create table if not exists public.holiday_requests (
   ),
   constraint holiday_requests_leave_type_check check (
     leave_type in ('paid_holiday', 'unpaid_leave', 'bank_holiday')
+  ),
+  constraint holiday_requests_start_day_portion_check check (
+    start_day_portion in ('full', 'first_half', 'second_half')
+  ),
+  constraint holiday_requests_end_day_portion_check check (
+    end_day_portion in ('full', 'first_half', 'second_half')
   )
 );
 
 alter table public.holiday_requests
   add column if not exists retention_expires_at timestamptz;
+
+alter table public.holiday_requests
+  add column if not exists start_day_portion text not null default 'full';
+
+alter table public.holiday_requests
+  add column if not exists end_day_portion text not null default 'full';
 
 comment on column public.holiday_requests.created_at is
   'Database-authoritative create timestamp. On INSERT always set to transaction_timestamp(); immutable after INSERT for authenticated clients.';
@@ -2978,6 +3014,9 @@ create index if not exists support_requests_company_created_idx
 -- Customer ACCEPT requires Admin (drevora_auth_user_has_admin_role_for_company);
 -- status read remains office-role. Published metadata/hashes + acceptances immutable.
 -- -----------------------------------------------------------------------------
+
+alter table public.companies
+  add column if not exists default_paid_holiday_hours numeric not null default 8;
 
 alter table public.companies
   add column if not exists legal_company_name text,

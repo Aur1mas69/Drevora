@@ -12,6 +12,7 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
+import { formatHolidayRequestPortionSummary } from '@/lib/timesheetHoliday'
 import { adminTableEntityName } from '@/lib/adminUiStyles'
 import { Check, Eye, Pencil, Trash2, X } from 'lucide-react'
 import {
@@ -133,6 +134,9 @@ function HolidayRequestMobileCard({
           </div>
           <p className="mt-1 text-xs tabular-nums text-[#5499BF]">
             {formatDate(request.startDate)} – {formatDate(request.endDate)}
+            <span className="mt-0.5 block font-semibold text-[#218EE7]">
+              {formatHolidayRequestPortionSummary(request)}
+            </span>
           </p>
         </div>
         <StatusBadge status={request.status} />
@@ -231,6 +235,9 @@ export function HolidayRequestsDataTable({
                   </td>
                   <td className={`px-4 ${rowPadding} tabular-nums font-medium text-[#113C69]`}>
                     {formatDate(request.startDate)}
+                    <div className="mt-0.5 text-[11px] font-semibold text-[#218EE7]">
+                      {formatHolidayRequestPortionSummary(request)}
+                    </div>
                   </td>
                   <td className={`px-4 ${rowPadding} tabular-nums font-medium text-[#113C69]`}>
                     {formatDate(request.endDate)}

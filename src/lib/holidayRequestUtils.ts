@@ -5,11 +5,13 @@ import {
 } from '@/lib/companySettingsTypes'
 import type {
   HolidayDayBreakdown,
+  HolidayDayPortion,
   HolidayRequest,
   HolidayRequestStatus,
   HolidayRequestStatusFilter,
   HolidayRequestSummaryStats,
 } from '@/lib/holidayRequestTypes'
+import { normalizeHolidayDayPortion, resolvePortionForDate } from '@/lib/timesheetHoliday'
 
 const DAY_INDEX_TO_HOLIDAY_DAY: HolidayWorkingDay[] = [
   'sunday',
@@ -118,12 +120,24 @@ export function calculateInclusiveCalendarDays(
   return diffDays + 1
 }
 
+export function portionEntitlementDays(portion: HolidayDayPortion): number {
+  return portion === 'full' ? 1 : 0.5
+}
+
 export function calculateHolidayDayBreakdown(
   startDate: string,
   endDate: string,
   settings: HolidayCountingSettings = DEFAULT_HOLIDAY_COUNTING_SETTINGS,
+  startPortion: HolidayDayPortion = 'full',
+  endPortion: HolidayDayPortion = 'full',
 ): HolidayDayBreakdown {
-  const calendarDaysTotal = calculateInclusiveCalendarDays(startDate, endDate)
+  const start = normalizeHolidayIsoDate(startDate)
+  const end = normalizeHolidayIsoDate(endDate)
+  const resolvedStart = normalizeHolidayDayPortion(startPortion)
+  const resolvedEnd =
+    start === end ? resolvedStart : normalizeHolidayDayPortion(endPortion)
+
+  const calendarDaysTotal = calculateInclusiveCalendarDays(start, end)
   if (calendarDaysTotal <= 0) {
     return {
       calendarDaysTotal: 0,
@@ -132,35 +146,40 @@ export function calculateHolidayDayBreakdown(
     }
   }
 
-  if (settings.holidayCountingMethod === 'calendar_days') {
-    return {
-      calendarDaysTotal,
-      holidayDaysDeducted: calendarDaysTotal,
-      nonWorkingDaysExcluded: 0,
-    }
-  }
-
+  const countCalendarDays = settings.holidayCountingMethod === 'calendar_days'
   const workingDays = new Set(
     settings.holidayWorkingDays.length > 0
       ? settings.holidayWorkingDays
       : DEFAULT_HOLIDAY_WORKING_DAYS,
   )
-  const current = new Date(`${startDate}T00:00:00`)
-  const end = new Date(`${endDate}T00:00:00`)
-  let holidayDaysDeducted = 0
 
-  while (current <= end) {
-    const day = DAY_INDEX_TO_HOLIDAY_DAY[current.getDay()]
-    if (workingDays.has(day)) {
-      holidayDaysDeducted += 1
+  const current = new Date(`${start}T00:00:00`)
+  const endDateObj = new Date(`${end}T00:00:00`)
+  let holidayDaysDeducted = 0
+  let countableDays = 0
+
+  while (current <= endDateObj) {
+    const y = current.getFullYear()
+    const m = String(current.getMonth() + 1).padStart(2, '0')
+    const d = String(current.getDate()).padStart(2, '0')
+    const iso = `${y}-${m}-${d}`
+    const dayName = DAY_INDEX_TO_HOLIDAY_DAY[current.getDay()]
+    const counts = countCalendarDays || workingDays.has(dayName)
+
+    if (counts) {
+      countableDays += 1
+      const portion = resolvePortionForDate(iso, start, end, resolvedStart, resolvedEnd)
+      holidayDaysDeducted += portionEntitlementDays(portion)
     }
     current.setDate(current.getDate() + 1)
   }
 
+  holidayDaysDeducted = Math.round(holidayDaysDeducted * 100) / 100
+
   return {
     calendarDaysTotal,
     holidayDaysDeducted,
-    nonWorkingDaysExcluded: calendarDaysTotal - holidayDaysDeducted,
+    nonWorkingDaysExcluded: calendarDaysTotal - countableDays,
   }
 }
 

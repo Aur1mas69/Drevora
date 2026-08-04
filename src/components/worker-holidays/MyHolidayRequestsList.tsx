@@ -1,6 +1,7 @@
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { HolidayRequest } from '@/lib/holidayRequestTypes'
 import { getStatusBadgeClass, getStatusLabel } from '@/lib/holidayRequestUtils'
+import { formatHolidayRequestPortionSummary } from '@/lib/timesheetHoliday'
 import {
   myHolidayCardClass,
   myHolidaySectionEyebrowClass,
@@ -45,6 +46,7 @@ export function MyHolidayRequestsList({
                     {formatDate(request.startDate)} – {formatDate(request.endDate)}
                   </p>
                   <p className="my-holiday-muted mt-1 text-xs text-[#5499BF]">
+                    {formatHolidayRequestPortionSummary(request)} ·{' '}
                     {request.holidayDaysDeducted || request.calendarDaysTotal} day
                     {(request.holidayDaysDeducted || request.calendarDaysTotal) === 1
                       ? ''

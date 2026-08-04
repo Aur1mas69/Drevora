@@ -34,9 +34,38 @@ type DriverTimesheetSettingsRow = {
   sunday_overtime_multiplier: number | null
   sunday_guaranteed_paid_hours: number | null
   sunday_use_company_default_break: boolean | null
+  default_paid_holiday_hours?: number | null
 }
 
 const SELECT_COLUMNS = `
+  driver_id,
+  company_id,
+  created_at,
+  updated_at,
+  overtime_mode,
+  overtime_calculation_method,
+  overtime_after_hours,
+  weekly_overtime_after_hours,
+  overtime_multiplier,
+  default_break_minutes,
+  paid_breaks,
+  round_time_minutes,
+  currency,
+  timesheet_week_start_day,
+  saturday_overtime_enabled,
+  saturday_overtime_after_hours,
+  saturday_overtime_multiplier,
+  saturday_guaranteed_paid_hours,
+  saturday_use_company_default_break,
+  sunday_overtime_enabled,
+  sunday_overtime_after_hours,
+  sunday_overtime_multiplier,
+  sunday_guaranteed_paid_hours,
+  sunday_use_company_default_break,
+  default_paid_holiday_hours
+`
+
+const SELECT_COLUMNS_WITHOUT_HOLIDAY = `
   driver_id,
   company_id,
   created_at,
@@ -92,6 +121,14 @@ function asWeekStart(value: string | null): TimesheetWeekStartDay | null {
   return value === 'monday' || value === 'sunday' ? value : null
 }
 
+function isMissingHolidayHoursColumnError(
+  error: { message?: string; code?: string } | null,
+): boolean {
+  if (!error?.message) return false
+  const message = error.message.toLowerCase()
+  return message.includes('default_paid_holiday_hours')
+}
+
 function mapRow(row: DriverTimesheetSettingsRow): DriverTimesheetSettingsOverride {
   return {
     driverId: row.driver_id,
@@ -118,6 +155,10 @@ function mapRow(row: DriverTimesheetSettingsRow): DriverTimesheetSettingsOverrid
     sundayOvertimeMultiplier: row.sunday_overtime_multiplier,
     sundayGuaranteedPaidHours: row.sunday_guaranteed_paid_hours,
     sundayUseCompanyDefaultBreak: row.sunday_use_company_default_break,
+    defaultPaidHolidayHours:
+      row.default_paid_holiday_hours === undefined
+        ? null
+        : row.default_paid_holiday_hours,
   }
 }
 
@@ -160,6 +201,10 @@ function formToPayload(
     payload.sunday_use_company_default_break = form.sundayUseCompanyDefaultBreak
   }
 
+  payload.default_paid_holiday_hours = form.useCompanyDefaultHolidayHours
+    ? null
+    : form.defaultPaidHolidayHours
+
   return payload
 }
 
@@ -168,12 +213,23 @@ export async function fetchOwnDriverTimesheetSettings(
   driverId: string,
 ): Promise<DriverTimesheetSettingsOverride | null> {
   const companyId = requireVerifiedCompanyId()
-  const { data, error } = await requireSupabase()
+  let { data, error } = await requireSupabase()
     .from('driver_timesheet_settings')
     .select(SELECT_COLUMNS)
     .eq('driver_id', driverId)
     .eq('company_id', companyId)
     .maybeSingle()
+
+  if (error && isMissingHolidayHoursColumnError(error)) {
+    const fallback = await requireSupabase()
+      .from('driver_timesheet_settings')
+      .select(SELECT_COLUMNS_WITHOUT_HOLIDAY)
+      .eq('driver_id', driverId)
+      .eq('company_id', companyId)
+      .maybeSingle()
+    data = fallback.data as typeof data
+    error = fallback.error
+  }
 
   logSupabaseQuery({
     service: 'workerTimesheetSettingsService.fetchOwn',
@@ -198,11 +254,21 @@ export async function fetchDriverTimesheetSettingsByDriverIds(
   const result = new Map<string, DriverTimesheetSettingsOverride>()
   if (unique.length === 0) return result
 
-  const { data, error } = await requireSupabase()
+  let { data, error } = await requireSupabase()
     .from('driver_timesheet_settings')
     .select(SELECT_COLUMNS)
     .eq('company_id', companyId)
     .in('driver_id', unique)
+
+  if (error && isMissingHolidayHoursColumnError(error)) {
+    const fallback = await requireSupabase()
+      .from('driver_timesheet_settings')
+      .select(SELECT_COLUMNS_WITHOUT_HOLIDAY)
+      .eq('company_id', companyId)
+      .in('driver_id', unique)
+    data = fallback.data as typeof data
+    error = fallback.error
+  }
 
   logSupabaseQuery({
     service: 'workerTimesheetSettingsService.fetchByDriverIds',
@@ -228,17 +294,29 @@ export async function saveOwnDriverTimesheetSettings(
   weekendRulesScope: WeekendRulesScope,
 ): Promise<DriverTimesheetSettingsOverride> {
   const companyId = requireVerifiedCompanyId()
-  const payload = {
+  const payload: Record<string, unknown> = {
     driver_id: driverId,
     company_id: companyId,
     ...formToPayload(form, weekendRulesScope),
   }
 
-  const { data, error } = await requireSupabase()
+  let { data, error } = await requireSupabase()
     .from('driver_timesheet_settings')
     .upsert(payload, { onConflict: 'driver_id' })
     .select(SELECT_COLUMNS)
     .single()
+
+  if (error && isMissingHolidayHoursColumnError(error)) {
+    const withoutHoliday = { ...payload }
+    delete withoutHoliday.default_paid_holiday_hours
+    const fallback = await requireSupabase()
+      .from('driver_timesheet_settings')
+      .upsert(withoutHoliday, { onConflict: 'driver_id' })
+      .select(SELECT_COLUMNS_WITHOUT_HOLIDAY)
+      .single()
+    data = fallback.data as typeof data
+    error = fallback.error
+  }
 
   logSupabaseQuery({
     service: 'workerTimesheetSettingsService.saveOwn',

@@ -150,6 +150,8 @@ function buildSummary(timesheet: Timesheet): SummaryTotals {
       totalMinutes: entry.totalMinutes,
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
+      dayType: entry.dayType,
+      holidayMinutes: entry.holidayMinutes,
     })),
     { paidBreaks, overtimeMode },
   )
@@ -160,10 +162,51 @@ function formatPdfDailyRow(entry: TimesheetEntryInput, paidBreaks: boolean): str
   const date = formatPdfDate(entry.dayDate)
   const overtimeMode = getSetting('overtimeMode') ?? 'Manual'
   const payable = getEntryPayableDisplayResult(entry, { paidBreaks, overtimeMode })
+  const isHoliday = entry.dayType === 'holiday'
+  const isHalfHoliday =
+    entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm'
   const hasPayable =
     payable.basicHours > 0 ||
     payable.overtimeDisplayHours > 0 ||
     payable.additionalHours > 0
+
+  if (isHoliday) {
+    return [
+      day,
+      date,
+      'H',
+      'Full day holiday',
+      Number(payable.holidayHours).toFixed(2),
+      Number(0).toFixed(2),
+      EMPTY,
+      entry.dailyComment.trim() || EMPTY,
+    ]
+  }
+
+  if (isHalfHoliday) {
+    const code = entry.dayType === 'holiday_am' ? 'H-AM' : 'H-PM'
+    const label =
+      entry.dayType === 'holiday_am' ? 'First half holiday' : 'Second half holiday'
+    const hoursLabel =
+      payable.workBasicHours > 0
+        ? `${Number(payable.holidayHours).toFixed(2)} + Work ${Number(payable.workBasicHours).toFixed(2)}`
+        : Number(payable.holidayHours).toFixed(2)
+    const shiftLabel = entryHasStartAndFinish(entry)
+      ? `${formatTimeDisplay(entry.startTime)}–${formatTimeDisplay(entry.finishTime)}`
+      : code
+    return [
+      day,
+      date,
+      shiftLabel,
+      label,
+      hoursLabel,
+      payable.overtimeDisplayHours > 0
+        ? formatHours(payable.overtimeDisplayHours)
+        : Number(0).toFixed(2),
+      payable.additionalHours > 0 ? formatHours(payable.additionalHours) : EMPTY,
+      entry.dailyComment.trim() || EMPTY,
+    ]
+  }
 
   if (!entryHasStartAndFinish(entry) && !hasPayable) {
     return [day, date, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]

@@ -7,6 +7,10 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from '@/lib/holidayRequestUtils'
+import {
+  formatHolidayRequestPortionSummary,
+  holidayPortionShortLabel,
+} from '@/lib/timesheetHoliday'
 import { Check, Download, Loader2, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -139,6 +143,18 @@ export function HolidayRequestDrawer({
                 <dt className="text-slate-500">End date</dt>
                 <dd className="font-medium tabular-nums text-[#2A376F] dark:text-slate-100">
                   {formatDate(request.endDate)}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Day portion</dt>
+                <dd className="text-right font-medium text-[#2A376F] dark:text-slate-100">
+                  {formatHolidayRequestPortionSummary(request)}
+                  {request.startDate !== request.endDate ? (
+                    <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                      Start {holidayPortionShortLabel(request.startDayPortion)} · End{' '}
+                      {holidayPortionShortLabel(request.endDayPortion)}
+                    </span>
+                  ) : null}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">

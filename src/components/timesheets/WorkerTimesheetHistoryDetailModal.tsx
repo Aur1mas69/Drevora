@@ -247,6 +247,17 @@ export function WorkerTimesheetHistoryDetailModal({
                     paidBreaks,
                   })
                   const note = entry.dailyComment.trim()
+                  const isFullHoliday = entry.dayType === 'holiday'
+                  const isHalfHoliday =
+                    entry.dayType === 'holiday_am' || entry.dayType === 'holiday_pm'
+                  const holidayCode =
+                    entry.dayType === 'holiday'
+                      ? 'H'
+                      : entry.dayType === 'holiday_am'
+                        ? 'H-AM'
+                        : entry.dayType === 'holiday_pm'
+                          ? 'H-PM'
+                          : null
 
                   return (
                     <li
@@ -255,21 +266,48 @@ export function WorkerTimesheetHistoryDetailModal({
                     >
                       <p className="text-sm font-bold text-slate-950">
                         {formatDayLabel(entry.dayDate)}
+                        {holidayCode ? (
+                          <span className="ml-2 text-xs font-bold uppercase tracking-[0.08em] text-sky-800">
+                            {holidayCode}
+                            {isHalfHoliday ? ' · Half day' : ' · Holiday'}
+                          </span>
+                        ) : null}
                       </p>
 
                       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-4">
                         <DayField
                           label="Start"
-                          value={entry.startTime?.slice(0, 5) || '—'}
+                          value={
+                            isFullHoliday
+                              ? holidayCode ?? 'H'
+                              : entry.startTime?.slice(0, 5) || '—'
+                          }
                         />
                         <DayField
                           label="Finish"
-                          value={entry.finishTime?.slice(0, 5) || '—'}
+                          value={
+                            isFullHoliday
+                              ? 'Holiday'
+                              : entry.finishTime?.slice(0, 5) || '—'
+                          }
                         />
-                        <DayField label="Break" value={`${entry.breakMinutes}m`} />
+                        <DayField
+                          label="Break"
+                          value={isFullHoliday ? '—' : `${entry.breakMinutes}m`}
+                        />
                         <DayField
                           label="Basic"
-                          value={formatHours(payable.basicHours)}
+                          value={
+                            isFullHoliday
+                              ? formatHours(payable.holidayHours)
+                              : isHalfHoliday
+                                ? `H ${formatHours(payable.holidayHours)}${
+                                    payable.workBasicHours > 0
+                                      ? ` + Work ${formatHours(payable.workBasicHours)}`
+                                      : ''
+                                  }`
+                                : formatHours(payable.basicHours)
+                          }
                         />
                         <DayField
                           label="Overtime"
@@ -277,7 +315,7 @@ export function WorkerTimesheetHistoryDetailModal({
                         />
                         <DayField
                           label="Additional"
-                          value={formatHours(payable.additionalHours)}
+                          value={isFullHoliday ? '—' : formatHours(payable.additionalHours)}
                         />
                         <DayField
                           label="Total"

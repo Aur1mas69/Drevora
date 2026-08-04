@@ -22,6 +22,7 @@ import type {
   CreateTimesheetInput,
   CreateTimesheetResult,
   Timesheet,
+  TimesheetDayType,
   TimesheetEntry,
   TimesheetEntryInput,
   TimesheetListItem,
@@ -31,6 +32,7 @@ import type {
   UpdateTimesheetInput,
 } from '@/lib/timesheetTypes'
 import { DEFAULT_TIMESHEET_PAGE_SIZE } from '@/lib/timesheetTypes'
+import { normalizeTimesheetDayType } from '@/lib/timesheetHoliday'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import type { DriverRole } from '@/services/driversService'
@@ -58,6 +60,8 @@ type TimesheetEntryRow = {
   payroll_minutes?: number | null
   additional_hours?: number | null
   daily_comment?: string | null
+  day_type?: string | null
+  holiday_minutes?: number | null
   deleted_at?: string | null
   deleted_by?: string | null
   delete_reason?: string | null
@@ -99,6 +103,8 @@ type EntryPayableRow = {
   break_minutes: number | null
   overtime_minutes: number | null
   additional_hours?: number | null
+  day_type?: string | null
+  holiday_minutes?: number | null
 }
 
 type TimesheetPayableSummary = ReturnType<typeof summarizeTimesheetEntries>
@@ -112,7 +118,9 @@ const timesheetEntrySelectCore = `
     finish_time,
     total_minutes,
     overtime_minutes,
-    additional_hours
+    additional_hours,
+    day_type,
+    holiday_minutes
   `
 
 const timesheetEntrySelectMinimal = `
@@ -188,7 +196,9 @@ const timesheetEntrySelectWithDailyComment = `
     total_minutes,
     overtime_minutes,
     additional_hours,
-    daily_comment
+    daily_comment,
+    day_type,
+    holiday_minutes
   `
 
 const timesheetDetailSelect = `
@@ -315,10 +325,39 @@ function buildTimesheetEntryDbRow(
   timesheetId: string,
   entry: TimesheetEntryInput,
   effective: EffectiveTimesheetSettings,
-) {
+): {
+  timesheet_id: string
+  day_date: string
+  start_time: string | null
+  break_minutes: number
+  finish_time: string | null
+  total_minutes: number
+  overtime_minutes: number
+  additional_hours: number
+  daily_comment: string | null
+  day_type: TimesheetDayType
+  holiday_minutes: number
+} {
+  const dayType = normalizeTimesheetDayType(entry.dayType)
+  const holidayMinutes = Math.max(0, entry.holidayMinutes ?? 0)
+
+  if (dayType === 'holiday') {
+    return {
+      timesheet_id: timesheetId,
+      day_date: entry.dayDate,
+      start_time: null,
+      break_minutes: 0,
+      finish_time: null,
+      total_minutes: 0,
+      overtime_minutes: 0,
+      additional_hours: 0,
+      daily_comment: normalizeDailyComment(entry.dailyComment) || null,
+      day_type: 'holiday',
+      holiday_minutes: holidayMinutes || Math.max(0, entry.totalMinutes ?? 0),
+    }
+  }
+
   const overtimeMode = effective.overtimeMode
-  // Manual: total_minutes is authoritative Basic hours (as minutes).
-  // Automatic: prefer client-recalculated minutes; fall back to clock-derived.
   const totalMinutes =
     overtimeMode === 'Manual'
       ? Math.max(0, entry.totalMinutes ?? 0)
@@ -340,6 +379,8 @@ function buildTimesheetEntryDbRow(
     overtime_minutes: entry.overtimeMinutes ?? 0,
     additional_hours: normalizeAdditionalHours(entry.additionalHours),
     daily_comment: normalizeDailyComment(entry.dailyComment) || null,
+    day_type: dayType,
+    holiday_minutes: dayType === 'work' ? 0 : holidayMinutes,
   }
 }
 
@@ -390,12 +431,22 @@ function buildEmptyTimesheetEntryDbRow(
     overtime_minutes: 0,
     additional_hours: 0,
     daily_comment: null,
+    day_type: 'work' as TimesheetDayType,
+    holiday_minutes: 0,
   }
 }
 
 function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
   const totalMinutes = row.total_minutes ?? 0
   const overtimeMinutes = row.overtime_minutes ?? 0
+  const dayType = normalizeTimesheetDayType(row.day_type)
+  const holidayMinutesRaw = row.holiday_minutes
+  const holidayMinutes =
+    holidayMinutesRaw != null && Number.isFinite(holidayMinutesRaw)
+      ? Math.max(0, holidayMinutesRaw)
+      : dayType === 'holiday'
+        ? Math.max(0, totalMinutes)
+        : 0
 
   return {
     id: row.id,
@@ -404,10 +455,12 @@ function mapEntryRow(row: TimesheetEntryRow): TimesheetEntry {
     startTime: normalizeTime(row.start_time),
     breakMinutes: row.break_minutes ?? 0,
     finishTime: normalizeTime(row.finish_time),
-    totalMinutes,
-    overtimeMinutes,
+    totalMinutes: dayType === 'holiday' ? 0 : totalMinutes,
+    overtimeMinutes: dayType === 'holiday' ? 0 : overtimeMinutes,
     additionalHours: normalizeAdditionalHours(row.additional_hours),
     dailyComment: normalizeDailyComment(row.daily_comment),
+    dayType,
+    holidayMinutes,
   }
 }
 
@@ -529,6 +582,8 @@ function isMissingTimesheetEntryColumnError(
     message.includes('overtime_minutes') ||
     message.includes('additional_hours') ||
     message.includes('daily_comment') ||
+    message.includes('day_type') ||
+    message.includes('holiday_minutes') ||
     message.includes('deleted_at') ||
     message.includes('deleted_by') ||
     message.includes('delete_reason') ||
@@ -605,7 +660,7 @@ async function fetchPayableSummariesByTimesheetIds(
   if (timesheetIds.length === 0) return summaries
 
   const selectWithAdditional =
-    'timesheet_id, day_date, start_time, finish_time, total_minutes, break_minutes, overtime_minutes, additional_hours'
+    'timesheet_id, day_date, start_time, finish_time, total_minutes, break_minutes, overtime_minutes, additional_hours, day_type, holiday_minutes'
   const selectFallback =
     'timesheet_id, day_date, start_time, finish_time, total_minutes, break_minutes, overtime_minutes'
 
@@ -648,19 +703,30 @@ async function fetchPayableSummariesByTimesheetIds(
       breakMinutes: number
       overtimeMinutes: number
       additionalHours: number
+      dayType: TimesheetDayType
+      holidayMinutes: number
     }>
   >()
 
   for (const row of (data ?? []) as EntryPayableRow[]) {
+    const dayType = normalizeTimesheetDayType(row.day_type)
+    const holidayMinutes =
+      row.holiday_minutes != null && Number.isFinite(row.holiday_minutes)
+        ? Math.max(0, row.holiday_minutes)
+        : dayType === 'holiday'
+          ? Math.max(0, row.total_minutes ?? 0)
+          : 0
     const list = entriesByTimesheet.get(row.timesheet_id) ?? []
     list.push({
       dayDate: row.day_date,
       startTime: normalizeTime(row.start_time),
       finishTime: normalizeTime(row.finish_time),
-      totalMinutes: row.total_minutes ?? 0,
+      totalMinutes: dayType === 'holiday' ? 0 : (row.total_minutes ?? 0),
       breakMinutes: row.break_minutes ?? 0,
-      overtimeMinutes: row.overtime_minutes ?? 0,
+      overtimeMinutes: dayType === 'holiday' ? 0 : (row.overtime_minutes ?? 0),
       additionalHours: normalizeAdditionalHours(row.additional_hours),
+      dayType,
+      holidayMinutes,
     })
     entriesByTimesheet.set(row.timesheet_id, list)
   }
@@ -1576,7 +1642,7 @@ export async function upsertTimesheetEntries(
     const row = buildTimesheetEntryDbRow(timesheetId, entry, effective)
 
     if (entry.id) {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('timesheet_entries')
         .update(row)
         .eq('id', entry.id)
@@ -1584,6 +1650,22 @@ export async function upsertTimesheetEntries(
         .is('deleted_at', null)
         .select('id')
         .maybeSingle()
+
+      if (error && isMissingTimesheetEntryColumnError(error) && 'day_type' in row) {
+        const withoutDayType = { ...row } as Record<string, unknown>
+        delete withoutDayType.day_type
+        delete withoutDayType.holiday_minutes
+        const fallback = await supabase
+          .from('timesheet_entries')
+          .update(withoutDayType)
+          .eq('id', entry.id)
+          .eq('timesheet_id', timesheetId)
+          .is('deleted_at', null)
+          .select('id')
+          .maybeSingle()
+        data = fallback.data
+        error = fallback.error
+      }
 
       logSupabaseQuery({
         service: 'timesheetsService.upsertTimesheetEntries.update',
@@ -1598,7 +1680,15 @@ export async function upsertTimesheetEntries(
       continue
     }
 
-    const { error } = await supabase.from('timesheet_entries').insert(row)
+    let { error } = await supabase.from('timesheet_entries').insert(row)
+
+    if (error && isMissingTimesheetEntryColumnError(error) && 'day_type' in row) {
+      const withoutDayType = { ...row } as Record<string, unknown>
+      delete withoutDayType.day_type
+      delete withoutDayType.holiday_minutes
+      const fallback = await supabase.from('timesheet_entries').insert(withoutDayType)
+      error = fallback.error
+    }
 
     logSupabaseQuery({
       service: 'timesheetsService.upsertTimesheetEntries.insert',

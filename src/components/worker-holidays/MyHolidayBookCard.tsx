@@ -1,7 +1,8 @@
 import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
 import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
+import { HolidayDayPortionSelect } from '@/components/holidays/HolidayDayPortionSelect'
 import { Button } from '@/components/ui/button'
-import type { HolidayBalanceSummary } from '@/lib/holidayRequestTypes'
+import type { HolidayBalanceSummary, HolidayDayPortion } from '@/lib/holidayRequestTypes'
 import {
   myHolidayCardClass,
   myHolidayPrimaryButtonClass,
@@ -12,6 +13,8 @@ import {
 type MyHolidayBookCardProps = {
   startDate: string
   endDate: string
+  startDayPortion: HolidayDayPortion
+  endDayPortion: HolidayDayPortion
   reason: string
   preview: HolidayBalanceSummary | null
   isPreviewLoading: boolean
@@ -19,6 +22,8 @@ type MyHolidayBookCardProps = {
   showManagedMessage: boolean
   onStartDateChange: (value: string) => void
   onEndDateChange: (value: string) => void
+  onStartDayPortionChange: (value: HolidayDayPortion) => void
+  onEndDayPortionChange: (value: HolidayDayPortion) => void
   onReasonChange: (value: string) => void
   onSubmit: () => void
 }
@@ -30,6 +35,8 @@ function formatDayCount(value: number): string {
 export function MyHolidayBookCard({
   startDate,
   endDate,
+  startDayPortion,
+  endDayPortion,
   reason,
   preview,
   isPreviewLoading,
@@ -37,10 +44,13 @@ export function MyHolidayBookCard({
   showManagedMessage,
   onStartDateChange,
   onEndDateChange,
+  onStartDayPortionChange,
+  onEndDayPortionChange,
   onReasonChange,
   onSubmit,
 }: MyHolidayBookCardProps) {
   const hasDates = startDate.length > 0 && endDate.length > 0
+  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
   const exceedsBalance =
     preview &&
     preview.allowanceKnown &&
@@ -83,6 +93,23 @@ export function MyHolidayBookCard({
               aria-label="End date"
             />
           </label>
+          <HolidayDayPortionSelect
+            label={isSingleDay ? 'Day portion' : 'Start day portion'}
+            value={startDayPortion}
+            onChange={(value) => {
+              onStartDayPortionChange(value)
+              if (isSingleDay) onEndDayPortionChange(value)
+            }}
+            className="my-holiday-muted text-xs font-semibold text-[#5499BF] [&_select]:my-holiday-input [&_select]:h-11 [&_select]:rounded-2xl [&_select]:border-[#C5DFFB]/80 [&_select]:bg-white [&_select]:text-[#113C69]"
+          />
+          {!isSingleDay ? (
+            <HolidayDayPortionSelect
+              label="End day portion"
+              value={endDayPortion}
+              onChange={onEndDayPortionChange}
+              className="my-holiday-muted text-xs font-semibold text-[#5499BF] [&_select]:my-holiday-input [&_select]:h-11 [&_select]:rounded-2xl [&_select]:border-[#C5DFFB]/80 [&_select]:bg-white [&_select]:text-[#113C69]"
+            />
+          ) : null}
           <label className="block space-y-1.5">
             <span className="my-holiday-muted text-xs font-semibold text-[#5499BF]">Reason (optional)</span>
             <textarea

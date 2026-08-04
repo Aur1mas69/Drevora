@@ -20,6 +20,7 @@ export const COMPANY_SETTINGS_COLUMNS = [
   'default_vehicle_status',
   'default_driver_role',
   'default_break_minutes',
+  'default_paid_holiday_hours',
   'paid_breaks',
   'allow_medical_document_uploads',
   'overtime_after_hours',
@@ -247,6 +248,15 @@ export const COMPANY_SETTINGS_OVERTIME_CALCULATION_COLUMNS = [
   'overtime_calculation_method',
   'weekly_overtime_after_hours',
 ] as const
+
+/** Default Holiday (H) day hours — optional until migration is applied. */
+export const COMPANY_SETTINGS_HOLIDAY_HOURS_COLUMNS = [
+  'default_paid_holiday_hours',
+] as const
+
+export const companySettingsHolidayHoursSelect = `
+  default_paid_holiday_hours
+` as const
 
 export const companySettingsOvertimeCalculationSelect = `
   overtime_calculation_method,

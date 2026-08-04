@@ -3,8 +3,21 @@ import { TimesheetTimeInput } from '@/components/timesheets/TimesheetTimeInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { fetchApprovedHolidayDaysForWorkerWeek } from '@/lib/timesheetApprovedHolidays'
+import {
+  applyApprovedHolidaysToEntries,
+  applyHolidayDayHours,
+  applyWorkDayType,
+  holidayDayCode,
+  holidayPortionFromDayType,
+  isFullHolidayDay,
+  isHalfHolidayDay,
+  isHolidayDay,
+  validateHolidayWorkOverlap,
+  type HolidayConflict,
+} from '@/lib/timesheetHoliday'
 import { resolveEffectiveTimesheetSettings } from '@/lib/resolveEffectiveTimesheetSettings'
-import type { Timesheet, TimesheetEntryInput } from '@/lib/timesheetTypes'
+import type { Timesheet, TimesheetDayType, TimesheetEntryInput } from '@/lib/timesheetTypes'
 import type { OvertimeMode, TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
 import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
@@ -12,6 +25,7 @@ import { fetchDriverTimesheetSettingsByDriverIds } from '@/services/workerTimesh
 import {
   applyViewModeEntryTotals,
   buildTimesheetOvertimeRules,
+  buildWeekDates,
   canEditTimesheet,
   decimalHoursToMinutes,
   entryHasStartAndFinish,
@@ -151,6 +165,7 @@ export function TimesheetDrawer({
   } = useCompanySettings()
   const [draftEntries, setDraftEntries] = useState<TimesheetEntryInput[]>([])
   const [localError, setLocalError] = useState<string | null>(null)
+  const [holidayConflicts, setHolidayConflicts] = useState<HolidayConflict[]>([])
   const [effective, setEffective] = useState<EffectiveTimesheetSettings | null>(
     null,
   )
@@ -215,14 +230,36 @@ export function TimesheetDrawer({
 
   useEffect(() => {
     if (!timesheet || !effective) return
-    setDraftEntries(
-      prepareEntryInputs(
-        timesheet.weekStart,
-        timesheet.entries,
-        defaultBreakMinutes,
-        breakOptions,
-      ),
+
+    let cancelled = false
+    const prepared = prepareEntryInputs(
+      timesheet.weekStart,
+      timesheet.entries,
+      defaultBreakMinutes,
+      breakOptions,
     )
+
+    void (async () => {
+      const weekDates = buildWeekDates(timesheet.weekStart)
+      const weekEnd = weekDates[weekDates.length - 1] ?? timesheet.weekStart
+      const approvedDays = await fetchApprovedHolidayDaysForWorkerWeek({
+        workerId: timesheet.driverId,
+        weekStart: timesheet.weekStart,
+        weekEnd,
+      })
+      if (cancelled) return
+      const applied = applyApprovedHolidaysToEntries(
+        prepared,
+        approvedDays,
+        effective.defaultPaidHolidayHours,
+      )
+      setDraftEntries(applied.entries)
+      setHolidayConflicts(applied.conflicts)
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [breakOptions, defaultBreakMinutes, effective, timesheet?.id])
 
   const canEdit = timesheet ? canEditTimesheet(timesheet.status) : false
@@ -305,6 +342,8 @@ export function TimesheetDrawer({
       totalMinutes: entry.totalMinutes,
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
+      dayType: entry.dayType,
+      holidayMinutes: entry.holidayMinutes,
     }))
 
     return summarizeTimesheetEntries(entriesForSummary, {
@@ -320,9 +359,28 @@ export function TimesheetDrawer({
     setLocalError(null)
     setDraftEntries((current) =>
       recalculateEntryInputs(
-        current.map((entry) =>
-          entry.dayDate === dayDate ? { ...entry, ...patch } : entry,
-        ),
+        current.map((entry) => {
+          if (entry.dayDate !== dayDate) return entry
+          if (
+            patch.dayType === 'holiday' ||
+            patch.dayType === 'holiday_am' ||
+            patch.dayType === 'holiday_pm'
+          ) {
+            const portion = holidayPortionFromDayType(patch.dayType) ?? 'full'
+            return applyHolidayDayHours(
+              { ...entry, ...patch },
+              effective?.defaultPaidHolidayHours ?? 0,
+              portion,
+            )
+          }
+          if (patch.dayType === 'work' && isHolidayDay(entry)) {
+            return applyWorkDayType(
+              { ...entry, ...patch },
+              defaultBreakMinutes,
+            )
+          }
+          return { ...entry, ...patch }
+        }),
         recalcOptions,
       ),
     )
@@ -338,6 +396,10 @@ export function TimesheetDrawer({
   }
 
   function validateEntriesForSave(entries: TimesheetEntryInput[]): string | null {
+    for (const entry of entries) {
+      const overlapError = validateHolidayWorkOverlap(entry)
+      if (overlapError) return overlapError
+    }
     return validateTimesheetTimePairs(entries) ?? validateManualAdditional(entries)
   }
 
@@ -467,6 +529,14 @@ export function TimesheetDrawer({
           </div>
           </div>
         </div>
+
+        {holidayConflicts.length > 0 ? (
+          <div className="mx-5 mt-3 shrink-0 rounded-[10px] bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-900/50 sm:mx-6">
+            Approved holiday conflicts with existing work hours on{' '}
+            {holidayConflicts.map((item) => item.label).join(', ')}. Those days were not
+            changed to Holiday.
+          </div>
+        ) : null}
 
         {saveError || localError ? (
           <div className="mx-5 mt-3 shrink-0 rounded-[10px] bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/60 sm:mx-6">
@@ -784,6 +854,59 @@ function NotesIndicator({
   )
 }
 
+function DayTypeControl({
+  dayType,
+  editable,
+  onChange,
+}: {
+  dayType: TimesheetDayType
+  editable: boolean
+  onChange: (next: TimesheetDayType) => void
+}) {
+  if (!editable) {
+    if (dayType === 'holiday') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
+          H · Full day
+        </span>
+      )
+    }
+    if (dayType === 'holiday_am') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
+          H-AM · First half
+        </span>
+      )
+    }
+    if (dayType === 'holiday_pm') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
+          H-PM · Second half
+        </span>
+      )
+    }
+    return (
+      <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
+        Work
+      </span>
+    )
+  }
+
+  return (
+    <select
+      value={dayType}
+      onChange={(event) => onChange(event.target.value as TimesheetDayType)}
+      className={`${inputClassName} h-7 min-w-[7.5rem]`}
+      aria-label="Day type"
+    >
+      <option value="work">Work</option>
+      <option value="holiday">Holiday (H)</option>
+      <option value="holiday_am">First half (H-AM)</option>
+      <option value="holiday_pm">Second half (H-PM)</option>
+    </select>
+  )
+}
+
 function TimesheetDayRow({
   entry,
   index,
@@ -805,18 +928,23 @@ function TimesheetDayRow({
   formatTime: (value: string | null) => string
   onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
 }) {
+  const isHoliday = isHolidayDay(entry)
+  const isFullHoliday = isFullHolidayDay(entry)
+  const isHalfHoliday = isHalfHolidayDay(entry)
+  const holidayCode = holidayDayCode(entry.dayType ?? 'work')
   const isManualMode = overtimeMode === 'Manual'
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules,
     paidBreaks,
     overtimeMode,
   })
-  const incompletePair = isIncompleteTimePair(entry)
-  const missingField = getMissingTimePairField(entry)
+  const incompletePair = !isFullHoliday && isIncompleteTimePair(entry)
+  const missingField = isFullHoliday ? null : getMissingTimePairField(entry)
   const dayTotal = incompletePair ? 0 : payable.totalPaidHours
-  const hasShift = entryHasStartAndFinish(entry)
-  const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
-  const canEditBasic = isEditable && isManualMode
+  const hasShift = !isFullHoliday && entryHasStartAndFinish(entry)
+  const canEditOt =
+    isEditable && !isFullHoliday && (isManualMode || !payable.weekendGuaranteeDay)
+  const canEditBasic = isEditable && isManualMode && !isFullHoliday
 
   return (
     <tr
@@ -824,10 +952,28 @@ function TimesheetDayRow({
         index % 2 === 0 ? 'bg-[#F5FAFF]/80' : 'bg-white/70'
       } dark:border-white/10 dark:hover:bg-slate-800/70`}
     >
-      <td className={dayColumnCellClassName}>{formatDayLabel(entry.dayDate)}</td>
+      <td className={dayColumnCellClassName}>
+        <div className="flex flex-col gap-1">
+          <span>{formatDayLabel(entry.dayDate)}</span>
+          <DayTypeControl
+            dayType={entry.dayType ?? 'work'}
+            editable={isEditable}
+            onChange={(next) => onUpdate(entry.dayDate, { dayType: next })}
+          />
+        </div>
+      </td>
       <td className={tableCellClassName}>
-        {isEditable ? (
+        {isFullHoliday ? (
+          <span className="text-sm font-bold uppercase tracking-[0.08em] text-sky-800 dark:text-sky-200">
+            {holidayCode}
+          </span>
+        ) : isEditable ? (
           <div className="flex min-w-0 flex-col gap-1">
+            {isHalfHoliday && holidayCode ? (
+              <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 dark:text-sky-200">
+                {holidayCode} + Work
+              </span>
+            ) : null}
             <TimesheetTimeInput
               value={entry.startTime}
               timeFormat={timeFormat}
@@ -854,14 +1000,18 @@ function TimesheetDayRow({
           </div>
         ) : (
           <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
-            {hasShift
-              ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
-              : '—'}
+            {isHalfHoliday && holidayCode
+              ? `${holidayCode}${hasShift ? ` · ${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}` : ''}`
+              : hasShift
+                ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
+                : '—'}
           </span>
         )}
       </td>
       <td className={tableCellClassName}>
-        {isEditable ? (
+        {isFullHoliday ? (
+          <span className="text-xs font-semibold text-[#5499BF]">—</span>
+        ) : isEditable ? (
           <Input
             type="number"
             min={0}
@@ -898,7 +1048,22 @@ function TimesheetDayRow({
           />
         ) : (
           <span className="text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
-            {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+            {isHoliday ? (
+              <span className="flex flex-col gap-0.5">
+                {payable.holidayHours > 0 || isHoliday ? (
+                  <span>
+                    H {formatHours(payable.holidayHours)}
+                    {payable.workBasicHours > 0
+                      ? ` + Work ${formatHours(payable.workBasicHours)}`
+                      : ''}
+                  </span>
+                ) : null}
+              </span>
+            ) : payable.basicHours > 0 ? (
+              formatHours(payable.basicHours)
+            ) : (
+              '—'
+            )}
           </span>
         )}
       </td>
@@ -918,22 +1083,32 @@ function TimesheetDayRow({
           />
         ) : (
           <span className="text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300">
-            {payable.overtimeDisplayHours > 0
-              ? formatHours(payable.overtimeDisplayHours)
-              : '—'}
+            {isFullHoliday
+              ? formatHours(0)
+              : payable.overtimeDisplayHours > 0
+                ? formatHours(payable.overtimeDisplayHours)
+                : '—'}
           </span>
         )}
       </td>
       <td className={tableCellClassName}>
-        <AdditionalHoursCell
-          entry={entry}
-          paidBreaks={paidBreaks}
-          overtimeMode={overtimeMode}
-          overtimeRules={overtimeRules}
-          isEditable={isEditable}
-          index={index}
-          onUpdate={onUpdate}
-        />
+        {isFullHoliday ? (
+          <span className="text-xs font-semibold text-[#5499BF]">Holiday</span>
+        ) : isHalfHoliday ? (
+          <span className="text-xs font-semibold text-sky-800 dark:text-sky-200">
+            {holidayCode} + Work
+          </span>
+        ) : (
+          <AdditionalHoursCell
+            entry={entry}
+            paidBreaks={paidBreaks}
+            overtimeMode={overtimeMode}
+            overtimeRules={overtimeRules}
+            isEditable={isEditable}
+            index={index}
+            onUpdate={onUpdate}
+          />
+        )}
       </td>
       <td
         className={`${tableCellClassName} text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300`}
@@ -968,30 +1143,42 @@ function TimesheetDayCard({
   formatTime: (value: string | null) => string
   onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
 }) {
+  const isHoliday = isHolidayDay(entry)
+  const isFullHoliday = isFullHolidayDay(entry)
+  const isHalfHoliday = isHalfHolidayDay(entry)
+  const holidayCode = holidayDayCode(entry.dayType ?? 'work')
   const isManualMode = overtimeMode === 'Manual'
-  const hasShift = entryHasStartAndFinish(entry)
+  const hasShift = !isFullHoliday && entryHasStartAndFinish(entry)
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules,
     paidBreaks,
     overtimeMode,
   })
-  const incompletePair = isIncompleteTimePair(entry)
-  const missingField = getMissingTimePairField(entry)
+  const incompletePair = !isFullHoliday && isIncompleteTimePair(entry)
+  const missingField = isFullHoliday ? null : getMissingTimePairField(entry)
   const paidBreakMinutes =
-    isManualMode || payable.weekendGuaranteeDay
+    isFullHoliday || isManualMode || payable.weekendGuaranteeDay
       ? 0
       : getEntryPaidBreakMinutes(entry, paidBreaks)
   const combinedAdditional = payable.additionalHours
   const dayTotal = incompletePair ? 0 : payable.totalPaidHours
-  const canEditOt = isEditable && (isManualMode || !payable.weekendGuaranteeDay)
-  const canEditBasic = isEditable && isManualMode
+  const canEditOt =
+    isEditable && !isFullHoliday && (isManualMode || !payable.weekendGuaranteeDay)
+  const canEditBasic = isEditable && isManualMode && !isFullHoliday
 
   return (
     <article className="rounded-2xl border border-[#D3E9FC] bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-[#113C69] dark:text-slate-100">
-          {formatDayLabel(entry.dayDate)}
-        </p>
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold text-[#113C69] dark:text-slate-100">
+            {formatDayLabel(entry.dayDate)}
+          </p>
+          <DayTypeControl
+            dayType={entry.dayType ?? 'work'}
+            editable={isEditable}
+            onChange={(next) => onUpdate(entry.dayDate, { dayType: next })}
+          />
+        </div>
         <p className="text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300">
           {incompletePair ? '—' : formatTotalHours(dayTotal)}
         </p>
@@ -1000,8 +1187,17 @@ function TimesheetDayCard({
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="col-span-2">
           <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Shift</p>
-          {isEditable ? (
+          {isFullHoliday ? (
+            <p className="mt-0.5 text-sm font-bold uppercase tracking-[0.08em] text-sky-800 dark:text-sky-200">
+              {holidayCode} — Full day holiday
+            </p>
+          ) : isEditable ? (
             <div className="mt-1 grid grid-cols-2 gap-1.5">
+              {isHalfHoliday && holidayCode ? (
+                <p className="col-span-2 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800">
+                  {holidayCode} + Work
+                </p>
+              ) : null}
               <TimesheetTimeInput
                 value={entry.startTime}
                 timeFormat={timeFormat}
@@ -1028,16 +1224,20 @@ function TimesheetDayCard({
             </div>
           ) : (
             <p className="mt-0.5 tabular-nums font-medium text-[#113C69] dark:text-slate-200">
-              {hasShift
-                ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
-                : '—'}
+              {isHalfHoliday && holidayCode
+                ? `${holidayCode}${hasShift ? ` · ${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}` : ''}`
+                : hasShift
+                  ? `${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}`
+                  : '—'}
             </p>
           )}
         </div>
 
         <div>
           <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Break</p>
-          {isEditable ? (
+          {isFullHoliday ? (
+            <p className="mt-0.5 font-medium text-[#5499BF]">—</p>
+          ) : isEditable ? (
             <Input
               type="number"
               min={0}
@@ -1076,7 +1276,15 @@ function TimesheetDayCard({
             />
           ) : (
             <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#113C69]">
-              {payable.basicHours > 0 ? formatHours(payable.basicHours) : '—'}
+              {isHoliday
+                ? `H ${formatHours(payable.holidayHours)}${
+                    payable.workBasicHours > 0
+                      ? ` + Work ${formatHours(payable.workBasicHours)}`
+                      : ''
+                  }`
+                : payable.basicHours > 0
+                  ? formatHours(payable.basicHours)
+                  : '—'}
             </p>
           )}
         </div>
@@ -1098,9 +1306,11 @@ function TimesheetDayCard({
             />
           ) : (
             <p className="mt-0.5 text-sm font-semibold tabular-nums text-[#0B68BE]">
-              {payable.overtimeDisplayHours > 0
-                ? formatHours(payable.overtimeDisplayHours)
-                : '—'}
+              {isFullHoliday
+                ? formatHours(0)
+                : payable.overtimeDisplayHours > 0
+                  ? formatHours(payable.overtimeDisplayHours)
+                  : '—'}
             </p>
           )}
         </div>
@@ -1108,16 +1318,22 @@ function TimesheetDayCard({
         <div>
           <p className="font-semibold uppercase tracking-[0.06em] text-[#5499BF]">Add. Hrs</p>
           <div className="mt-1">
-            <AdditionalHoursCell
-              entry={entry}
-              paidBreaks={paidBreaks}
-              overtimeMode={overtimeMode}
-              overtimeRules={overtimeRules}
-              isEditable={isEditable}
-              index={index}
-              onUpdate={onUpdate}
-              compact
-            />
+            {isFullHoliday ? (
+              <p className="font-medium text-[#5499BF]">Holiday</p>
+            ) : isHalfHoliday ? (
+              <p className="font-medium text-sky-800">{holidayCode} + Work</p>
+            ) : (
+              <AdditionalHoursCell
+                entry={entry}
+                paidBreaks={paidBreaks}
+                overtimeMode={overtimeMode}
+                overtimeRules={overtimeRules}
+                isEditable={isEditable}
+                index={index}
+                onUpdate={onUpdate}
+                compact
+              />
+            )}
           </div>
           {!isEditable && paidBreakMinutes > 0 && entry.additionalHours > 0 ? (
             <p className="mt-0.5 text-[10px] text-[#5499BF]">

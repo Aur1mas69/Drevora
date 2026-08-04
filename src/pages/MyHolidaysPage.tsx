@@ -8,7 +8,7 @@ import {
   resolveSelfServiceHolidayLeaveType,
   workerHasPaidHolidayEntitlement,
 } from '@/lib/workerHolidaySelfService'
-import type { HolidayBalanceSummary, HolidayRequest } from '@/lib/holidayRequestTypes'
+import type { HolidayBalanceSummary, HolidayDayPortion, HolidayRequest } from '@/lib/holidayRequestTypes'
 import {
   calculateHolidayRequestBalance,
   createHolidayRequest,
@@ -30,8 +30,12 @@ export default function MyHolidaysPage() {
   const [dataError, setDataError] = useState<string | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [startDayPortion, setStartDayPortion] = useState<HolidayDayPortion>('full')
+  const [endDayPortion, setEndDayPortion] = useState<HolidayDayPortion>('full')
   const [reason, setReason] = useState('')
   const [preview, setPreview] = useState<HolidayBalanceSummary | null>(null)
+  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
+  const effectiveEndPortion = isSingleDay ? startDayPortion : endDayPortion
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -117,6 +121,8 @@ export default function MyHolidaysPage() {
       workerId: worker.id,
       startDate,
       endDate,
+      startDayPortion,
+      endDayPortion: effectiveEndPortion,
       leaveType,
     })
       .then((result) => {
@@ -132,7 +138,7 @@ export default function MyHolidaysPage() {
     return () => {
       cancelled = true
     }
-  }, [endDate, leaveType, startDate, worker])
+  }, [effectiveEndPortion, endDate, leaveType, startDate, startDayPortion, worker])
 
   async function handleSubmit() {
     if (!worker || !startDate || !endDate) return
@@ -145,11 +151,15 @@ export default function MyHolidaysPage() {
         workerId: worker.id,
         startDate,
         endDate,
+        startDayPortion,
+        endDayPortion: effectiveEndPortion,
         leaveType,
         reason: reason.trim() || null,
       })
       setStartDate('')
       setEndDate('')
+      setStartDayPortion('full')
+      setEndDayPortion('full')
       setReason('')
       setPreview(null)
       showToast('Holiday request submitted')
@@ -196,6 +206,8 @@ export default function MyHolidaysPage() {
           <MyHolidayBookCard
             startDate={startDate}
             endDate={endDate}
+            startDayPortion={startDayPortion}
+            endDayPortion={endDayPortion}
             reason={reason}
             preview={preview}
             isPreviewLoading={isPreviewLoading}
@@ -203,6 +215,8 @@ export default function MyHolidaysPage() {
             showManagedMessage={showManagedMessage}
             onStartDateChange={setStartDate}
             onEndDateChange={setEndDate}
+            onStartDayPortionChange={setStartDayPortion}
+            onEndDayPortionChange={setEndDayPortion}
             onReasonChange={setReason}
             onSubmit={() => void handleSubmit()}
           />

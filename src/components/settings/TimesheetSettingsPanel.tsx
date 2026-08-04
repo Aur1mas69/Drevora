@@ -7,10 +7,11 @@ import {
   SettingsToggle,
   settingsCardDescriptionClassName,
   settingsCardTitleClassName,
+  settingsFieldHintClassName,
+  settingsFieldLabelClassName,
   settingsSelectClassName,
 } from '@/components/settings/SettingsControls'
 import {
-  CURRENCY_OPTIONS,
   OVERTIME_AFTER_HOURS_OPTIONS,
   OVERTIME_MULTIPLIER_OPTIONS,
   WEEKEND_OVERTIME_MULTIPLIER_OPTIONS,
@@ -19,7 +20,6 @@ import {
   formatOvertimeMultiplierLabel,
   formatWeeklyOvertimeAfterHoursLabel,
   formatWeekendOvertimeMultiplierLabel,
-  type CompanyCurrency,
   type CompanySettingsInput,
   type DefaultBreakMinutes,
   type OvertimeCalculationMethod,
@@ -41,32 +41,98 @@ type TimesheetSettingsPanelProps = {
   onChange: (patch: Partial<CompanySettingsInput>) => void
 }
 
-const compactCardClassName =
-  'rounded-[18px] border border-[rgba(75,120,220,0.14)] bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(245,250,255,0.94)_55%,rgba(236,246,255,0.92)_100%)] p-4 shadow-[0_8px_22px_rgba(30,64,175,0.07)] sm:p-5 dark:border-slate-700 dark:bg-slate-900/60'
+const sectionCardClassName =
+  'rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-[0_10px_30px_rgba(30,64,175,0.07)] sm:p-5 dark:border-slate-700 dark:bg-slate-900/60'
 
-function CompactCard({
+const weekendDayCardClassName =
+  'flex h-full flex-col rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/40'
+
+function SectionCard({
   title,
   description,
   children,
   className,
+  contentClassName,
 }: {
   title: string
   description?: string
   children: ReactNode
   className?: string
+  contentClassName?: string
 }) {
   return (
-    <section className={cn(compactCardClassName, className)}>
+    <section className={cn(sectionCardClassName, className)}>
       <div>
         <h3 className={settingsCardTitleClassName}>{title}</h3>
         {description ? (
-          <p className={cn(settingsCardDescriptionClassName, 'mt-0.5 text-xs leading-5')}>
-            {description}
-          </p>
+          <p className={cn(settingsCardDescriptionClassName, 'mt-0.5')}>{description}</p>
         ) : null}
       </div>
-      <div className="mt-3 space-y-3">{children}</div>
+      <div className={cn('mt-4 space-y-4', contentClassName)}>{children}</div>
     </section>
+  )
+}
+
+function formatHolidayHoursDisplay(hours: number): string {
+  const rounded = Math.round(hours * 100) / 100
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded)
+}
+
+function holidayHalfDayHours(fullDayHours: number): number {
+  return Math.round(fullDayHours * 50) / 100
+}
+
+function HolidayPayHelperText({ fullDayHours }: { fullDayHours: number }) {
+  const halfDayHours = holidayHalfDayHours(fullDayHours)
+  const fullLabel = formatHolidayHoursDisplay(fullDayHours)
+  const halfLabel = formatHolidayHoursDisplay(halfDayHours)
+
+  return (
+    <div className={cn(settingsFieldHintClassName, 'mt-2 space-y-1')}>
+      <p>
+        A full day credits {fullLabel} {fullDayHours === 1 ? 'hour' : 'hours'}. A half day credits{' '}
+        {halfLabel} {halfDayHours === 1 ? 'hour' : 'hours'}.
+      </p>
+      <p>Use 0 for unpaid leave.</p>
+      <p>Individual Worker overrides are managed in the Worker profile.</p>
+    </div>
+  )
+}
+
+function WorkflowApprovalToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-0.5">
+      <div className="min-w-0">
+        <p className={settingsFieldLabelClassName}>Require manager approval</p>
+        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          Submitted timesheets must be approved before payroll.
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label="Require manager approval"
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative inline-flex h-7 w-12 shrink-0 items-center justify-start overflow-hidden rounded-full transition-colors',
+          checked ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700',
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-6' : 'translate-x-1',
+          )}
+        />
+      </button>
+    </div>
   )
 }
 
@@ -162,8 +228,8 @@ function WeekendDaySection({
   multiplierKeyPrefix: string
 }) {
   return (
-    <div className="rounded-[16px] border border-[#D2E5F5] bg-white/75 p-3.5 dark:border-white/10 dark:bg-slate-800/50">
-      <div className="flex items-center justify-between gap-3 border-b border-[#E4F0FA] pb-2.5 dark:border-white/10">
+    <div className={weekendDayCardClassName}>
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-3 dark:border-slate-700">
         <h4 className="text-sm font-semibold tracking-[-0.02em] text-[#2A376F] dark:text-slate-100">
           {dayLabel}
         </h4>
@@ -171,15 +237,15 @@ function WeekendDaySection({
           className={cn(
             'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]',
             overtimeEnabled
-              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-              : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800'
+              : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700',
           )}
         >
           {overtimeEnabled ? 'OT on' : 'OT off'}
         </span>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-4 flex flex-1 flex-col space-y-4">
         <SettingsToggle
           label="Overtime enabled"
           description={`Apply weekend overtime rules for ${dayLabel}.`}
@@ -188,7 +254,7 @@ function WeekendDaySection({
         />
 
         {overtimeEnabled ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <SettingsField label="Guaranteed paid hours">
               <WeekendDecimalHoursInput
                 value={guaranteedPaidHours}
@@ -243,190 +309,79 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
       )
 
   return (
-    <div className="space-y-3 sm:col-span-2 sm:space-y-3.5">
+    <div className="space-y-6 pb-28 sm:col-span-2 sm:pb-6">
       <SettingsPageIntro
         title="Timesheets"
         description="Working time, overtime and approval rules for payroll."
       />
 
-      {/* 1. Primary timesheet control card */}
-      <CompactCard
-        title="Timesheet controls"
-        description="Mode, currency and approval for payroll timesheets."
+      <SectionCard
+        title="Timesheet Workflow"
+        description="Choose how Timesheets are created, managed and approved."
+        className="p-3 sm:p-4"
+        contentClassName="mt-2 space-y-2"
       >
-        <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-          <SettingsSegmentedControl
-            label="Timesheet mode"
-            value={form.overtimeMode}
-            options={[
-              { value: 'Manual', label: 'Manual' },
-              { value: 'Automatic', label: 'Automatic' },
-            ]}
-            onChange={(value) => onChange({ overtimeMode: value as OvertimeMode })}
-          />
-
-          <SettingsField label="Currency">
-            <select
-              value={form.currency}
-              onChange={(event) =>
-                onChange({ currency: event.target.value as CompanyCurrency })
-              }
-              className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-            >
-              {CURRENCY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </SettingsField>
-
-          <SettingsToggle
-            label="Require manager approval"
-            description="Submitted timesheets must be approved before payroll."
-            checked={form.requireTimesheetApproval}
-            onChange={(checked) => onChange({ requireTimesheetApproval: checked })}
-          />
-        </div>
-
-        {isManual ? (
-          <div className="rounded-[14px] border border-[#C7DAFF] bg-[#EEF4FF] px-3.5 py-3 text-sm leading-6 text-[#1E3A6E] dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
-            Workers enter Basic, Overtime, Break and Additional Hours manually. Total Hours are
-            calculated automatically.
+        <div className="grid gap-2 lg:grid-cols-2 lg:items-center">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <SettingsSegmentedControl
+              label="Timesheet mode"
+              value={form.overtimeMode}
+              options={[
+                { value: 'Manual', label: 'Manual' },
+                { value: 'Automatic', label: 'Automatic' },
+              ]}
+              onChange={(value) => onChange({ overtimeMode: value as OvertimeMode })}
+            />
           </div>
-        ) : null}
 
-        <div className="space-y-3 border-t border-[rgba(75,120,220,0.12)] pt-3 dark:border-slate-700">
-          <SettingsChipGroup<OvertimeCalculationMethod>
-            label="Overtime calculation"
-            hint="Company default for Automatic mode. Workers may override personally."
-            options={[
-              { value: 'daily', label: 'Daily overtime' },
-              { value: 'weekly', label: 'Weekly overtime' },
-              { value: 'none', label: 'No automatic overtime' },
-            ]}
-            value={otMethod}
-            onChange={(value) => onChange({ overtimeCalculationMethod: value })}
-          />
-
-          {otMethod === 'daily' ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SettingsField label="Daily overtime threshold">
-                <select
-                  value={form.overtimeAfterHours}
-                  onChange={(event) =>
-                    onChange({ overtimeAfterHours: Number.parseFloat(event.target.value) })
-                  }
-                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-                >
-                  {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
-                    <option key={hours.toFixed(1)} value={hours}>
-                      {formatOvertimeAfterHoursLabel(hours)}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  Example: 10.5 hours per day
-                </p>
-              </SettingsField>
-
-              <SettingsField label="Overtime multiplier">
-                <select
-                  value={form.overtimeMultiplier}
-                  onChange={(event) =>
-                    onChange({
-                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
-                    })
-                  }
-                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-                >
-                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {formatOvertimeMultiplierLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-            </div>
+          {isManual ? (
+            <p
+              className={cn(
+                settingsFieldHintClassName,
+                'min-w-0 lg:col-span-2 lg:row-start-2',
+              )}
+            >
+              Workers enter Basic, Overtime, Break and Additional Hours manually; totals are
+              calculated automatically.
+            </p>
           ) : null}
 
-          {otMethod === 'weekly' ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SettingsField label="Weekly overtime threshold">
-                <select
-                  value={form.weeklyOvertimeAfterHours}
-                  onChange={(event) =>
-                    onChange({
-                      weeklyOvertimeAfterHours: Number.parseFloat(event.target.value),
-                    })
-                  }
-                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-                >
-                  {weeklyThresholdOptions.map((hours) => (
-                    <option key={hours.toFixed(1)} value={hours}>
-                      {formatWeeklyOvertimeAfterHoursLabel(hours)}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  Example: 45 hours per week
-                </p>
-              </SettingsField>
-
-              <SettingsField label="Overtime multiplier">
-                <select
-                  value={form.overtimeMultiplier}
-                  onChange={(event) =>
-                    onChange({
-                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
-                    })
-                  }
-                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-                >
-                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {formatOvertimeMultiplierLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-            </div>
-          ) : null}
-
-          {otMethod === 'none' ? (
-            <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
-              <div className="rounded-[14px] border border-[rgba(75,120,220,0.14)] bg-white/70 px-3.5 py-3 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
-                Automatic mode will not create OT hours. Manual OT entry remains available when
-                Timesheet mode is Manual.
-              </div>
-              <SettingsField label="Overtime multiplier">
-                <select
-                  value={form.overtimeMultiplier}
-                  onChange={(event) =>
-                    onChange({
-                      overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
-                    })
-                  }
-                  className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
-                >
-                  {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {formatOvertimeMultiplierLabel(option)}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  Used for Total when Manual OT is entered.
-                </p>
-              </SettingsField>
-            </div>
-          ) : null}
+          <div className="min-w-0 lg:col-start-2 lg:row-start-1">
+            <WorkflowApprovalToggle
+              checked={form.requireTimesheetApproval}
+              onChange={(checked) => onChange({ requireTimesheetApproval: checked })}
+            />
+          </div>
         </div>
-      </CompactCard>
 
-      {/* 2. Two-column rules section */}
-      <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-        <CompactCard title="Time Entry Rules" description="Breaks and clock-time rounding.">
+        <SettingsChoiceGroup<TimesheetManagementScope>
+          legend="Who manages Timesheets"
+          name="timesheet-management-scope"
+          value={form.timesheetManagementScope}
+          onChange={(value) => onChange({ timesheetManagementScope: value })}
+          options={[
+            {
+              value: 'office',
+              label: 'Office manages Timesheets',
+              description:
+                'Workers can view their Timesheets, but only Office can create or edit them.',
+            },
+            {
+              value: 'worker',
+              label: 'Workers manage their own Timesheets',
+              description:
+                'Workers can create, edit, save and submit their own Timesheets. Office reviews and approves them.',
+            },
+          ]}
+        />
+      </SectionCard>
+
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <SectionCard
+          title="Time Entry Rules"
+          description="Configure breaks and clock-time rounding."
+          className="h-full"
+        >
           <SettingsChipGroup<DefaultBreakMinutes>
             label="Default break"
             options={[
@@ -456,11 +411,12 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
             value={form.roundTimeMinutes}
             onChange={(value) => onChange({ roundTimeMinutes: value })}
           />
-        </CompactCard>
+        </SectionCard>
 
-        <CompactCard
+        <SectionCard
           title="Week Setup"
-          description="Week boundaries and when week 1 starts each year."
+          description="Set week boundaries and the annual Week 1 reset."
+          className="h-full"
         >
           <SettingsChipGroup
             label="Week starts on"
@@ -515,41 +471,158 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
               </SettingsField>
             </div>
           </div>
-        </CompactCard>
+        </SectionCard>
       </div>
 
-      {/* 3. Who manages Timesheets — company-wide workflow ownership */}
-      <CompactCard
-        title="Who manages Timesheets?"
-        description="Choose whether Office or Workers own Timesheet create, edit, save and submit."
+      <SectionCard
+        title="Standard Overtime Rules"
+        description="Set the normal overtime calculation used from Monday to Friday."
       >
-        <SettingsChoiceGroup<TimesheetManagementScope>
-          name="timesheet-management-scope"
-          value={form.timesheetManagementScope}
-          onChange={(value) => onChange({ timesheetManagementScope: value })}
+        <SettingsChipGroup<OvertimeCalculationMethod>
+          label="Overtime calculation"
+          hint="Company default for Automatic mode. Workers may override personally."
           options={[
-            {
-              value: 'office',
-              label: 'Office manages Timesheets',
-              description:
-                'Workers can view their Timesheets, but only Office can create or edit them.',
-            },
-            {
-              value: 'worker',
-              label: 'Workers manage their own Timesheets',
-              description:
-                'Workers can create, edit, save and submit their own Timesheets. Office reviews and approves them.',
-            },
+            { value: 'daily', label: 'Daily overtime' },
+            { value: 'weekly', label: 'Weekly overtime' },
+            { value: 'none', label: 'No automatic overtime' },
           ]}
+          value={otMethod}
+          onChange={(value) => onChange({ overtimeCalculationMethod: value })}
         />
-      </CompactCard>
+
+        {otMethod === 'daily' ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label="Daily overtime threshold">
+              <select
+                value={form.overtimeAfterHours}
+                onChange={(event) =>
+                  onChange({ overtimeAfterHours: Number.parseFloat(event.target.value) })
+                }
+                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+              >
+                {OVERTIME_AFTER_HOURS_OPTIONS.map((hours) => (
+                  <option key={hours.toFixed(1)} value={hours}>
+                    {formatOvertimeAfterHoursLabel(hours)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                Example: 10.5 hours per day
+              </p>
+            </SettingsField>
+
+            <SettingsField label="Overtime multiplier">
+              <select
+                value={form.overtimeMultiplier}
+                onChange={(event) =>
+                  onChange({
+                    overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                  })
+                }
+                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+              >
+                {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {formatOvertimeMultiplierLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+        ) : null}
+
+        {otMethod === 'weekly' ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label="Weekly overtime threshold">
+              <select
+                value={form.weeklyOvertimeAfterHours}
+                onChange={(event) =>
+                  onChange({
+                    weeklyOvertimeAfterHours: Number.parseFloat(event.target.value),
+                  })
+                }
+                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+              >
+                {weeklyThresholdOptions.map((hours) => (
+                  <option key={hours.toFixed(1)} value={hours}>
+                    {formatWeeklyOvertimeAfterHoursLabel(hours)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                Example: 45 hours per week
+              </p>
+            </SettingsField>
+
+            <SettingsField label="Overtime multiplier">
+              <select
+                value={form.overtimeMultiplier}
+                onChange={(event) =>
+                  onChange({
+                    overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                  })
+                }
+                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+              >
+                {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {formatOvertimeMultiplierLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+        ) : null}
+
+        {otMethod === 'none' ? (
+          <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+            <div className="rounded-xl border border-slate-200/60 bg-slate-50/60 px-3.5 py-3 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+              Automatic mode will not create OT hours. Manual OT entry remains available when
+              Timesheet mode is Manual.
+            </div>
+            <SettingsField label="Overtime multiplier">
+              <select
+                value={form.overtimeMultiplier}
+                onChange={(event) =>
+                  onChange({
+                    overtimeMultiplier: Number(event.target.value) as OvertimeMultiplier,
+                  })
+                }
+                className={cn(settingsSelectClassName, 'mt-1.5 h-10')}
+              >
+                {OVERTIME_MULTIPLIER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {formatOvertimeMultiplierLabel(option)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                Used for Total when Manual OT is entered.
+              </p>
+            </SettingsField>
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard
+        title="Holiday Pay Rules"
+        description="Set the default paid hours credited for approved leave."
+      >
+        <SettingsField label="Default paid holiday hours per full day">
+          <WeekendDecimalHoursInput
+            value={form.defaultPaidHolidayHours}
+            onCommit={(next) => onChange({ defaultPaidHolidayHours: next })}
+          />
+          <HolidayPayHelperText fullDayHours={form.defaultPaidHolidayHours} />
+        </SettingsField>
+      </SectionCard>
 
       {isAutomatic ? (
-        <CompactCard
-          title="Weekend Rules"
-          description="Override standard overtime for Saturday and Sunday."
+        <SectionCard
+          title="Weekend Overtime Rules"
+          description="Override the standard overtime rules for Saturday and Sunday."
         >
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <WeekendDaySection
               dayLabel="Saturday"
               overtimeEnabled={form.saturdayOvertimeEnabled}
@@ -600,7 +673,7 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
               multiplierKeyPrefix="sun"
             />
           </div>
-        </CompactCard>
+        </SectionCard>
       ) : null}
     </div>
   )

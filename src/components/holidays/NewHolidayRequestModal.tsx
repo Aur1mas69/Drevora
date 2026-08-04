@@ -2,11 +2,13 @@ import { Button } from '@/components/ui/button'
 import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
 import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
 import { HolidayDayBreakdownSummary } from '@/components/holidays/HolidayDayBreakdownSummary'
+import { HolidayDayPortionSelect } from '@/components/holidays/HolidayDayPortionSelect'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type {
   HolidayBalanceSummary,
   HolidayCapacityWarning,
+  HolidayDayPortion,
   HolidayLeaveType,
 } from '@/lib/holidayRequestTypes'
 import {
@@ -32,6 +34,8 @@ type NewHolidayRequestModalProps = {
     workerId: string
     startDate: string
     endDate: string
+    startDayPortion: HolidayDayPortion
+    endDayPortion: HolidayDayPortion
     leaveType: HolidayLeaveType
     reason: string
   }) => Promise<void>
@@ -69,8 +73,12 @@ export function NewHolidayRequestModal({
   const [workerId, setWorkerId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [startDayPortion, setStartDayPortion] = useState<HolidayDayPortion>('full')
+  const [endDayPortion, setEndDayPortion] = useState<HolidayDayPortion>('full')
   const [leaveType, setLeaveType] = useState<HolidayLeaveType>('paid_holiday')
   const [reason, setReason] = useState('')
+  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
+  const effectiveEndPortion = isSingleDay ? startDayPortion : endDayPortion
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<HolidayBalanceSummary | null>(null)
   const [isBalanceLoading, setIsBalanceLoading] = useState(false)
@@ -118,13 +126,21 @@ export function NewHolidayRequestModal({
 
   const dayBreakdown = useMemo(() => {
     if (!hasValidDateRange(startDate, endDate)) return null
-    return calculateHolidayDayBreakdown(startDate, endDate, countingSettings)
-  }, [countingSettings, endDate, startDate])
+    return calculateHolidayDayBreakdown(
+      startDate,
+      endDate,
+      countingSettings,
+      startDayPortion,
+      effectiveEndPortion,
+    )
+  }, [countingSettings, effectiveEndPortion, endDate, startDate, startDayPortion])
 
   const resetForm = useCallback(() => {
     setWorkerId(sortedWorkers[0]?.id ?? '')
     setStartDate('')
     setEndDate('')
+    setStartDayPortion('full')
+    setEndDayPortion('full')
     setLeaveType('paid_holiday')
     setReason('')
     setError(null)
@@ -177,7 +193,14 @@ export function NewHolidayRequestModal({
       setIsBalanceLoading(true)
       setBalanceError(null)
 
-      void calculateHolidayRequestBalance({ workerId, startDate, endDate, leaveType })
+      void calculateHolidayRequestBalance({
+        workerId,
+        startDate,
+        endDate,
+        startDayPortion,
+        endDayPortion: effectiveEndPortion,
+        leaveType,
+      })
         .then((result) => {
           if (!isCancelled) {
             setBalance(result)
@@ -212,7 +235,7 @@ export function NewHolidayRequestModal({
       isCancelled = true
       window.clearTimeout(timer)
     }
-  }, [endDate, isOpen, leaveType, startDate, workerId])
+  }, [effectiveEndPortion, endDate, isOpen, leaveType, startDate, startDayPortion, workerId])
 
   const handleClose = useCallback(() => {
     onCloseRef.current()
@@ -249,7 +272,15 @@ export function NewHolidayRequestModal({
       return
     }
 
-    const payload = { workerId, startDate, endDate, leaveType, reason }
+    const payload = {
+      workerId,
+      startDate,
+      endDate,
+      startDayPortion,
+      endDayPortion: effectiveEndPortion,
+      leaveType,
+      reason,
+    }
 
     try {
       await onSubmit(payload)
@@ -354,6 +385,24 @@ export function NewHolidayRequestModal({
                 </label>
               </div>
             </HolidayDatePickerGroup>
+
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <HolidayDayPortionSelect
+                label={isSingleDay ? 'Day portion' : 'Start day portion'}
+                value={startDayPortion}
+                onChange={(value) => {
+                  setStartDayPortion(value)
+                  if (isSingleDay) setEndDayPortion(value)
+                }}
+              />
+              {!isSingleDay ? (
+                <HolidayDayPortionSelect
+                  label="End day portion"
+                  value={endDayPortion}
+                  onChange={setEndDayPortion}
+                />
+              ) : null}
+            </div>
 
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Leave type

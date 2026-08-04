@@ -316,6 +316,8 @@ export type CompanySettings = {
   defaultVehicleStatus: VehicleStatus
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
+  /** Default payable hours for a Timesheet Holiday (H) day. 0 = unpaid. */
+  defaultPaidHolidayHours: number
   paidBreaks: boolean
   allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
@@ -382,6 +384,8 @@ export type CompanySettingsInput = {
   defaultVehicleStatus: VehicleStatus
   defaultDriverRole: DriverRole
   defaultBreakMinutes: DefaultBreakMinutes
+  /** Default payable hours for a Timesheet Holiday (H) day. 0 = unpaid. */
+  defaultPaidHolidayHours: number
   paidBreaks: boolean
   allowMedicalDocumentUploads: boolean
   overtimeAfterHours: OvertimeAfterHours
@@ -445,6 +449,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
   defaultVehicleStatus: 'Available',
   defaultDriverRole: 'Driver',
   defaultBreakMinutes: 30,
+  defaultPaidHolidayHours: 8,
   paidBreaks: false,
   allowMedicalDocumentUploads: false,
   overtimeAfterHours: 10.5,

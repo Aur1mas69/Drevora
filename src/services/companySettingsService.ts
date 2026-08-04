@@ -4,6 +4,7 @@ import {
   companySettingsCoreSelect,
   companySettingsHolidayCountingSelect,
   companySettingsConsumablePricesSelect,
+  companySettingsHolidayHoursSelect,
   companySettingsLegalSelect,
   companySettingsMedicalUploadSelect,
   companySettingsOvertimeCalculationSelect,
@@ -65,6 +66,7 @@ import {
 import { normalizeTimeFormat } from '@/lib/dateTimeFormat'
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
+import { normalizePaidHolidayHours } from '@/lib/timesheetHoliday'
 import type { DriverRole } from '@/services/driversService'
 import type { VehicleStatus } from '@/services/vehiclesService'
 
@@ -86,6 +88,7 @@ type CompanyRow = {
   default_vehicle_status: string | null
   default_driver_role: string | null
   default_break_minutes: number | null
+  default_paid_holiday_hours?: number | null
   paid_breaks: boolean | null
   allow_medical_document_uploads?: boolean | null
   overtime_after_hours: number | null
@@ -170,6 +173,10 @@ function normalizeTheme(value: string | null | undefined): CompanyTheme {
 function normalizeBreakMinutes(value: number | null | undefined): DefaultBreakMinutes {
   if (value === 45 || value === 60) return value
   return 30
+}
+
+function normalizePaidHolidayHoursValue(value: number | null | undefined): number {
+  return normalizePaidHolidayHours(value, DEFAULT_COMPANY_SETTINGS.defaultPaidHolidayHours)
 }
 
 function normalizePaidBreaks(value: boolean | null | undefined): boolean {
@@ -470,6 +477,7 @@ export function mapCompanySettingsRow(row: CompanyRow): CompanySettings {
     defaultVehicleStatus: normalizeVehicleStatus(row.default_vehicle_status),
     defaultDriverRole: normalizeDriverRole(row.default_driver_role),
     defaultBreakMinutes: normalizeBreakMinutes(row.default_break_minutes),
+    defaultPaidHolidayHours: normalizePaidHolidayHoursValue(row.default_paid_holiday_hours),
     paidBreaks: normalizePaidBreaks(row.paid_breaks),
     allowMedicalDocumentUploads: normalizePaidBreaks(row.allow_medical_document_uploads),
     overtimeAfterHours: normalizeOvertimeHours(row.overtime_after_hours),
@@ -569,6 +577,7 @@ export function companySettingsToFormValues(
     defaultVehicleStatus: settings.defaultVehicleStatus,
     defaultDriverRole: settings.defaultDriverRole,
     defaultBreakMinutes: settings.defaultBreakMinutes,
+    defaultPaidHolidayHours: settings.defaultPaidHolidayHours,
     paidBreaks: settings.paidBreaks,
     allowMedicalDocumentUploads: settings.allowMedicalDocumentUploads,
     overtimeAfterHours: settings.overtimeAfterHours,
@@ -648,6 +657,11 @@ function toDbPayload(input: Partial<CompanySettingsInput>): Record<string, unkno
   }
   if (input.defaultBreakMinutes !== undefined) {
     payload.default_break_minutes = input.defaultBreakMinutes
+  }
+  if (input.defaultPaidHolidayHours !== undefined) {
+    payload.default_paid_holiday_hours = normalizePaidHolidayHoursValue(
+      coerceNumericHours(input.defaultPaidHolidayHours),
+    )
   }
   if (input.paidBreaks !== undefined) {
     payload.paid_breaks = normalizePaidBreaks(input.paidBreaks)
@@ -857,10 +871,13 @@ const OPTIONAL_LEGAL_PAYLOAD_KEYS = [
   'worker_privacy_notice_updated_at',
 ] as const
 
+const OPTIONAL_HOLIDAY_HOURS_PAYLOAD_KEYS = ['default_paid_holiday_hours'] as const
+
 const OPTIONAL_COMPANY_SETTINGS_PAYLOAD_KEYS = [
   ...OPTIONAL_OVERTIME_CALCULATION_PAYLOAD_KEYS,
   ...OPTIONAL_TIMESHEET_MANAGEMENT_PAYLOAD_KEYS,
   ...OPTIONAL_LEGAL_PAYLOAD_KEYS,
+  ...OPTIONAL_HOLIDAY_HOURS_PAYLOAD_KEYS,
 ] as const
 
 async function updateCompanyRecord(
@@ -1014,6 +1031,38 @@ async function mergeOptionalLegalColumns(
   return row
 }
 
+async function mergeOptionalHolidayHours(
+  companyId: string,
+  row: CompanyRow,
+): Promise<CompanyRow> {
+  const { data, error } = await queryCompanyRow(
+    companyId,
+    companySettingsHolidayHoursSelect,
+  )
+
+  if (!error && data) {
+    return {
+      ...row,
+      ...(data as unknown as Record<string, unknown>),
+    } as CompanyRow
+  }
+
+  if (error) {
+    logCompanySettingsPersistenceError(
+      'select',
+      'companies',
+      {
+        select: companySettingsHolidayHoursSelect,
+        optional: 'default_paid_holiday_hours',
+        companyId,
+      },
+      error,
+    )
+  }
+
+  return row
+}
+
 async function mergeOptionalOvertimeCalculationDefaults(
   companyId: string,
   row: CompanyRow,
@@ -1105,7 +1154,8 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
       withOtDefaults,
     )
     const withLegal = await mergeOptionalLegalColumns(companyId, withTimesheetManagement)
-    return mergeOptionalConsumableDefaultPrices(companyId, withLegal)
+    const withHolidayHours = await mergeOptionalHolidayHours(companyId, withLegal)
+    return mergeOptionalConsumableDefaultPrices(companyId, withHolidayHours)
   }
 
   if (error && !isMissingColumnError(error)) {
@@ -1243,6 +1293,26 @@ async function loadCompanySettingsRow(companyId: string): Promise<CompanyRow | n
         companyId,
       },
       overtimeCalculationError,
+    )
+  }
+
+  const { data: holidayHoursData, error: holidayHoursError } = await queryCompanyRow(
+    companyId,
+    companySettingsHolidayHoursSelect,
+  )
+
+  if (!holidayHoursError && holidayHoursData) {
+    merged = { ...merged, ...(holidayHoursData as unknown as Record<string, unknown>) }
+  } else if (holidayHoursError) {
+    logCompanySettingsPersistenceError(
+      'select',
+      table,
+      {
+        select: companySettingsHolidayHoursSelect,
+        optional: 'default_paid_holiday_hours',
+        companyId,
+      },
+      holidayHoursError,
     )
   }
 

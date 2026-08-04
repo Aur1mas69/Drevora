@@ -2,6 +2,9 @@ import type { DriverRole } from '@/services/driversService'
 
 export type TimesheetStatus = 'Draft' | 'Submitted' | 'Approved' | 'Rejected'
 
+/** work | holiday (H) | holiday_am (H-AM) | holiday_pm (H-PM). */
+export type TimesheetDayType = 'work' | 'holiday' | 'holiday_am' | 'holiday_pm'
+
 export type TimesheetEntry = {
   id: string
   timesheetId: string
@@ -14,6 +17,10 @@ export type TimesheetEntry = {
   additionalHours: number
   /** Persisted as timesheet_entries.daily_comment */
   dailyComment: string
+  /** Persisted as timesheet_entries.day_type. Defaults to work when column missing. */
+  dayType: TimesheetDayType
+  /** Persisted as timesheet_entries.holiday_minutes. Holiday payable minutes (OT never applies). */
+  holidayMinutes: number
 }
 
 export type TimesheetEntryInput = {
@@ -27,6 +34,8 @@ export type TimesheetEntryInput = {
   additionalHours: number
   /** Persisted as timesheet_entries.daily_comment */
   dailyComment: string
+  dayType: TimesheetDayType
+  holidayMinutes: number
 }
 
 export type Timesheet = {

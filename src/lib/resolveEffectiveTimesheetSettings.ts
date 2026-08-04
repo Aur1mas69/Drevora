@@ -27,6 +27,7 @@ import {
   type WorkerBreakMinutes,
   type WorkerTimesheetSettingsForm,
 } from '@/lib/workerTimesheetSettingsTypes'
+import { DEFAULT_PAID_HOLIDAY_HOURS } from '@/lib/timesheetHoliday'
 
 function pickOverride<T>(override: T | null | undefined, fallback: T): T {
   return override === null || override === undefined ? fallback : override
@@ -151,6 +152,12 @@ export function companySettingsToTimesheetForm(
       24,
     ),
     sundayUseCompanyDefaultBreak: company.sundayUseCompanyDefaultBreak !== false,
+    useCompanyDefaultHolidayHours: true,
+    defaultPaidHolidayHours: normalizePositiveHours(
+      company.defaultPaidHolidayHours,
+      DEFAULT_PAID_HOLIDAY_HOURS,
+      24,
+    ),
   }
 }
 
@@ -291,6 +298,15 @@ export function resolveEffectiveTimesheetSettings(
             companyForm.sundayUseCompanyDefaultBreak,
           ),
         ),
+        useCompanyDefaultHolidayHours: override.defaultPaidHolidayHours == null,
+        defaultPaidHolidayHours: normalizePositiveHours(
+          pickOverride(
+            override.defaultPaidHolidayHours,
+            companyForm.defaultPaidHolidayHours,
+          ),
+          companyForm.defaultPaidHolidayHours,
+          24,
+        ),
       }
     : companyForm
 
@@ -392,6 +408,13 @@ export function validateWorkerTimesheetSettingsForm(
     form.roundTimeMinutes !== 15
   ) {
     return 'Time rounding must be None, 5, or 15 minutes.'
+  }
+  if (
+    !Number.isFinite(form.defaultPaidHolidayHours) ||
+    form.defaultPaidHolidayHours < 0 ||
+    form.defaultPaidHolidayHours > 24
+  ) {
+    return 'Holiday hours must be between 0 and 24.'
   }
   return null
 }

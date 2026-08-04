@@ -12,11 +12,26 @@ import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesh
 import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
+  TimesheetDayType,
   TimesheetEntryInput,
   TimesheetStatus,
 } from '@/lib/timesheetTypes'
+import { fetchApprovedHolidayDaysForWorkerWeek } from '@/lib/timesheetApprovedHolidays'
+import {
+  applyApprovedHolidaysToEntries,
+  applyHolidayDayHours,
+  applyWorkDayType,
+  holidayDayCode,
+  holidayDayLabel,
+  holidayPortionFromDayType,
+  isFullHolidayDay,
+  isHalfHolidayDay,
+  isHolidayDay,
+  validateHolidayWorkOverlap,
+} from '@/lib/timesheetHoliday'
 import {
   buildTimesheetOvertimeRules,
+  buildWeekDates,
   decimalHoursToMinutes,
   entryHasStartAndFinish,
   formatDayLabel,
@@ -85,6 +100,7 @@ type EntrySnapshotRow = {
   overtimeMinutes: number
   additionalHours: number
   dailyComment: string
+  dayType: TimesheetDayType
 }
 
 function entriesSnapshot(entries: TimesheetEntryInput[]): string {
@@ -99,6 +115,7 @@ function entriesSnapshot(entries: TimesheetEntryInput[]): string {
       overtimeMinutes: entry.overtimeMinutes,
       additionalHours: entry.additionalHours,
       dailyComment: entry.dailyComment,
+      dayType: entry.dayType ?? 'work',
     })),
   )
 }
@@ -140,6 +157,7 @@ function mergeSavedDayIntoSnapshot(
       overtimeMinutes: previous.overtimeMinutes,
       additionalHours: previous.additionalHours,
       dailyComment: previous.dailyComment,
+      dayType: previous.dayType ?? entry.dayType ?? 'work',
     }
   })
 
@@ -165,9 +183,16 @@ type DayIndicatorState = 'empty' | 'partial' | 'valid' | 'error'
  * A day never shows "valid" merely because one time field has a value.
  */
 function getDayIndicatorState(entry: TimesheetEntryInput): DayIndicatorState {
+  if (isFullHolidayDay(entry)) return 'valid'
   if (entry.additionalHours > 0 && !entry.dailyComment.trim()) return 'error'
   if (isIncompleteTimePair(entry)) return 'partial'
+  if (isHalfHolidayDay(entry)) {
+    if (entryHasStartAndFinish(entry) || (!entry.startTime && !entry.finishTime)) {
+      return 'valid'
+    }
+  }
   if (entryHasStartAndFinish(entry)) return 'valid'
+  if (isHalfHolidayDay(entry)) return 'valid'
   return 'empty'
 }
 
@@ -267,6 +292,7 @@ type DayFormProps = {
         | 'additionalHours'
         | 'totalMinutes'
         | 'overtimeMinutes'
+        | 'dayType'
       >
     >,
   ) => void
@@ -282,22 +308,64 @@ function WorkerDayFormFields({
   paidBreaks,
   onUpdate,
 }: DayFormProps) {
+  const isHoliday = isHolidayDay(entry)
+  const isFullHoliday = isFullHolidayDay(entry)
+  const isHalfHoliday = isHalfHolidayDay(entry)
+  const holidayCode = holidayDayCode(entry.dayType ?? 'work')
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules,
     paidBreaks,
     overtimeMode,
   })
-  const incompletePair = isIncompleteTimePair(entry)
-  const missingField = getMissingTimePairField(entry)
+  const incompletePair = !isFullHoliday && isIncompleteTimePair(entry)
+  const missingField = isFullHoliday ? null : getMissingTimePairField(entry)
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
-          Shift
+          Day type
         </p>
         {editable ? (
-          <div className="mt-2.5">
+          <select
+            value={entry.dayType ?? 'work'}
+            onChange={(event) =>
+              onUpdate(entry.dayDate, {
+                dayType: event.target.value as TimesheetDayType,
+              })
+            }
+            className={cn(workerFieldClass, 'mt-2.5')}
+            aria-label={`Day type for ${formatDayLabel(entry.dayDate)}`}
+          >
+            <option value="work">Work</option>
+            <option value="holiday">Full day holiday (H)</option>
+            <option value="holiday_am">First half (H-AM)</option>
+            <option value="holiday_pm">Second half (H-PM)</option>
+          </select>
+        ) : (
+          <p className={cn(workerReadonlyFieldClass, 'mt-2.5')}>
+            {isHoliday && holidayCode
+              ? `${holidayCode} — ${holidayDayLabel(entry.dayType ?? 'work')}`
+              : 'Work'}
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
+          Shift
+        </p>
+        {isFullHoliday ? (
+          <p className="mt-2.5 text-base font-bold uppercase tracking-[0.08em] text-sky-800">
+            H — Full day holiday
+          </p>
+        ) : editable ? (
+          <div className="mt-2.5 space-y-2">
+            {isHalfHoliday && holidayCode ? (
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-sky-800">
+                {holidayCode} — work hours allowed on the same day
+              </p>
+            ) : null}
             <WorkerTimesheetShiftTimes
               startValue={entry.startTime}
               finishValue={entry.finishTime}
@@ -310,6 +378,11 @@ function WorkerDayFormFields({
           </div>
         ) : (
           <div className="mt-2.5 grid grid-cols-2 gap-3">
+            {isHalfHoliday && holidayCode ? (
+              <p className="col-span-2 text-xs font-bold uppercase tracking-[0.08em] text-sky-800">
+                {holidayCode}
+              </p>
+            ) : null}
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Start
@@ -338,7 +411,9 @@ function WorkerDayFormFields({
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Break
           </span>
-          {editable ? (
+          {isFullHoliday ? (
+            <p className={workerReadonlyFieldClass}>—</p>
+          ) : editable ? (
             <select
               value={entry.breakMinutes}
               onChange={(event) =>
@@ -370,7 +445,112 @@ function WorkerDayFormFields({
           Paid hours
         </p>
 
-        {isManualMode ? (
+        {isFullHoliday ? (
+          <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Holiday
+              </p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                {formatHours(payable.holidayHours)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Overtime
+              </p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                {formatHours(0)}
+              </p>
+            </div>
+          </div>
+        ) : isHalfHoliday ? (
+          <div className="mt-2.5 space-y-3">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Holiday ({holidayCode})
+                </p>
+                <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                  {formatHours(payable.holidayHours)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Work
+                </p>
+                <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                  {formatHours(payable.workBasicHours)}
+                </p>
+              </div>
+            </div>
+            {isManualMode ? (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Work Basic Hours
+                  </span>
+                  {editable ? (
+                    <TimesheetDecimalHoursInput
+                      value={minutesToDecimalHours(entry.totalMinutes)}
+                      onChange={(hours) =>
+                        onUpdate(entry.dayDate, {
+                          totalMinutes: decimalHoursToMinutes(hours),
+                        })
+                      }
+                      className={workerFieldClass}
+                      aria-label={`Work Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+                    />
+                  ) : (
+                    <p className={workerReadonlyFieldClass}>
+                      {formatHours(payable.workBasicHours)}
+                    </p>
+                  )}
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Overtime (work only)
+                  </span>
+                  {editable ? (
+                    <TimesheetDecimalHoursInput
+                      value={minutesToDecimalHours(entry.overtimeMinutes)}
+                      onChange={(hours) =>
+                        onUpdate(entry.dayDate, {
+                          overtimeMinutes: decimalHoursToMinutes(hours),
+                        })
+                      }
+                      className={workerFieldClass}
+                      aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
+                    />
+                  ) : (
+                    <p className={workerReadonlyFieldClass}>
+                      {formatHours(payable.overtimeDisplayHours)}
+                    </p>
+                  )}
+                </label>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Overtime
+                  </p>
+                  <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                    {formatHours(payable.overtimeDisplayHours)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Total
+                  </p>
+                  <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
+                    {formatHours(payable.totalPaidHours)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isManualMode ? (
           <div className="mt-2.5 grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -437,30 +617,32 @@ function WorkerDayFormFields({
           </div>
         )}
 
-        <label className="mt-3.5 block space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Additional Hours
-          </span>
-          {editable ? (
-            <TimesheetDecimalHoursInput
-              value={entry.additionalHours}
-              onChange={(hours) => onUpdate(entry.dayDate, { additionalHours: hours })}
-              className={workerFieldClass}
-              aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
-            />
-          ) : (
-            <p className={workerReadonlyFieldClass}>
-              {formatHours(payable.additionalHours)}
-            </p>
-          )}
-          {!isManualMode &&
-          !payable.weekendGuaranteeDay &&
-          payable.additionalHours > entry.additionalHours ? (
-            <p className="text-xs font-medium text-slate-500">
-              Includes automatic paid break where enabled
-            </p>
-          ) : null}
-        </label>
+        {!isFullHoliday ? (
+          <label className="mt-3.5 block space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Additional Hours
+            </span>
+            {editable ? (
+              <TimesheetDecimalHoursInput
+                value={entry.additionalHours}
+                onChange={(hours) => onUpdate(entry.dayDate, { additionalHours: hours })}
+                className={workerFieldClass}
+                aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+              />
+            ) : (
+              <p className={workerReadonlyFieldClass}>
+                {formatHours(payable.additionalHours)}
+              </p>
+            )}
+            {!isManualMode &&
+            !payable.weekendGuaranteeDay &&
+            payable.additionalHours > entry.additionalHours ? (
+              <p className="text-xs font-medium text-slate-500">
+                Includes automatic paid break where enabled
+              </p>
+            ) : null}
+          </label>
+        ) : null}
 
         <div className="mt-3.5 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -472,6 +654,12 @@ function WorkerDayFormFields({
           {incompletePair ? (
             <p className="mt-0.5 text-[11px] text-rose-600">
               {TIMESHEET_TIME_PAIR_MESSAGE}
+            </p>
+          ) : isFullHoliday ? (
+            <p className="mt-0.5 text-[11px] text-slate-500">Full day holiday · OT = 0</p>
+          ) : isHalfHoliday ? (
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Holiday + work · OT on work only
             </p>
           ) : isManualMode ? (
             <p className="mt-0.5 text-[11px] text-slate-500">
@@ -857,6 +1045,10 @@ export default function WorkerTimesheetsPage() {
   }
 
   function validateEntriesForSave(nextEntries: TimesheetEntryInput[]): string | null {
+    for (const entry of nextEntries) {
+      const overlapError = validateHolidayWorkOverlap(entry)
+      if (overlapError) return overlapError
+    }
     return (
       validateTimesheetTimePairs(nextEntries) ?? validateManualAdditional(nextEntries)
     )
@@ -874,20 +1066,34 @@ export default function WorkerTimesheetsPage() {
   )
 
   const applyLoadedTimesheet = useCallback(
-    (loaded: Timesheet, canEditLoaded: boolean) => {
+    async (loaded: Timesheet, canEditLoaded: boolean) => {
       const prepared = prepareEntryInputs(
         loaded.weekStart,
         loaded.entries,
         defaultBreakMinutes,
         breakOptions,
       )
+
+      const weekDates = buildWeekDates(loaded.weekStart)
+      const weekEnd = weekDates[weekDates.length - 1] ?? loaded.weekStart
+      const approvedDays = await fetchApprovedHolidayDaysForWorkerWeek({
+        workerId: loaded.driverId,
+        weekStart: loaded.weekStart,
+        weekEnd,
+      })
+      const applied = applyApprovedHolidaysToEntries(
+        prepared,
+        approvedDays,
+        effective?.defaultPaidHolidayHours ?? 0,
+      )
+
       const nextEntries = canEditLoaded
-        ? recalculateEntryInputs(prepared, {
+        ? recalculateEntryInputs(applied.entries, {
             overtimeMode,
             overtimeRules,
             paidBreaks,
           })
-        : prepared
+        : applied.entries
 
       setTimesheet(loaded)
       setEntries(nextEntries)
@@ -900,7 +1106,14 @@ export default function WorkerTimesheetsPage() {
         return pickDefaultDayDate(nextEntries)
       })
     },
-    [breakOptions, defaultBreakMinutes, overtimeMode, overtimeRules, paidBreaks],
+    [
+      breakOptions,
+      defaultBreakMinutes,
+      effective?.defaultPaidHolidayHours,
+      overtimeMode,
+      overtimeRules,
+      paidBreaks,
+    ],
   )
 
   const loadWeek = useCallback(
@@ -948,7 +1161,7 @@ export default function WorkerTimesheetsPage() {
             throw new Error('Timesheet does not belong to the signed-in worker.')
           }
 
-          applyLoadedTimesheet(
+          await applyLoadedTimesheet(
             result.timesheet,
             canWorkerEditTimesheet(result.timesheet.status),
           )
@@ -970,7 +1183,7 @@ export default function WorkerTimesheetsPage() {
             throw new Error('Timesheet does not belong to the signed-in worker.')
           }
 
-          applyLoadedTimesheet(existing, false)
+          await applyLoadedTimesheet(existing, false)
         }
       } catch (error) {
         if (generation !== loadGenerationRef.current) return
@@ -1071,6 +1284,7 @@ export default function WorkerTimesheetsPage() {
         | 'additionalHours'
         | 'totalMinutes'
         | 'overtimeMinutes'
+        | 'dayType'
       >
     >,
   ) {
@@ -1078,9 +1292,25 @@ export default function WorkerTimesheetsPage() {
 
     setEntries((current) =>
       recalculateEntryInputs(
-        current.map((entry) =>
-          entry.dayDate === dayDate ? { ...entry, ...patch } : entry,
-        ),
+        current.map((entry) => {
+          if (entry.dayDate !== dayDate) return entry
+          if (
+            patch.dayType === 'holiday' ||
+            patch.dayType === 'holiday_am' ||
+            patch.dayType === 'holiday_pm'
+          ) {
+            const portion = holidayPortionFromDayType(patch.dayType) ?? 'full'
+            return applyHolidayDayHours(
+              { ...entry, ...patch },
+              effective?.defaultPaidHolidayHours ?? 0,
+              portion,
+            )
+          }
+          if (patch.dayType === 'work' && isHolidayDay(entry)) {
+            return applyWorkDayType({ ...entry, ...patch }, defaultBreakMinutes)
+          }
+          return { ...entry, ...patch }
+        }),
         {
           overtimeMode,
           overtimeRules,
@@ -1116,7 +1346,7 @@ export default function WorkerTimesheetsPage() {
     if (refreshed.driverId !== worker?.id) {
       throw new Error('Timesheet does not belong to the signed-in worker.')
     }
-    applyLoadedTimesheet(refreshed, canWorkerEditTimesheet(refreshed.status))
+    await applyLoadedTimesheet(refreshed, canWorkerEditTimesheet(refreshed.status))
     if (successMessage) {
       setActionMessage(successMessage)
     }
@@ -1276,7 +1506,7 @@ export default function WorkerTimesheetsPage() {
       if (refreshed.driverId !== worker?.id) {
         throw new Error('Timesheet does not belong to the signed-in worker.')
       }
-      applyLoadedTimesheet(refreshed, false)
+      await applyLoadedTimesheet(refreshed, false)
       setSubmitConfirmOpen(false)
       setActionMessage('Submitted for office review.')
     } catch (error) {

@@ -14,6 +14,7 @@ import type {
   HolidayBalanceSummary,
   HolidayCalendarQuery,
   HolidayCapacityWarning,
+  HolidayDayPortion,
   HolidayLeaveType,
   HolidayRequest,
   HolidayRequestStatus,
@@ -22,6 +23,7 @@ import type {
   HolidayRequestSummaryStats,
   UpdateHolidayRequestInput,
 } from '@/lib/holidayRequestTypes'
+import { normalizeHolidayDayPortion } from '@/lib/timesheetHoliday'
 import {
   DEFAULT_HOLIDAY_ENTITLEMENT_RULES,
   type HolidayEntitlementRules,
@@ -63,10 +65,69 @@ type HolidayRequestRow = {
   holiday_days_deducted?: number | string | null
   calendar_days_total?: number | string | null
   non_working_days_excluded?: number | string | null
+  start_day_portion?: string | null
+  end_day_portion?: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
 }
 
 const holidayRequestSelect = `
+  id,
+  created_at,
+  updated_at,
+  retention_expires_at,
+  worker_id,
+  start_date,
+  end_date,
+  total_days,
+  reason,
+  status,
+  manager_note,
+  leave_type,
+  is_paid_leave,
+  holiday_days_deducted,
+  calendar_days_total,
+  non_working_days_excluded,
+  start_day_portion,
+  end_day_portion,
+  drivers (
+    first_name,
+    last_name,
+    role,
+    employment_type,
+    company
+  )
+`
+
+/** Pre-migration fallback when retention_expires_at is not yet available. */
+const holidayRequestSelectWithoutRetention = `
+  id,
+  created_at,
+  updated_at,
+  worker_id,
+  start_date,
+  end_date,
+  total_days,
+  reason,
+  status,
+  manager_note,
+  leave_type,
+  is_paid_leave,
+  holiday_days_deducted,
+  calendar_days_total,
+  non_working_days_excluded,
+  start_day_portion,
+  end_day_portion,
+  drivers (
+    first_name,
+    last_name,
+    role,
+    employment_type,
+    company
+  )
+`
+
+/** Fallback when half-day portion columns are not yet migrated. */
+const holidayRequestSelectWithoutPortions = `
   id,
   created_at,
   updated_at,
@@ -92,8 +153,7 @@ const holidayRequestSelect = `
   )
 `
 
-/** Pre-migration fallback when retention_expires_at is not yet available. */
-const holidayRequestSelectWithoutRetention = `
+const holidayRequestSelectWithoutRetentionOrPortions = `
   id,
   created_at,
   updated_at,
@@ -153,6 +213,29 @@ function isMissingRetentionExpiresAtColumnError(
   )
 }
 
+function isMissingDayPortionColumnError(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
+  const message = error?.message?.toLowerCase() ?? ''
+  return (
+    (message.includes('start_day_portion') || message.includes('end_day_portion')) &&
+    (isMissingColumnReadError(error) || message.includes('column'))
+  )
+}
+
+function resolveHolidayRequestSelect(error: { message: string; code?: string } | null): string | null {
+  if (isMissingRetentionExpiresAtColumnError(error) && isMissingDayPortionColumnError(error)) {
+    return holidayRequestSelectWithoutRetentionOrPortions
+  }
+  if (isMissingRetentionExpiresAtColumnError(error)) {
+    return holidayRequestSelectWithoutRetention
+  }
+  if (isMissingDayPortionColumnError(error)) {
+    return holidayRequestSelectWithoutPortions
+  }
+  return null
+}
+
 async function selectHolidayRequestById(
   id: string,
   companyId: string,
@@ -164,16 +247,31 @@ async function selectHolidayRequestById(
     .eq('company_id', companyId)
     .maybeSingle()
 
-  if (!isMissingRetentionExpiresAtColumnError(primary.error)) {
+  const fallbackSelect = resolveHolidayRequestSelect(primary.error)
+  if (!fallbackSelect) {
     return { data: primary.data, error: primary.error }
   }
 
   const fallback = await requireSupabase()
     .from('holiday_requests')
-    .select(holidayRequestSelectWithoutRetention)
+    .select(fallbackSelect)
     .eq('id', id)
     .eq('company_id', companyId)
     .maybeSingle()
+
+  if (
+    fallback.error &&
+    isMissingDayPortionColumnError(fallback.error) &&
+    fallbackSelect === holidayRequestSelectWithoutRetention
+  ) {
+    const withoutBoth = await requireSupabase()
+      .from('holiday_requests')
+      .select(holidayRequestSelectWithoutRetentionOrPortions)
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .maybeSingle()
+    return { data: withoutBoth.data, error: withoutBoth.error }
+  }
 
   return { data: fallback.data, error: fallback.error }
 }
@@ -267,7 +365,15 @@ function mapRow(
     : 'Worker'
   const leaveType = normalizeLeaveType(row.leave_type)
   const isPaidLeave = row.is_paid_leave ?? leaveType === 'paid_holiday'
-  const breakdown = calculateHolidayDayBreakdown(row.start_date, row.end_date, settings)
+  const startDayPortion = normalizeHolidayDayPortion(row.start_day_portion)
+  const endDayPortion = normalizeHolidayDayPortion(row.end_day_portion)
+  const breakdown = calculateHolidayDayBreakdown(
+    row.start_date,
+    row.end_date,
+    settings,
+    startDayPortion,
+    endDayPortion,
+  )
   const fallbackTotalDays = Number(row.total_days) || 0
   const holidayDaysDeducted = isPaidLeave
     ? (numberOrNull(row.holiday_days_deducted) ??
@@ -285,6 +391,8 @@ function mapRow(
     workerEmploymentType: (driver?.employment_type as HolidayRequest['workerEmploymentType']) ?? null,
     startDate: normalizeHolidayIsoDate(row.start_date),
     endDate: normalizeHolidayIsoDate(row.end_date),
+    startDayPortion,
+    endDayPortion,
     leaveType,
     isPaidLeave,
     totalDays: holidayDaysDeducted,
@@ -388,9 +496,18 @@ async function fetchApprovedHolidayDaysUsed({
   }
 
   let { data, error } = await buildRequest(
-    'id, start_date, end_date, leave_type, is_paid_leave, holiday_days_deducted',
+    'id, start_date, end_date, leave_type, is_paid_leave, holiday_days_deducted, start_day_portion, end_day_portion',
     true,
   )
+
+  if (isMissingDayPortionColumnError(error)) {
+    const withoutPortions = await buildRequest(
+      'id, start_date, end_date, leave_type, is_paid_leave, holiday_days_deducted',
+      true,
+    )
+    data = withoutPortions.data
+    error = withoutPortions.error
+  }
 
   if (isMissingColumnReadError(error)) {
     const fallback = await buildRequest('id, start_date, end_date', false)
@@ -407,6 +524,8 @@ async function fetchApprovedHolidayDaysUsed({
     end_date: string
     leave_type?: string | null
     holiday_days_deducted?: number | string | null
+    start_day_portion?: string | null
+    end_day_portion?: string | null
   }>
 
   return rows.reduce((total, row) => {
@@ -415,8 +534,25 @@ async function fetchApprovedHolidayDaysUsed({
     const startDate = row.start_date > bounds.start ? row.start_date : bounds.start
     const endDate = row.end_date < bounds.end ? row.end_date : bounds.end
     const storedDeduction = numberOrNull(row.holiday_days_deducted)
-    if (storedDeduction != null) return total + storedDeduction
-    const breakdown = calculateHolidayDayBreakdown(startDate, endDate, settings)
+    // Prefer stored full-request deduction when the request sits entirely in-bounds.
+    if (
+      storedDeduction != null &&
+      row.start_date >= bounds.start &&
+      row.end_date <= bounds.end
+    ) {
+      return total + storedDeduction
+    }
+    const breakdown = calculateHolidayDayBreakdown(
+      startDate,
+      endDate,
+      settings,
+      startDate === row.start_date
+        ? normalizeHolidayDayPortion(row.start_day_portion)
+        : 'full',
+      endDate === row.end_date
+        ? normalizeHolidayDayPortion(row.end_day_portion)
+        : 'full',
+    )
     return total + breakdown.holidayDaysDeducted
   }, 0)
 }
@@ -426,6 +562,8 @@ export async function calculateHolidayRequestBalance(
     workerId: string
     startDate: string
     endDate: string
+    startDayPortion?: HolidayDayPortion
+    endDayPortion?: HolidayDayPortion
     leaveType?: HolidayLeaveType
     excludeRequestId?: string
   },
@@ -434,6 +572,11 @@ export async function calculateHolidayRequestBalance(
   const { settings, annualAllowance, allowanceKnown, entitlementRules, holidayYearStart } =
     await getHolidayCountingContext()
   const leaveType = input.leaveType ?? 'paid_holiday'
+  const startDayPortion = normalizeHolidayDayPortion(input.startDayPortion)
+  const endDayPortion =
+    input.startDate === input.endDate
+      ? startDayPortion
+      : normalizeHolidayDayPortion(input.endDayPortion)
 
   const workerResult = await requireSupabase()
     .from('drivers')
@@ -467,7 +610,13 @@ export async function calculateHolidayRequestBalance(
     annualAllowance,
   )
 
-  const breakdown = calculateHolidayDayBreakdown(input.startDate, input.endDate, settings)
+  const breakdown = calculateHolidayDayBreakdown(
+    input.startDate,
+    input.endDate,
+    settings,
+    startDayPortion,
+    endDayPortion,
+  )
   const usedHolidayDays = await fetchApprovedHolidayDaysUsed({
     workerId: input.workerId,
     dateInLeaveYear: input.startDate,
@@ -527,6 +676,8 @@ async function assertHolidayBalanceAllowsRequest(input: {
   workerId: string
   startDate: string
   endDate: string
+  startDayPortion?: HolidayDayPortion
+  endDayPortion?: HolidayDayPortion
   leaveType?: HolidayLeaveType
   excludeRequestId?: string
 }): Promise<HolidayBalanceSummary> {
@@ -613,10 +764,11 @@ export async function fetchHolidayRequests(
 
   let { data, error, count } = await request
 
-  if (isMissingRetentionExpiresAtColumnError(error)) {
+  const listFallbackSelect = resolveHolidayRequestSelect(error)
+  if (listFallbackSelect) {
     let fallback = requireSupabase()
       .from('holiday_requests')
-      .select(holidayRequestSelectWithoutRetention, { count: 'exact' })
+      .select(listFallbackSelect, { count: 'exact' })
       .eq('company_id', companyId)
 
     if (query.status && query.status !== 'all') {
@@ -645,6 +797,42 @@ export async function fetchHolidayRequests(
     data = fallbackResult.data as typeof data
     error = fallbackResult.error
     count = fallbackResult.count
+
+    if (
+      error &&
+      isMissingDayPortionColumnError(error) &&
+      listFallbackSelect === holidayRequestSelectWithoutRetention
+    ) {
+      let withoutBoth = requireSupabase()
+        .from('holiday_requests')
+        .select(holidayRequestSelectWithoutRetentionOrPortions, { count: 'exact' })
+        .eq('company_id', companyId)
+      if (query.status && query.status !== 'all') {
+        withoutBoth = withoutBoth.eq('status', query.status)
+      }
+      if (query.workerId && query.workerId !== 'all') {
+        withoutBoth = withoutBoth.eq('worker_id', query.workerId)
+      }
+      if (query.dateFrom) {
+        withoutBoth = withoutBoth.gte('end_date', query.dateFrom)
+      }
+      if (query.dateTo) {
+        withoutBoth = withoutBoth.lte('start_date', query.dateTo)
+      }
+      if (search) {
+        withoutBoth = withoutBoth.or(
+          `first_name.ilike.%${search}%,last_name.ilike.%${search}%`,
+          { referencedTable: 'drivers' },
+        )
+      }
+      const bothResult = await withoutBoth
+        .order('start_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      data = bothResult.data as typeof data
+      error = bothResult.error
+      count = bothResult.count
+    }
   }
 
   logSupabaseQuery({
@@ -694,10 +882,11 @@ export async function fetchHolidayCalendarRequests(
     .order('start_date', { ascending: true })
     .order('created_at', { ascending: true })
 
-  if (isMissingRetentionExpiresAtColumnError(error)) {
+  const calendarFallbackSelect = resolveHolidayRequestSelect(error)
+  if (calendarFallbackSelect) {
     let fallback = requireSupabase()
       .from('holiday_requests')
-      .select(holidayRequestSelectWithoutRetention)
+      .select(calendarFallbackSelect)
       .eq('company_id', companyId)
       .in('status', statuses)
       .gte('end_date', query.dateFrom)
@@ -712,6 +901,28 @@ export async function fetchHolidayCalendarRequests(
       .order('created_at', { ascending: true })
     data = fallbackResult.data as typeof data
     error = fallbackResult.error
+
+    if (
+      error &&
+      isMissingDayPortionColumnError(error) &&
+      calendarFallbackSelect === holidayRequestSelectWithoutRetention
+    ) {
+      let withoutBoth = requireSupabase()
+        .from('holiday_requests')
+        .select(holidayRequestSelectWithoutRetentionOrPortions)
+        .eq('company_id', companyId)
+        .in('status', statuses)
+        .gte('end_date', query.dateFrom)
+        .lte('start_date', query.dateTo)
+      if (query.workerId) {
+        withoutBoth = withoutBoth.eq('worker_id', query.workerId)
+      }
+      const bothResult = await withoutBoth
+        .order('start_date', { ascending: true })
+        .order('created_at', { ascending: true })
+      data = bothResult.data as typeof data
+      error = bothResult.error
+    }
   }
 
   logSupabaseQuery({
@@ -818,12 +1029,19 @@ export async function createHolidayRequest(
   const balance = await assertHolidayBalanceAllowsRequest(input)
   const leaveType = input.leaveType ?? 'paid_holiday'
   const isPaidLeave = leaveType === 'paid_holiday' || leaveType === 'bank_holiday'
+  const startDayPortion = normalizeHolidayDayPortion(input.startDayPortion)
+  const endDayPortion =
+    input.startDate === input.endDate
+      ? startDayPortion
+      : normalizeHolidayDayPortion(input.endDayPortion)
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     company_id: companyId,
     worker_id: input.workerId,
     start_date: input.startDate,
     end_date: input.endDate,
+    start_day_portion: startDayPortion,
+    end_day_portion: endDayPortion,
     total_days: balance.holidayDaysDeducted,
     leave_type: leaveType,
     is_paid_leave: isPaidLeave,
@@ -840,11 +1058,21 @@ export async function createHolidayRequest(
     .select(holidayRequestSelect)
     .single()
 
-  if (isMissingRetentionExpiresAtColumnError(error)) {
+  if (isMissingRetentionExpiresAtColumnError(error) || isMissingDayPortionColumnError(error)) {
+    const withoutOptional: Record<string, unknown> = { ...payload }
+    if (isMissingDayPortionColumnError(error)) {
+      delete withoutOptional.start_day_portion
+      delete withoutOptional.end_day_portion
+    }
+    const select = (
+      isMissingRetentionExpiresAtColumnError(error)
+        ? holidayRequestSelectWithoutRetention
+        : holidayRequestSelect
+    ) as string
     const fallbackResult = await requireSupabase()
       .from('holiday_requests')
-      .insert(payload)
-      .select(holidayRequestSelectWithoutRetention)
+      .insert(withoutOptional)
+      .select(select)
       .single()
     data = fallbackResult.data as typeof data
     error = fallbackResult.error
@@ -877,6 +1105,12 @@ export async function updateHolidayRequest(
 
   if (input.startDate !== undefined) patch.start_date = input.startDate
   if (input.endDate !== undefined) patch.end_date = input.endDate
+  if (input.startDayPortion !== undefined) {
+    patch.start_day_portion = normalizeHolidayDayPortion(input.startDayPortion)
+  }
+  if (input.endDayPortion !== undefined) {
+    patch.end_day_portion = normalizeHolidayDayPortion(input.endDayPortion)
+  }
   if (input.reason !== undefined) patch.reason = input.reason?.trim() || null
   if (input.status !== undefined) patch.status = input.status
   if (input.leaveType !== undefined) {
@@ -888,32 +1122,63 @@ export async function updateHolidayRequest(
   const shouldRecalculateDays =
     input.startDate !== undefined ||
     input.endDate !== undefined ||
+    input.startDayPortion !== undefined ||
+    input.endDayPortion !== undefined ||
     input.leaveType !== undefined ||
     input.status !== undefined
 
   if (shouldRecalculateDays) {
-    const { data: existing, error: existingError } = await requireSupabase()
+    let existingQuery = await requireSupabase()
       .from('holiday_requests')
-      .select('worker_id, start_date, end_date, leave_type')
+      .select('worker_id, start_date, end_date, leave_type, start_day_portion, end_day_portion')
       .eq('id', id)
       .eq('company_id', companyId)
       .maybeSingle()
 
-    if (existingError) {
-      throw new HolidayRequestsServiceError(existingError.message)
+    if (existingQuery.error && isMissingDayPortionColumnError(existingQuery.error)) {
+      existingQuery = await requireSupabase()
+        .from('holiday_requests')
+        .select('worker_id, start_date, end_date, leave_type')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle()
     }
 
-    if (!existing) {
+    if (existingQuery.error) {
+      throw new HolidayRequestsServiceError(existingQuery.error.message)
+    }
+
+    if (!existingQuery.data) {
       throw new HolidayRequestsServiceError('Holiday request not found.')
     }
 
+    const existing = existingQuery.data as {
+      worker_id: string
+      start_date: string
+      end_date: string
+      leave_type: string | null
+      start_day_portion?: string | null
+      end_day_portion?: string | null
+    }
     const startDate = input.startDate ?? existing.start_date
     const endDate = input.endDate ?? existing.end_date
     const leaveType = input.leaveType ?? normalizeLeaveType(existing.leave_type)
+    const startDayPortion = normalizeHolidayDayPortion(
+      input.startDayPortion ?? existing.start_day_portion,
+    )
+    const endDayPortion =
+      startDate === endDate
+        ? startDayPortion
+        : normalizeHolidayDayPortion(input.endDayPortion ?? existing.end_day_portion)
+    patch.start_day_portion = startDayPortion
+    patch.end_day_portion = endDayPortion
+
     const balance = await assertHolidayBalanceAllowsRequest({
       workerId: existing.worker_id,
       startDate,
       endDate,
+      startDayPortion,
+      endDayPortion,
       leaveType,
       excludeRequestId: id,
     })
@@ -931,13 +1196,23 @@ export async function updateHolidayRequest(
     .eq('company_id', companyId)
     .select(holidayRequestSelect)
 
-  if (isMissingRetentionExpiresAtColumnError(error)) {
+  if (isMissingRetentionExpiresAtColumnError(error) || isMissingDayPortionColumnError(error)) {
+    const retryPatch: Record<string, unknown> = { ...patch }
+    if (isMissingDayPortionColumnError(error)) {
+      delete retryPatch.start_day_portion
+      delete retryPatch.end_day_portion
+    }
+    const select = (
+      isMissingRetentionExpiresAtColumnError(error)
+        ? holidayRequestSelectWithoutRetention
+        : holidayRequestSelect
+    ) as string
     const fallbackResult = await requireSupabase()
       .from('holiday_requests')
-      .update(patch)
+      .update(retryPatch)
       .eq('id', id)
       .eq('company_id', companyId)
-      .select(holidayRequestSelectWithoutRetention)
+      .select(select)
     data = fallbackResult.data as typeof data
     error = fallbackResult.error
   }

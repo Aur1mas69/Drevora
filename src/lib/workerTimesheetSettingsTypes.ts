@@ -52,6 +52,8 @@ export type DriverTimesheetSettingsOverride = {
   sundayOvertimeMultiplier: number | null
   sundayGuaranteedPaidHours: number | null
   sundayUseCompanyDefaultBreak: boolean | null
+  /** Null inherits company default paid holiday hours. */
+  defaultPaidHolidayHours: number | null
 }
 
 /** Full editable form values (always concrete; never null). */
@@ -76,6 +78,10 @@ export type WorkerTimesheetSettingsForm = {
   sundayOvertimeMultiplier: number
   sundayGuaranteedPaidHours: number
   sundayUseCompanyDefaultBreak: boolean
+  /** When true, persist null and inherit company holiday hours. */
+  useCompanyDefaultHolidayHours: boolean
+  /** Custom holiday hours when useCompanyDefaultHolidayHours is false. */
+  defaultPaidHolidayHours: number
 }
 
 /** Resolved settings used by Timesheet calculations. */
@@ -109,6 +115,8 @@ export const SAFE_FALLBACK_TIMESHEET_SETTINGS: WorkerTimesheetSettingsForm = {
   sundayOvertimeMultiplier: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayOvertimeMultiplier,
   sundayGuaranteedPaidHours: DEFAULT_TIMESHEET_OVERTIME_RULES.sundayGuaranteedPaidHours,
   sundayUseCompanyDefaultBreak: true,
+  useCompanyDefaultHolidayHours: true,
+  defaultPaidHolidayHours: 8,
 }
 
 export { DEFAULT_WEEKEND_RULES_SCOPE }

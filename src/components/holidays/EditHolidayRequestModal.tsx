@@ -2,11 +2,13 @@ import { Button } from '@/components/ui/button'
 import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
 import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
 import { HolidayDayBreakdownSummary } from '@/components/holidays/HolidayDayBreakdownSummary'
+import { HolidayDayPortionSelect } from '@/components/holidays/HolidayDayPortionSelect'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type {
   HolidayBalanceSummary,
   HolidayCapacityWarning,
+  HolidayDayPortion,
   HolidayLeaveType,
   HolidayRequest,
   HolidayRequestStatus,
@@ -31,6 +33,8 @@ type EditHolidayRequestModalProps = {
   onSubmit: (input: {
     startDate: string
     endDate: string
+    startDayPortion: HolidayDayPortion
+    endDayPortion: HolidayDayPortion
     reason: string
     status: HolidayRequestStatus
     leaveType: HolidayLeaveType
@@ -66,6 +70,8 @@ export function EditHolidayRequestModal({
   useBodyScrollLock(isOpen)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [startDayPortion, setStartDayPortion] = useState<HolidayDayPortion>('full')
+  const [endDayPortion, setEndDayPortion] = useState<HolidayDayPortion>('full')
   const [reason, setReason] = useState('')
   const [status, setStatus] = useState<HolidayRequestStatus>('Pending')
   const [leaveType, setLeaveType] = useState<HolidayLeaveType>('paid_holiday')
@@ -74,6 +80,8 @@ export function EditHolidayRequestModal({
   const [isBalanceLoading, setIsBalanceLoading] = useState(false)
   const [balanceError, setBalanceError] = useState<string | null>(null)
   const [capacityWarning, setCapacityWarning] = useState<HolidayCapacityWarning | null>(null)
+  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
+  const effectiveEndPortion = isSingleDay ? startDayPortion : endDayPortion
 
   const countingSettings = useMemo(
     () =>
@@ -88,13 +96,21 @@ export function EditHolidayRequestModal({
 
   const dayBreakdown = useMemo(() => {
     if (!startDate || !endDate) return null
-    return calculateHolidayDayBreakdown(startDate, endDate, countingSettings)
-  }, [countingSettings, startDate, endDate])
+    return calculateHolidayDayBreakdown(
+      startDate,
+      endDate,
+      countingSettings,
+      startDayPortion,
+      effectiveEndPortion,
+    )
+  }, [countingSettings, effectiveEndPortion, startDate, endDate, startDayPortion])
 
   useEffect(() => {
     if (!isOpen || !request) return
     setStartDate(request.startDate)
     setEndDate(request.endDate)
+    setStartDayPortion(request.startDayPortion ?? 'full')
+    setEndDayPortion(request.endDayPortion ?? 'full')
     setReason(request.reason ?? '')
     setStatus(request.status)
     setLeaveType(request.leaveType)
@@ -120,6 +136,8 @@ export function EditHolidayRequestModal({
       workerId: request.workerId,
       startDate,
       endDate,
+      startDayPortion,
+      endDayPortion: effectiveEndPortion,
       leaveType,
       excludeRequestId: request.id,
     })
@@ -143,7 +161,16 @@ export function EditHolidayRequestModal({
     return () => {
       isCancelled = true
     }
-  }, [dayBreakdown, endDate, isOpen, leaveType, request, startDate])
+  }, [
+    dayBreakdown,
+    effectiveEndPortion,
+    endDate,
+    isOpen,
+    leaveType,
+    request,
+    startDate,
+    startDayPortion,
+  ])
 
   useEffect(() => {
     if (!isOpen || !request || !startDate || !endDate || !dayBreakdown) {
@@ -201,7 +228,15 @@ export function EditHolidayRequestModal({
     }
 
     try {
-      await onSubmit({ startDate, endDate, reason, status, leaveType })
+      await onSubmit({
+        startDate,
+        endDate,
+        startDayPortion,
+        endDayPortion: effectiveEndPortion,
+        reason,
+        status,
+        leaveType,
+      })
       onClose()
     } catch (submitError) {
       setError(
@@ -289,6 +324,24 @@ export function EditHolidayRequestModal({
                   </label>
                 </div>
               </HolidayDatePickerGroup>
+
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                <HolidayDayPortionSelect
+                  label={isSingleDay ? 'Day portion' : 'Start day portion'}
+                  value={startDayPortion}
+                  onChange={(value) => {
+                    setStartDayPortion(value)
+                    if (isSingleDay) setEndDayPortion(value)
+                  }}
+                />
+                {!isSingleDay ? (
+                  <HolidayDayPortionSelect
+                    label="End day portion"
+                    value={endDayPortion}
+                    onChange={setEndDayPortion}
+                  />
+                ) : null}
+              </div>
 
               {dayBreakdown ? (
                 <HolidayDayBreakdownSummary
