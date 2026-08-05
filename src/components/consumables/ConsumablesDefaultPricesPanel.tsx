@@ -22,7 +22,7 @@ import {
   type ConsumableDefaultPricesMap,
 } from '@/lib/consumableDefaultPrices'
 import { companySettingsService } from '@/services/companySettingsService'
-import { Settings2 } from 'lucide-react'
+import { Settings2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -136,6 +136,31 @@ export function ConsumablesDefaultPricesPanel({
     setSuccessMessage(null)
   }
 
+  async function handleRemoveConfigured(type: ConsumableType) {
+    setIsSaving(true)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      const nextPrices = { ...savedPrices }
+      delete nextPrices[type]
+      const normalized = normalizeConsumableDefaultPrices(nextPrices)
+      await companySettingsService.updateConsumableDefaultPrices(normalized)
+      if (selectedType === type) {
+        setPriceInput('')
+      }
+      setSuccessMessage(`Default price removed for ${type}.`)
+      refreshSettings()
+      onSaved?.()
+    } catch (removeError) {
+      setError(
+        removeError instanceof Error ? removeError.message : 'Failed to remove default price.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const fieldClassName = embeddedInSettings ? settingsFieldClassName : compactFieldClassName
 
   const formContent = (
@@ -220,13 +245,25 @@ export function ConsumablesDefaultPricesPanel({
           </p>
           <ul className="mt-2 space-y-1.5">
             {configuredPrices.map(({ type, entry }) => (
-              <li key={type}>
+              <li
+                key={type}
+                className="flex items-center gap-2 rounded-[10px] pr-0.5 hover:bg-[#F0F7FF] dark:hover:bg-slate-800/60"
+              >
                 <button
                   type="button"
                   onClick={() => handleSelectConfigured(type, entry)}
-                  className="text-left text-sm font-medium text-[#2A376F] transition-colors hover:text-[#2563EB] dark:text-slate-200"
+                  className="min-w-0 flex-1 px-1.5 py-1.5 text-left text-sm font-medium text-[#2A376F] transition-colors hover:text-[#2563EB] dark:text-slate-200"
                 >
                   {formatConfiguredDefaultPriceLine(type, entry, currency)}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void handleRemoveConfigured(type)}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-[8px] text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                  aria-label={`Remove default price for ${type}`}
+                >
+                  <X className="size-4" aria-hidden />
                 </button>
               </li>
             ))}
