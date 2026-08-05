@@ -148,26 +148,28 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-dvh w-full lg:min-h-screen">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/images/login-office-background.png')" }}
+    <div className="relative min-h-dvh w-full bg-gradient-to-b from-white via-sky-50 to-sky-100 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+      <img
+        src="/images/login-office-background.png"
+        alt=""
         aria-hidden
+        draggable={false}
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover object-center lg:object-contain"
       />
       <div
-        className="absolute inset-0 bg-gradient-to-br from-white/64 via-white/51 to-sky-100/45"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/64 via-white/51 to-sky-100/45"
         aria-hidden
       />
 
-      <div className="relative z-10 flex min-h-dvh w-full flex-col items-center justify-center px-4 py-8">
+      <div className="relative z-10 flex min-h-dvh w-full flex-col items-center justify-center px-4 py-8 lg:absolute lg:inset-0 lg:min-h-0 lg:px-6 lg:pt-[10vh] lg:pb-[3vh]">
         <img
           src={drevoraLogoFull}
           alt="DREVORA"
-          className="mb-6 h-auto w-full max-w-[240px] object-contain"
+          className="mb-6 h-auto w-full max-w-[240px] object-contain lg:mb-[2vh] lg:max-h-[7vh] lg:w-auto"
         />
 
         <div
-          className="w-full max-w-[440px] rounded-[22px] border border-sky-200/70 bg-white/72 px-6 py-7 shadow-[0_24px_64px_-28px_rgba(56,120,190,0.35)] backdrop-blur-sm sm:px-8 sm:py-8 lg:max-w-[480px] lg:rounded-[28px] lg:bg-white/58 lg:px-10 lg:py-10 lg:shadow-[0_40px_100px_-32px_rgba(100,130,170,0.45)] lg:ring-1 lg:ring-sky-200/50"
+          className="w-full max-w-[440px] rounded-[22px] border border-sky-200/70 bg-white/72 px-6 py-7 shadow-[0_24px_64px_-28px_rgba(56,120,190,0.35)] backdrop-blur-sm sm:px-8 sm:py-8 lg:max-h-[76vh] lg:max-w-[480px] lg:overflow-y-auto lg:overscroll-contain lg:rounded-[28px] lg:bg-white/58 lg:px-10 lg:py-8 lg:shadow-[0_40px_100px_-32px_rgba(100,130,170,0.45)] lg:ring-1 lg:ring-sky-200/50"
           aria-label="Reset password"
         >
           {status === 'checking' ? (
