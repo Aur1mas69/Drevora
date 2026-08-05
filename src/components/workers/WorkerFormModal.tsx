@@ -59,6 +59,10 @@ type WorkerFormModalProps = {
   eyebrow: string
   title: string
   submitLabel: string
+  /** Shown while isSubmitting; defaults to "Saving...". */
+  submittingLabel?: string
+  /** When true, Email is marked required (Add Worker invite flow). */
+  emailRequired?: boolean
   form: CreateDriverInput
   errors: DriverFormErrors
   submitError: string | null
@@ -85,6 +89,8 @@ export function WorkerFormModal({
   eyebrow,
   title,
   submitLabel,
+  submittingLabel = 'Saving...',
+  emailRequired = false,
   form,
   errors,
   submitError,
@@ -175,8 +181,21 @@ export function WorkerFormModal({
               <FieldError message={errors.lastName} />
             </label>
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Email</span>
-              <Input name="email" type="email" value={form.email} onChange={onChange} className={fieldInputClass} />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Email
+                {emailRequired ? (
+                  <span className="text-rose-500"> *</span>
+                ) : null}
+              </span>
+              <Input
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={onChange}
+                className={fieldInputClass}
+                required={emailRequired}
+                autoComplete="email"
+              />
               <FieldError message={errors.email} />
             </label>
             <label className="block">
@@ -489,7 +508,7 @@ export function WorkerFormModal({
               disabled={isSubmitting}
               className="h-11 rounded-[16px] bg-gradient-to-br from-[#218EE7] to-[#0B68BE] px-5 font-semibold text-white shadow-[0_14px_28px_rgba(33,142,231,0.22)] transition-all duration-[250ms] ease-out hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-70"
             >
-              {isSubmitting ? 'Saving...' : submitLabel}
+              {isSubmitting ? submittingLabel : submitLabel}
             </Button>
           </div>
         </form>
