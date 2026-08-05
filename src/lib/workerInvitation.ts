@@ -496,3 +496,412 @@ export function mapInviteDatabaseError(message: string): {
 
 /** Login path after password set (documentation helper for future UI). */
 export const WORKER_POST_INVITE_LOGIN_PATH = LOGIN_PATH
+
+/** Form-shaped input used by Admin Add Worker → invite-worker. */
+export type InviteWorkerFormFields = {
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  status: string
+  phone?: string
+  employmentType?: string
+  paidHolidayEnabled?: boolean | null | string
+  annualPaidHolidayDays?: string | number | null
+  bankHolidayEntitlementDays?: string | number | null
+  unpaidLeaveAllowed?: boolean | string
+  holidayEntitlementNotes?: string
+  licenceCategories?: string[]
+  drivingLicenceExpiry?: string
+  tachoCardNumber?: string
+  cpcExpiry?: string
+  driverCardExpiry?: string
+  medicalExpiry?: string
+  defaultVehicleId?: string
+  startDate?: string
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelationship?: string
+  addressLine1?: string
+  addressLine2?: string
+  townCity?: string
+  county?: string
+  postcode?: string
+  country?: string
+  /** Must never be sent to invite-worker. */
+  companyId?: unknown
+  company?: unknown
+}
+
+/**
+ * Build the Edge Function body from the Add Worker form.
+ * Never includes companyId (tenant comes from the caller's membership).
+ */
+export function buildInviteWorkerRequestBody(
+  form: InviteWorkerFormFields,
+): Record<string, unknown> {
+  const email = normalizeInvitationEmail(form.email)
+  if (!email) {
+    throw new Error('Enter a valid Worker email address.')
+  }
+
+  const paidHoliday =
+    typeof form.paidHolidayEnabled === 'boolean'
+      ? form.paidHolidayEnabled
+      : form.paidHolidayEnabled === 'true'
+        ? true
+        : form.paidHolidayEnabled === 'false'
+          ? false
+          : null
+
+  const unpaidLeave =
+    typeof form.unpaidLeaveAllowed === 'boolean'
+      ? form.unpaidLeaveAllowed
+      : form.unpaidLeaveAllowed === 'false'
+        ? false
+        : true
+
+  const body: Record<string, unknown> = {
+    email,
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    operationalRole: form.role.trim(),
+    status: (form.status?.trim() || 'Off Duty'),
+    phone: form.phone?.trim() || '',
+    employmentType: form.employmentType?.trim() || '',
+    paidHolidayEnabled: paidHoliday,
+    annualPaidHolidayDays: form.annualPaidHolidayDays ?? '',
+    bankHolidayEntitlementDays: form.bankHolidayEntitlementDays ?? '',
+    unpaidLeaveAllowed: unpaidLeave,
+    holidayEntitlementNotes: form.holidayEntitlementNotes?.trim() || '',
+    licenceCategories: Array.isArray(form.licenceCategories)
+      ? form.licenceCategories
+      : [],
+    drivingLicenceExpiry: form.drivingLicenceExpiry?.trim() || '',
+    tachoCardNumber: form.tachoCardNumber?.trim() || '',
+    cpcExpiry: form.cpcExpiry?.trim() || '',
+    driverCardExpiry: form.driverCardExpiry?.trim() || '',
+    medicalExpiry: form.medicalExpiry?.trim() || '',
+    defaultVehicleId: form.defaultVehicleId?.trim() || '',
+    startDate: form.startDate?.trim() || '',
+    emergencyContactName: form.emergencyContactName?.trim() || '',
+    emergencyContactPhone: form.emergencyContactPhone?.trim() || '',
+    emergencyContactRelationship:
+      form.emergencyContactRelationship?.trim() || '',
+    addressLine1: form.addressLine1?.trim() || '',
+    addressLine2: form.addressLine2?.trim() || '',
+    townCity: form.townCity?.trim() || '',
+    county: form.county?.trim() || '',
+    postcode: form.postcode?.trim() || '',
+    country: form.country?.trim() || 'United Kingdom',
+  }
+
+  // Explicitly never forward tenant keys from the browser.
+  delete body.companyId
+  delete body.company_id
+  delete body.company
+
+  return body
+}
+
+export function inviteWorkerRequestContainsCompanyId(
+  body: Record<string, unknown>,
+): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(body, 'companyId') ||
+    Object.prototype.hasOwnProperty.call(body, 'company_id')
+  )
+}
+
+export type InviteWorkerSuccessKind =
+  | 'invited'
+  | 'already_linked'
+  | 'created_email_failed'
+
+export function classifyInviteWorkerSuccess(input: {
+  code: string
+  inviteSent: boolean
+  emailDeliveryFailed: boolean
+}): InviteWorkerSuccessKind {
+  const code = input.code.toLowerCase()
+  if (input.emailDeliveryFailed || code.endsWith('_email_failed')) {
+    return 'created_email_failed'
+  }
+  if (code === 'already_linked') {
+    return 'already_linked'
+  }
+  return 'invited'
+}
+
+export function formatInviteWorkerSuccessToast(
+  kind: InviteWorkerSuccessKind,
+  workerCode: string | null,
+): string {
+  const idSuffix = workerCode?.trim()
+    ? ` Worker ID: ${workerCode.trim()}.`
+    : ''
+
+  if (kind === 'created_email_failed') {
+    return `Worker was added, but the invitation email could not be sent.${idSuffix} Ask them to use Forgot password, or retry the invite.`
+  }
+  if (kind === 'already_linked') {
+    return `This Worker is already linked to your company.${idSuffix}`
+  }
+  return `Worker added and invitation sent.${idSuffix}`
+}
+
+/**
+ * After invite succeeded, optional avatar upload failed.
+ * Treat as created-with-warning — never as a failed invitation.
+ */
+export function formatInviteWorkerAvatarFailureToast(
+  kind: InviteWorkerSuccessKind,
+): string {
+  if (kind === 'created_email_failed') {
+    return 'Worker was added, but the invitation email could not be sent and the profile photo could not be uploaded.'
+  }
+  if (kind === 'already_linked') {
+    return 'Worker is already linked, but the profile photo could not be uploaded.'
+  }
+  return 'Worker was added and invited, but the profile photo could not be uploaded.'
+}
+
+/** User-facing messages for invite-worker structured error codes. */
+export function formatInviteWorkerUserMessage(
+  code: string | null | undefined,
+  fallbackMessage?: string | null,
+): string {
+  const normalized = (code ?? '').trim()
+  switch (normalized) {
+    case USER_ALREADY_LINKED_TO_ANOTHER_COMPANY:
+      return 'This email already belongs to an active account in another company.'
+    case 'plan_limit_reached':
+    case 'WORKER_PLAN_LIMIT_REACHED':
+      return 'Worker allowance reached. Archive an inactive Worker or change the company plan to add another Worker.'
+    case 'plan_allowance_unavailable':
+    case 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE':
+      return 'Worker allowance unavailable. Assign a valid company plan before adding Workers.'
+    case 'subscription_expired':
+    case 'SUBSCRIPTION_PLAN_EXPIRED':
+      return 'Your trial has expired. Existing records remain available. Contact DREVORA to renew your plan.'
+    case 'duplicate_worker':
+      return 'An active Worker with this email already exists in your company.'
+    case 'email_conflict':
+      return 'This email is already used by a non-Worker account in your company.'
+    case 'forbidden':
+      return 'Only Office roles can invite Workers.'
+    case 'unauthenticated':
+      return 'Your session has expired. Sign in again and try inviting the Worker.'
+    case 'invalid_email':
+      return 'Enter a valid Worker email address.'
+    case 'invalid_role':
+      return 'Select a valid Worker operational role.'
+    case 'invalid_argument':
+      return 'Check the Worker details and try again.'
+    case 'invite_send_failed':
+      return 'Unable to send the Worker invitation email. Please try again.'
+    case 'partial_link_failed':
+      return 'The invitation could not be completed safely. Please try again.'
+    case 'company_not_found':
+      return 'Your company could not be found. Contact DREVORA support.'
+    case 'server_misconfigured':
+    case 'server_failure':
+      return 'Unable to invite Worker right now. Please try again.'
+    default:
+      break
+  }
+
+  const safeFallback = fallbackMessage?.trim()
+  if (
+    safeFallback &&
+    !/sql|stack|exception|supabase|postgres|pgrst|jwt|service.?role/i.test(
+      safeFallback,
+    )
+  ) {
+    return safeFallback
+  }
+
+  return 'Unable to invite Worker right now. Please try again.'
+}
+
+type FunctionsInvokeErrorLike = {
+  message?: string
+  context?: unknown
+  name?: string
+}
+
+export type ParsedFunctionsErrorBody = {
+  code: string
+  message: string | null
+  /** True when a structured JSON body with a code was recovered. */
+  structured: boolean
+  /** True when the response body was read (at most once by the parser). */
+  bodyConsumed: boolean
+}
+
+function mapInvokeFailureCode(raw: string | null | undefined): string {
+  const code = (raw ?? '').trim()
+  if (!code) return 'server_failure'
+  if (code === USER_ALREADY_LINKED_TO_ANOTHER_COMPANY) return code
+  if (code === 'WORKER_PLAN_LIMIT_REACHED') return 'plan_limit_reached'
+  if (code === 'WORKER_PLAN_ALLOWANCE_UNAVAILABLE') {
+    return 'plan_allowance_unavailable'
+  }
+  if (code === 'SUBSCRIPTION_PLAN_EXPIRED') return 'subscription_expired'
+  return code
+}
+
+function looksLikeHtml(text: string): boolean {
+  const sample = text.slice(0, 200).toLowerCase()
+  return (
+    sample.includes('<!doctype') ||
+    sample.includes('<html') ||
+    sample.includes('<body')
+  )
+}
+
+function asParsedNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/**
+ * Read a Functions invoke error response body at most once.
+ * Prefers JSON `{ code, message }`; never returns raw HTML/SQL/tokens.
+ */
+export async function parseFunctionsInvokeErrorBody(input: {
+  error: FunctionsInvokeErrorLike | null | undefined
+  /** Sometimes Supabase still populates data on non-2xx. */
+  data?: unknown
+}): Promise<ParsedFunctionsErrorBody> {
+  if (
+    input.data &&
+    typeof input.data === 'object' &&
+    !Array.isArray(input.data)
+  ) {
+    const record = input.data as Record<string, unknown>
+    const code = asParsedNonEmptyString(record.code)
+    if (code) {
+      return {
+        code: mapInvokeFailureCode(code),
+        message: asParsedNonEmptyString(record.message),
+        structured: true,
+        bodyConsumed: false,
+      }
+    }
+  }
+
+  const context = input.error?.context
+  if (!context || typeof context !== 'object') {
+    return {
+      code: 'server_failure',
+      message: null,
+      structured: false,
+      bodyConsumed: false,
+    }
+  }
+
+  const responseLike = context as {
+    json?: () => Promise<unknown>
+    text?: () => Promise<string>
+    clone?: () => { text: () => Promise<string> }
+    bodyUsed?: boolean
+  }
+
+  if (responseLike.bodyUsed === true) {
+    return {
+      code: 'server_failure',
+      message: null,
+      structured: false,
+      bodyConsumed: true,
+    }
+  }
+
+  let rawText: string | null = null
+  let bodyConsumed = false
+
+  try {
+    if (typeof responseLike.text === 'function') {
+      rawText = await responseLike.text()
+      bodyConsumed = true
+    } else if (typeof responseLike.clone === 'function') {
+      const cloned = responseLike.clone()
+      if (typeof cloned.text === 'function') {
+        rawText = await cloned.text()
+        bodyConsumed = true
+      }
+    } else if (typeof responseLike.json === 'function') {
+      const parsed = await responseLike.json()
+      bodyConsumed = true
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>
+        const code = asParsedNonEmptyString(record.code)
+        if (code) {
+          return {
+            code: mapInvokeFailureCode(code),
+            message: asParsedNonEmptyString(record.message),
+            structured: true,
+            bodyConsumed: true,
+          }
+        }
+      }
+      return {
+        code: 'server_failure',
+        message: null,
+        structured: false,
+        bodyConsumed: true,
+      }
+    }
+  } catch {
+    return {
+      code: 'server_failure',
+      message: null,
+      structured: false,
+      bodyConsumed,
+    }
+  }
+
+  if (rawText == null || !rawText.trim()) {
+    return {
+      code: 'server_failure',
+      message: null,
+      structured: false,
+      bodyConsumed,
+    }
+  }
+
+  if (looksLikeHtml(rawText)) {
+    return {
+      code: 'server_failure',
+      message: null,
+      structured: false,
+      bodyConsumed,
+    }
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(rawText)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>
+      const code = asParsedNonEmptyString(record.code)
+      if (code) {
+        return {
+          code: mapInvokeFailureCode(code),
+          message: asParsedNonEmptyString(record.message),
+          structured: true,
+          bodyConsumed,
+        }
+      }
+    }
+  } catch {
+    // Non-JSON — generic fallback.
+  }
+
+  return {
+    code: 'server_failure',
+    message: null,
+    structured: false,
+    bodyConsumed,
+  }
+}

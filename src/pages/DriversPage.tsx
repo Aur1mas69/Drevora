@@ -70,6 +70,11 @@ import {
   type LicenceCategory,
 } from '@/services/driversService'
 import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
+import {
+  inviteWorker,
+  isWorkerInvitationServiceError,
+} from '@/services/workerInvitationService'
+import { formatInviteWorkerUserMessage, formatInviteWorkerAvatarFailureToast } from '@/lib/workerInvitation'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type StatusFilter = DriverStatus | 'All'
@@ -150,15 +155,22 @@ function resetAvatarFormState(setters: {
   setters.setAvatarError(null)
 }
 
-function validateDriverForm(form: CreateDriverForm): DriverFormErrors {
+function validateDriverForm(
+  form: CreateDriverForm,
+  options: { requireEmail?: boolean } = {},
+): DriverFormErrors {
   const errors: DriverFormErrors = {}
 
   if (!form.firstName.trim()) errors.firstName = 'First name is required.'
   if (!form.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!form.role.trim()) errors.role = 'Role is required.'
-  if (
-    form.email.trim() &&
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+
+  const emailTrimmed = form.email.trim()
+  if (options.requireEmail && !emailTrimmed) {
+    errors.email = 'Email is required to send the Worker invitation.'
+  } else if (
+    emailTrimmed &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)
   ) {
     errors.email = 'Enter a valid email address.'
   }
@@ -838,7 +850,13 @@ function DriversPage() {
   async function handleSaveDriver(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const validationErrors = validateDriverForm(form)
+    // Duplicate-submit guard (also disabled via isSubmitting on the button).
+    if (isCreating || isAvatarUploading) return
+
+    const isEdit = Boolean(editingDriver)
+    const validationErrors = validateDriverForm(form, {
+      requireEmail: !isEdit,
+    })
     setFormErrors(validationErrors)
     setCreateError(null)
 
@@ -846,7 +864,7 @@ function DriversPage() {
       return
     }
 
-    if (!editingDriver && !workerAllowance.canAddWorker) {
+    if (!isEdit && !workerAllowance.canAddWorker) {
       setCreateError(
         workerAllowance.detail ??
           'Worker allowance reached. Archive an inactive Worker or change the company plan to add another Worker.',
@@ -863,7 +881,61 @@ function DriversPage() {
       if (editingDriver) {
         savedWorker = await driversService.updateDriver(editingDriver.id, form)
       } else {
-        savedWorker = await driversService.createDriver(form)
+        const inviteResult = await inviteWorker(form)
+        if (!inviteResult.driverId) {
+          throw new Error('Worker was invited but could not be loaded.')
+        }
+        const invited = await driversService.fetchDriverById(inviteResult.driverId)
+
+        const finishInviteCreate = async (toastMessage: string) => {
+          setIsModalOpen(false)
+          setEditingDriver(null)
+          setForm(initialDriverForm)
+          resetAvatarFormState({
+            setAvatarFile,
+            setRemoveAvatar,
+            setAvatarError,
+          })
+          setCreateError(null)
+          await loadDrivers()
+          setToastMessage(toastMessage)
+        }
+
+        if (!invited) {
+          // Profile exists server-side; list refresh will show it.
+          await finishInviteCreate(inviteResult.toastMessage)
+          return
+        }
+        savedWorker = invited
+
+        if (avatarFile || removeAvatar) {
+          setIsAvatarUploading(true)
+          try {
+            savedWorker = await saveWorkerAvatarForDriver(
+              savedWorker,
+              avatarFile,
+              removeAvatar,
+            )
+          } catch (avatarUploadError) {
+            if (import.meta.env.DEV) {
+              console.error(
+                '[DriversPage] avatar upload failed after invite:',
+                avatarUploadError,
+              )
+            }
+            // Invitation already succeeded — do not keep the modal open or
+            // encourage a second inviteWorker() submission.
+            await finishInviteCreate(
+              formatInviteWorkerAvatarFailureToast(inviteResult.kind),
+            )
+            return
+          } finally {
+            setIsAvatarUploading(false)
+          }
+        }
+
+        await finishInviteCreate(inviteResult.toastMessage)
+        return
       }
 
       if (avatarFile || removeAvatar) {
@@ -881,11 +953,7 @@ function DriversPage() {
           setAvatarError(
             'Worker saved, but the avatar upload failed. Try again from Edit Worker.',
           )
-          setToastMessage(
-            editingDriver
-              ? 'Worker updated, but avatar upload failed.'
-              : 'Worker created, but avatar upload failed.',
-          )
+          setToastMessage('Worker updated, but avatar upload failed.')
           await loadDrivers()
           return
         } finally {
@@ -898,22 +966,22 @@ function DriversPage() {
       setForm(initialDriverForm)
       resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
       await loadDrivers()
-      setToastMessage(
-        editingDriver
-          ? 'Worker updated successfully.'
-          : savedWorker.workerCode
-            ? `Worker created successfully. Worker ID: ${savedWorker.workerCode}.`
-            : 'Worker created successfully.',
-      )
+      setToastMessage('Worker updated successfully.')
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('[DriversPage] save worker failed:', error)
       }
-      if (isWorkerPlanLimitError(error)) {
+      if (isWorkerInvitationServiceError(error)) {
+        setCreateError(
+          formatInviteWorkerUserMessage(error.code, error.message),
+        )
+      } else if (isWorkerPlanLimitError(error)) {
         setCreateError(formatWorkerPlanLimitError(error))
       } else {
         setCreateError(
-          'Unable to save worker. Please check required fields or database setup.',
+          isEdit
+            ? 'Unable to save worker. Please check required fields or database setup.'
+            : formatInviteWorkerUserMessage('server_failure'),
         )
       }
     } finally {
@@ -1141,7 +1209,13 @@ function DriversPage() {
         <WorkerFormModal
           eyebrow={editingDriver ? 'Edit Worker' : 'New Worker'}
           title={editingDriver ? 'Edit Worker' : 'Add Worker'}
-          submitLabel={editingDriver ? 'Save Changes' : 'Create Worker'}
+          submitLabel={
+            editingDriver ? 'Save Changes' : 'Add Worker & Send Invite'
+          }
+          submittingLabel={
+            editingDriver ? 'Saving...' : 'Sending invite...'
+          }
+          emailRequired={!editingDriver}
           form={form}
           errors={formErrors}
           submitError={createError}
