@@ -774,6 +774,8 @@ create policy vehicle_check_template_items_company_delete
 -- Worker Timesheet settings — RLS ALWAYS ENABLED
 -- Applied by 20260722190000_create_driver_timesheet_settings.sql
 -- Worker self-select/insert/update/delete own row; office SELECT for company.
+-- Worker writes additionally gated by timesheet_management_scope = worker
+-- (20260805183000_timesheet_management_scope_personal_overrides.sql).
 -- -----------------------------------------------------------------------------
 alter table public.driver_timesheet_settings enable row level security;
 
@@ -813,6 +815,7 @@ create policy driver_timesheet_settings_worker_insert_own
     company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
     and driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_company_workers_manage_timesheets(company_id)
     and exists (
       select 1
       from public.drivers d
@@ -830,11 +833,19 @@ create policy driver_timesheet_settings_worker_update_own
     company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
     and driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_company_workers_manage_timesheets(company_id)
   )
   with check (
     company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
     and driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_company_workers_manage_timesheets(company_id)
+    and exists (
+      select 1
+      from public.drivers d
+      where d.id = driver_id
+        and d.company_id = company_id
+    )
   );
 
 drop policy if exists driver_timesheet_settings_worker_delete_own on public.driver_timesheet_settings;
@@ -846,6 +857,7 @@ create policy driver_timesheet_settings_worker_delete_own
     company_id is not null
     and public.drevora_auth_user_belongs_to_company_id(company_id)
     and driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_company_workers_manage_timesheets(company_id)
   );
 
 -- -----------------------------------------------------------------------------

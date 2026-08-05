@@ -364,13 +364,13 @@ export function TimesheetSettingsPanel({ form, onChange }: TimesheetSettingsPane
               value: 'office',
               label: 'Office manages Timesheets',
               description:
-                'Workers can view their Timesheets, but only Office can create or edit them.',
+                'Office manages Timesheets. Workers inherit company rules and cannot edit Timesheets or personal Timesheet rules.',
             },
             {
               value: 'worker',
               label: 'Workers manage their own Timesheets',
               description:
-                'Workers can create, edit, save and submit their own Timesheets. Office reviews and approves them.',
+                'Workers can manage their own Timesheets and personal Timesheet rules, then submit for Office review and approval.',
             },
           ]}
         />

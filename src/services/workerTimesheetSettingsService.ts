@@ -1,6 +1,10 @@
 import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
+import {
+  workersManageOwnTimesheets,
+  type TimesheetManagementScope,
+} from '@/lib/companySettingsTypes'
 import type {
   DriverTimesheetSettingsOverride,
   OvertimeCalculationMethod,
@@ -127,6 +131,33 @@ function isMissingHolidayHoursColumnError(
   if (!error?.message) return false
   const message = error.message.toLowerCase()
   return message.includes('default_paid_holiday_hours')
+}
+
+async function fetchCompanyTimesheetManagementScope(
+  companyId: string,
+): Promise<TimesheetManagementScope> {
+  const { data, error } = await requireSupabase()
+    .from('companies')
+    .select('timesheet_management_scope')
+    .eq('id', companyId)
+    .maybeSingle()
+
+  if (error) {
+    throw new WorkerTimesheetSettingsServiceError(error.message)
+  }
+
+  return data?.timesheet_management_scope === 'office' ? 'office' : 'worker'
+}
+
+async function assertWorkersMayEditPersonalTimesheetSettings(
+  companyId: string,
+): Promise<void> {
+  const scope = await fetchCompanyTimesheetManagementScope(companyId)
+  if (!workersManageOwnTimesheets(scope)) {
+    throw new WorkerTimesheetSettingsServiceError(
+      'Your Office manages Timesheets. Workers cannot edit personal Timesheet rules.',
+    )
+  }
 }
 
 function mapRow(row: DriverTimesheetSettingsRow): DriverTimesheetSettingsOverride {
@@ -294,6 +325,8 @@ export async function saveOwnDriverTimesheetSettings(
   weekendRulesScope: WeekendRulesScope,
 ): Promise<DriverTimesheetSettingsOverride> {
   const companyId = requireVerifiedCompanyId()
+  await assertWorkersMayEditPersonalTimesheetSettings(companyId)
+
   const payload: Record<string, unknown> = {
     driver_id: driverId,
     company_id: companyId,
@@ -339,6 +372,8 @@ export async function resetOwnDriverTimesheetSettings(
   driverId: string,
 ): Promise<void> {
   const companyId = requireVerifiedCompanyId()
+  await assertWorkersMayEditPersonalTimesheetSettings(companyId)
+
   const { error } = await requireSupabase()
     .from('driver_timesheet_settings')
     .delete()
@@ -355,4 +390,36 @@ export async function resetOwnDriverTimesheetSettings(
   if (error) {
     throw new WorkerTimesheetSettingsServiceError(error.message)
   }
+}
+
+/**
+ * Office: delete every Worker personal Timesheet override for the current company.
+ * Used when switching to Office-managed Timesheets (DB trigger also clears).
+ */
+export async function clearCompanyDriverTimesheetSettings(
+  companyId: string,
+): Promise<number> {
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_clear_company_driver_timesheet_settings',
+    { p_company_id: companyId },
+  )
+
+  logSupabaseQuery({
+    service: 'workerTimesheetSettingsService.clearCompanyOverrides',
+    table: 'rpc:drevora_clear_company_driver_timesheet_settings',
+    data: data != null ? [{ deleted: data }] : [],
+    error,
+  })
+
+  if (error) {
+    // Migration may not be applied yet — surface a clear message.
+    if (/function .*drevora_clear_company_driver_timesheet_settings/i.test(error.message ?? '')) {
+      throw new WorkerTimesheetSettingsServiceError(
+        'Clearing Worker Timesheet overrides requires the latest database migration. Ask DREVORA support to apply it.',
+      )
+    }
+    throw new WorkerTimesheetSettingsServiceError(error.message)
+  }
+
+  return typeof data === 'number' ? data : Number(data) || 0
 }

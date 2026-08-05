@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { CURRENCY_OPTIONS } from '@/lib/companySettingsTypes'
 import {
   validateWorkerTimesheetSettingsForm,
 } from '@/lib/resolveEffectiveTimesheetSettings'
@@ -163,7 +162,7 @@ export function WorkerTimesheetSettingsForm({
             : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-[color:var(--worker-text)]',
         )}
       >
-        {hasOverride ? 'Using personal settings' : 'Using company defaults'}
+        {hasOverride ? 'Personal override' : 'Company defaults'}
       </div>
 
       <SettingsCard
@@ -224,7 +223,7 @@ export function WorkerTimesheetSettingsForm({
 
       <SettingsCard
         title="Holiday hours"
-        hint="Hours credited when a Timesheet day is marked Holiday (H). 0 = unpaid holiday."
+        hint="Hours credited for a full Holiday day (H). A half day (H-AM / H-PM) is automatically 50% of this value. 0 = unpaid holiday."
       >
         <Segmented
           value={form.useCompanyDefaultHolidayHours ? 'company' : 'custom'}
@@ -251,7 +250,9 @@ export function WorkerTimesheetSettingsForm({
               onChange={(value) => patch({ defaultPaidHolidayHours: value })}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Decimals allowed (e.g. 7.5). Use 0 for unpaid holiday.
+              Decimals allowed (e.g. 7.5). Half day ={' '}
+              {Math.round(form.defaultPaidHolidayHours * 50) / 100} h. Use 0 for unpaid
+              holiday.
             </p>
           </div>
         )}
@@ -421,20 +422,6 @@ export function WorkerTimesheetSettingsForm({
                   value,
                 ) as WorkerTimesheetSettingsForm['roundTimeMinutes'],
               })
-            }
-          />
-        </div>
-
-        <div className="mt-4">
-          <FieldLabel>Currency</FieldLabel>
-          <Segmented
-            value={form.currency}
-            options={CURRENCY_OPTIONS.map((option) => ({
-              value: option.value,
-              label: option.value,
-            }))}
-            onChange={(value) =>
-              patch({ currency: value as WorkerTimesheetSettingsForm['currency'] })
             }
           />
         </div>

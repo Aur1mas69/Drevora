@@ -1440,6 +1440,28 @@ export async function updateCompanySettings(
 
   await updateCompanyRecord(existing.id, payload)
 
+  const switchedToOfficeManaged =
+    input.timesheetManagementScope === 'office' &&
+    existing.timesheetManagementScope !== 'office'
+
+  if (switchedToOfficeManaged) {
+    // DB trigger also clears in the same company update transaction once the
+    // migration is applied. Call the RPC as an explicit service-layer clear so
+    // Admin saves always remove personal overrides for this company only.
+    try {
+      const { clearCompanyDriverTimesheetSettings } = await import(
+        '@/services/workerTimesheetSettingsService'
+      )
+      await clearCompanyDriverTimesheetSettings(existing.id)
+    } catch (clearError) {
+      throw new CompanySettingsServiceError(
+        clearError instanceof Error
+          ? clearError.message
+          : 'Unable to clear Worker Timesheet overrides after switching to Office-managed mode.',
+      )
+    }
+  }
+
   const refreshed = await fetchCompanySettingsById(existing.id)
   if (!refreshed) {
     throw new CompanySettingsServiceError('Unable to reload company settings after save')

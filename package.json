@@ -14,6 +14,7 @@
     "verify:paid-breaks": "npx tsx scripts/verify-paid-breaks.ts",
     "verify:timesheet-total-hours": "npx tsx scripts/verify-timesheet-total-hours.ts",
     "verify:timesheet-holiday-half-day": "npx tsx scripts/verify-timesheet-holiday-half-day.ts",
+    "verify:timesheet-management-personal-overrides": "npx tsx scripts/verify-timesheet-management-personal-overrides.ts",
     "verify:weekend-guaranteed-hours": "npx tsx scripts/verify-weekend-guaranteed-hours.ts",
     "verify:worker-timesheet-settings": "npx tsx scripts/verify-worker-timesheet-settings.ts",
     "verify:vehicle-check-location": "npx tsx scripts/verify-vehicle-check-location.ts",

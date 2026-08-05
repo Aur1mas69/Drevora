@@ -1,9 +1,12 @@
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
+import { WorkerTimesheetSettingsForm } from '@/components/worker/WorkerTimesheetSettingsForm'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
+import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import { TIMESHEET_WEEK_START_DAY_OPTIONS } from '@/lib/timesheetWeekNumber'
 import { workerAccentCardClass } from '@/lib/workerDarkAccent'
@@ -75,6 +78,7 @@ function ReadOnlyTimesheetDetails({
       : effective.source === 'company'
         ? 'Company rules'
         : 'Default rules'
+  const halfDayHours = Math.round(effective.defaultPaidHolidayHours * 50) / 100
 
   return (
     <div className="space-y-4">
@@ -185,7 +189,6 @@ function ReadOnlyTimesheetDetails({
             }
             isDark={isDark}
           />
-          <DetailRow label="Currency" value={effective.currency} isDark={isDark} />
           <DetailRow
             label="Week starts"
             value={weekStartLabel(effective.timesheetWeekStartDay)}
@@ -196,6 +199,39 @@ function ReadOnlyTimesheetDetails({
 
       <section
         className={workerAccentCardClass(3, isDark, 'worker-card rounded-[1.5rem] p-4')}
+      >
+        <p
+          className={cn(
+            'worker-accent-muted text-xs font-semibold uppercase tracking-[0.14em]',
+            !isDark && 'text-[color:var(--worker-text-muted)]',
+          )}
+        >
+          Holiday pay
+        </p>
+        <dl className="mt-1">
+          <DetailRow
+            label="Full day"
+            value={
+              effective.defaultPaidHolidayHours === 0
+                ? 'Unpaid (0 h)'
+                : formatHours(effective.defaultPaidHolidayHours)
+            }
+            isDark={isDark}
+          />
+          <DetailRow
+            label="Half day"
+            value={
+              effective.defaultPaidHolidayHours === 0
+                ? 'Unpaid (0 h)'
+                : formatHours(halfDayHours)
+            }
+            isDark={isDark}
+          />
+        </dl>
+      </section>
+
+      <section
+        className={workerAccentCardClass(4, isDark, 'worker-card rounded-[1.5rem] p-4')}
       >
         <p
           className={cn(
@@ -241,19 +277,26 @@ function ReadOnlyTimesheetDetails({
 }
 
 /**
- * Worker Timesheet Settings — read-only view of rules applied to this Worker.
- * Workers cannot edit company timesheet rules here.
+ * Worker Timesheet Settings.
+ * Editable when the company uses Workers-manage-own-Timesheets mode.
+ * Read-only when Office manages Timesheets (company rules only).
  */
 export default function WorkerTimesheetSettingsPage() {
   const isDark = useIsWorkerDarkMode()
   const navigate = useNavigate()
   const { signOut } = useAuth()
+  const { settings } = useCompanySettings()
   const { worker, isLoading, error } = useCurrentWorker()
   const {
     effective,
     isLoading: settingsLoading,
     error: settingsError,
+    refresh,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
+
+  const canEditPersonalRules = workersManageOwnTimesheets(
+    settings?.timesheetManagementScope,
+  )
 
   async function handleSignOut() {
     await signOut()
@@ -299,7 +342,9 @@ export default function WorkerTimesheetSettingsPage() {
             Timesheet settings
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
-            Read-only view of the rules applied to your timesheets.
+            {canEditPersonalRules
+              ? 'Edit your personal Timesheet rules. Changes apply to your Timesheet calculations.'
+              : 'Read-only view of the company rules applied to your timesheets.'}
           </p>
         </div>
       </header>
@@ -317,7 +362,15 @@ export default function WorkerTimesheetSettingsPage() {
               {settingsError} Showing the best available rules until settings reload.
             </p>
           ) : null}
-          <ReadOnlyTimesheetDetails effective={effective} isDark={isDark} />
+          {canEditPersonalRules ? (
+            <WorkerTimesheetSettingsForm
+              driverId={worker.id}
+              initialEffective={effective}
+              onSaved={() => refresh()}
+            />
+          ) : (
+            <ReadOnlyTimesheetDetails effective={effective} isDark={isDark} />
+          )}
         </>
       )}
     </div>
