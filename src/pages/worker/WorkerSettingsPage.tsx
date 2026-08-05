@@ -220,7 +220,7 @@ export default function WorkerSettingsPage() {
   const fullName = `${worker.firstName} ${worker.lastName}`.trim() || 'Worker'
   const email = displayValue(session?.user.email ?? worker.email)
   const company = displayValue(companyName?.trim() || worker.company)
-  const phone = displayValue(worker.phone)
+  const phoneNumber = worker.phone?.trim() || null
   const defaultVehicleLabel =
     worker.defaultVehicleRegistration?.trim() ||
     worker.assignment?.trim() ||
@@ -285,12 +285,9 @@ export default function WorkerSettingsPage() {
           )}
         >
           <ProfileField label="Company" value={company} isDark={isDark} />
-          <ProfileField label="Phone" value={phone} isDark={isDark} />
-          <ProfileField
-            label="Default vehicle"
-            value={defaultVehicleLabel ?? 'Not set'}
-            isDark={isDark}
-          />
+          {phoneNumber ? (
+            <ProfileField label="Phone" value={phoneNumber} isDark={isDark} />
+          ) : null}
         </dl>
         <p
           className={cn(
