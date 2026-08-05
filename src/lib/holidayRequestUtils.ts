@@ -124,6 +124,25 @@ export function portionEntitlementDays(portion: HolidayDayPortion): number {
   return portion === 'full' ? 1 : 0.5
 }
 
+export function isSingleHolidayRequestDay(startDate: string, endDate: string): boolean {
+  if (!startDate || !endDate) return false
+  return normalizeHolidayIsoDate(startDate) === normalizeHolidayIsoDate(endDate)
+}
+
+/** Form + save rule: half-day portions apply only to single-day requests. */
+export function normalizeHolidayRequestPortions(
+  startDate: string,
+  endDate: string,
+  startPortion?: HolidayDayPortion | null,
+  _endPortion?: HolidayDayPortion | null,
+): { startDayPortion: HolidayDayPortion; endDayPortion: HolidayDayPortion } {
+  if (isSingleHolidayRequestDay(startDate, endDate)) {
+    const portion = normalizeHolidayDayPortion(startPortion)
+    return { startDayPortion: portion, endDayPortion: portion }
+  }
+  return { startDayPortion: 'full', endDayPortion: 'full' }
+}
+
 export function calculateHolidayDayBreakdown(
   startDate: string,
   endDate: string,
@@ -133,9 +152,8 @@ export function calculateHolidayDayBreakdown(
 ): HolidayDayBreakdown {
   const start = normalizeHolidayIsoDate(startDate)
   const end = normalizeHolidayIsoDate(endDate)
-  const resolvedStart = normalizeHolidayDayPortion(startPortion)
-  const resolvedEnd =
-    start === end ? resolvedStart : normalizeHolidayDayPortion(endPortion)
+  const { startDayPortion: resolvedStart, endDayPortion: resolvedEnd } =
+    normalizeHolidayRequestPortions(start, end, startPortion, endPortion)
 
   const calendarDaysTotal = calculateInclusiveCalendarDays(start, end)
   if (calendarDaysTotal <= 0) {

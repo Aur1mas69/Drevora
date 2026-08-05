@@ -16,6 +16,8 @@ import type {
 import {
   calculateHolidayDayBreakdown,
   DEFAULT_HOLIDAY_COUNTING_SETTINGS,
+  isSingleHolidayRequestDay,
+  normalizeHolidayRequestPortions,
 } from '@/lib/holidayRequestUtils'
 import {
   calculateHolidayRequestBalance,
@@ -71,7 +73,6 @@ export function EditHolidayRequestModal({
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [startDayPortion, setStartDayPortion] = useState<HolidayDayPortion>('full')
-  const [endDayPortion, setEndDayPortion] = useState<HolidayDayPortion>('full')
   const [reason, setReason] = useState('')
   const [status, setStatus] = useState<HolidayRequestStatus>('Pending')
   const [leaveType, setLeaveType] = useState<HolidayLeaveType>('paid_holiday')
@@ -80,8 +81,12 @@ export function EditHolidayRequestModal({
   const [isBalanceLoading, setIsBalanceLoading] = useState(false)
   const [balanceError, setBalanceError] = useState<string | null>(null)
   const [capacityWarning, setCapacityWarning] = useState<HolidayCapacityWarning | null>(null)
-  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
-  const effectiveEndPortion = isSingleDay ? startDayPortion : endDayPortion
+  const [requestEndOpen, setRequestEndOpen] = useState(false)
+  const isSingleDay = isSingleHolidayRequestDay(startDate, endDate)
+  const requestPortions = useMemo(
+    () => normalizeHolidayRequestPortions(startDate, endDate, startDayPortion),
+    [endDate, startDate, startDayPortion],
+  )
 
   const countingSettings = useMemo(
     () =>
@@ -100,17 +105,18 @@ export function EditHolidayRequestModal({
       startDate,
       endDate,
       countingSettings,
-      startDayPortion,
-      effectiveEndPortion,
+      requestPortions.startDayPortion,
+      requestPortions.endDayPortion,
     )
-  }, [countingSettings, effectiveEndPortion, startDate, endDate, startDayPortion])
+  }, [countingSettings, endDate, requestPortions, startDate])
 
   useEffect(() => {
     if (!isOpen || !request) return
     setStartDate(request.startDate)
     setEndDate(request.endDate)
-    setStartDayPortion(request.startDayPortion ?? 'full')
-    setEndDayPortion(request.endDayPortion ?? 'full')
+    const singleDay = request.startDate === request.endDate
+    setStartDayPortion(singleDay ? (request.startDayPortion ?? 'full') : 'full')
+    setRequestEndOpen(false)
     setReason(request.reason ?? '')
     setStatus(request.status)
     setLeaveType(request.leaveType)
@@ -119,6 +125,12 @@ export function EditHolidayRequestModal({
     setBalanceError(null)
     setCapacityWarning(null)
   }, [isOpen, request])
+
+  useEffect(() => {
+    if (!isSingleDay && startDayPortion !== 'full') {
+      setStartDayPortion('full')
+    }
+  }, [isSingleDay, startDayPortion])
 
   useEffect(() => {
     if (!isOpen || !request || !startDate || !endDate || !dayBreakdown) {
@@ -136,8 +148,8 @@ export function EditHolidayRequestModal({
       workerId: request.workerId,
       startDate,
       endDate,
-      startDayPortion,
-      endDayPortion: effectiveEndPortion,
+      startDayPortion: requestPortions.startDayPortion,
+      endDayPortion: requestPortions.endDayPortion,
       leaveType,
       excludeRequestId: request.id,
     })
@@ -163,7 +175,7 @@ export function EditHolidayRequestModal({
     }
   }, [
     dayBreakdown,
-    effectiveEndPortion,
+    requestPortions,
     endDate,
     isOpen,
     leaveType,
@@ -231,8 +243,8 @@ export function EditHolidayRequestModal({
       await onSubmit({
         startDate,
         endDate,
-        startDayPortion,
-        endDayPortion: effectiveEndPortion,
+        startDayPortion: requestPortions.startDayPortion,
+        endDayPortion: requestPortions.endDayPortion,
         reason,
         status,
         leaveType,
@@ -292,7 +304,8 @@ export function EditHolidayRequestModal({
             <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
               <HolidayDatePickerGroup>
                 <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {/* Not a <label>: label activation would forward day taps back to the input. */}
+                  <div className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                     Start date
                     <HolidayDateInput
                       value={startDate}
@@ -301,6 +314,12 @@ export function EditHolidayRequestModal({
                         if (endDate && value && endDate < value) {
                           setEndDate(value)
                         }
+                        if (value && endDate && value !== endDate) {
+                          setStartDayPortion('full')
+                        }
+                        if (!endDate || (value && endDate < value)) {
+                          setRequestEndOpen(true)
+                        }
                       }}
                       className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70"
                       layout="modal"
@@ -308,40 +327,37 @@ export function EditHolidayRequestModal({
                       blurOnSelect
                       aria-label="Start date"
                     />
-                  </label>
-                  <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  </div>
+                  <div className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                     End date
                     <HolidayDateInput
                       value={endDate}
-                      onChange={setEndDate}
+                      onChange={(value) => {
+                        setEndDate(value)
+                        if (startDate && value && startDate !== value) {
+                          setStartDayPortion('full')
+                        }
+                      }}
                       min={startDate || undefined}
                       className="mt-1.5 h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] dark:border-white/10 dark:bg-slate-900/70"
                       layout="modal"
                       required
                       blurOnSelect
+                      requestOpen={requestEndOpen}
+                      onRequestOpenHandled={() => setRequestEndOpen(false)}
                       aria-label="End date"
                     />
-                  </label>
+                  </div>
                 </div>
               </HolidayDatePickerGroup>
 
-              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              {isSingleDay ? (
                 <HolidayDayPortionSelect
-                  label={isSingleDay ? 'Day portion' : 'Start day portion'}
+                  label="Day type"
                   value={startDayPortion}
-                  onChange={(value) => {
-                    setStartDayPortion(value)
-                    if (isSingleDay) setEndDayPortion(value)
-                  }}
+                  onChange={setStartDayPortion}
                 />
-                {!isSingleDay ? (
-                  <HolidayDayPortionSelect
-                    label="End day portion"
-                    value={endDayPortion}
-                    onChange={setEndDayPortion}
-                  />
-                ) : null}
-              </div>
+              ) : null}
 
               {dayBreakdown ? (
                 <HolidayDayBreakdownSummary

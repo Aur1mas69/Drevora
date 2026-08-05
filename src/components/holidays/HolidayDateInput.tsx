@@ -18,6 +18,9 @@ type HolidayDateInputProps = {
   required?: boolean
   min?: string
   'aria-label'?: string
+  /** When true, open the calendar (e.g. after picking the start date in a range). */
+  requestOpen?: boolean
+  onRequestOpenHandled?: () => void
   blurOnSelect?: boolean
   /** When true and a value is set, show an accessible clear control. */
   clearable?: boolean
@@ -170,6 +173,8 @@ export function HolidayDateInput({
   clearable = false,
   layout = 'default',
   popoverAlign = 'start',
+  requestOpen = false,
+  onRequestOpenHandled,
 }: HolidayDateInputProps) {
   const { dateFormat } = useCompanySettings()
   const group = useHolidayDatePickerGroup()
@@ -179,8 +184,15 @@ export function HolidayDateInput({
   const popoverRef = useRef<HTMLDivElement>(null)
   const [localOpen, setLocalOpen] = useState(false)
   const [popoverOffset, setPopoverOffset] = useState({ x: 0, y: 0 })
+  const [popoverPlacement, setPopoverPlacement] = useState<'below' | 'above'>('below')
   const selectedDate = parseIsoDate(value)
   const [viewDate, setViewDate] = useState(() => selectedDate ?? new Date())
+  /**
+   * Selecting a day closes the calendar, but the same tap can re-open it: the
+   * input sits inside a <label>, so activation is forwarded back to the input
+   * (focus + click). Ignore user-driven opens for a moment after a selection.
+   */
+  const suppressOpenUntilRef = useRef(0)
 
   const isOpen = group ? group.openId === pickerId : localOpen
 
@@ -192,19 +204,35 @@ export function HolidayDateInput({
     setLocalOpen(nextOpen)
   }
 
+  function openFromUser() {
+    if (Date.now() < suppressOpenUntilRef.current) return
+    setOpen(true)
+  }
+
   useEffect(() => {
     if (selectedDate) {
       setViewDate(selectedDate)
     }
   }, [value])
 
+  const onRequestOpenHandledRef = useRef(onRequestOpenHandled)
+  onRequestOpenHandledRef.current = onRequestOpenHandled
+
+  useEffect(() => {
+    if (!requestOpen) return
+    suppressOpenUntilRef.current = 0
+    setOpen(true)
+    onRequestOpenHandledRef.current?.()
+  }, [requestOpen])
+
   useEffect(() => {
     if (!isOpen) {
       setPopoverOffset({ x: 0, y: 0 })
+      setPopoverPlacement('below')
       return
     }
 
-    function handlePointerDown(event: MouseEvent) {
+    function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false)
       }
@@ -216,33 +244,48 @@ export function HolidayDateInput({
       }
     }
 
-    window.addEventListener('mousedown', handlePointerDown)
-    window.addEventListener('keydown', handleKeyDown)
+    // Defer so the same tap/click that opened the picker does not immediately close it.
+    const frame = window.requestAnimationFrame(() => {
+      window.addEventListener('pointerdown', handlePointerDown)
+      window.addEventListener('keydown', handleKeyDown)
+    })
+
     return () => {
-      window.removeEventListener('mousedown', handlePointerDown)
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('pointerdown', handlePointerDown)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen])
 
   // Keep the calendar fully inside the viewport without shrinking weekday columns.
   useLayoutEffect(() => {
-    if (!isOpen || layout === 'modal') {
+    if (!isOpen) {
       setPopoverOffset({ x: 0, y: 0 })
+      setPopoverPlacement('below')
       return
     }
 
     const popover = popoverRef.current
-    if (!popover) return
+    const anchor = rootRef.current
+    if (!popover || !anchor) return
 
     // Measure the untransformed box so month navigation does not compound shifts.
     const previousTransform = popover.style.transform
     popover.style.transform = 'none'
     const rect = popover.getBoundingClientRect()
     popover.style.transform = previousTransform
+    const anchorRect = anchor.getBoundingClientRect()
 
     const pad = 8
     let shiftX = 0
     let shiftY = 0
+    let placement: 'below' | 'above' = 'below'
+
+    const spaceBelow = window.innerHeight - anchorRect.bottom
+    const spaceAbove = anchorRect.top
+    if (layout === 'modal' && rect.height + pad > spaceBelow && spaceAbove > spaceBelow) {
+      placement = 'above'
+    }
 
     if (rect.right > window.innerWidth - pad) {
       shiftX = window.innerWidth - pad - rect.right
@@ -250,19 +293,26 @@ export function HolidayDateInput({
     if (rect.left + shiftX < pad) {
       shiftX += pad - (rect.left + shiftX)
     }
-    if (rect.bottom > window.innerHeight - pad) {
-      shiftY = window.innerHeight - pad - rect.bottom
-    }
-    if (rect.top + shiftY < pad) {
-      shiftY += pad - (rect.top + shiftY)
+
+    if (placement === 'below') {
+      if (rect.bottom > window.innerHeight - pad) {
+        shiftY = window.innerHeight - pad - rect.bottom
+      }
+      if (rect.top + shiftY < pad) {
+        shiftY += pad - (rect.top + shiftY)
+      }
+    } else if (rect.top < pad) {
+      shiftY = pad - rect.top
     }
 
+    setPopoverPlacement(placement)
     setPopoverOffset({ x: shiftX, y: shiftY })
   }, [isOpen, layout, viewDate, popoverAlign])
 
   function handleSelect(iso: string) {
-    onChange(iso)
+    suppressOpenUntilRef.current = Date.now() + 400
     setOpen(false)
+    onChange(iso)
     if (blurOnSelect) {
       inputRef.current?.blur()
     }
@@ -282,8 +332,8 @@ export function HolidayDateInput({
           readOnly
           value={displayValue}
           placeholder="Select date"
-          onFocus={() => setOpen(true)}
-          onClick={() => setOpen(true)}
+          onFocus={openFromUser}
+          onClick={openFromUser}
           required={required}
           aria-label={ariaLabel}
           aria-expanded={isOpen}
@@ -303,8 +353,9 @@ export function HolidayDateInput({
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              onChange('')
+              suppressOpenUntilRef.current = Date.now() + 400
               setOpen(false)
+              onChange('')
             }}
             className="absolute right-8 top-1/2 -translate-y-1/2 rounded-[6px] p-0.5 text-[#5499BF] transition-colors hover:bg-[#EEF6FF] hover:text-[#0B68BE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40 dark:hover:bg-slate-800"
             aria-label={clearLabel}
@@ -316,8 +367,15 @@ export function HolidayDateInput({
           type="button"
           tabIndex={-1}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            setOpen(!isOpen)
+          onClick={(event) => {
+            event.stopPropagation()
+            if (isOpen) {
+              suppressOpenUntilRef.current = Date.now() + 400
+              setOpen(false)
+              return
+            }
+            suppressOpenUntilRef.current = 0
+            setOpen(true)
             inputRef.current?.focus()
           }}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-[#5499BF]"
@@ -333,7 +391,12 @@ export function HolidayDateInput({
           className={cn(
             'my-holiday-datepicker-popover absolute z-[130] rounded-[12px] border border-[#D3E9FC] bg-white p-2.5 shadow-[0_12px_32px_rgba(11,38,70,0.14)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/40 sm:p-3',
             layout === 'modal'
-              ? 'left-0 right-0 top-[calc(100%+4px)] w-full max-w-full'
+              ? cn(
+                  'left-0 right-0 w-full max-w-full',
+                  popoverPlacement === 'above'
+                    ? 'bottom-[calc(100%+4px)] top-auto'
+                    : 'top-[calc(100%+4px)]',
+                )
               : cn(
                   // Fixed calendar width so 7 weekday labels never compress inside narrow filter columns.
                   'top-[calc(100%+4px)] w-[min(17.5rem,calc(100vw-1.5rem))]',

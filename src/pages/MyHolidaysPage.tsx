@@ -10,6 +10,10 @@ import {
 } from '@/lib/workerHolidaySelfService'
 import type { HolidayBalanceSummary, HolidayDayPortion, HolidayRequest } from '@/lib/holidayRequestTypes'
 import {
+  isSingleHolidayRequestDay,
+  normalizeHolidayRequestPortions,
+} from '@/lib/holidayRequestUtils'
+import {
   calculateHolidayRequestBalance,
   createHolidayRequest,
   fetchHolidayCalendarRequests,
@@ -17,7 +21,7 @@ import {
   fetchWorkerHolidayBalanceSummary,
   HolidayRequestsServiceError,
 } from '@/services/holidayRequestsService'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const MY_REQUESTS_PAGE_SIZE = 50
 
@@ -31,11 +35,13 @@ export default function MyHolidaysPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [startDayPortion, setStartDayPortion] = useState<HolidayDayPortion>('full')
-  const [endDayPortion, setEndDayPortion] = useState<HolidayDayPortion>('full')
   const [reason, setReason] = useState('')
   const [preview, setPreview] = useState<HolidayBalanceSummary | null>(null)
-  const isSingleDay = Boolean(startDate && endDate && startDate === endDate)
-  const effectiveEndPortion = isSingleDay ? startDayPortion : endDayPortion
+  const isSingleDay = isSingleHolidayRequestDay(startDate, endDate)
+  const requestPortions = useMemo(
+    () => normalizeHolidayRequestPortions(startDate, endDate, startDayPortion),
+    [endDate, startDate, startDayPortion],
+  )
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -109,6 +115,12 @@ export default function MyHolidaysPage() {
   const loadError = workerError ?? dataError
 
   useEffect(() => {
+    if (!isSingleDay && startDayPortion !== 'full') {
+      setStartDayPortion('full')
+    }
+  }, [isSingleDay, startDayPortion])
+
+  useEffect(() => {
     if (!worker || !startDate || !endDate) {
       setPreview(null)
       return
@@ -121,8 +133,8 @@ export default function MyHolidaysPage() {
       workerId: worker.id,
       startDate,
       endDate,
-      startDayPortion,
-      endDayPortion: effectiveEndPortion,
+      startDayPortion: requestPortions.startDayPortion,
+      endDayPortion: requestPortions.endDayPortion,
       leaveType,
     })
       .then((result) => {
@@ -138,7 +150,7 @@ export default function MyHolidaysPage() {
     return () => {
       cancelled = true
     }
-  }, [effectiveEndPortion, endDate, leaveType, startDate, startDayPortion, worker])
+  }, [endDate, leaveType, requestPortions, startDate, worker])
 
   async function handleSubmit() {
     if (!worker || !startDate || !endDate) return
@@ -151,15 +163,14 @@ export default function MyHolidaysPage() {
         workerId: worker.id,
         startDate,
         endDate,
-        startDayPortion,
-        endDayPortion: effectiveEndPortion,
+        startDayPortion: requestPortions.startDayPortion,
+        endDayPortion: requestPortions.endDayPortion,
         leaveType,
         reason: reason.trim() || null,
       })
       setStartDate('')
       setEndDate('')
       setStartDayPortion('full')
-      setEndDayPortion('full')
       setReason('')
       setPreview(null)
       showToast('Holiday request submitted')
@@ -207,16 +218,27 @@ export default function MyHolidaysPage() {
             startDate={startDate}
             endDate={endDate}
             startDayPortion={startDayPortion}
-            endDayPortion={endDayPortion}
             reason={reason}
             preview={preview}
             isPreviewLoading={isPreviewLoading}
             isSubmitting={isSubmitting}
             showManagedMessage={showManagedMessage}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
+            onStartDateChange={(value) => {
+              setStartDate(value)
+              if (endDate && value && endDate < value) {
+                setEndDate(value)
+              }
+              if (value && endDate && value !== endDate) {
+                setStartDayPortion('full')
+              }
+            }}
+            onEndDateChange={(value) => {
+              setEndDate(value)
+              if (startDate && value && startDate !== value) {
+                setStartDayPortion('full')
+              }
+            }}
             onStartDayPortionChange={setStartDayPortion}
-            onEndDayPortionChange={setEndDayPortion}
             onReasonChange={setReason}
             onSubmit={() => void handleSubmit()}
           />

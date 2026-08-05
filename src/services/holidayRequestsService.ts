@@ -5,6 +5,7 @@ import {
   DEFAULT_HOLIDAY_COUNTING_SETTINGS,
   HOLIDAY_MAX_WORKERS_OFF_PER_DAY,
   normalizeHolidayIsoDate,
+  normalizeHolidayRequestPortions,
   resolveWorkerDisplayName,
   toLocalIsoDate,
   type HolidayCountingSettings,
@@ -572,11 +573,12 @@ export async function calculateHolidayRequestBalance(
   const { settings, annualAllowance, allowanceKnown, entitlementRules, holidayYearStart } =
     await getHolidayCountingContext()
   const leaveType = input.leaveType ?? 'paid_holiday'
-  const startDayPortion = normalizeHolidayDayPortion(input.startDayPortion)
-  const endDayPortion =
-    input.startDate === input.endDate
-      ? startDayPortion
-      : normalizeHolidayDayPortion(input.endDayPortion)
+  const { startDayPortion, endDayPortion } = normalizeHolidayRequestPortions(
+    input.startDate,
+    input.endDate,
+    input.startDayPortion,
+    input.endDayPortion,
+  )
 
   const workerResult = await requireSupabase()
     .from('drivers')
@@ -1029,11 +1031,12 @@ export async function createHolidayRequest(
   const balance = await assertHolidayBalanceAllowsRequest(input)
   const leaveType = input.leaveType ?? 'paid_holiday'
   const isPaidLeave = leaveType === 'paid_holiday' || leaveType === 'bank_holiday'
-  const startDayPortion = normalizeHolidayDayPortion(input.startDayPortion)
-  const endDayPortion =
-    input.startDate === input.endDate
-      ? startDayPortion
-      : normalizeHolidayDayPortion(input.endDayPortion)
+  const { startDayPortion, endDayPortion } = normalizeHolidayRequestPortions(
+    input.startDate,
+    input.endDate,
+    input.startDayPortion,
+    input.endDayPortion,
+  )
 
   const payload: Record<string, unknown> = {
     company_id: companyId,
@@ -1105,12 +1108,6 @@ export async function updateHolidayRequest(
 
   if (input.startDate !== undefined) patch.start_date = input.startDate
   if (input.endDate !== undefined) patch.end_date = input.endDate
-  if (input.startDayPortion !== undefined) {
-    patch.start_day_portion = normalizeHolidayDayPortion(input.startDayPortion)
-  }
-  if (input.endDayPortion !== undefined) {
-    patch.end_day_portion = normalizeHolidayDayPortion(input.endDayPortion)
-  }
   if (input.reason !== undefined) patch.reason = input.reason?.trim() || null
   if (input.status !== undefined) patch.status = input.status
   if (input.leaveType !== undefined) {
@@ -1163,13 +1160,12 @@ export async function updateHolidayRequest(
     const startDate = input.startDate ?? existing.start_date
     const endDate = input.endDate ?? existing.end_date
     const leaveType = input.leaveType ?? normalizeLeaveType(existing.leave_type)
-    const startDayPortion = normalizeHolidayDayPortion(
-      input.startDayPortion ?? existing.start_day_portion,
+    const { startDayPortion, endDayPortion } = normalizeHolidayRequestPortions(
+      startDate,
+      endDate,
+      input.startDayPortion ?? normalizeHolidayDayPortion(existing.start_day_portion),
+      input.endDayPortion ?? normalizeHolidayDayPortion(existing.end_day_portion),
     )
-    const endDayPortion =
-      startDate === endDate
-        ? startDayPortion
-        : normalizeHolidayDayPortion(input.endDayPortion ?? existing.end_day_portion)
     patch.start_day_portion = startDayPortion
     patch.end_day_portion = endDayPortion
 

@@ -203,8 +203,8 @@ run('4. Holiday hours never create overtime', () => {
       'first_half',
       'second_half',
     ).holidayDaysDeducted,
-    2,
-    'multi-day entitlement 0.5+1+0.5',
+    3,
+    'multi-day entitlement all full days',
   )
 })
 
