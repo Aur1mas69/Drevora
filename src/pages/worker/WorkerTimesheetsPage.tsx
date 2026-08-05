@@ -9,7 +9,6 @@ import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveT
 import { downloadTimesheetPdf } from '@/lib/export/modules/timesheetsExport'
 import { WorkerTimesheetHistoryDetailModal } from '@/components/timesheets/WorkerTimesheetHistoryDetailModal'
 import { WorkerTimesheetHistoryList } from '@/components/timesheets/WorkerTimesheetHistoryList'
-import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
 import type {
   Timesheet,
   TimesheetDayType,
@@ -967,14 +966,31 @@ function WorkerDayAccordionRow({
 export default function WorkerTimesheetsPage() {
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
-  const { settings: companySettings } = useCompanySettings()
+  const {
+    settings: companySettings,
+    refreshCompanySettings,
+  } = useCompanySettings()
   const {
     effective,
     isLoading: effectiveSettingsLoading,
   } = useWorkerEffectiveTimesheetSettings(worker?.id)
 
-  const workersManageTimesheets = workersManageOwnTimesheets(
-    companySettings?.timesheetManagementScope,
+  const timesheetManagementScope = companySettings?.timesheetManagementScope
+  /** Only treat as office-managed once settings finished loading with an explicit scope. */
+  const officeManagesTimesheets =
+    !companyLoading && timesheetManagementScope === 'office'
+  const workersManageTimesheets = !officeManagesTimesheets
+
+  const workerMutationOptions = useMemo(
+    () =>
+      worker
+        ? {
+            asWorkerSelfService: true as const,
+            timesheetManagementScope,
+            actingDriverId: worker.id,
+          }
+        : null,
+    [timesheetManagementScope, worker],
   )
 
   const defaultBreakMinutes = effective?.defaultBreakMinutes ?? 30
@@ -1152,7 +1168,7 @@ export default function WorkerTimesheetsPage() {
               weekStart: normalizedWeek,
               vehicleId: worker.defaultVehicleId,
             },
-            { asWorkerSelfService: true },
+            workerMutationOptions ?? { asWorkerSelfService: true },
           )
 
           if (generation !== loadGenerationRef.current) return
@@ -1211,9 +1227,14 @@ export default function WorkerTimesheetsPage() {
       weekSettings,
       worker,
       workerError,
+      workerMutationOptions,
       workersManageTimesheets,
     ],
   )
+
+  useEffect(() => {
+    refreshCompanySettings()
+  }, [refreshCompanySettings])
 
   useEffect(() => {
     if (
@@ -1251,6 +1272,8 @@ export default function WorkerTimesheetsPage() {
     worker,
     workerError,
     workerLoading,
+    timesheetManagementScope,
+    workersManageTimesheets,
   ])
 
   useEffect(() => {
@@ -1339,9 +1362,11 @@ export default function WorkerTimesheetsPage() {
       return false
     }
 
-    await upsertTimesheetEntries(timesheet.id, recalculated, {
-      asWorkerSelfService: true,
-    })
+    await upsertTimesheetEntries(
+      timesheet.id,
+      recalculated,
+      workerMutationOptions ?? { asWorkerSelfService: true },
+    )
     const refreshed = await fetchTimesheetById(timesheet.id)
     if (refreshed.driverId !== worker?.id) {
       throw new Error('Timesheet does not belong to the signed-in worker.')
@@ -1393,7 +1418,7 @@ export default function WorkerTimesheetsPage() {
       const updatedTimesheet = await upsertTimesheetEntries(
         timesheet.id,
         [recalculatedDay],
-        { asWorkerSelfService: true },
+        workerMutationOptions ?? { asWorkerSelfService: true },
       )
       if (updatedTimesheet.driverId !== worker?.id) {
         throw new Error('Timesheet does not belong to the signed-in worker.')
@@ -1500,7 +1525,7 @@ export default function WorkerTimesheetsPage() {
           workerConfirmed: true,
           confirmedByDriverId: worker.id,
         },
-        { asWorkerSelfService: true },
+        workerMutationOptions ?? { asWorkerSelfService: true },
       )
       const refreshed = await fetchTimesheetById(submitted.id)
       if (refreshed.driverId !== worker?.id) {
@@ -1695,14 +1720,15 @@ export default function WorkerTimesheetsPage() {
         </p>
       ) : null}
 
-      {!workersManageTimesheets ? (
+      {!officeManagesTimesheets ? null : (
         <div className="rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
           <p className="text-sm font-medium text-slate-700">
             Your Office manages Timesheets. You can view yours here; only Office
             can create or edit them.
           </p>
         </div>
-      ) : !editable ? (
+      )}
+      {!officeManagesTimesheets && timesheet && !editable ? (
         <div className="space-y-2 rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
           <p className="text-sm font-medium text-slate-700">
             This timesheet is <span className="font-semibold">{getStatusLabel(status)}</span> and

@@ -3,7 +3,9 @@ import {
   getTimesheetWeekSettings,
   requireVerifiedCompanyId,
 } from '@/lib/companySettingsGlobals'
-import { workersManageOwnTimesheets } from '@/lib/companySettingsTypes'
+import {
+  type TimesheetManagementScope,
+} from '@/lib/companySettingsTypes'
 import { resolveEffectiveTimesheetSettings } from '@/lib/resolveEffectiveTimesheetSettings'
 import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
 import { fetchDriverTimesheetSettingsByDriverIds } from '@/services/workerTimesheetSettingsService'
@@ -1049,18 +1051,50 @@ export function canWorkerEditTimesheetStatus(status: TimesheetStatus): boolean {
   return status === 'Draft' || status === 'Rejected'
 }
 
-function assertWorkersManageOwnTimesheets(): void {
-  const scope = getGlobalCompanySettings()?.timesheetManagementScope
-  if (!workersManageOwnTimesheets(scope)) {
+function resolveTimesheetManagementScope(
+  explicitScope?: TimesheetManagementScope | null,
+): TimesheetManagementScope | null | undefined {
+  if (explicitScope !== undefined) {
+    return explicitScope
+  }
+  return getGlobalCompanySettings()?.timesheetManagementScope
+}
+
+function assertWorkersManageOwnTimesheets(
+  explicitScope?: TimesheetManagementScope | null,
+): void {
+  const scope = resolveTimesheetManagementScope(explicitScope)
+  if (scope === 'office') {
     throw new TimesheetsServiceError(
       'Your Office manages Timesheets. Workers can view them but cannot create or edit.',
     )
   }
 }
 
+function assertWorkerSelfServiceActor(
+  actingDriverId: string | null | undefined,
+): asserts actingDriverId is string {
+  if (!actingDriverId?.trim()) {
+    throw new TimesheetsServiceError('Worker identity could not be verified.')
+  }
+}
+
+function assertWorkerOwnsTimesheetDriver(
+  timesheetDriverId: string,
+  actingDriverId: string,
+): void {
+  if (timesheetDriverId !== actingDriverId) {
+    throw new TimesheetsServiceError('You can only edit your own Timesheet.')
+  }
+}
+
 export type WorkerTimesheetMutationOptions = {
   /** When true, enforce company "Workers manage their own Timesheets" permission. */
   asWorkerSelfService?: boolean
+  /** Prefer the live UI scope over cached global settings when provided. */
+  timesheetManagementScope?: TimesheetManagementScope | null
+  /** drivers.id of the signed-in Worker performing the mutation. */
+  actingDriverId?: string | null
 }
 
 /** Apply Current / History / All cleaned_at visibility to a timesheets query. */
@@ -1346,7 +1380,9 @@ export async function createTimesheet(
   }
 
   if (options?.asWorkerSelfService) {
-    assertWorkersManageOwnTimesheets()
+    assertWorkersManageOwnTimesheets(options.timesheetManagementScope)
+    assertWorkerSelfServiceActor(options.actingDriverId)
+    assertWorkerOwnsTimesheetDriver(input.driverId, options.actingDriverId)
   }
 
   try {
@@ -1611,7 +1647,8 @@ export async function upsertTimesheetEntries(
   }
 
   if (options?.asWorkerSelfService) {
-    assertWorkersManageOwnTimesheets()
+    assertWorkersManageOwnTimesheets(options.timesheetManagementScope)
+    assertWorkerSelfServiceActor(options.actingDriverId)
   }
 
   const supabase = requireSupabase()
@@ -1627,6 +1664,13 @@ export async function upsertTimesheetEntries(
 
   if (ownerError || !ownerRow?.driver_id) {
     throw new TimesheetsServiceError(ownerError?.message ?? 'Timesheet not found')
+  }
+
+  if (options?.asWorkerSelfService) {
+    assertWorkerOwnsTimesheetDriver(
+      ownerRow.driver_id as string,
+      options.actingDriverId as string,
+    )
   }
 
   const status = normalizeStatus(ownerRow.status as string | null | undefined)
@@ -1862,7 +1906,8 @@ export async function submitTimesheet(
   const now = new Date().toISOString()
 
   if (options?.asWorkerSelfService) {
-    assertWorkersManageOwnTimesheets()
+    assertWorkersManageOwnTimesheets(options.timesheetManagementScope)
+    assertWorkerSelfServiceActor(options.actingDriverId)
   }
 
   if (!confirmation?.workerConfirmed || !confirmation.confirmedByDriverId?.trim()) {
@@ -1895,6 +1940,13 @@ export async function submitTimesheet(
   if (existing.driver_id !== confirmedByDriverId) {
     throw new TimesheetsServiceError(
       'Confirmation must be made by the Worker who owns this Timesheet.',
+    )
+  }
+
+  if (options?.asWorkerSelfService) {
+    assertWorkerOwnsTimesheetDriver(
+      existing.driver_id as string,
+      options.actingDriverId as string,
     )
   }
 
