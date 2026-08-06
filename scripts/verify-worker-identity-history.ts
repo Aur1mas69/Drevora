@@ -153,7 +153,7 @@ run('4. Safe labels including unknown event types', () => {
   )
   assertEqual(
     formatWorkerIdentityEventLabel('access_email_sent'),
-    'Access email sent',
+    'Account access email sent',
     'access email',
   )
   assertEqual(

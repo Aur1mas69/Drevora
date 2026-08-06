@@ -51,6 +51,27 @@ function LoginEmailChangedDetails({ event }: { event: WorkerIdentityEvent }) {
   )
 }
 
+function AccessEmailSentDetails({ event }: { event: WorkerIdentityEvent }) {
+  const hasActor = Boolean(event.actorLabel)
+  const hasReason = Boolean(event.reason)
+  const hasEmail = Boolean(event.newEmail)
+  if (!hasActor && !hasReason && !hasEmail) return null
+
+  return (
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      {hasActor ? (
+        <HistoryField label="Sent by" value={event.actorLabel!} />
+      ) : null}
+      {hasReason ? (
+        <HistoryField label="Source" value={event.reason!} />
+      ) : null}
+      {hasEmail ? (
+        <HistoryField label="Email" value={event.newEmail!} />
+      ) : null}
+    </div>
+  )
+}
+
 function GenericEventDetails({ event }: { event: WorkerIdentityEvent }) {
   const hasActor = Boolean(event.actorLabel)
   const hasReason = Boolean(event.reason)
@@ -161,6 +182,8 @@ export function WorkerIdentityAccessHistory({
               </div>
               {event.eventType === 'login_email_changed' ? (
                 <LoginEmailChangedDetails event={event} />
+              ) : event.eventType === 'access_email_sent' ? (
+                <AccessEmailSentDetails event={event} />
               ) : (
                 <GenericEventDetails event={event} />
               )}

@@ -69,6 +69,8 @@ type WorkerFormModalProps = {
    */
   loginEmailLocked?: boolean
   onChangeLoginEmail?: () => void
+  /** Auth-linked Workers only: open Send account access email confirmation. */
+  onSendAccessEmail?: () => void
   form: CreateDriverInput
   errors: DriverFormErrors
   submitError: string | null
@@ -99,6 +101,7 @@ export function WorkerFormModal({
   emailRequired = false,
   loginEmailLocked = false,
   onChangeLoginEmail,
+  onSendAccessEmail,
   form,
   errors,
   submitError,
@@ -210,22 +213,36 @@ export function WorkerFormModal({
                 autoComplete="email"
               />
               {loginEmailLocked ? (
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-2 flex flex-col gap-2">
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                     Login email is linked to Auth. Use Change login email to
-                    update it.
+                    update it, or send an account access email so the Worker
+                    can set or reset their password.
                   </p>
-                  {onChangeLoginEmail ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0 rounded-[14px]"
-                      disabled={isSubmitting || isAvatarUploading}
-                      onClick={onChangeLoginEmail}
-                    >
-                      Change login email
-                    </Button>
-                  ) : null}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    {onChangeLoginEmail ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0 rounded-[14px]"
+                        disabled={isSubmitting || isAvatarUploading}
+                        onClick={onChangeLoginEmail}
+                      >
+                        Change login email
+                      </Button>
+                    ) : null}
+                    {onSendAccessEmail ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0 rounded-[14px]"
+                        disabled={isSubmitting || isAvatarUploading}
+                        onClick={onSendAccessEmail}
+                      >
+                        Send account access email
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
               <FieldError message={errors.email} />

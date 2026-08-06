@@ -30,7 +30,7 @@ const EVENT_LABELS: Record<string, string> = {
   auth_user_backfilled: 'Auth user backfilled',
   auth_user_linked: 'Auth user linked',
   login_email_changed: 'Login email changed',
-  access_email_sent: 'Access email sent',
+  access_email_sent: 'Account access email sent',
   name_corrected: 'Name corrected',
   identity_locked: 'Identity locked',
   replacement_blocked: 'Identity replacement blocked',

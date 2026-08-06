@@ -210,10 +210,10 @@ run('7. Edit Worker locks linked email; Add stays editable', () => {
     'details page locks from authUserId',
   )
   assertTrue(
-    !formModal.includes('Send account access email') &&
-      !driversPage.includes('Send account access email') &&
-      !detailsPage.includes('Send account access email'),
-    'no send access email yet',
+    formModal.includes('Send account access email') &&
+      driversPage.includes('onSendAccessEmail') &&
+      detailsPage.includes('onSendAccessEmail'),
+    'send access email available for linked Workers',
   )
 })
 

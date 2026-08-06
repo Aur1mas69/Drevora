@@ -208,6 +208,7 @@ export function describeWorkerAccessEmailSequence(): {
 export function formatWorkerAccessEmailUserMessage(
   code: string | null | undefined,
   fallbackMessage?: string | null,
+  options?: { retryAfterSeconds?: number | null },
 ): string {
   const normalized = (code ?? '').trim().toUpperCase()
   switch (normalized) {
@@ -221,8 +222,18 @@ export function formatWorkerAccessEmailUserMessage(
       return 'Worker profile email and Auth login email do not match. Fix login email first.'
     case 'EMAIL_CONFIRMATION_MISMATCH':
       return 'Confirmed email does not match the current Worker login email.'
-    case 'ACCESS_EMAIL_RATE_LIMITED':
-      return 'An access email was sent recently. Please wait before sending again.'
+    case 'ACCESS_EMAIL_RATE_LIMITED': {
+      const retryAfter = options?.retryAfterSeconds
+      if (
+        typeof retryAfter === 'number' &&
+        Number.isFinite(retryAfter) &&
+        retryAfter > 0
+      ) {
+        const minutes = Math.max(1, Math.ceil(retryAfter / 60))
+        return `An account access email was sent recently. You can send another after about ${minutes} minute${minutes === 1 ? '' : 's'}.`
+      }
+      return 'An account access email was sent recently. Please wait for the cooldown before sending another.'
+    }
     case 'FORBIDDEN':
       return 'Only Office roles can send Worker account access email.'
     case 'UNAUTHENTICATED':
@@ -238,7 +249,7 @@ export function formatWorkerAccessEmailUserMessage(
   const safeFallback = fallbackMessage?.trim()
   if (
     safeFallback &&
-    !/sql|stack|exception|supabase|postgres|pgrst|jwt|service.?role/i.test(
+    !/sql|stack|exception|supabase|postgres|pgrst|jwt|service.?role|dispatch_id|auth_user_id|company_id|auth\.users/i.test(
       safeFallback,
     )
   ) {
@@ -246,4 +257,28 @@ export function formatWorkerAccessEmailUserMessage(
   }
 
   return 'Unable to send account access email right now. Please try again.'
+}
+
+export function formatWorkerAccessEmailSuccessToast(email: string): string {
+  const normalized = normalizeAccessEmail(email) ?? email.trim().toLowerCase()
+  if (normalized) {
+    return `Account access email sent to ${normalized}.`
+  }
+  return 'Account access email sent.'
+}
+
+/** Confirm checkbox must be checked and expected email must be valid. */
+export function canSubmitSendWorkerAccessEmail(input: {
+  emailConfirmed: boolean
+  expectedEmail: string
+}): boolean {
+  if (!input.emailConfirmed) return false
+  return Boolean(normalizeAccessEmail(input.expectedEmail))
+}
+
+/** True when Worker has an Auth link (same rule as login-email lock). */
+export function canShowSendWorkerAccessEmail(
+  authUserId: string | null | undefined,
+): boolean {
+  return typeof authUserId === 'string' && authUserId.trim().length > 0
 }

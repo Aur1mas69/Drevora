@@ -14,6 +14,7 @@ import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChangeWorkerLoginEmailModal } from '@/components/workers/ChangeWorkerLoginEmailModal'
+import { SendWorkerAccessEmailModal } from '@/components/workers/SendWorkerAccessEmailModal'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import { WorkersSummaryCards } from '@/components/workers/WorkersSummaryCards'
 import {
@@ -486,6 +487,9 @@ function DriversPage() {
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
   const [loginEmailChangeDriver, setLoginEmailChangeDriver] =
     useState<Driver | null>(null)
+  const [accessEmailDriver, setAccessEmailDriver] = useState<Driver | null>(
+    null,
+  )
   const [archivingDriver, setArchivingDriver] = useState<Driver | null>(null)
   const [restoringDriver, setRestoringDriver] = useState<Driver | null>(null)
   const [form, setForm] = useState<CreateDriverForm>(initialDriverForm)
@@ -1237,6 +1241,12 @@ function DriversPage() {
               ? () => setLoginEmailChangeDriver(editingDriver)
               : undefined
           }
+          onSendAccessEmail={
+            editingDriver &&
+            isWorkerLoginEmailLocked(editingDriver.authUserId)
+              ? () => setAccessEmailDriver(editingDriver)
+              : undefined
+          }
           form={form}
           errors={formErrors}
           submitError={createError}
@@ -1286,6 +1296,20 @@ function DriversPage() {
                 : current,
             )
             await loadDrivers()
+            setToastMessage(result.toastMessage)
+          }}
+        />
+      ) : null}
+
+      {accessEmailDriver ? (
+        <SendWorkerAccessEmailModal
+          isOpen
+          workerId={accessEmailDriver.id}
+          workerLabel={`${accessEmailDriver.firstName} ${accessEmailDriver.lastName}`.trim()}
+          currentEmail={accessEmailDriver.email}
+          onClose={() => setAccessEmailDriver(null)}
+          onSuccess={(result) => {
+            setAccessEmailDriver(null)
             setToastMessage(result.toastMessage)
           }}
         />

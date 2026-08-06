@@ -28,6 +28,7 @@
     "verify:worker-login-email-ui": "npx tsx scripts/verify-worker-login-email-ui.ts",
     "verify:worker-identity-history": "npx tsx scripts/verify-worker-identity-history.ts",
     "verify:worker-access-email": "npx tsx scripts/verify-worker-access-email.ts",
+    "verify:worker-access-email-ui": "npx tsx scripts/verify-worker-access-email-ui.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },

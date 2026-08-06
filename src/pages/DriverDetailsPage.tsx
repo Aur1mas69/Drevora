@@ -35,6 +35,7 @@ import {
   type WorkerProfileHistoryTab,
 } from '@/components/workers/profile/WorkerProfileHistoryTabs'
 import { ChangeWorkerLoginEmailModal } from '@/components/workers/ChangeWorkerLoginEmailModal'
+import { SendWorkerAccessEmailModal } from '@/components/workers/SendWorkerAccessEmailModal'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import { WorkerIdentityAccessHistory } from '@/components/workers/WorkerIdentityAccessHistory'
 import { RestoreWorkerModal } from '@/components/workers/RestoreWorkerModal'
@@ -271,6 +272,7 @@ function DriverDetailsPage() {
   })
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isLoginEmailModalOpen, setIsLoginEmailModalOpen] = useState(false)
+  const [isAccessEmailModalOpen, setIsAccessEmailModalOpen] = useState(false)
   const [identityHistoryRefreshKey, setIdentityHistoryRefreshKey] = useState(0)
   const [form, setForm] = useState<DriverForm | null>(null)
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
@@ -708,6 +710,11 @@ function DriverDetailsPage() {
               ? () => setIsLoginEmailModalOpen(true)
               : undefined
           }
+          onSendAccessEmail={
+            isWorkerLoginEmailLocked(driver.authUserId)
+              ? () => setIsAccessEmailModalOpen(true)
+              : undefined
+          }
           form={form}
           errors={formErrors}
           submitError={saveError}
@@ -769,6 +776,21 @@ function DriverDetailsPage() {
                 current ? { ...current, email: result.email } : current,
               )
             }
+            setToastMessage(result.toastMessage)
+            setIdentityHistoryRefreshKey((value) => value + 1)
+          }}
+        />
+      ) : null}
+
+      {isAccessEmailModalOpen && driver ? (
+        <SendWorkerAccessEmailModal
+          isOpen
+          workerId={driver.id}
+          workerLabel={`${driver.firstName} ${driver.lastName}`.trim()}
+          currentEmail={driver.email}
+          onClose={() => setIsAccessEmailModalOpen(false)}
+          onSuccess={(result) => {
+            setIsAccessEmailModalOpen(false)
             setToastMessage(result.toastMessage)
             setIdentityHistoryRefreshKey((value) => value + 1)
           }}
