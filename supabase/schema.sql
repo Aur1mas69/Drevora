@@ -3390,7 +3390,10 @@ begin
   end if;
 
   -- Prefer immutable Auth link (exact-one active linked profile in membership company).
-  select count(*)::integer, min(d.id)
+  -- UUID-safe exact-one pick: count(*) + (array_agg(... order by ...))[1]. Never min(uuid).
+  select
+    count(*)::integer,
+    (array_agg(d.id order by d.id))[1]
   into v_count, v_id
   from public.drivers d
   where d.auth_user_id = auth.uid()
@@ -3403,11 +3406,14 @@ begin
   end if;
 
   if v_count > 1 then
+    -- Ambiguous Auth link — do not silently choose a Worker.
     return null;
   end if;
 
   -- Transitional email fallback only for rows not yet linked (auth_user_id is null).
-  select count(*)::integer, min(d.id)
+  select
+    count(*)::integer,
+    (array_agg(d.id order by d.id))[1]
   into v_count, v_id
   from public.drivers d
   inner join auth.users u on u.id = auth.uid()
@@ -3422,12 +3428,13 @@ begin
     return v_id;
   end if;
 
+  -- Zero or multiple email matches — safe null (no silent pick).
   return null;
 end;
 $$;
 
 comment on function public.drevora_auth_user_driver_id() is
-  'Returns active Worker drivers.id. Prefers drivers.auth_user_id = auth.uid(); email match is temporary fallback only when auth_user_id is null. Exact-one match required. Archived Workers resolve to NULL.';
+  'Returns active Worker drivers.id. Prefers drivers.auth_user_id = auth.uid(); email match is temporary fallback only when auth_user_id is null. Exact-one match required (UUID-safe array_agg). Archived Workers resolve to NULL.';
 
 revoke all on function public.drevora_auth_user_driver_id() from public;
 revoke all on function public.drevora_auth_user_driver_id() from anon;
