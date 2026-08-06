@@ -50,6 +50,8 @@ grant usage on schema public to anon, authenticated;
 -- Office UPDATE requires archived_at IS NULL. See 20260726190000.
 -- Column allowlists exclude archived_at, retention_expires_at, and auth_user_id
 -- (RPC / security-definer writes only). See 20260726190000 and 20260806200000.
+-- Linked Worker email changes are blocked by drivers_login_email_guard unless
+-- drevora.allow_worker_login_email_change=on (finalize RPC only). See 20260806220000.
 revoke all on table public.drivers from anon;
 revoke all on table public.drivers from public;
 revoke delete on table public.drivers from authenticated;
