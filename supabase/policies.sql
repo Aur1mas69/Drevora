@@ -1362,3 +1362,30 @@ revoke all on function public.drevora_list_worker_identity_events(uuid) from pub
 revoke all on function public.drevora_list_worker_identity_events(uuid) from anon;
 grant execute on function public.drevora_list_worker_identity_events(uuid) to authenticated;
 grant execute on function public.drevora_list_worker_identity_events(uuid) to service_role;
+
+-- -----------------------------------------------------------------------------
+-- Worker access email dispatch + RPCs (canonical: 20260806240000_worker_access_email.sql)
+-- -----------------------------------------------------------------------------
+alter table public.worker_access_email_dispatches enable row level security;
+
+revoke all on table public.worker_access_email_dispatches from public;
+revoke all on table public.worker_access_email_dispatches from anon;
+revoke all on table public.worker_access_email_dispatches from authenticated;
+grant all on table public.worker_access_email_dispatches to service_role;
+
+-- No authenticated policies — browser has no dispatch-table access.
+
+revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from public;
+revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from anon;
+revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from authenticated;
+grant execute on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) to service_role;
+
+revoke all on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) from public;
+revoke all on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) from anon;
+revoke all on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) from authenticated;
+grant execute on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) to service_role;
+
+revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from public;
+revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from anon;
+revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from authenticated;
+grant execute on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) to service_role;
