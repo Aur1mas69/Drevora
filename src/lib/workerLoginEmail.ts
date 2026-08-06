@@ -208,3 +208,81 @@ export function describeLoginEmailChangeSequence(): {
     neverRebindsAuthUserId: true,
   }
 }
+
+export function formatWorkerLoginEmailUserMessage(
+  code: string | null | undefined,
+  fallbackMessage?: string | null,
+): string {
+  const normalized = (code ?? '').trim().toUpperCase()
+  switch (normalized) {
+    case 'EMAIL_ALREADY_IN_USE':
+      return 'That email is already in use by another Worker or Auth account.'
+    case 'WORKER_ARCHIVED':
+      return 'Archived Workers cannot change login email.'
+    case 'WORKER_AUTH_NOT_LINKED':
+      return 'This Worker is not linked to an Auth account yet.'
+    case 'SAME_PERSON_CONFIRMATION_REQUIRED':
+      return 'Confirm this is the same person before changing login email.'
+    case 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED':
+      return 'This Worker cannot be rebound to a different Auth user. Archive and create a new Worker for a different person.'
+    case 'FORBIDDEN':
+      return 'Only Office roles can change Worker login email.'
+    case 'UNAUTHENTICATED':
+      return 'Your session has expired. Sign in again and try again.'
+    case 'INVALID_EMAIL':
+      return 'Enter a valid email address.'
+    case 'WORKER_NOT_FOUND':
+      return 'Worker was not found in your company.'
+    case WORKER_LOGIN_EMAIL_CHANGE_REQUIRED:
+      return 'Use Change login email for linked Workers.'
+    case 'SERVER_FAILURE':
+      return 'Unable to change Worker login email right now. Please try again.'
+    default:
+      break
+  }
+
+  const safeFallback = fallbackMessage?.trim()
+  if (
+    safeFallback &&
+    !/sql|stack|exception|supabase|postgres|pgrst|jwt|service.?role/i.test(
+      safeFallback,
+    )
+  ) {
+    return safeFallback
+  }
+
+  return 'Unable to change Worker login email right now. Please try again.'
+}
+
+export function formatWorkerLoginEmailSuccessToast(input: {
+  changed: boolean
+  email: string
+}): string {
+  if (!input.changed) {
+    return `Login email is already ${input.email}.`
+  }
+  return `Login email updated to ${input.email}. Worker ID and history are unchanged.`
+}
+
+export function isWorkerLoginEmailLocked(
+  authUserId: string | null | undefined,
+): boolean {
+  return typeof authUserId === 'string' && authUserId.trim().length > 0
+}
+
+export function canSubmitChangeWorkerLoginEmail(input: {
+  currentEmail: string
+  newEmail: string
+  confirmEmail: string
+  reason: string
+  samePersonConfirmed: boolean
+}): boolean {
+  if (!input.samePersonConfirmed) return false
+  if (input.reason.trim() === '') return false
+  const next = normalizeLoginEmail(input.newEmail)
+  const confirm = normalizeLoginEmail(input.confirmEmail)
+  if (!next || !confirm || next !== confirm) return false
+  const current = normalizeLoginEmail(input.currentEmail)
+  if (current && next === current) return false
+  return true
+}

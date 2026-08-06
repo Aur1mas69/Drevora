@@ -25,6 +25,8 @@
     "verify:worker-identity-foundation": "npx tsx scripts/verify-worker-identity-foundation.ts",
     "verify:worker-identity-uuid-aggregate": "npx tsx scripts/verify-worker-identity-uuid-aggregate.ts",
     "verify:worker-login-email": "npx tsx scripts/verify-worker-login-email.ts",
+    "verify:worker-login-email-ui": "npx tsx scripts/verify-worker-login-email-ui.ts",
+    "verify:worker-identity-history": "npx tsx scripts/verify-worker-identity-history.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },

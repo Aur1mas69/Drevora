@@ -98,6 +98,8 @@ export type Driver = {
   postcode: string | null
   country: string | null
   avatarUrl: string | null
+  /** Linked Auth user id when the Worker has accepted invite / signed in. */
+  authUserId: string | null
   /** Null/undefined = active plan seat. Set when archived (former Worker). */
   archivedAt: string | null
   /** Archived profile shell retention deadline (archived_at + 6 years). Null when active. */
@@ -218,6 +220,7 @@ type DriverRow = {
   postcode?: string | null
   country?: string | null
   avatar_url: string | null
+  auth_user_id?: string | null
   archived_at?: string | null
   retention_expires_at?: string | null
 }
@@ -232,10 +235,10 @@ const basicDriverSelectWithAssignmentLegacy =
   'id, created_at, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
 
 const workerCoreSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, archived_at, retention_expires_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at, retention_expires_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -976,6 +979,7 @@ function mapDriverRow(row: DriverRow): Driver {
     postcode: row.postcode?.trim() || null,
     country: row.country?.trim() || null,
     avatarUrl: row.avatar_url,
+    authUserId: row.auth_user_id?.trim() || null,
     archivedAt: row.archived_at?.trim() || null,
     retentionExpiresAt: row.retention_expires_at?.trim() || null,
   }

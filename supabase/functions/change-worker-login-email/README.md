@@ -40,8 +40,8 @@ Office-only secure change of an existing Worker's **login email** for the **same
 ## Update order
 
 1. Resolve caller company + Office role; load target Worker
-2. Validate email / uniqueness (active Worker + other Auth users)
-3. `auth.admin.updateUserById(auth_user_id, { email, email_confirm: true })` — **same Auth UUID**
+2. Validate email + active Worker uniqueness in the company (keep same Auth UUID)
+3. `auth.admin.updateUserById(auth_user_id, { email, email_confirm: true })` — **same Auth UUID**; Auth enforces email uniqueness (do **not** probe with `generateLink` / invite / signup / OTP)
 4. RPC `drevora_finalize_worker_login_email_change` — atomic `drivers.email` + `worker_identity_events` (`login_email_changed`)
 5. If step 4 fails after step 3: restore old Auth email; return original mapped error + rollback metadata
 
@@ -83,7 +83,7 @@ Idempotent same email:
 | `WORKER_NOT_FOUND` | 404 | Worker missing / wrong company |
 | `WORKER_ARCHIVED` | 409 | Archived Worker |
 | `WORKER_AUTH_NOT_LINKED` | 409 | No `drivers.auth_user_id` |
-| `EMAIL_ALREADY_IN_USE` | 409 | Active Worker or other Auth user owns email |
+| `EMAIL_ALREADY_IN_USE` | 409 | Active Worker conflict, or Auth `updateUserById` duplicate-email response |
 | `SAME_PERSON_CONFIRMATION_REQUIRED` | 400 | `samePersonConfirmed` not true |
 | `INVALID_EMAIL` | 400 | Invalid email |
 | `WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED` | 409 | Auth UUID mismatch / rebind attempt |

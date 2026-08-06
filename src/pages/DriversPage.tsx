@@ -13,6 +13,7 @@ import AdminLayout from '@/layouts/AdminLayout'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ChangeWorkerLoginEmailModal } from '@/components/workers/ChangeWorkerLoginEmailModal'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
 import { WorkersSummaryCards } from '@/components/workers/WorkersSummaryCards'
 import {
@@ -75,6 +76,7 @@ import {
   isWorkerInvitationServiceError,
 } from '@/services/workerInvitationService'
 import { formatInviteWorkerUserMessage, formatInviteWorkerAvatarFailureToast } from '@/lib/workerInvitation'
+import { isWorkerLoginEmailLocked } from '@/lib/workerLoginEmail'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
 type StatusFilter = DriverStatus | 'All'
@@ -482,6 +484,8 @@ function DriversPage() {
   const [companyPlan, setCompanyPlan] = useState<CompanyPlanRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
+  const [loginEmailChangeDriver, setLoginEmailChangeDriver] =
+    useState<Driver | null>(null)
   const [archivingDriver, setArchivingDriver] = useState<Driver | null>(null)
   const [restoringDriver, setRestoringDriver] = useState<Driver | null>(null)
   const [form, setForm] = useState<CreateDriverForm>(initialDriverForm)
@@ -879,7 +883,14 @@ function DriversPage() {
       let savedWorker: Driver
 
       if (editingDriver) {
-        savedWorker = await driversService.updateDriver(editingDriver.id, form)
+        // Auth-linked Workers must not change email via ordinary Edit save.
+        const updatePayload = isWorkerLoginEmailLocked(editingDriver.authUserId)
+          ? { ...form, email: editingDriver.email }
+          : form
+        savedWorker = await driversService.updateDriver(
+          editingDriver.id,
+          updatePayload,
+        )
       } else {
         const inviteResult = await inviteWorker(form)
         if (!inviteResult.driverId) {
@@ -1216,6 +1227,16 @@ function DriversPage() {
             editingDriver ? 'Saving...' : 'Sending invite...'
           }
           emailRequired={!editingDriver}
+          loginEmailLocked={
+            Boolean(editingDriver) &&
+            isWorkerLoginEmailLocked(editingDriver?.authUserId)
+          }
+          onChangeLoginEmail={
+            editingDriver &&
+            isWorkerLoginEmailLocked(editingDriver.authUserId)
+              ? () => setLoginEmailChangeDriver(editingDriver)
+              : undefined
+          }
           form={form}
           errors={formErrors}
           submitError={createError}
@@ -1246,6 +1267,27 @@ function DriversPage() {
           onLicenceCategoriesChange={handleLicenceCategoriesChange}
           onClose={closeAddDriverModal}
           onSubmit={handleSaveDriver}
+        />
+      ) : null}
+
+      {loginEmailChangeDriver ? (
+        <ChangeWorkerLoginEmailModal
+          isOpen
+          workerId={loginEmailChangeDriver.id}
+          workerLabel={`${loginEmailChangeDriver.firstName} ${loginEmailChangeDriver.lastName}`.trim()}
+          currentEmail={loginEmailChangeDriver.email}
+          onClose={() => setLoginEmailChangeDriver(null)}
+          onSuccess={async (result) => {
+            setLoginEmailChangeDriver(null)
+            setForm((current) => ({ ...current, email: result.email }))
+            setEditingDriver((current) =>
+              current
+                ? { ...current, email: result.email }
+                : current,
+            )
+            await loadDrivers()
+            setToastMessage(result.toastMessage)
+          }}
         />
       ) : null}
 

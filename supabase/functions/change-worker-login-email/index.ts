@@ -286,31 +286,18 @@ function mapDbError(message: string): {
   }
 }
 
-/**
- * Resolve whether an Auth user already owns this email.
- * generateLink is lookup-only (does not create users for our purposes when it errors).
- */
-async function findAuthUserIdByEmail(
-  admin: SupabaseClient,
-  email: string,
-): Promise<string | null> {
-  const invite = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
-  if (!invite.error && invite.data.user?.id) {
-    return invite.data.user.id
-  }
-
-  const recovery = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-  })
-  if (!recovery.error && recovery.data.user?.id) {
-    return recovery.data.user.id
-  }
-
-  return null
+/** Map only genuine Auth duplicate-email failures to EMAIL_ALREADY_IN_USE. */
+function isAuthDuplicateEmailError(message: string): boolean {
+  const upper = message.toUpperCase()
+  return (
+    upper.includes('ALREADY BEEN REGISTERED') ||
+    upper.includes('ALREADY REGISTERED') ||
+    upper.includes('EMAIL_EXISTS') ||
+    upper.includes('USER ALREADY REGISTERED') ||
+    upper.includes('A USER WITH THIS EMAIL ADDRESS HAS ALREADY BEEN REGISTERED') ||
+    (upper.includes('DUPLICATE') && upper.includes('EMAIL')) ||
+    (upper.includes('ALREADY') && upper.includes('EMAIL') && upper.includes('EXIST'))
+  )
 }
 
 async function restoreAuthEmail(input: {
@@ -584,33 +571,8 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Auth email ownership check — never create a new Auth user.
-  let existingAuthForNewEmail: string | null = null
-  try {
-    existingAuthForNewEmail = await findAuthUserIdByEmail(admin, newEmail)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'lookup failed'
-    logSafe({
-      event: 'change_worker_login_email_auth_email_lookup_failed',
-      message: sanitizePublicError(message),
-    })
-    return jsonResponse(req, 500, {
-      ok: false,
-      code: 'server_failure',
-      message: 'Unable to validate the new email address.',
-    })
-  }
-
-  if (
-    existingAuthForNewEmail != null &&
-    existingAuthForNewEmail !== authUserId
-  ) {
-    return jsonResponse(req, 409, {
-      ok: false,
-      code: 'EMAIL_ALREADY_IN_USE',
-      message: 'That email already belongs to another Auth account.',
-    })
-  }
+  // Auth uniqueness is enforced by updateUserById below — never probe with
+  // invite, signup, magic-link, recovery, or OTP APIs (those can create Auth users).
 
   const authUserResult = await admin.auth.admin.getUserById(authUserId)
   if (authUserResult.error || !authUserResult.data.user) {
@@ -680,13 +642,7 @@ Deno.serve(async (req) => {
 
   if (authUpdate.error) {
     const message = authUpdate.error.message ?? ''
-    const upper = message.toUpperCase()
-    if (
-      upper.includes('ALREADY') ||
-      upper.includes('REGISTERED') ||
-      upper.includes('EXISTS') ||
-      upper.includes('DUPLICATE')
-    ) {
+    if (isAuthDuplicateEmailError(message)) {
       return jsonResponse(req, 409, {
         ok: false,
         code: 'EMAIL_ALREADY_IN_USE',

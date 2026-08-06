@@ -63,6 +63,12 @@ type WorkerFormModalProps = {
   submittingLabel?: string
   /** When true, Email is marked required (Add Worker invite flow). */
   emailRequired?: boolean
+  /**
+   * Auth-linked Workers: Email is read-only; change via Change login email.
+   * Add Worker must leave this false so email stays editable + required.
+   */
+  loginEmailLocked?: boolean
+  onChangeLoginEmail?: () => void
   form: CreateDriverInput
   errors: DriverFormErrors
   submitError: string | null
@@ -91,6 +97,8 @@ export function WorkerFormModal({
   submitLabel,
   submittingLabel = 'Saving...',
   emailRequired = false,
+  loginEmailLocked = false,
+  onChangeLoginEmail,
   form,
   errors,
   submitError,
@@ -180,10 +188,10 @@ export function WorkerFormModal({
               <Input name="lastName" value={form.lastName} onChange={onChange} className={fieldInputClass} />
               <FieldError message={errors.lastName} />
             </label>
-            <label className="block">
+            <div className="block">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Email
-                {emailRequired ? (
+                {emailRequired && !loginEmailLocked ? (
                   <span className="text-rose-500"> *</span>
                 ) : null}
               </span>
@@ -191,13 +199,37 @@ export function WorkerFormModal({
                 name="email"
                 type="email"
                 value={form.email}
-                onChange={onChange}
-                className={fieldInputClass}
-                required={emailRequired}
+                onChange={loginEmailLocked ? undefined : onChange}
+                readOnly={loginEmailLocked}
+                className={
+                  loginEmailLocked
+                    ? `${fieldInputClass} cursor-default opacity-90`
+                    : fieldInputClass
+                }
+                required={emailRequired && !loginEmailLocked}
                 autoComplete="email"
               />
+              {loginEmailLocked ? (
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Login email is linked to Auth. Use Change login email to
+                    update it.
+                  </p>
+                  {onChangeLoginEmail ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 rounded-[14px]"
+                      disabled={isSubmitting || isAvatarUploading}
+                      onClick={onChangeLoginEmail}
+                    >
+                      Change login email
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               <FieldError message={errors.email} />
-            </label>
+            </div>
             <label className="block">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Phone</span>
               <Input name="phone" value={form.phone} onChange={onChange} className={fieldInputClass} />

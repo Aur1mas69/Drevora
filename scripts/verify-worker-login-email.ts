@@ -201,21 +201,63 @@ run('8. Structured error mapping covers required codes', () => {
   assertTrue(edge.includes('SAME_PERSON_CONFIRMATION_REQUIRED'), 'edge confirm')
 })
 
-run('9. Edge never trusts browser companyId/authUserId; never inviteUserByEmail', () => {
+run('9. Edge never trusts browser companyId/authUserId; never creates Auth users', () => {
   assertTrue(
     edge.includes('ignored_client_identity_fields') ||
       edge.includes('companyId != null') ||
       edge.includes('authUserId != null'),
     'ignores client identity fields',
   )
-  assertTrue(!edge.includes('inviteUserByEmail'), 'never creates Auth user')
+  assertTrue(!edge.includes('inviteUserByEmail'), 'never inviteUserByEmail')
+  assertTrue(!edge.includes('.generateLink('), 'never generateLink call')
+  assertTrue(!edge.includes('findAuthUserIdByEmail'), 'no generateLink lookup helper')
+  assertTrue(!edge.includes("type: 'magiclink'"), 'no magiclink probe')
+  assertTrue(!edge.includes("type: 'recovery'"), 'no recovery probe')
+  assertTrue(!edge.includes("type: 'signup'"), 'no signup probe')
+  assertTrue(!/\.signUp\s*\(/.test(edge), 'no signUp')
+  assertTrue(!edge.includes('createUser('), 'no createUser')
+  assertTrue(!edge.includes('generateLink'), 'no generateLink identifier')
   assertTrue(edge.includes('getUserById'), 'resolves existing Auth user')
+  assertTrue(edge.includes('isAuthDuplicateEmailError'), 'maps real Auth duplicate')
 })
 
-run('10. README documents apply order and rollback', () => {
+run('10. Unused Auth email reaches updateUserById; Worker conflict still checked first', () => {
+  const workerConflictIdx = edge.indexOf(".ilike('email', newEmail)")
+  const authUpdateIdx = edge.indexOf(
+    'admin.auth.admin.updateUserById(authUserId, {\n    email: newEmail,\n    email_confirm: true,\n  })',
+  )
+  assertTrue(workerConflictIdx >= 0, 'active Worker email conflict query')
+  assertTrue(authUpdateIdx >= 0, 'updateUserById with newEmail')
+  assertTrue(
+    workerConflictIdx < authUpdateIdx,
+    'Worker conflict before Auth update',
+  )
+  assertTrue(
+    !edge.includes('existingAuthForNewEmail'),
+    'no pre-update Auth existence probe',
+  )
+  const afterConflict = edge.slice(workerConflictIdx)
+  assertTrue(
+    afterConflict.includes('updateUserById(authUserId') &&
+      afterConflict.includes('email: newEmail'),
+    'new unused email reaches updateUserById',
+  )
+  assertTrue(
+    afterConflict.includes('isAuthDuplicateEmailError(message)'),
+    'duplicate Auth email maps via helper',
+  )
+  assertTrue(
+    afterConflict.includes("code: 'EMAIL_ALREADY_IN_USE'"),
+    'maps to EMAIL_ALREADY_IN_USE',
+  )
+})
+
+run('11. README documents apply order and rollback', () => {
   assertTrue(readme.includes('20260806220000_worker_login_email_change.sql'), 'migration')
   assertTrue(readme.includes('restore old Auth email'), 'rollback docs')
   assertTrue(readme.includes('samePersonConfirmed'), 'confirm docs')
+  assertTrue(readme.includes('generateLink'), 'forbids generateLink probe')
+  assertTrue(readme.includes('updateUserById'), 'auth uniqueness via update')
 })
 
 console.log(`\nverify-worker-login-email: ${passed} passed`)

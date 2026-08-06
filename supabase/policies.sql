@@ -1354,3 +1354,11 @@ create policy worker_identity_events_office_select_company
   );
 
 -- No INSERT/UPDATE/DELETE policies for authenticated — client writes forbidden.
+
+-- -----------------------------------------------------------------------------
+-- Worker identity events list RPC (canonical: 20260806230000_worker_identity_events_list_rpc.sql)
+-- -----------------------------------------------------------------------------
+revoke all on function public.drevora_list_worker_identity_events(uuid) from public;
+revoke all on function public.drevora_list_worker_identity_events(uuid) from anon;
+grant execute on function public.drevora_list_worker_identity_events(uuid) to authenticated;
+grant execute on function public.drevora_list_worker_identity_events(uuid) to service_role;

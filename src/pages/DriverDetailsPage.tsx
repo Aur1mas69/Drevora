@@ -34,12 +34,15 @@ import {
   WorkerProfileHistoryTabs,
   type WorkerProfileHistoryTab,
 } from '@/components/workers/profile/WorkerProfileHistoryTabs'
+import { ChangeWorkerLoginEmailModal } from '@/components/workers/ChangeWorkerLoginEmailModal'
 import { WorkerFormModal } from '@/components/workers/WorkerFormModal'
+import { WorkerIdentityAccessHistory } from '@/components/workers/WorkerIdentityAccessHistory'
 import { RestoreWorkerModal } from '@/components/workers/RestoreWorkerModal'
 import {
   formatWorkerPlanLimitError,
   isWorkerPlanLimitError,
 } from '@/lib/workerAllowance'
+import { isWorkerLoginEmailLocked } from '@/lib/workerLoginEmail'
 import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
@@ -267,6 +270,8 @@ function DriverDetailsPage() {
     return parseDriverDetailsTab(searchParams.get('tab')) ?? 'Overview'
   })
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isLoginEmailModalOpen, setIsLoginEmailModalOpen] = useState(false)
+  const [identityHistoryRefreshKey, setIdentityHistoryRefreshKey] = useState(0)
   const [form, setForm] = useState<DriverForm | null>(null)
   const [formErrors, setFormErrors] = useState<DriverFormErrors>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -387,7 +392,14 @@ function DriverDetailsPage() {
     setAvatarError(null)
 
     try {
-      let updatedDriver = await driversService.updateDriver(driver.id, form)
+      // Auth-linked Workers must not change email via ordinary Edit save.
+      const updatePayload = isWorkerLoginEmailLocked(driver.authUserId)
+        ? { ...form, email: driver.email }
+        : form
+      let updatedDriver = await driversService.updateDriver(
+        driver.id,
+        updatePayload,
+      )
 
       if (avatarFile || removeAvatar) {
         setIsAvatarUploading(true)
@@ -678,6 +690,11 @@ function DriverDetailsPage() {
             readOnly={isArchived}
           />
         ) : null}
+
+        <WorkerIdentityAccessHistory
+          key={`${driver.id}:${identityHistoryRefreshKey}`}
+          workerId={driver.id}
+        />
       </section>
 
       {isEditModalOpen && form && !isArchived ? (
@@ -685,6 +702,12 @@ function DriverDetailsPage() {
           eyebrow="Edit Worker"
           title="Edit Worker"
           submitLabel="Save Changes"
+          loginEmailLocked={isWorkerLoginEmailLocked(driver.authUserId)}
+          onChangeLoginEmail={
+            isWorkerLoginEmailLocked(driver.authUserId)
+              ? () => setIsLoginEmailModalOpen(true)
+              : undefined
+          }
           form={form}
           errors={formErrors}
           submitError={saveError}
@@ -720,6 +743,35 @@ function DriverDetailsPage() {
             resetAvatarFormState({ setAvatarFile, setRemoveAvatar, setAvatarError })
           }}
           onSubmit={handleSaveDriver}
+        />
+      ) : null}
+
+      {isLoginEmailModalOpen && driver ? (
+        <ChangeWorkerLoginEmailModal
+          isOpen
+          workerId={driver.id}
+          workerLabel={`${driver.firstName} ${driver.lastName}`.trim()}
+          currentEmail={driver.email}
+          onClose={() => setIsLoginEmailModalOpen(false)}
+          onSuccess={async (result) => {
+            setIsLoginEmailModalOpen(false)
+            const refreshed = await driversService.fetchDriverById(driver.id)
+            if (refreshed) {
+              setDriver(refreshed)
+              setForm((current) =>
+                current ? { ...current, email: refreshed.email } : current,
+              )
+            } else {
+              setDriver((current) =>
+                current ? { ...current, email: result.email } : current,
+              )
+              setForm((current) =>
+                current ? { ...current, email: result.email } : current,
+              )
+            }
+            setToastMessage(result.toastMessage)
+            setIdentityHistoryRefreshKey((value) => value + 1)
+          }}
         />
       ) : null}
 

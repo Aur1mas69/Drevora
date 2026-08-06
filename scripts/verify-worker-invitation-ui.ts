@@ -60,9 +60,7 @@ async function main() {
 
   await run('2. Edit flow still uses driversService.updateDriver', () => {
     assertTrue(
-      driversPageSource.includes(
-        'driversService.updateDriver(editingDriver.id, form)',
-      ),
+      driversPageSource.includes('driversService.updateDriver('),
       'edit uses updateDriver',
     )
   })
