@@ -48,7 +48,8 @@ grant usage on schema public to anon, authenticated;
 -- Drivers: tenant RLS + Archive/Restore RPCs.
 -- Hard DELETE closed. Table INSERT/UPDATE revoked; column allowlists only.
 -- Office UPDATE requires archived_at IS NULL. See 20260726190000.
--- Column allowlists exclude archived_at and retention_expires_at (RPC-only writes).
+-- Column allowlists exclude archived_at, retention_expires_at, and auth_user_id
+-- (RPC / security-definer writes only). See 20260726190000 and 20260806200000.
 revoke all on table public.drivers from anon;
 revoke all on table public.drivers from public;
 revoke delete on table public.drivers from authenticated;
@@ -1324,3 +1325,30 @@ create policy account_deletion_requests_select_own
   for select
   to authenticated
   using (auth_user_id = auth.uid());
+
+-- -----------------------------------------------------------------------------
+-- Worker identity events (office SELECT; no client writes)
+-- Canonical: migrations/20260806200000_worker_identity_foundation.sql
+-- Writes go through drevora_insert_worker_identity_event / invite RPC (security definer).
+-- -----------------------------------------------------------------------------
+alter table public.worker_identity_events enable row level security;
+
+revoke all on table public.worker_identity_events from public;
+revoke all on table public.worker_identity_events from anon;
+revoke all on table public.worker_identity_events from authenticated;
+
+grant select on table public.worker_identity_events to authenticated;
+grant all on table public.worker_identity_events to service_role;
+
+drop policy if exists worker_identity_events_office_select_company
+  on public.worker_identity_events;
+create policy worker_identity_events_office_select_company
+  on public.worker_identity_events
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+  );
+
+-- No INSERT/UPDATE/DELETE policies for authenticated — client writes forbidden.

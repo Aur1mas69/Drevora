@@ -114,6 +114,12 @@ alter table public.drivers
 comment on column public.drivers.retention_expires_at is
   'UTC deadline for minimum archived Worker profile shell retention (archived_at + 6 calendar years / 72 months). NULL when active. Does not auto-delete.';
 
+alter table public.drivers
+  add column if not exists auth_user_id uuid references auth.users (id) on delete set null;
+
+comment on column public.drivers.auth_user_id is
+  'Immutable Auth user link for this Worker profile once set. Null only for legacy/unlinked rows. Rebinding to a different Auth user is forbidden.';
+
 -- Tenant RLS for Workers (policies + column allowlists live in policies.sql
 -- and migration 20260726190000). Do not FORCE RLS — Archive/Restore SECURITY DEFINER RPCs.
 alter table public.drivers enable row level security;
@@ -130,6 +136,16 @@ create index if not exists drivers_company_id_archived_at_idx
 create index if not exists drivers_company_id_active_idx
   on public.drivers (company_id)
   where archived_at is null;
+
+create index if not exists drivers_auth_user_id_idx
+  on public.drivers (auth_user_id)
+  where auth_user_id is not null;
+
+-- One active Worker profile per Auth user (canonical: 20260806200000_worker_identity_foundation.sql).
+create unique index if not exists drivers_auth_user_id_active_unique_idx
+  on public.drivers (auth_user_id)
+  where auth_user_id is not null
+    and archived_at is null;
 
 -- One active Worker profile per company email (invitation foundation).
 -- Canonical migration: 20260805210000_worker_invitation_foundation.sql
@@ -2802,6 +2818,40 @@ revoke all on function public.drevora_assert_company_can_add_worker(uuid) from a
 revoke all on function public.drevora_assert_company_can_add_worker(uuid) from authenticated;
 grant execute on function public.drevora_assert_company_can_add_worker(uuid) to service_role;
 
+-- Worker identity audit events (canonical: 20260806200000_worker_identity_foundation.sql).
+create table if not exists public.worker_identity_events (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete restrict,
+  driver_id uuid not null references public.drivers (id) on delete restrict,
+  auth_user_id uuid null references auth.users (id) on delete set null,
+  actor_user_id uuid null references auth.users (id) on delete set null,
+  event_type text not null,
+  old_values jsonb not null default '{}'::jsonb,
+  new_values jsonb not null default '{}'::jsonb,
+  reason text null,
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint worker_identity_events_event_type_check check (
+    event_type in (
+      'auth_user_backfilled',
+      'auth_user_linked',
+      'identity_replacement_blocked'
+    )
+  )
+);
+
+comment on table public.worker_identity_events is
+  'Append-only Worker identity audit. Client inserts/updates/deletes are forbidden; writers use security-definer helpers.';
+
+create index if not exists worker_identity_events_company_id_created_at_idx
+  on public.worker_identity_events (company_id, created_at desc);
+
+create index if not exists worker_identity_events_driver_id_created_at_idx
+  on public.worker_identity_events (driver_id, created_at desc);
+
+create index if not exists worker_identity_events_auth_user_id_idx
+  on public.worker_identity_events (auth_user_id)
+  where auth_user_id is not null;
+
 create or replace function public.drevora_link_invited_worker(
   p_actor_user_id uuid,
   p_company_id uuid,
@@ -2813,7 +2863,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_email text := lower(btrim(coalesce(p_email, '')));
   v_first_name text := nullif(btrim(coalesce(p_profile ->> 'first_name', '')), '');
@@ -2829,6 +2879,8 @@ declare
   v_created_membership boolean := false;
   v_reactivated_membership boolean := false;
   v_created_driver boolean := false;
+  v_auth_linked boolean := false;
+  v_previous_auth_user_id uuid := null;
   v_default_vehicle_id uuid := null;
   v_paid_holiday_enabled boolean := null;
   v_annual_paid_holiday_days numeric := null;
@@ -2852,6 +2904,7 @@ declare
   v_postcode text := null;
   v_country text := null;
   v_other_active integer := 0;
+  v_other_driver_id uuid := null;
 begin
   if p_actor_user_id is null or p_company_id is null or p_auth_user_id is null then
     raise exception 'INVITE_INVALID_ARGUMENT'
@@ -2895,7 +2948,6 @@ begin
             hint = 'status must be Working, Off Duty, Holiday, or Suspended.';
   end if;
 
-  -- Caller must be an active Office member of this company (never trust browser company id alone).
   select cm.role
   into v_actor_role
   from public.company_members cm
@@ -2928,14 +2980,11 @@ begin
 
   v_company_name := nullif(trim(v_company_name), '');
 
-  -- Serialise concurrent invites for this Auth user (two companies racing).
-  -- Transaction-scoped advisory lock keyed by invited auth user id.
   perform pg_advisory_xact_lock(
     872014551,
     hashtext(p_auth_user_id::text)
   );
 
-  -- Authoritative: reject active membership in another company before any write.
   select count(*)::integer
   into v_other_active
   from public.company_members cm
@@ -2949,7 +2998,14 @@ begin
             hint = 'This Auth user already has an active membership in another company.';
   end if;
 
-  -- Optional profile fields
+  -- Same Auth user must not already own a different active Worker profile (any company).
+  select d.id
+  into v_other_driver_id
+  from public.drivers d
+  where d.auth_user_id = p_auth_user_id
+    and d.archived_at is null
+  limit 1;
+
   if p_profile ? 'default_vehicle_id'
      and nullif(btrim(coalesce(p_profile ->> 'default_vehicle_id', '')), '') is not null then
     begin
@@ -3033,7 +3089,6 @@ begin
     v_start_date := (p_profile ->> 'start_date')::date;
   end if;
 
-  -- Existing active Worker profile with this email in the company.
   select d.*
   into v_driver
   from public.drivers d
@@ -3042,7 +3097,30 @@ begin
     and lower(btrim(d.email)) = v_email
   limit 1;
 
-  -- Membership for this auth user + company.
+  -- Prefer the Auth-linked active profile when email lookup misses / differs.
+  if v_other_driver_id is not null then
+    if v_driver.id is not null and v_driver.id is distinct from v_other_driver_id then
+      raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+        using errcode = 'P0001',
+              hint = 'This Auth user is already linked to a different active Worker profile. Archive and create a new Worker for a different person.';
+    end if;
+
+    if v_driver.id is null then
+      select d.*
+      into v_driver
+      from public.drivers d
+      where d.id = v_other_driver_id;
+    end if;
+  end if;
+
+  if v_driver.id is not null
+     and v_driver.auth_user_id is not null
+     and v_driver.auth_user_id is distinct from p_auth_user_id then
+    raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+      using errcode = 'P0001',
+            hint = 'This Worker profile is already linked to a different Auth user. Archive and create a new Worker for a different person.';
+  end if;
+
   select cm.*
   into v_membership
   from public.company_members cm
@@ -3054,16 +3132,41 @@ begin
     if v_membership.is_active
        and v_membership.role = 'Driver'
        and v_driver.id is not null then
-      -- Idempotent success: already fully linked.
+      if v_driver.auth_user_id is null then
+        update public.drivers
+        set auth_user_id = p_auth_user_id
+        where id = v_driver.id
+          and auth_user_id is null
+        returning * into v_driver;
+        v_auth_linked := true;
+
+        perform public.drevora_insert_worker_identity_event(
+          p_company_id,
+          v_driver.id,
+          p_auth_user_id,
+          p_actor_user_id,
+          'auth_user_linked',
+          jsonb_build_object('auth_user_id', null, 'email', v_driver.email),
+          jsonb_build_object('auth_user_id', p_auth_user_id, 'email', v_email),
+          'Idempotent invite linked existing membership/profile to Auth user.'
+        );
+      elsif v_driver.auth_user_id is distinct from p_auth_user_id then
+        raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+          using errcode = 'P0001',
+                hint = 'This Worker profile is already linked to a different Auth user. Archive and create a new Worker for a different person.';
+      end if;
+
       return jsonb_build_object(
         'ok', true,
         'code', 'already_linked',
         'membership_id', v_membership.id,
         'driver_id', v_driver.id,
         'worker_code', v_driver.worker_code,
+        'auth_user_id', v_driver.auth_user_id,
         'created_membership', false,
         'reactivated_membership', false,
-        'created_driver', false
+        'created_driver', false,
+        'auth_user_linked', v_auth_linked
       );
     end if;
 
@@ -3084,8 +3187,6 @@ begin
       v_reactivated_membership := true;
     end if;
   else
-    -- No active Driver membership for another user may already cover this email via profile;
-    -- still block duplicate active emails when creating a new profile below.
     insert into public.company_members (
       user_id,
       company_id,
@@ -3103,7 +3204,6 @@ begin
   end if;
 
   if v_driver.id is null then
-    -- Creating a seat: assert allowance then insert (trigger also enforces).
     perform public.drevora_assert_company_can_add_worker(p_company_id);
 
     insert into public.drivers (
@@ -3138,7 +3238,8 @@ begin
       county,
       postcode,
       country,
-      archived_at
+      archived_at,
+      auth_user_id
     )
     values (
       p_company_id,
@@ -3172,28 +3273,64 @@ begin
       v_county,
       v_postcode,
       v_country,
-      null
+      null,
+      p_auth_user_id
     )
     returning * into v_driver;
     v_created_driver := true;
+    v_auth_linked := true;
+
+    perform public.drevora_insert_worker_identity_event(
+      p_company_id,
+      v_driver.id,
+      p_auth_user_id,
+      p_actor_user_id,
+      'auth_user_linked',
+      jsonb_build_object('auth_user_id', null),
+      jsonb_build_object('auth_user_id', p_auth_user_id, 'email', v_email),
+      'Invitation created Worker profile with Auth user link.'
+    );
   else
-    -- Keep existing active profile email binding; refresh name/role lightly for invite retries.
+    v_previous_auth_user_id := v_driver.auth_user_id;
+
+    if v_previous_auth_user_id is not null
+       and v_previous_auth_user_id is distinct from p_auth_user_id then
+      raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+        using errcode = 'P0001',
+              hint = 'This Worker profile is already linked to a different Auth user. Archive and create a new Worker for a different person.';
+    end if;
+
     update public.drivers
     set
       first_name = v_first_name,
       last_name = v_last_name,
       role = v_role,
       phone = coalesce(v_phone, phone),
-      status = v_status
+      status = v_status,
+      auth_user_id = coalesce(auth_user_id, p_auth_user_id)
     where id = v_driver.id
     returning * into v_driver;
+
+    if v_previous_auth_user_id is null and v_driver.auth_user_id = p_auth_user_id then
+      v_auth_linked := true;
+      perform public.drevora_insert_worker_identity_event(
+        p_company_id,
+        v_driver.id,
+        p_auth_user_id,
+        p_actor_user_id,
+        'auth_user_linked',
+        jsonb_build_object('auth_user_id', null, 'email', v_driver.email),
+        jsonb_build_object('auth_user_id', p_auth_user_id, 'email', v_email),
+        'Invitation linked Auth user to existing Worker profile.'
+      );
+    end if;
   end if;
 
-  -- Safety: never leave an active Worker membership without an active profile.
   if v_membership.is_active is distinct from true
      or v_membership.role is distinct from 'Driver'
      or v_driver.id is null
-     or v_driver.archived_at is not null then
+     or v_driver.archived_at is not null
+     or v_driver.auth_user_id is distinct from p_auth_user_id then
     raise exception 'INVITE_PARTIAL_LINK_FAILED'
       using errcode = 'P0001',
             hint = 'Invitation link left an inconsistent membership/profile state.';
@@ -3208,26 +3345,181 @@ begin
     'membership_id', v_membership.id,
     'driver_id', v_driver.id,
     'worker_code', v_driver.worker_code,
+    'auth_user_id', v_driver.auth_user_id,
     'created_membership', v_created_membership,
     'reactivated_membership', v_reactivated_membership,
-    'created_driver', v_created_driver
+    'created_driver', v_created_driver,
+    'auth_user_linked', v_auth_linked
   );
 exception
   when unique_violation then
+    if sqlerrm ilike '%drivers_auth_user_id_active_unique_idx%'
+       or sqlerrm ilike '%auth_user_id%' then
+      raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+        using errcode = 'P0001',
+              hint = 'This Auth user is already linked to another active Worker profile.';
+    end if;
     raise exception 'INVITE_DUPLICATE_WORKER'
       using errcode = 'P0001',
             hint = 'An active Worker with this email already exists in the company.';
 end;
-$;
+$$;
 
 comment on function public.drevora_link_invited_worker(uuid, uuid, uuid, text, jsonb) is
-  'Service-role: atomically ensure Driver company_members + active drivers row for an invited Auth user.';
+  'Service-role: atomically ensure Driver company_members + active drivers row with drivers.auth_user_id set. Rejects Auth rebinding (WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED).';
 
 revoke all on function public.drevora_link_invited_worker(uuid, uuid, uuid, text, jsonb) from public;
 revoke all on function public.drevora_link_invited_worker(uuid, uuid, uuid, text, jsonb) from anon;
 revoke all on function public.drevora_link_invited_worker(uuid, uuid, uuid, text, jsonb) from authenticated;
 grant execute on function public.drevora_link_invited_worker(uuid, uuid, uuid, text, jsonb) to service_role;
 
+-- Worker identity foundation helpers (canonical: 20260806200000).
+create or replace function public.drevora_auth_user_driver_id()
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer := 0;
+  v_id uuid := null;
+begin
+  if auth.uid() is null then
+    return null;
+  end if;
+
+  -- Prefer immutable Auth link (exact-one active linked profile in membership company).
+  select count(*)::integer, min(d.id)
+  into v_count, v_id
+  from public.drivers d
+  where d.auth_user_id = auth.uid()
+    and d.company_id is not null
+    and d.archived_at is null
+    and public.drevora_auth_user_belongs_to_company_id(d.company_id);
+
+  if v_count = 1 then
+    return v_id;
+  end if;
+
+  if v_count > 1 then
+    return null;
+  end if;
+
+  -- Transitional email fallback only for rows not yet linked (auth_user_id is null).
+  select count(*)::integer, min(d.id)
+  into v_count, v_id
+  from public.drivers d
+  inner join auth.users u on u.id = auth.uid()
+  where d.auth_user_id is null
+    and lower(trim(coalesce(d.email, ''))) = lower(trim(coalesce(u.email, '')))
+    and d.company_id is not null
+    and d.archived_at is null
+    and coalesce(trim(d.email), '') <> ''
+    and public.drevora_auth_user_belongs_to_company_id(d.company_id);
+
+  if v_count = 1 then
+    return v_id;
+  end if;
+
+  return null;
+end;
+$$;
+
+comment on function public.drevora_auth_user_driver_id() is
+  'Returns active Worker drivers.id. Prefers drivers.auth_user_id = auth.uid(); email match is temporary fallback only when auth_user_id is null. Exact-one match required. Archived Workers resolve to NULL.';
+
+revoke all on function public.drevora_auth_user_driver_id() from public;
+revoke all on function public.drevora_auth_user_driver_id() from anon;
+grant execute on function public.drevora_auth_user_driver_id() to authenticated;
+grant execute on function public.drevora_auth_user_driver_id() to service_role;
+
+create or replace function public.drevora_drivers_auth_user_id_guard()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE'
+     and old.auth_user_id is not null
+     and new.auth_user_id is distinct from old.auth_user_id then
+    raise exception 'WORKER_IDENTITY_REPLACEMENT_NOT_ALLOWED'
+      using errcode = 'P0001',
+            hint = 'This Worker profile is already linked to an Auth user. Archive and create a new Worker for a different person.';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.drevora_drivers_auth_user_id_guard() is
+  'BEFORE UPDATE: reject rebinding drivers.auth_user_id to a different Auth user.';
+
+drop trigger if exists drivers_auth_user_id_guard on public.drivers;
+create trigger drivers_auth_user_id_guard
+  before update of auth_user_id
+  on public.drivers
+  for each row
+  execute function public.drevora_drivers_auth_user_id_guard();
+
+create or replace function public.drevora_insert_worker_identity_event(
+  p_company_id uuid,
+  p_driver_id uuid,
+  p_auth_user_id uuid,
+  p_actor_user_id uuid,
+  p_event_type text,
+  p_old_values jsonb default '{}'::jsonb,
+  p_new_values jsonb default '{}'::jsonb,
+  p_reason text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+begin
+  if p_company_id is null or p_driver_id is null or nullif(btrim(coalesce(p_event_type, '')), '') is null then
+    raise exception 'WORKER_IDENTITY_EVENT_INVALID'
+      using errcode = 'P0001',
+            hint = 'company_id, driver_id and event_type are required.';
+  end if;
+
+  insert into public.worker_identity_events (
+    company_id,
+    driver_id,
+    auth_user_id,
+    actor_user_id,
+    event_type,
+    old_values,
+    new_values,
+    reason
+  )
+  values (
+    p_company_id,
+    p_driver_id,
+    p_auth_user_id,
+    p_actor_user_id,
+    btrim(p_event_type),
+    coalesce(p_old_values, '{}'::jsonb),
+    coalesce(p_new_values, '{}'::jsonb),
+    nullif(btrim(coalesce(p_reason, '')), '')
+  )
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+comment on function public.drevora_insert_worker_identity_event(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text) is
+  'Security-definer append-only writer for worker_identity_events. Not granted to authenticated.';
+
+revoke all on function public.drevora_insert_worker_identity_event(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text) from public;
+revoke all on function public.drevora_insert_worker_identity_event(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text) from anon;
+revoke all on function public.drevora_insert_worker_identity_event(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text) from authenticated;
+grant execute on function public.drevora_insert_worker_identity_event(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text) to service_role;
 
 -- Archived Worker profile retention consistency (see 20260726190000).
 create or replace function public.drevora_drivers_retention_guard()
@@ -3751,6 +4043,8 @@ create trigger account_deletion_requests_set_updated_at
 --   20260802150000_revoke_anon_support_attachment_storage_execute.sql
 -- Auth/company helper EXECUTE restriction + search_path harden:
 --   20260802160000_restrict_internal_auth_company_helper_execute.sql
+-- Worker identity foundation (auth_user_id + audit):
+--   20260806200000_worker_identity_foundation.sql
 -- Legal documents + acceptances: apply migration
 --   20260801140000_legal_documents_and_acceptances.sql
 -- Legal acceptance audit hardening (Admin accept, immutability, constraints):

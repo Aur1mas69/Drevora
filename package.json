@@ -22,6 +22,7 @@
     "verify:worker-offline-legal": "npx tsx scripts/verify-worker-offline-legal.ts",
     "verify:worker-invitation": "npx tsx scripts/verify-worker-invitation.ts",
     "verify:worker-invitation-ui": "npx tsx scripts/verify-worker-invitation-ui.ts",
+    "verify:worker-identity-foundation": "npx tsx scripts/verify-worker-identity-foundation.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },
