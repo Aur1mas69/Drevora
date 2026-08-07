@@ -232,7 +232,7 @@ export default function WorkerSettingsPage() {
       : 'Loading…'
 
   return (
-    <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
+    <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
           Settings
@@ -564,7 +564,11 @@ export default function WorkerSettingsPage() {
       <Button
         type="button"
         variant="outline"
-        className="h-12 w-full gap-2 rounded-2xl border border-rose-300 bg-[color:var(--worker-card)] text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+        className={cn(
+          'h-12 w-full gap-2 rounded-2xl border border-rose-300 bg-[color:var(--worker-card)] text-rose-700 hover:bg-rose-50 hover:text-rose-800',
+          isDark &&
+            'border-rose-400/55 bg-[color:var(--worker-elevated)] text-rose-300 hover:bg-rose-950/45 hover:text-rose-200',
+        )}
         onClick={() => void handleSignOut()}
       >
         <LogOut className="size-4" aria-hidden />

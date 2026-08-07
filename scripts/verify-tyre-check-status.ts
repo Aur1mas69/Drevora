@@ -117,17 +117,18 @@ assert(
 )
 
 const phantom: TyreMeasurement = {
-  id: 'vehicle-1-Outer Left',
+  id: 'vehicle-9-Left',
   unit: 'vehicle',
-  axleNumber: 1,
-  axleLabel: 'Steer Axle 1',
-  position: 'Outer Left',
+  axleNumber: 9,
+  axleLabel: 'Drive Axle 9',
+  position: 'Left',
   treadDepthMm: null,
+  pressureValue: null,
   status: 'not_checked',
   dbItemId: 'phantom-1',
 }
 const extras = findExtraneousTyreMeasurements([...twoAxle, phantom], 2, null)
-assert(extras.length === 1 && extras[0]?.position === 'Outer Left', 'detect phantom on axle 1')
+assert(extras.length === 1 && extras[0]?.axleNumber === 9, 'detect phantom beyond axle count')
 assert(
   findExtraneousTyreMeasurements(twoAxle, 2, null).length === 0,
   'valid 2-axle layout has no extras',

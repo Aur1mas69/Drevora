@@ -1217,6 +1217,67 @@ create policy tyre_check_items_worker_delete_own
   );
 
 -- -----------------------------------------------------------------------------
+-- Tyre Check corrections (Office SELECT only; writes via SECURITY DEFINER RPC)
+-- Canonical: migrations/20260807220000_tyre_check_pressure_and_corrections.sql
+-- -----------------------------------------------------------------------------
+alter table public.tyre_check_corrections enable row level security;
+alter table public.tyre_check_correction_item_changes enable row level security;
+
+revoke all on table public.tyre_check_corrections from public;
+revoke all on table public.tyre_check_corrections from anon;
+revoke all on table public.tyre_check_correction_item_changes from public;
+revoke all on table public.tyre_check_correction_item_changes from anon;
+
+grant select on table public.tyre_check_corrections to authenticated;
+grant select on table public.tyre_check_correction_item_changes to authenticated;
+
+drop policy if exists tyre_check_corrections_office_select on public.tyre_check_corrections;
+create policy tyre_check_corrections_office_select
+  on public.tyre_check_corrections
+  for select
+  to authenticated
+  using (
+    company_id is not null
+    and public.drevora_auth_user_has_office_role_for_company(company_id)
+  );
+
+drop policy if exists tyre_check_correction_item_changes_office_select
+  on public.tyre_check_correction_item_changes;
+create policy tyre_check_correction_item_changes_office_select
+  on public.tyre_check_correction_item_changes
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.tyre_check_corrections c
+      where c.id = correction_id
+        and c.company_id is not null
+        and public.drevora_auth_user_has_office_role_for_company(c.company_id)
+    )
+  );
+
+revoke all on function public.drevora_tyre_office_correction_active(uuid) from public;
+revoke all on function public.drevora_tyre_office_correction_active(uuid) from anon;
+grant execute on function public.drevora_tyre_office_correction_active(uuid) to authenticated;
+
+revoke all on function public.drevora_office_apply_tyre_check_correction(uuid, text, text, jsonb)
+  from public;
+revoke all on function public.drevora_office_apply_tyre_check_correction(uuid, text, text, jsonb)
+  from anon;
+grant execute on function public.drevora_office_apply_tyre_check_correction(uuid, text, text, jsonb)
+  to authenticated;
+
+revoke all on function public.drevora_tyre_office_soft_delete_active(uuid) from public;
+revoke all on function public.drevora_tyre_office_soft_delete_active(uuid) from anon;
+grant execute on function public.drevora_tyre_office_soft_delete_active(uuid) to authenticated;
+
+revoke all on function public.drevora_office_soft_delete_tyre_check(uuid, text) from public;
+revoke all on function public.drevora_office_soft_delete_tyre_check(uuid, text) from anon;
+grant execute on function public.drevora_office_soft_delete_tyre_check(uuid, text)
+  to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Vehicle Tyre Layouts (persisted default per-axle Single/Dual per Vehicle)
 -- Canonical: migrations/20260728090000_tyre_check_configurable_axle_layout.sql
 -- and 20260728220000_fix_tyre_layout_rpc_and_position_constraint.sql

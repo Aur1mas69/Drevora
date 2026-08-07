@@ -11,6 +11,7 @@ import {
   DEFAULT_TRAILER_AXLE_COUNT,
   DEFAULT_TRUCK_AXLE_COUNT,
   MAX_COMBINED_TYRE_AXLES,
+  parseTyrePressureValue,
   parseTyreTreadDepthMm,
   resizeAxleWheelLayouts,
   resolveFallbackTrailerAxleWheelLayouts,
@@ -34,6 +35,7 @@ import {
   submitWorkerTyreCheck,
   TyreChecksServiceError,
   updateWorkerTyreCheckItem,
+  updateWorkerTyreCheckPressureUnit,
 } from '@/services/tyreChecksService'
 import { fetchVehicleTyreLayout, saveVehicleTyreLayout } from '@/services/vehicleTyreLayoutsService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
@@ -126,6 +128,7 @@ export default function WorkerTyreCheckPage() {
   const [draft, setDraft] = useState<WorkerTyreCheckDraft | null>(null)
   const [tyreIndex, setTyreIndex] = useState(0)
   const [depthInput, setDepthInput] = useState('')
+  const [pressureInput, setPressureInput] = useState('')
   const [isDirty, setIsDirty] = useState(false)
   const [hasDefect, setHasDefect] = useState(false)
   const [defectNotes, setDefectNotes] = useState('')
@@ -272,6 +275,9 @@ export default function WorkerTyreCheckPage() {
     setDepthInput(
       currentTyre.treadDepthMm == null ? '' : String(currentTyre.treadDepthMm),
     )
+    setPressureInput(
+      currentTyre.pressureValue == null ? '' : String(currentTyre.pressureValue),
+    )
     setIsDirty(Boolean(currentTyre.isDirty))
     setHasDefect(Boolean(currentTyre.hasDefect))
     setDefectNotes(currentTyre.defectNotes ?? '')
@@ -413,6 +419,11 @@ export default function WorkerTyreCheckPage() {
       setError('Enter tread depth before saving this tyre.')
       return false
     }
+    const parsedPressure = parseTyrePressureValue(pressureInput)
+    if (!parsedPressure.ok) {
+      setError(parsedPressure.error)
+      return false
+    }
     if (hasDefect && !defectNotes.trim()) {
       setError('Defect notes are required when Defect is selected.')
       return false
@@ -423,6 +434,7 @@ export default function WorkerTyreCheckPage() {
     try {
       const updated = await updateWorkerTyreCheckItem(currentTyre.dbItemId, {
         treadDepthMm: parsed.value,
+        pressureValue: parsedPressure.value,
         isDirty,
         hasDefect,
         defectNotes,
@@ -490,6 +502,7 @@ export default function WorkerTyreCheckPage() {
     setDraft(null)
     setTyreIndex(0)
     setDepthInput('')
+    setPressureInput('')
     setIsDirty(false)
     setHasDefect(false)
     setDefectNotes('')
@@ -850,6 +863,66 @@ export default function WorkerTyreCheckPage() {
               </p>
             </div>
 
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
+                Pressure unit
+              </span>
+              <div
+                className="grid grid-cols-2 gap-2"
+                role="group"
+                aria-label="Pressure unit"
+              >
+                {(['bar', 'psi'] as const).map((unit) => {
+                  const selected = draft.pressureUnit === unit
+                  return (
+                    <button
+                      key={unit}
+                      type="button"
+                      disabled={busy}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        if (selected) return
+                        void (async () => {
+                          setBusy(true)
+                          setError(null)
+                          try {
+                            const next = await updateWorkerTyreCheckPressureUnit(
+                              draft.checkId,
+                              unit,
+                            )
+                            setDraft((current) =>
+                              current ? { ...current, pressureUnit: next } : current,
+                            )
+                          } catch (unitError) {
+                            setError(
+                              unitError instanceof TyreChecksServiceError
+                                ? unitError.message
+                                : unitError instanceof Error
+                                  ? unitError.message
+                                  : 'Unable to update pressure unit.',
+                            )
+                          } finally {
+                            setBusy(false)
+                          }
+                        })()
+                      }}
+                      className={cn(
+                        'min-h-11 rounded-2xl border-2 text-sm font-extrabold uppercase tracking-[0.08em] transition active:scale-[0.97]',
+                        selected
+                          ? 'border-[#2563EB] bg-[#2563EB] text-white ring-4 ring-blue-200'
+                          : 'border-[color:var(--worker-border-strong)] bg-[color:var(--worker-elevated)] text-[color:var(--worker-text)]',
+                      )}
+                    >
+                      {unit}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-[color:var(--worker-text-muted)]">
+                One unit for the whole Tyre Check. Pressure is optional.
+              </p>
+            </div>
+
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                 Tread depth (mm)
@@ -864,6 +937,23 @@ export default function WorkerTyreCheckPage() {
                 onChange={(event) => setDepthInput(event.target.value)}
                 className="h-14 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-lg font-bold text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
                 placeholder="e.g. 7.5"
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
+                Pressure (optional, {draft.pressureUnit})
+              </span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={200}
+                step={0.1}
+                value={pressureInput}
+                onChange={(event) => setPressureInput(event.target.value)}
+                className="h-14 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-lg font-bold text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
+                placeholder="Leave blank if not recorded"
               />
             </label>
 

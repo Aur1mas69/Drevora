@@ -1495,6 +1495,10 @@ create table if not exists public.tyre_checks (
   dirty_count integer not null default 0,
   defect_count integer not null default 0,
   not_checked_count integer not null default 0,
+  pressure_unit text null,
+  deleted_at timestamptz null,
+  deleted_by uuid null references auth.users (id) on delete restrict,
+  delete_reason text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint tyre_checks_status_check check (
@@ -1505,6 +1509,22 @@ create table if not exists public.tyre_checks (
   ),
   constraint tyre_checks_odometer_unit_check check (
     odometer_unit in ('miles', 'km')
+  ),
+  constraint tyre_checks_pressure_unit_check check (
+    pressure_unit is null or pressure_unit in ('bar', 'psi')
+  ),
+  constraint tyre_checks_delete_reason_when_deleted_check check (
+    (
+      deleted_at is null
+      and deleted_by is null
+      and delete_reason is null
+    )
+    or (
+      deleted_at is not null
+      and deleted_by is not null
+      and delete_reason is not null
+      and length(btrim(delete_reason)) > 0
+    )
   ),
   constraint tyre_checks_truck_axle_count_check check (
     truck_axle_count between 1 and 6
@@ -1552,6 +1572,18 @@ comment on table public.tyre_checks is
 comment on column public.tyre_checks.trailer_number_snapshot is
   'Frozen trailer_number at check time so history stays stable if the vehicle row is edited later.';
 
+comment on column public.tyre_checks.pressure_unit is
+  'Optional whole-check tyre pressure unit: bar or psi. NULL when never chosen; empty pressures stay NULL.';
+
+comment on column public.tyre_checks.deleted_at is
+  'Office soft-delete timestamp. NULL = active in normal lists. Never hard-delete submitted checks.';
+
+comment on column public.tyre_checks.deleted_by is
+  'auth.users id of the Office user who soft-deleted the check.';
+
+comment on column public.tyre_checks.delete_reason is
+  'Mandatory Office soft-delete reason. Preserved for audit; check rows and items stay stored.';
+
 comment on constraint tyre_checks_total_axle_count_max_6_chk on public.tyre_checks is
   'Truck + Trailer combined axle count is limited to six axles. Truck-only checks use trailer_axle_count NULL and may still have 1–6 truck axles.';
 
@@ -1563,6 +1595,7 @@ create table if not exists public.tyre_check_items (
   axle_type text not null,
   position text not null,
   tread_depth_mm numeric(4, 1) null,
+  pressure_value numeric(6, 2) null,
   wear_percent numeric(5, 2)
     generated always as (public.drevora_tyre_wear_percent(tread_depth_mm)) stored,
   tread_status text
@@ -1608,11 +1641,18 @@ create table if not exists public.tyre_check_items (
     tread_depth_mm is null
     or tread_depth_mm = 1.6
     or (tread_depth_mm * 2) = trunc(tread_depth_mm * 2)
+  ),
+  constraint tyre_check_items_pressure_value_check check (
+    pressure_value is null
+    or (pressure_value >= 0 and pressure_value <= 200)
   )
 );
 
 comment on table public.tyre_check_items is
   'Per-tyre measurements for a tyre_checks parent. Single/Dual is a free per-axle choice (2 or 4 recorded positions); tread_status/wear_percent are derived; Dirty/Defect are separate flags.';
+
+comment on column public.tyre_check_items.pressure_value is
+  'Optional tyre pressure for this position. NULL when not recorded (never coerced to zero). Unit is tyre_checks.pressure_unit.';
 
 -- Idempotent: replaces the old steer=single / drive+trailer=dual coupling
 -- (canonical: 20260728220000_fix_tyre_layout_rpc_and_position_constraint.sql).
@@ -1651,6 +1691,83 @@ create index if not exists tyre_checks_company_worker_created_at_idx
 
 create index if not exists tyre_checks_company_status_created_at_idx
   on public.tyre_checks (company_id, status, created_at desc);
+
+create index if not exists tyre_checks_company_active_created_at_idx
+  on public.tyre_checks (company_id, created_at desc)
+  where deleted_at is null;
+
+create index if not exists tyre_checks_company_deleted_at_idx
+  on public.tyre_checks (company_id, deleted_at desc)
+  where deleted_at is not null;
+
+-- Office Admin Tyre Check corrections (canonical:
+-- 20260807220000_tyre_check_pressure_and_corrections.sql).
+create table if not exists public.tyre_check_corrections (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete restrict,
+  tyre_check_id uuid not null references public.tyre_checks (id) on delete restrict,
+  correction_reason text not null,
+  corrected_by uuid not null references auth.users (id) on delete restrict,
+  corrected_at timestamptz not null default now(),
+  old_pressure_unit text null,
+  new_pressure_unit text null,
+  created_at timestamptz not null default now(),
+  constraint tyre_check_corrections_reason_nonblank_check check (
+    length(btrim(correction_reason)) > 0
+  ),
+  constraint tyre_check_corrections_old_pressure_unit_check check (
+    old_pressure_unit is null or old_pressure_unit in ('bar', 'psi')
+  ),
+  constraint tyre_check_corrections_new_pressure_unit_check check (
+    new_pressure_unit is null or new_pressure_unit in ('bar', 'psi')
+  )
+);
+
+comment on table public.tyre_check_corrections is
+  'Office Admin corrections for submitted Tyre Checks. Original check identity stays; measurement history is preserved in child change rows.';
+
+create index if not exists tyre_check_corrections_check_corrected_at_idx
+  on public.tyre_check_corrections (tyre_check_id, corrected_at desc);
+
+create index if not exists tyre_check_corrections_company_corrected_at_idx
+  on public.tyre_check_corrections (company_id, corrected_at desc);
+
+create table if not exists public.tyre_check_correction_item_changes (
+  id uuid primary key default gen_random_uuid(),
+  correction_id uuid not null references public.tyre_check_corrections (id) on delete cascade,
+  tyre_check_item_id uuid not null references public.tyre_check_items (id) on delete restrict,
+  unit text not null,
+  axle_number smallint not null,
+  position text not null,
+  old_tread_depth_mm numeric(4, 1) null,
+  new_tread_depth_mm numeric(4, 1) null,
+  old_pressure_value numeric(6, 2) null,
+  new_pressure_value numeric(6, 2) null,
+  created_at timestamptz not null default now(),
+  constraint tyre_check_correction_item_changes_unit_check check (
+    unit in ('vehicle', 'trailer')
+  ),
+  constraint tyre_check_correction_item_changes_position_check check (
+    position in (
+      'left',
+      'right',
+      'outer_left',
+      'inner_left',
+      'inner_right',
+      'outer_right'
+    )
+  ),
+  constraint tyre_check_correction_item_changes_must_change_check check (
+    old_tread_depth_mm is distinct from new_tread_depth_mm
+    or old_pressure_value is distinct from new_pressure_value
+  )
+);
+
+comment on table public.tyre_check_correction_item_changes is
+  'Per-position old/new tread depth and pressure for a Tyre Check correction. Original values remain auditable.';
+
+create index if not exists tyre_check_correction_item_changes_correction_idx
+  on public.tyre_check_correction_item_changes (correction_id);
 
 -- Persisted default per-axle Single/Dual layout for one Vehicle (canonical:
 -- 20260728090000_tyre_check_configurable_axle_layout.sql). Read by Worker

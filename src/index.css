@@ -184,6 +184,12 @@ body {
   min-height: var(--drevora-worker-vvh, 100dvh);
   overflow-x: clip;
   isolation: isolate;
+  /*
+   * Space for the fixed compact bottom nav (shell + inner + items) plus device
+   * safe-area. Must be at least the real nav height so the last controls
+   * (e.g. Settings Sign out) can scroll fully above the bar.
+   */
+  --worker-bottom-nav-clearance: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 html.worker-vvh-ready,

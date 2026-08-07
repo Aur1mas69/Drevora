@@ -1,6 +1,6 @@
 import { requireVerifiedCompanyId } from '@/lib/companySettingsGlobals'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
-import { requireSupabase } from '@/lib/supabase'
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import {
   buildTyreLayout,
@@ -9,6 +9,8 @@ import {
   MAX_TYRE_CHECK_PAGE_SIZE,
   findExtraneousTyreMeasurements,
   formatTyreSummaryLabel,
+  normalizeTyrePressureUnit,
+  parseTyrePressureValue,
   parseTyreTreadDepthMm,
   treadDepthToStatus,
   tyreAxleTypeFor,
@@ -17,15 +19,20 @@ import {
   validateTyreAxleCounts,
   type AxleWheelLayout,
   type TyreCheckAdminOverviewStats,
+  type TyreCheckCorrectionItemChange,
+  type TyreCheckCorrectionRecord,
   type TyreCheckListItem,
   type TyreCheckOverallResult,
   type TyreChecksPageResult,
   type TyreChecksQuery,
   type TyreMeasurement,
+  type TyrePressureUnit,
   type TyreStatus,
   type TyreUnit,
   type WorkerTyreCheckDraft,
 } from '@/lib/tyreCheckTypes'
+import { isOfficeMembershipRole } from '@/lib/membershipRoles'
+import { resolveCurrentCompanyMembership } from '@/services/companyMembershipService'
 import {
   getVehicleStatusForDate,
   type Vehicle,
@@ -72,6 +79,7 @@ const tyreCheckListSelect = `
   not_checked_count,
   notes,
   status,
+  pressure_unit,
   vehicles!vehicle_id (
     registration,
     make,
@@ -97,6 +105,7 @@ const tyreCheckDetailSelect = `
     axle_type,
     position,
     tread_depth_mm,
+    pressure_value,
     tread_status,
     is_dirty,
     has_defect,
@@ -147,6 +156,7 @@ type TyreCheckRow = {
   not_checked_count: number
   notes: string | null
   status: string
+  pressure_unit?: string | null
   vehicles: VehicleEmbed
   trailer: TrailerEmbed
   drivers: DriverEmbed
@@ -159,6 +169,7 @@ type TyreCheckItemRow = {
   axle_type: string
   position: string
   tread_depth_mm: number | null
+  pressure_value?: number | null
   tread_status: string | null
   is_dirty: boolean
   has_defect: boolean
@@ -288,6 +299,10 @@ function mapDetailMeasurements(items: TyreCheckItemRow[]): TyreMeasurement[] {
         position,
         axleLabel,
         treadDepthMm: item.tread_depth_mm,
+        pressureValue:
+          item.pressure_value == null || Number.isNaN(Number(item.pressure_value))
+            ? null
+            : Number(item.pressure_value),
         status: mapItemStatus(item),
         isDirty: item.is_dirty,
         hasDefect: item.has_defect,
@@ -371,6 +386,7 @@ function mapWorkerDraft(
   meta: {
     odometer: number
     odometerUnit: 'miles' | 'km'
+    pressureUnit: TyrePressureUnit
     inspectionStartedAt: string
     durationSeconds: number | null
   },
@@ -384,6 +400,7 @@ function mapWorkerDraft(
     workerId: listItem.workerId,
     odometer: meta.odometer,
     odometerUnit: meta.odometerUnit,
+    pressureUnit: meta.pressureUnit,
     inspectionStartedAt: meta.inspectionStartedAt,
     status: listItem.status,
     items: measurements,
@@ -506,6 +523,7 @@ export async function fetchTyreChecks(
     .from('tyre_checks')
     .select(tyreCheckListSelect, { count: 'exact' })
     .eq('company_id', companyId)
+    .is('deleted_at', null)
 
   if (query.result && query.result !== 'all') {
     request = request.eq('overall_result', query.result)
@@ -632,6 +650,7 @@ export async function fetchTyreCheckAdminOverview(
     .select(tyreCheckListSelect)
     .eq('company_id', companyId)
     .eq('status', 'submitted')
+    .is('deleted_at', null)
     .gte('created_at', start)
     .lte('created_at', end)
     .order('created_at', { ascending: false })
@@ -693,6 +712,8 @@ export async function fetchTyreCheckAdminOverview(
 export async function fetchTyreCheckDetail(id: string): Promise<{
   listItem: TyreCheckListItem
   measurements: TyreMeasurement[]
+  pressureUnit: TyrePressureUnit | null
+  corrections: TyreCheckCorrectionRecord[]
 } | null> {
   const companyId = requireVerifiedCompanyId()
   const { data, error } = await requireSupabase()
@@ -700,6 +721,7 @@ export async function fetchTyreCheckDetail(id: string): Promise<{
     .select(tyreCheckDetailSelect)
     .eq('company_id', companyId)
     .eq('id', id)
+    .is('deleted_at', null)
     .maybeSingle()
 
   logSupabaseQuery({
@@ -717,9 +739,12 @@ export async function fetchTyreCheckDetail(id: string): Promise<{
   if (!data) return null
 
   const row = data as unknown as TyreCheckDetailRow
+  const corrections = await fetchTyreCheckCorrections(id)
   return {
     listItem: mapListRow(row),
     measurements: mapDetailMeasurements(row.tyre_check_items ?? []),
+    pressureUnit: normalizeTyrePressureUnit(row.pressure_unit),
+    corrections,
   }
 }
 
@@ -739,10 +764,286 @@ export type CreateWorkerTyreCheckInput = {
 
 export type UpdateWorkerTyreCheckItemInput = {
   treadDepthMm: number | null
+  pressureValue?: number | null
   isDirty: boolean
   hasDefect: boolean
   defectNotes: string
   notes?: string
+}
+
+export type ApplyTyreCheckCorrectionItemInput = {
+  itemId: string
+  treadDepthMm: number | null
+  pressureValue: number | null
+}
+
+export type ApplyTyreCheckCorrectionInput = {
+  tyreCheckId: string
+  reason: string
+  pressureUnit: TyrePressureUnit
+  items: ApplyTyreCheckCorrectionItemInput[]
+}
+
+async function requireOfficeTyreCheckContext(actionLabel: string): Promise<{
+  userId: string
+  companyId: string
+}> {
+  if (!isSupabaseConfigured) {
+    throw new TyreChecksServiceError('Supabase is not configured.')
+  }
+
+  const membership = await resolveCurrentCompanyMembership()
+  if (membership.status !== 'ready') {
+    throw new TyreChecksServiceError(
+      membership.status === 'unauthenticated'
+        ? `Sign in to ${actionLabel}.`
+        : membership.message,
+    )
+  }
+
+  if (!isOfficeMembershipRole(membership.membershipRole)) {
+    throw new TyreChecksServiceError(`Only office roles can ${actionLabel}.`)
+  }
+
+  return {
+    userId: membership.userId,
+    companyId: membership.companyId,
+  }
+}
+
+function mapCorrectionChangeRow(row: {
+  id: string
+  tyre_check_item_id: string
+  unit: string
+  axle_number: number
+  position: string
+  old_tread_depth_mm: number | null
+  new_tread_depth_mm: number | null
+  old_pressure_value: number | null
+  new_pressure_value: number | null
+}): TyreCheckCorrectionItemChange {
+  return {
+    id: row.id,
+    tyreCheckItemId: row.tyre_check_item_id,
+    unit: row.unit === 'trailer' ? 'trailer' : 'vehicle',
+    axleNumber: row.axle_number,
+    position: tyrePositionFromDb(row.position),
+    oldTreadDepthMm: row.old_tread_depth_mm,
+    newTreadDepthMm: row.new_tread_depth_mm,
+    oldPressureValue: row.old_pressure_value,
+    newPressureValue: row.new_pressure_value,
+  }
+}
+
+export async function fetchTyreCheckCorrections(
+  tyreCheckId: string,
+): Promise<TyreCheckCorrectionRecord[]> {
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('tyre_check_corrections')
+    .select(
+      `
+      id,
+      tyre_check_id,
+      correction_reason,
+      corrected_by,
+      corrected_at,
+      old_pressure_unit,
+      new_pressure_unit,
+      tyre_check_correction_item_changes (
+        id,
+        tyre_check_item_id,
+        unit,
+        axle_number,
+        position,
+        old_tread_depth_mm,
+        new_tread_depth_mm,
+        old_pressure_value,
+        new_pressure_value
+      )
+    `,
+    )
+    .eq('company_id', companyId)
+    .eq('tyre_check_id', tyreCheckId)
+    .order('corrected_at', { ascending: false })
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.fetchTyreCheckCorrections',
+    table: 'tyre_check_corrections',
+    data: data ?? [],
+    error,
+  })
+
+  if (error) {
+    const normalized = error.message.toLowerCase()
+    if (
+      normalized.includes('tyre_check_corrections') &&
+      (normalized.includes('does not exist') ||
+        normalized.includes('schema cache') ||
+        normalized.includes('could not find the table'))
+    ) {
+      return []
+    }
+    throw new TyreChecksServiceError(error.message)
+  }
+
+  return ((data ?? []) as Array<{
+    id: string
+    tyre_check_id: string
+    correction_reason: string
+    corrected_by: string
+    corrected_at: string
+    old_pressure_unit: string | null
+    new_pressure_unit: string | null
+    tyre_check_correction_item_changes:
+      | Array<{
+          id: string
+          tyre_check_item_id: string
+          unit: string
+          axle_number: number
+          position: string
+          old_tread_depth_mm: number | null
+          new_tread_depth_mm: number | null
+          old_pressure_value: number | null
+          new_pressure_value: number | null
+        }>
+      | null
+  }>).map((row) => ({
+    id: row.id,
+    tyreCheckId: row.tyre_check_id,
+    correctionReason: row.correction_reason,
+    correctedBy: row.corrected_by,
+    correctedAt: row.corrected_at,
+    oldPressureUnit: normalizeTyrePressureUnit(row.old_pressure_unit),
+    newPressureUnit: normalizeTyrePressureUnit(row.new_pressure_unit),
+    changes: (row.tyre_check_correction_item_changes ?? []).map(mapCorrectionChangeRow),
+  }))
+}
+
+/**
+ * Office-only: apply measurement corrections to a submitted Tyre Check.
+ * Preserves original values in tyre_check_corrections audit tables.
+ */
+export async function applyTyreCheckCorrection(
+  input: ApplyTyreCheckCorrectionInput,
+): Promise<TyreCheckCorrectionRecord> {
+  await requireOfficeTyreCheckContext('correct a Tyre Check')
+  const reason = input.reason.trim()
+  if (!reason) {
+    throw new TyreChecksServiceError('A correction reason is required.')
+  }
+  if (input.pressureUnit !== 'bar' && input.pressureUnit !== 'psi') {
+    throw new TyreChecksServiceError('Select BAR or PSI for pressure unit.')
+  }
+  if (!input.items.length) {
+    throw new TyreChecksServiceError('Correction items are required.')
+  }
+
+  for (const item of input.items) {
+    if (item.treadDepthMm != null) {
+      const parsed = parseTyreTreadDepthMm(String(item.treadDepthMm))
+      if (!parsed.ok) throw new TyreChecksServiceError(parsed.error)
+    }
+    if (item.pressureValue != null) {
+      const parsed = parseTyrePressureValue(String(item.pressureValue))
+      if (!parsed.ok) throw new TyreChecksServiceError(parsed.error)
+    }
+  }
+
+  const payload = input.items.map((item) => ({
+    item_id: item.itemId,
+    tread_depth_mm: item.treadDepthMm,
+    pressure_value: item.pressureValue,
+  }))
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_office_apply_tyre_check_correction',
+    {
+      p_tyre_check_id: input.tyreCheckId,
+      p_reason: reason,
+      p_pressure_unit: input.pressureUnit,
+      p_items: payload,
+    },
+  )
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.applyTyreCheckCorrection',
+    table: 'rpc.drevora_office_apply_tyre_check_correction',
+    data: data != null ? [{ id: data }] : [],
+    error,
+  })
+
+  if (error) {
+    throw new TyreChecksServiceError(error.message)
+  }
+
+  const corrections = await fetchTyreCheckCorrections(input.tyreCheckId)
+  const created = corrections.find((row) => row.id === data) ?? corrections[0]
+  if (!created) {
+    throw new TyreChecksServiceError(
+      'Correction was saved but could not be reloaded.',
+    )
+  }
+  return created
+}
+
+/**
+ * Office-only: soft-delete a submitted Tyre Check.
+ * Never hard-deletes. Items, corrections and audit history remain stored.
+ */
+export async function softDeleteTyreCheck(
+  tyreCheckId: string,
+  reason: string,
+): Promise<string> {
+  await requireOfficeTyreCheckContext('delete a Tyre Check')
+  const trimmed = reason.trim()
+  if (!trimmed) {
+    throw new TyreChecksServiceError('A deletion reason is required.')
+  }
+
+  const companyId = requireVerifiedCompanyId()
+  const { data: existing, error: existingError } = await requireSupabase()
+    .from('tyre_checks')
+    .select('id, company_id, status, deleted_at')
+    .eq('company_id', companyId)
+    .eq('id', tyreCheckId)
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.softDeleteTyreCheck.lookup',
+    table: 'tyre_checks',
+    data: existing ? [existing] : [],
+    error: existingError,
+  })
+
+  if (existingError) throw new TyreChecksServiceError(existingError.message)
+  if (!existing) throw new TyreChecksServiceError('Tyre check not found.')
+  if (existing.deleted_at) {
+    throw new TyreChecksServiceError('This tyre check is already deleted.')
+  }
+  if (existing.status !== 'submitted') {
+    throw new TyreChecksServiceError(
+      'Only completed Tyre Checks can be deleted this way.',
+    )
+  }
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_office_soft_delete_tyre_check',
+    {
+      p_tyre_check_id: tyreCheckId,
+      p_reason: trimmed,
+    },
+  )
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.softDeleteTyreCheck',
+    table: 'rpc.drevora_office_soft_delete_tyre_check',
+    data: data != null ? [{ id: data }] : [],
+    error,
+  })
+
+  if (error) throw new TyreChecksServiceError(error.message)
+  return (data as string) || tyreCheckId
 }
 
 export async function createWorkerTyreCheck(
@@ -773,6 +1074,7 @@ export async function createWorkerTyreCheck(
     inspection_started_at: inspectionStartedAt,
     odometer: input.odometer,
     odometer_unit: input.odometerUnit === 'km' ? 'km' : 'miles',
+    pressure_unit: 'bar' as const,
   }
 
   const { data: parentData, error: parentError } = await requireSupabase()
@@ -806,6 +1108,7 @@ export async function createWorkerTyreCheck(
     axle_type: tyreAxleTypeFor(tyre.unit, tyre.axleNumber),
     position: tyrePositionToDb(tyre.position),
     tread_depth_mm: null,
+    pressure_value: null,
     is_dirty: false,
     has_defect: false,
     defect_notes: null,
@@ -871,6 +1174,7 @@ async function fetchWorkerTyreCheckDraftRaw(
   return mapWorkerDraft(mapListRow(row), mapDetailMeasurements(row.tyre_check_items ?? []), {
     odometer: row.odometer ?? 0,
     odometerUnit: row.odometer_unit === 'km' ? 'km' : 'miles',
+    pressureUnit: normalizeTyrePressureUnit(row.pressure_unit) ?? 'bar',
     inspectionStartedAt:
       row.inspection_started_at || row.created_at || new Date().toISOString(),
     durationSeconds: row.duration_seconds,
@@ -883,6 +1187,39 @@ export async function fetchWorkerTyreCheckDraft(
   const draft = await fetchWorkerTyreCheckDraftRaw(checkId)
   if (!draft) return null
   return correctEditableDraftLayout(draft)
+}
+
+export async function updateWorkerTyreCheckPressureUnit(
+  checkId: string,
+  pressureUnit: TyrePressureUnit,
+): Promise<TyrePressureUnit> {
+  if (pressureUnit !== 'bar' && pressureUnit !== 'psi') {
+    throw new TyreChecksServiceError('Select BAR or PSI for pressure unit.')
+  }
+
+  const companyId = requireVerifiedCompanyId()
+  const { data, error } = await requireSupabase()
+    .from('tyre_checks')
+    .update({ pressure_unit: pressureUnit })
+    .eq('company_id', companyId)
+    .eq('id', checkId)
+    .in('status', ['draft', 'in_progress'])
+    .select('pressure_unit')
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'tyreChecksService.updateWorkerTyreCheckPressureUnit',
+    table: 'tyre_checks',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) throw new TyreChecksServiceError(error.message)
+  if (!data) {
+    throw new TyreChecksServiceError('Tyre check not found or not editable.')
+  }
+
+  return normalizeTyrePressureUnit(data.pressure_unit as string) ?? pressureUnit
 }
 
 export async function updateWorkerTyreCheckItem(
@@ -898,8 +1235,15 @@ export async function updateWorkerTyreCheckItem(
     if (!parsed.ok) throw new TyreChecksServiceError(parsed.error)
   }
 
+  if (patch.pressureValue != null) {
+    const parsed = parseTyrePressureValue(String(patch.pressureValue))
+    if (!parsed.ok) throw new TyreChecksServiceError(parsed.error)
+  }
+
   const payload = {
     tread_depth_mm: patch.treadDepthMm,
+    // Explicit null when empty — never coerce missing pressure to 0.
+    pressure_value: patch.pressureValue ?? null,
     is_dirty: patch.isDirty,
     has_defect: patch.hasDefect,
     defect_notes: patch.hasDefect ? patch.defectNotes.trim() : null,
@@ -911,7 +1255,7 @@ export async function updateWorkerTyreCheckItem(
     .update(payload)
     .eq('id', itemId)
     .select(
-      'id, unit, axle_number, axle_type, position, tread_depth_mm, tread_status, is_dirty, has_defect, defect_notes, notes, photo_paths',
+      'id, unit, axle_number, axle_type, position, tread_depth_mm, pressure_value, tread_status, is_dirty, has_defect, defect_notes, notes, photo_paths',
     )
     .maybeSingle()
 

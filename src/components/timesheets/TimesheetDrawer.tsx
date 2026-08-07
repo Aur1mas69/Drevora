@@ -53,7 +53,8 @@ import {
   adminTextMuted,
 } from '@/lib/adminUiStyles'
 import { Download, Loader2, MessageSquare, Pencil, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 function useBodyScrollLock(locked: boolean) {
   useEffect(() => {
@@ -94,10 +95,13 @@ const dailyCommentInputClassName =
   'h-8 rounded-[10px] border-[#D3E9FC] bg-[#F5FAFF] px-2.5 text-xs font-medium text-[#113C69] shadow-inner shadow-[#D3E9FC]/20 placeholder:text-[#5499BF] focus-visible:border-[#218EE7] focus-visible:ring-2 focus-visible:ring-[#218EE7]/30 dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500'
 
 const tableHeadClassName =
-  'px-1.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[#0D477F] sm:px-2'
-const tableCellClassName = 'px-1.5 py-2 align-middle sm:px-2'
+  'min-w-0 px-1.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[#0D477F] sm:px-2'
+const tableCellClassName = 'min-w-0 max-w-0 overflow-hidden px-1.5 py-2 align-middle sm:px-2'
 const dayColumnHeadClassName = `${tableHeadClassName} whitespace-nowrap`
-const dayColumnCellClassName = `${tableCellClassName} whitespace-nowrap text-[12px] leading-tight font-semibold text-[#113C69] dark:text-slate-100`
+const dayColumnCellClassName = `${tableCellClassName} text-[12px] leading-tight font-semibold text-[#113C69] dark:text-slate-100`
+const holidayBadgeClassName =
+  'inline-flex max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight tracking-[0.04em] text-sky-800 ring-1 ring-sky-200 break-words whitespace-normal dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60'
+const cellTextClassName = 'block min-w-0 max-w-full break-words'
 
 function TimesheetDailyCommentField({
   dailyComment,
@@ -788,7 +792,7 @@ function AdditionalHoursCell({
       : undefined
 
   return (
-    <div className={compact ? 'space-y-1' : 'min-w-0'} title={title}>
+    <div className={compact ? 'min-w-0 space-y-1' : 'min-w-0 max-w-full'} title={title}>
       {isEditable ? (
         <TimesheetDecimalHoursInput
           value={entry.additionalHours}
@@ -803,12 +807,12 @@ function AdditionalHoursCell({
           aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
         />
       ) : (
-        <span className="text-sm font-medium tabular-nums text-[#0D477F] dark:text-slate-200">
+        <span className={`${cellTextClassName} text-sm font-medium tabular-nums text-[#0D477F] dark:text-slate-200`}>
           {displayAdditional > 0 ? formatHours(displayAdditional) : '—'}
         </span>
       )}
       {paidBreakMinutes > 0 ? (
-        <p className="text-[10px] font-medium leading-tight text-[#5499BF] dark:text-slate-400">
+        <p className={`${cellTextClassName} text-[10px] font-medium leading-tight text-[#5499BF] dark:text-slate-400`}>
           +{formatHoursFromMinutes(paidBreakMinutes)} paid break
         </p>
       ) : null}
@@ -825,7 +829,24 @@ function NotesIndicator({
   isEditable: boolean
   onUpdate: (dayDate: string, patch: Partial<TimesheetEntryInput>) => void
 }) {
-  const hasNote = entry.dailyComment.trim().length > 0
+  const [isNoteOpen, setIsNoteOpen] = useState(false)
+  const noteTitleId = useId()
+  const dayLabel = formatDayLabel(entry.dayDate)
+  const noteText = entry.dailyComment.trim()
+  const hasNote = noteText.length > 0
+
+  useEffect(() => {
+    if (!isNoteOpen) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsNoteOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isNoteOpen])
 
   if (isEditable) {
     return (
@@ -845,12 +866,76 @@ function NotesIndicator({
   }
 
   return (
-    <span
-      className="inline-flex justify-center text-[#218EE7] dark:text-blue-300"
-      title={entry.dailyComment}
-    >
-      <MessageSquare className="size-3.5" aria-label={`Note: ${entry.dailyComment}`} />
-    </span>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsNoteOpen(true)}
+        className="inline-flex size-7 items-center justify-center rounded-lg text-[#218EE7] transition-colors hover:bg-[#E8F3FE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#218EE7]/40 dark:text-blue-300 dark:hover:bg-slate-800/70"
+        aria-haspopup="dialog"
+        aria-expanded={isNoteOpen}
+        aria-label={`View daily note for ${dayLabel}`}
+        title="View daily note"
+      >
+        <MessageSquare className="size-3.5" aria-hidden="true" />
+      </button>
+
+      {isNoteOpen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
+              onClick={() => setIsNoteOpen(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-[20px] border border-[#D3E9FC] bg-white p-5 shadow-[0_30px_80px_rgba(11,38,70,0.18)] dark:border-white/10 dark:bg-slate-900 sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={noteTitleId}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2
+                      id={noteTitleId}
+                      className="text-lg font-semibold tracking-[-0.02em] text-[#113C69] dark:text-slate-50"
+                    >
+                      Daily note
+                    </h2>
+                    <p className={`mt-1 text-sm font-medium ${adminTextMuted}`}>
+                      {dayLabel}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsNoteOpen(false)}
+                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[#0D477F] hover:bg-[#E8F3FE] dark:text-slate-300 dark:hover:bg-slate-800/70"
+                    aria-label="Close note"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <p
+                  className={`mt-4 max-h-[min(50vh,20rem)] overflow-y-auto whitespace-pre-wrap break-words rounded-[14px] border border-[#D3E9FC] bg-[#F5FAFF] px-4 py-3 text-sm leading-6 ${adminText} dark:border-white/10 dark:bg-slate-800/70`}
+                >
+                  {noteText}
+                </p>
+
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsNoteOpen(false)}
+                    className="h-9 rounded-[10px] px-3.5 text-xs font-semibold text-[#0D477F] hover:bg-[#E8F3FE] dark:text-slate-300 dark:hover:bg-slate-800/50"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }
 
@@ -865,25 +950,13 @@ function DayTypeControl({
 }) {
   if (!editable) {
     if (dayType === 'holiday') {
-      return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
-          H · Full day
-        </span>
-      )
+      return <span className={holidayBadgeClassName}>H · Full day</span>
     }
     if (dayType === 'holiday_am') {
-      return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
-          H-AM · First half
-        </span>
-      )
+      return <span className={holidayBadgeClassName}>H-AM · First half</span>
     }
     if (dayType === 'holiday_pm') {
-      return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/60">
-          H-PM · Second half
-        </span>
-      )
+      return <span className={holidayBadgeClassName}>H-PM · Second half</span>
     }
     return (
       <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5499BF]">
@@ -953,8 +1026,8 @@ function TimesheetDayRow({
       } dark:border-white/10 dark:hover:bg-slate-800/70`}
     >
       <td className={dayColumnCellClassName}>
-        <div className="flex flex-col gap-1">
-          <span>{formatDayLabel(entry.dayDate)}</span>
+        <div className="flex min-w-0 max-w-full flex-col gap-1">
+          <span className="whitespace-nowrap">{formatDayLabel(entry.dayDate)}</span>
           <DayTypeControl
             dayType={entry.dayType ?? 'work'}
             editable={isEditable}
@@ -964,13 +1037,13 @@ function TimesheetDayRow({
       </td>
       <td className={tableCellClassName}>
         {isFullHoliday ? (
-          <span className="text-sm font-bold uppercase tracking-[0.08em] text-sky-800 dark:text-sky-200">
+          <span className={`${cellTextClassName} text-sm font-bold uppercase tracking-[0.08em] text-sky-800 dark:text-sky-200`}>
             {holidayCode}
           </span>
         ) : isEditable ? (
           <div className="flex min-w-0 flex-col gap-1">
             {isHalfHoliday && holidayCode ? (
-              <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 dark:text-sky-200">
+              <span className={`${cellTextClassName} text-[11px] font-bold uppercase tracking-[0.06em] text-sky-800 dark:text-sky-200`}>
                 {holidayCode} + Work
               </span>
             ) : null}
@@ -999,7 +1072,7 @@ function TimesheetDayRow({
             ) : null}
           </div>
         ) : (
-          <span className="tabular-nums font-medium text-[#113C69] dark:text-slate-200">
+          <span className={`${cellTextClassName} tabular-nums font-medium text-[#113C69] dark:text-slate-200`}>
             {isHalfHoliday && holidayCode
               ? `${holidayCode}${hasShift ? ` · ${formatTime(entry.startTime)}–${formatTime(entry.finishTime)}` : ''}`
               : hasShift
@@ -1047,11 +1120,11 @@ function TimesheetDayRow({
             aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
           />
         ) : (
-          <span className="text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100">
+          <span className={`text-sm font-semibold tabular-nums text-[#113C69] dark:text-slate-100 ${cellTextClassName}`}>
             {isHoliday ? (
               <span className="flex flex-col gap-0.5">
                 {payable.holidayHours > 0 || isHoliday ? (
-                  <span>
+                  <span className={cellTextClassName}>
                     H {formatHours(payable.holidayHours)}
                     {payable.workBasicHours > 0
                       ? ` + Work ${formatHours(payable.workBasicHours)}`
@@ -1082,7 +1155,7 @@ function TimesheetDayRow({
             aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
           />
         ) : (
-          <span className="text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300">
+          <span className={`${cellTextClassName} text-sm font-semibold tabular-nums text-[#0B68BE] dark:text-blue-300`}>
             {isFullHoliday
               ? formatHours(0)
               : payable.overtimeDisplayHours > 0
@@ -1093,9 +1166,9 @@ function TimesheetDayRow({
       </td>
       <td className={tableCellClassName}>
         {isFullHoliday ? (
-          <span className="text-xs font-semibold text-[#5499BF]">Holiday</span>
+          <span className={`${cellTextClassName} text-xs font-semibold text-[#5499BF]`}>Holiday</span>
         ) : isHalfHoliday ? (
-          <span className="text-xs font-semibold text-sky-800 dark:text-sky-200">
+          <span className={`${cellTextClassName} text-xs font-semibold text-sky-800 dark:text-sky-200`}>
             {holidayCode} + Work
           </span>
         ) : (
@@ -1113,7 +1186,9 @@ function TimesheetDayRow({
       <td
         className={`${tableCellClassName} text-sm font-bold tabular-nums text-[#0B68BE] dark:text-blue-300`}
       >
-        {incompletePair ? '—' : formatTotalHours(dayTotal)}
+        <span className={cellTextClassName}>
+          {incompletePair ? '—' : formatTotalHours(dayTotal)}
+        </span>
       </td>
       <td className={`${tableCellClassName} text-center`}>
         <NotesIndicator entry={entry} isEditable={isEditable} onUpdate={onUpdate} />

@@ -1,9 +1,12 @@
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
 import {
+  formatTyrePressureDisplay,
   summarizeAxleLayoutFromMeasurements,
   tyreStatusLabel,
   tyreTreadVisualClasses,
+  type TyreCheckCorrectionRecord,
   type TyreMeasurement,
+  type TyrePressureUnit,
 } from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import { AlertTriangle } from 'lucide-react'
@@ -17,9 +20,16 @@ export type TyreCheckAdminReportProps = {
   summaryLabel: string
   notes?: string | null
   measurements: TyreMeasurement[]
+  pressureUnit?: TyrePressureUnit | null
+  corrections?: TyreCheckCorrectionRecord[]
   /** Force light pastel styling for PDF capture. */
   forPdfCapture?: boolean
   className?: string
+}
+
+function formatMm(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${value.toFixed(1)} mm`
 }
 
 /** Shared Admin Tyre Check report body (detail modal + PDF capture). */
@@ -32,6 +42,8 @@ export function TyreCheckAdminReport({
   summaryLabel,
   notes,
   measurements,
+  pressureUnit = null,
+  corrections = [],
   forPdfCapture = false,
   className,
 }: TyreCheckAdminReportProps) {
@@ -39,6 +51,7 @@ export function TyreCheckAdminReport({
   const vehicleTitle = trailerLabel
     ? `${vehicleLabel} · top view`
     : `${vehicleLabel} · top view`
+  const hasCorrections = corrections.length > 0
 
   return (
     <div
@@ -111,6 +124,19 @@ export function TyreCheckAdminReport({
         </div>
       </dl>
 
+      {hasCorrections ? (
+        <div
+          data-pdf-block="corrected-badge"
+          className={cn(
+            'inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200',
+            !forPdfCapture && 'dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800/50',
+          )}
+        >
+          Corrected · {corrections.length}{' '}
+          {corrections.length === 1 ? 'correction' : 'corrections'} on record
+        </div>
+      ) : null}
+
       <p
         data-pdf-block="summary-label"
         className={cn(
@@ -119,6 +145,7 @@ export function TyreCheckAdminReport({
         )}
       >
         {summaryLabel}
+        {pressureUnit ? ` · Pressure unit ${pressureUnit.toUpperCase()}` : ''}
       </p>
       {notes?.trim() ? (
         <p
@@ -178,6 +205,10 @@ export function TyreCheckAdminReport({
                   ? '—'
                   : `${tyre.treadDepthMm.toFixed(1)} mm`}
               </span>
+              <span>
+                Pressure:{' '}
+                {formatTyrePressureDisplay(tyre.pressureValue, pressureUnit)}
+              </span>
               <span
                 className={cn(
                   'rounded-full px-2 py-0.5 text-xs font-semibold',
@@ -214,6 +245,76 @@ export function TyreCheckAdminReport({
           </div>
         ))}
       </div>
+
+      {hasCorrections ? (
+        <div className="space-y-3" data-pdf-block="correction-history">
+          <h4
+            className={cn(
+              'text-sm font-semibold text-[#2A376F]',
+              !forPdfCapture && 'dark:text-slate-100',
+            )}
+          >
+            Correction history
+          </h4>
+          {corrections.map((correction) => (
+            <div
+              key={correction.id}
+              className={cn(
+                'rounded-[12px] border border-amber-200 bg-amber-50/70 px-3 py-3 text-sm',
+                !forPdfCapture &&
+                  'dark:border-amber-800/40 dark:bg-amber-950/20',
+              )}
+            >
+              <p
+                className={cn(
+                  'font-semibold text-amber-950',
+                  !forPdfCapture && 'dark:text-amber-100',
+                )}
+              >
+                {new Date(correction.correctedAt).toLocaleString()} · Reason:{' '}
+                {correction.correctionReason}
+              </p>
+              <p
+                className={cn(
+                  'mt-1 text-xs text-amber-900/80',
+                  !forPdfCapture && 'dark:text-amber-200/80',
+                )}
+              >
+                Corrected by {correction.correctedBy}
+                {correction.oldPressureUnit !== correction.newPressureUnit
+                  ? ` · Unit ${correction.oldPressureUnit ?? '—'} → ${correction.newPressureUnit ?? '—'}`
+                  : ''}
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-slate-700 dark:text-slate-300">
+                {correction.changes.map((change) => {
+                  const axleLabel =
+                    change.unit === 'trailer'
+                      ? `Trailer Axle ${change.axleNumber}`
+                      : change.axleNumber === 1
+                        ? 'Steer Axle 1'
+                        : `Drive Axle ${change.axleNumber}`
+                  return (
+                    <li key={change.id}>
+                      {axleLabel} · {change.position}: tread{' '}
+                      {formatMm(change.oldTreadDepthMm)} →{' '}
+                      {formatMm(change.newTreadDepthMm)}; pressure{' '}
+                      {formatTyrePressureDisplay(
+                        change.oldPressureValue,
+                        correction.oldPressureUnit ?? pressureUnit,
+                      )}{' '}
+                      →{' '}
+                      {formatTyrePressureDisplay(
+                        change.newPressureValue,
+                        correction.newPressureUnit ?? pressureUnit,
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

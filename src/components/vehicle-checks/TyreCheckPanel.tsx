@@ -1,5 +1,7 @@
 import { timesheetKpiVisualStyles } from '@/components/timesheets/timesheetSummaryKpiStyles'
 import { AxleLayoutEditor } from '@/components/vehicle-checks/AxleLayoutEditor'
+import { CorrectTyreCheckModal } from '@/components/vehicle-checks/CorrectTyreCheckModal'
+import { DeleteTyreCheckModal } from '@/components/vehicle-checks/DeleteTyreCheckModal'
 import { TyreCheckAdminReport } from '@/components/vehicle-checks/TyreCheckAdminReport'
 import { TyreCheckAdminSectionTabs } from '@/components/vehicle-checks/TyreCheckAdminSectionTabs'
 import { TyreCheckDiagram } from '@/components/vehicle-checks/TyreCheckDiagram'
@@ -50,9 +52,11 @@ import {
 import { cn } from '@/lib/utils'
 import type { Driver } from '@/services/driversService'
 import {
+  applyTyreCheckCorrection,
   fetchTyreCheckAdminOverview,
   fetchTyreCheckDetail,
   fetchTyreChecks,
+  softDeleteTyreCheck,
   TyreChecksServiceError,
 } from '@/services/tyreChecksService'
 import {
@@ -67,6 +71,7 @@ import {
   Clock3,
   Download,
   Loader2,
+  Pencil,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -134,11 +139,19 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [viewingCheck, setViewingCheck] = useState<SavedTyreCheck | null>(null)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [correctModalOpen, setCorrectModalOpen] = useState(false)
+  const [isSavingCorrection, setIsSavingCorrection] = useState(false)
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TyreCheckListItem | null>(null)
+  const [isSavingDelete, setIsSavingDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const detailReportRef = useRef<HTMLDivElement>(null)
 
-  useBodyScrollLock(Boolean(viewingCheck))
+  useBodyScrollLock(
+    Boolean(viewingCheck) || correctModalOpen || Boolean(deleteTarget),
+  )
 
   useEffect(() => {
     if (!viewingCheck) return
@@ -317,11 +330,15 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
         checkedBy: detail.listItem.workerName,
         truckAxleCount: detail.listItem.truckAxleCount,
         trailerAxleCount: detail.listItem.trailerAxleCount,
+        pressureUnit: detail.pressureUnit,
         summaryLabel: detail.listItem.summaryLabel,
         notes: detail.listItem.notes?.trim() || '',
         photoCount: 0,
         measurements: detail.measurements,
+        corrections: detail.corrections,
       })
+      setCorrectModalOpen(false)
+      setCorrectionError(null)
     } catch (error) {
       const message =
         error instanceof TyreChecksServiceError
@@ -333,6 +350,61 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     } finally {
       setIsLoadingDetail(false)
     }
+  }
+
+  async function handleEditHistory(check: TyreCheckListItem) {
+    setIsLoadingDetail(true)
+    try {
+      const detail = await fetchTyreCheckDetail(check.id)
+      if (!detail) {
+        showToast('Tyre check not found')
+        return
+      }
+      const vehicleMakeModel = [detail.listItem.vehicleMake, detail.listItem.vehicleModel]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+      const trailerLabel =
+        detail.listItem.trailerRegistration ||
+        detail.listItem.trailerNumber ||
+        null
+      setViewingCheck({
+        id: detail.listItem.id,
+        checkedAt: detail.listItem.inspectedAt,
+        vehicleId: detail.listItem.vehicleId,
+        vehicleLabel: vehicleMakeModel
+          ? `${detail.listItem.vehicleRegistration} · ${vehicleMakeModel}`
+          : detail.listItem.vehicleRegistration,
+        trailerId: detail.listItem.trailerVehicleId,
+        trailerLabel,
+        checkedBy: detail.listItem.workerName,
+        truckAxleCount: detail.listItem.truckAxleCount,
+        trailerAxleCount: detail.listItem.trailerAxleCount,
+        pressureUnit: detail.pressureUnit,
+        summaryLabel: detail.listItem.summaryLabel,
+        notes: detail.listItem.notes?.trim() || '',
+        photoCount: 0,
+        measurements: detail.measurements,
+        corrections: detail.corrections,
+      })
+      setCorrectionError(null)
+      setCorrectModalOpen(true)
+    } catch (error) {
+      const message =
+        error instanceof TyreChecksServiceError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to open tyre check for edit'
+      showToast(message)
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  function handleDeleteHistory(check: TyreCheckListItem) {
+    setDeleteError(null)
+    setDeleteTarget(check)
   }
 
   function handleClearHistoryFilters() {
@@ -505,6 +577,8 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
               />
             }
             onViewCheck={(check) => void handleViewHistory(check)}
+            onEditCheck={(check) => void handleEditHistory(check)}
+            onDeleteCheck={handleDeleteHistory}
             vehicleDisplayLabel={vehicleDisplayLabel}
             trailerDisplayLabel={trailerDisplayLabel}
           />
@@ -598,6 +672,20 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                       type="button"
                       variant="outline"
                       className="h-9 rounded-[10px] px-2.5 text-xs font-semibold"
+                      disabled={isDownloadingPdf || isSavingCorrection}
+                      aria-label="Edit tyre check measurements"
+                      onClick={() => {
+                        setCorrectionError(null)
+                        setCorrectModalOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 rounded-[10px] px-2.5 text-xs font-semibold"
                       disabled={isDownloadingPdf}
                       aria-label="Download tyre check PDF"
                       onClick={() => {
@@ -629,7 +717,10 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                       variant="outline"
                       className="h-9 rounded-[10px]"
                       disabled={isDownloadingPdf}
-                      onClick={() => setViewingCheck(null)}
+                      onClick={() => {
+                        setCorrectModalOpen(false)
+                        setViewingCheck(null)
+                      }}
                     >
                       Close
                     </Button>
@@ -647,6 +738,8 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
                       summaryLabel={viewingCheck.summaryLabel}
                       notes={viewingCheck.notes}
                       measurements={viewingCheck.measurements}
+                      pressureUnit={viewingCheck.pressureUnit}
+                      corrections={viewingCheck.corrections}
                     />
                   </div>
                 </div>
@@ -655,6 +748,117 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
             document.body,
           )
         : null}
+
+      <CorrectTyreCheckModal
+        check={viewingCheck}
+        isOpen={correctModalOpen && Boolean(viewingCheck)}
+        isSaving={isSavingCorrection}
+        errorMessage={correctionError}
+        onClose={() => {
+          if (isSavingCorrection) return
+          setCorrectModalOpen(false)
+          setCorrectionError(null)
+        }}
+        onConfirm={(payload) => {
+          if (!viewingCheck) return
+          setIsSavingCorrection(true)
+          setCorrectionError(null)
+          void applyTyreCheckCorrection({
+            tyreCheckId: viewingCheck.id,
+            reason: payload.reason,
+            pressureUnit: payload.pressureUnit,
+            items: payload.items,
+          })
+            .then(async () => {
+              const detail = await fetchTyreCheckDetail(viewingCheck.id)
+              if (!detail) {
+                throw new TyreChecksServiceError('Corrected check could not be reloaded.')
+              }
+              const vehicleMakeModel = [
+                detail.listItem.vehicleMake,
+                detail.listItem.vehicleModel,
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .trim()
+              const trailerLabel =
+                detail.listItem.trailerRegistration ||
+                detail.listItem.trailerNumber ||
+                null
+              setViewingCheck({
+                id: detail.listItem.id,
+                checkedAt: detail.listItem.inspectedAt,
+                vehicleId: detail.listItem.vehicleId,
+                vehicleLabel: vehicleMakeModel
+                  ? `${detail.listItem.vehicleRegistration} · ${vehicleMakeModel}`
+                  : detail.listItem.vehicleRegistration,
+                trailerId: detail.listItem.trailerVehicleId,
+                trailerLabel,
+                checkedBy: detail.listItem.workerName,
+                truckAxleCount: detail.listItem.truckAxleCount,
+                trailerAxleCount: detail.listItem.trailerAxleCount,
+                pressureUnit: detail.pressureUnit,
+                summaryLabel: detail.listItem.summaryLabel,
+                notes: detail.listItem.notes?.trim() || '',
+                photoCount: 0,
+                measurements: detail.measurements,
+                corrections: detail.corrections,
+              })
+              setCorrectModalOpen(false)
+              showToast('Tyre check correction saved')
+              void loadHistory()
+              void loadOverview()
+            })
+            .catch((error) => {
+              setCorrectionError(
+                error instanceof TyreChecksServiceError
+                  ? error.message
+                  : error instanceof Error
+                    ? error.message
+                    : 'Unable to save correction.',
+              )
+            })
+            .finally(() => setIsSavingCorrection(false))
+        }}
+      />
+
+      <DeleteTyreCheckModal
+        check={deleteTarget}
+        isOpen={Boolean(deleteTarget)}
+        isSaving={isSavingDelete}
+        errorMessage={deleteError}
+        onClose={() => {
+          if (isSavingDelete) return
+          setDeleteTarget(null)
+          setDeleteError(null)
+        }}
+        onConfirm={(reason) => {
+          if (!deleteTarget) return
+          setIsSavingDelete(true)
+          setDeleteError(null)
+          void softDeleteTyreCheck(deleteTarget.id, reason)
+            .then(() => {
+              if (viewingCheck?.id === deleteTarget.id) {
+                setCorrectModalOpen(false)
+                setViewingCheck(null)
+              }
+              setDeleteTarget(null)
+              showToast('Tyre check deleted from active list')
+              void loadHistory()
+              void loadOverview()
+            })
+            .catch((error) => {
+              setDeleteError(
+                error instanceof TyreChecksServiceError
+                  ? error.message
+                  : error instanceof Error
+                    ? error.message
+                    : 'Unable to delete tyre check.',
+              )
+            })
+            .finally(() => setIsSavingDelete(false))
+        }}
+      />
 
       {toastMessage ? (
         <div className="fixed bottom-6 right-6 z-[130] rounded-[12px] bg-[#2A376F] px-4 py-2.5 text-sm font-medium text-white shadow-lg">
@@ -815,6 +1019,8 @@ function HistoryWorkspace({
   isExporting,
   exportMenu,
   onViewCheck,
+  onEditCheck,
+  onDeleteCheck,
   vehicleDisplayLabel,
   trailerDisplayLabel,
 }: {
@@ -852,6 +1058,8 @@ function HistoryWorkspace({
   isExporting: boolean
   exportMenu: ReactNode
   onViewCheck: (check: TyreCheckListItem) => void
+  onEditCheck: (check: TyreCheckListItem) => void
+  onDeleteCheck: (check: TyreCheckListItem) => void
   vehicleDisplayLabel: (check: TyreCheckListItem) => string
   trailerDisplayLabel: (check: TyreCheckListItem) => string
 }) {
@@ -968,15 +1176,35 @@ function HistoryWorkspace({
                       {check.summaryLabel}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 rounded-[10px] px-3 text-xs"
-                        disabled={isLoadingDetail}
-                        onClick={() => onViewCheck(check)}
-                      >
-                        View
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 rounded-[10px] px-2.5 text-xs"
+                          disabled={isLoadingDetail}
+                          onClick={() => onViewCheck(check)}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 rounded-[10px] px-2.5 text-xs"
+                          disabled={isLoadingDetail}
+                          onClick={() => onEditCheck(check)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 rounded-[10px] px-2.5 text-xs text-rose-700 ring-rose-200 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:ring-rose-900/40 dark:hover:bg-rose-950/30"
+                          disabled={isLoadingDetail}
+                          onClick={() => onDeleteCheck(check)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))

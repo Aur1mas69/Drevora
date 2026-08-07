@@ -20,6 +20,8 @@ export type TyreMeasurement = TyrePositionKey & {
   id: string
   axleLabel: string
   treadDepthMm: number | null
+  /** Optional pressure for this position; NULL when not recorded. */
+  pressureValue: number | null
   status: TyreStatus
   /** Present when loaded from / saved to tyre_check_items. */
   dbItemId?: string | null
@@ -28,6 +30,9 @@ export type TyreMeasurement = TyrePositionKey & {
   defectNotes?: string
   notes?: string
 }
+
+/** Whole-check tyre pressure unit (one selector per Tyre Check). */
+export type TyrePressureUnit = 'bar' | 'psi'
 
 export type WorkerTyreCheckDraft = {
   checkId: string
@@ -38,6 +43,8 @@ export type WorkerTyreCheckDraft = {
   workerId: string
   odometer: number
   odometerUnit: 'miles' | 'km'
+  /** Whole-check pressure unit; default bar until Worker changes it. */
+  pressureUnit: TyrePressureUnit
   inspectionStartedAt: string
   status: 'draft' | 'in_progress' | 'submitted'
   items: TyreMeasurement[]
@@ -70,10 +77,35 @@ export type SavedTyreCheck = {
   checkedBy: string
   truckAxleCount: number
   trailerAxleCount: number | null
+  pressureUnit: TyrePressureUnit | null
   summaryLabel: string
   notes: string
   photoCount: number
   measurements: TyreMeasurement[]
+  corrections: TyreCheckCorrectionRecord[]
+}
+
+export type TyreCheckCorrectionItemChange = {
+  id: string
+  tyreCheckItemId: string
+  unit: TyreUnit
+  axleNumber: number
+  position: TyrePosition
+  oldTreadDepthMm: number | null
+  newTreadDepthMm: number | null
+  oldPressureValue: number | null
+  newPressureValue: number | null
+}
+
+export type TyreCheckCorrectionRecord = {
+  id: string
+  tyreCheckId: string
+  correctionReason: string
+  correctedBy: string
+  correctedAt: string
+  oldPressureUnit: TyrePressureUnit | null
+  newPressureUnit: TyrePressureUnit | null
+  changes: TyreCheckCorrectionItemChange[]
 }
 
 /** Stored parent overall_result values (DB CHECK / compute function). */
@@ -378,6 +410,47 @@ export function parseTyreTreadDepthMm(
     return { ok: false, error: 'Use 0.5 mm steps (for example 7.5), or exact 1.6 mm.' }
   }
   return { ok: true, value: stepped }
+}
+
+/**
+ * Optional tyre pressure. Empty → NULL (never coerced to zero).
+ * Accepts sensible decimals within 0–200 (covers BAR and PSI).
+ */
+export function parseTyrePressureValue(
+  raw: string,
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  const trimmed = raw.trim()
+  if (trimmed === '') return { ok: true, value: null }
+
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed)) {
+    return { ok: false, error: 'Enter a valid tyre pressure, or leave blank.' }
+  }
+  if (parsed < 0 || parsed > 200) {
+    return { ok: false, error: 'Pressure must be between 0 and 200.' }
+  }
+  const rounded = Math.round(parsed * 100) / 100
+  return { ok: true, value: rounded }
+}
+
+export function normalizeTyrePressureUnit(
+  value: string | null | undefined,
+): TyrePressureUnit | null {
+  if (value === 'bar' || value === 'psi') return value
+  return null
+}
+
+export function formatTyrePressureDisplay(
+  value: number | null | undefined,
+  unit: TyrePressureUnit | null | undefined,
+): string {
+  if (value == null || Number.isNaN(value)) return 'Not recorded'
+  const unitLabel = unit === 'psi' ? 'psi' : unit === 'bar' ? 'bar' : ''
+  const formatted =
+    Number.isInteger(value) || Math.abs(value * 10 - Math.round(value * 10)) < 1e-9
+      ? value.toFixed(1).replace(/\.0$/, '')
+      : String(Math.round(value * 100) / 100)
+  return unitLabel ? `${formatted} ${unitLabel}` : formatted
 }
 
 export type TyreDbPosition =
@@ -909,6 +982,7 @@ export function buildTyreLayout(
         axleLabel: axleLabel('vehicle', axleNumber),
         position,
         treadDepthMm: null,
+        pressureValue: null,
         status: 'not_checked',
       })
     }
@@ -934,6 +1008,7 @@ export function buildTyreLayout(
           axleLabel: axleLabel('trailer', axleNumber),
           position,
           treadDepthMm: null,
+          pressureValue: null,
           status: 'not_checked',
         })
       }

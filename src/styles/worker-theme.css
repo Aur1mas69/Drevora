@@ -284,8 +284,8 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-active svg {
   position: relative;
   z-index: 1;
   display: flex;
-  width: 2.5rem; /* 40px — reserved for every item so spacing stays equal */
-  height: 2.125rem; /* 34px — shorter bar so Home CTA clears the nav */
+  width: 2.25rem; /* 36px — reserved for every item so spacing stays equal */
+  height: 1.875rem; /* 30px — compact bar; icon size unchanged (size-5) */
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -360,7 +360,7 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
    or page content underneath the fixed bottom bar. */
 .worker-mobile-layout .worker-nav-indicator {
   position: absolute;
-  top: 0.1rem;
+  top: 0.05rem;
   left: 50%;
   z-index: 0;
   width: 1.125rem;
@@ -597,8 +597,9 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 
 .worker-dark .worker-mobile-layout .border-rose-100,
 .worker-dark .worker-mobile-layout .border-rose-200,
+.worker-dark .worker-mobile-layout .border-rose-300,
 .worker-dark .worker-mobile-layout .ring-rose-200 {
-  border-color: rgba(251, 113, 133, 0.35) !important;
+  border-color: rgba(251, 113, 133, 0.45) !important;
   --tw-ring-color: rgba(251, 113, 133, 0.35) !important;
 }
 

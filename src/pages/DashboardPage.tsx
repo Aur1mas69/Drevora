@@ -610,7 +610,7 @@ function DashboardPage() {
                 </p>
                 <p
                   className={cn(
-                    'worker-home-dv-value mt-0.5 truncate text-[13px] font-semibold leading-snug',
+                    'worker-home-dv-value mt-0.5 truncate text-[17px] font-bold leading-tight tracking-wide',
                     !isDark && 'text-[color:var(--worker-text)]',
                   )}
                 >
