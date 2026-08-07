@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Resend } from 'resend'
 
 const DEFAULT_TARGET_EMAIL = 'admin@drevora.uk'
-const FROM_EMAIL = 'DREVORA Demo <noreply@drevora.uk>'
+const FROM_EMAIL = 'DREVORA Demo <noreply@notify.drevora.uk>'
 
 type DemoRequestBody = {
     fullName?: string
