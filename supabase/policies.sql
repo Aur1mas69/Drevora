@@ -904,6 +904,68 @@ revoke all privileges on function public.drevora_storage_can_write_support_attac
 grant execute on function public.drevora_storage_can_write_support_attachment(text) to authenticated;
 
 -- -----------------------------------------------------------------------------
+-- Worker private notes (Worker-only personal work notes)
+-- Applied by 20260807210000_create_worker_private_notes.sql
+-- No Office/Admin policies — private to the signed-in Worker.
+-- -----------------------------------------------------------------------------
+alter table public.worker_private_notes enable row level security;
+
+revoke all on table public.worker_private_notes from anon;
+revoke all on table public.worker_private_notes from authenticated;
+revoke all on table public.worker_private_notes from public;
+
+grant select, insert, update, delete on table public.worker_private_notes to authenticated;
+
+drop policy if exists worker_private_notes_worker_select_own on public.worker_private_notes;
+create policy worker_private_notes_worker_select_own
+  on public.worker_private_notes
+  for select
+  to authenticated
+  using (
+    driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and public.drevora_driver_in_company(driver_id, company_id)
+  );
+
+drop policy if exists worker_private_notes_worker_insert_own on public.worker_private_notes;
+create policy worker_private_notes_worker_insert_own
+  on public.worker_private_notes
+  for insert
+  to authenticated
+  with check (
+    driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and public.drevora_driver_in_company(driver_id, company_id)
+  );
+
+drop policy if exists worker_private_notes_worker_update_own on public.worker_private_notes;
+create policy worker_private_notes_worker_update_own
+  on public.worker_private_notes
+  for update
+  to authenticated
+  using (
+    driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and public.drevora_driver_in_company(driver_id, company_id)
+  )
+  with check (
+    driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and public.drevora_driver_in_company(driver_id, company_id)
+  );
+
+drop policy if exists worker_private_notes_worker_delete_own on public.worker_private_notes;
+create policy worker_private_notes_worker_delete_own
+  on public.worker_private_notes
+  for delete
+  to authenticated
+  using (
+    driver_id = public.drevora_auth_user_driver_id()
+    and public.drevora_auth_user_belongs_to_company_id(company_id)
+    and public.drevora_driver_in_company(driver_id, company_id)
+  );
+
+-- -----------------------------------------------------------------------------
 -- Production — enable RLS and add policies (NOT active during MVP)
 -- Uncomment and adapt before go-live. Example pattern shown below.
 -- -----------------------------------------------------------------------------

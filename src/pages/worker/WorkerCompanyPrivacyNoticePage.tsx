@@ -50,7 +50,7 @@ export default function WorkerCompanyPrivacyNoticePage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <div className="space-y-2">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink to="/worker/settings" label="Settings" />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
           Company Privacy Notice
         </h1>

@@ -73,6 +73,7 @@ const WorkerDocumentsPage = lazy(
 const WorkerContactsPage = lazy(
   () => import('@/pages/worker/WorkerContactsPage'),
 )
+const WorkerNotesPage = lazy(() => import('@/pages/worker/WorkerNotesPage'))
 const WorkerSettingsPage = lazy(
   () => import('@/pages/worker/WorkerSettingsPage'),
 )
@@ -570,6 +571,7 @@ function AppRouter() {
           />
           <Route path="/worker/documents" element={<WorkerDocumentsPage />} />
           <Route path="/worker/contacts" element={<WorkerContactsPage />} />
+          <Route path="/worker/notes" element={<WorkerNotesPage />} />
           <Route path="/worker/settings" element={<WorkerSettingsPage />} />
           <Route
             path="/worker/settings/timesheet"

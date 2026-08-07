@@ -1,5 +1,4 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import {
   WorkerNavigationGuardProvider,
   useWorkerNavigationGuard,
@@ -8,7 +7,7 @@ import {
   applyResolvedWorkerAppearance,
   clearWorkerAppearance,
 } from '@/lib/workerAppearance'
-import { LOGIN_PATH } from '@/lib/membershipRoles'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   getWorkerBottomNavItems,
   isWorkerNavPathActive,
@@ -17,7 +16,7 @@ import {
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { subscribeWorkerVisualViewportSync } from '@/lib/workerVisualViewport'
-import { Home, LogOut } from 'lucide-react'
+import { Home } from 'lucide-react'
 import { useLayoutEffect, useMemo, type MouseEvent } from 'react'
 
 function navButtonClass(active: boolean) {
@@ -30,7 +29,7 @@ function navButtonClass(active: boolean) {
 function MainLayoutShell() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signOut, session } = useAuth()
+  const { session } = useAuth()
   const { attemptLeave } = useWorkerNavigationGuard()
   const userId = session?.user.id ?? null
 
@@ -53,15 +52,6 @@ function MainLayoutShell() {
     event?.preventDefault()
     attemptLeave(() => {
       navigate(to)
-    })
-  }
-
-  async function handleSignOut() {
-    attemptLeave(() => {
-      void (async () => {
-        await signOut()
-        navigate(LOGIN_PATH, { replace: true })
-      })()
     })
   }
 
@@ -114,18 +104,6 @@ function MainLayoutShell() {
             </NavLink>
 
             {bottomNavItems.map((item) => renderNavLink(item))}
-
-            <button
-              type="button"
-              aria-label="Sign out"
-              onClick={() => void handleSignOut()}
-              className={navButtonClass(false)}
-            >
-              <span className="worker-nav-icon-wrap" aria-hidden>
-                <LogOut className="size-5 shrink-0" strokeWidth={2.25} />
-              </span>
-              <span className="truncate">Sign out</span>
-            </button>
           </div>
         </div>
       </div>

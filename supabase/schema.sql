@@ -4933,6 +4933,44 @@ create trigger account_deletion_requests_set_updated_at
 
 
 -- -----------------------------------------------------------------------------
+-- Worker Private Notes (Worker-only personal work notes)
+-- Canonical migration: 20260807210000_create_worker_private_notes.sql
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.worker_private_notes (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete cascade,
+  driver_id uuid not null references public.drivers (id) on delete cascade,
+  title text not null,
+  content text not null,
+  is_pinned boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint worker_private_notes_title_len_check check (
+    char_length(trim(title)) >= 1 and char_length(title) <= 120
+  ),
+  constraint worker_private_notes_content_len_check check (
+    char_length(trim(content)) >= 1 and char_length(content) <= 4000
+  )
+);
+
+create index if not exists worker_private_notes_driver_pinned_updated_idx
+  on public.worker_private_notes (driver_id, is_pinned desc, updated_at desc);
+
+create index if not exists worker_private_notes_company_driver_idx
+  on public.worker_private_notes (company_id, driver_id);
+
+comment on table public.worker_private_notes is
+  'Private Worker personal work notes. Own-row RLS only via drevora_auth_user_driver_id(); no Office policies.';
+
+drop trigger if exists worker_private_notes_set_updated_at on public.worker_private_notes;
+create trigger worker_private_notes_set_updated_at
+  before update on public.worker_private_notes
+  for each row
+  execute function public.drevora_set_updated_at();
+
+
+-- -----------------------------------------------------------------------------
 -- Next steps
 -- 1. Run policies.sql  — RLS configuration (MVP: disabled)
 -- 2. Run seed.sql      — optional demo data (local/dev only)
@@ -4958,4 +4996,6 @@ create trigger account_deletion_requests_set_updated_at
 --   20260802140000_timesheet_submission_confirmations_rls.sql
 -- Account deletion requests (Worker self-service, SELECT-own only):
 --   20260803180000_create_account_deletion_requests.sql
+-- Worker private notes (own-row RLS, no Office policies):
+--   20260807210000_create_worker_private_notes.sql
 -- -----------------------------------------------------------------------------

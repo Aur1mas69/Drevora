@@ -10,7 +10,6 @@ import {
   fetchWorkerVisibleContacts,
 } from '@/services/contactsService'
 import { Mail, Phone } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 
 function telHref(phone: string): string {
@@ -238,13 +237,6 @@ export default function WorkerSettingsContactOfficePage() {
           ))}
         </ul>
       )}
-
-      <Link
-        to="/worker/contacts"
-        className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#89CFF0] bg-white text-sm font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-slate-600 dark:bg-slate-900/40 dark:text-[#A3F1AB]"
-      >
-        Open Contacts
-      </Link>
     </div>
   )
 }

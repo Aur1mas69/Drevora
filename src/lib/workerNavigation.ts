@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   Contact,
   FileText,
+  NotebookPen,
   Settings,
   Truck,
 } from 'lucide-react'
@@ -24,6 +25,8 @@ export type WorkerNavItem = {
   /** Short label for bottom bar when space is tight. */
   shortLabel?: string
 }
+
+export const WORKER_NOTES_PATH = '/worker/notes'
 
 /** Final Worker main menu order. */
 export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
@@ -63,6 +66,13 @@ export const WORKER_NAV_ITEMS: readonly WorkerNavItem[] = [
     icon: Contact,
   },
   {
+    id: 'notes',
+    label: 'Notes',
+    shortLabel: 'Notes',
+    to: WORKER_NOTES_PATH,
+    icon: NotebookPen,
+  },
+  {
     id: 'settings',
     label: 'Settings',
     shortLabel: 'Settings',
@@ -86,13 +96,14 @@ export function getWorkerHomeQuickActionItems(): WorkerNavItem[] {
 }
 
 /**
- * Persistent bottom navigation items between Home and Sign out.
- * Home and Sign out are rendered directly by MainLayout (not data-driven),
- * so the bottom bar has exactly 4 items: Home, Contacts, Settings, Sign out.
+ * Persistent bottom navigation items after Home.
+ * Home is rendered by MainLayout; bottom bar is exactly 4 items:
+ * Home, Contacts, Notes, Settings. Sign out stays on Settings.
  */
 export function getWorkerBottomNavItems(): WorkerNavItem[] {
   return WORKER_NAV_ITEMS.filter(
-    (item) => item.id === 'contacts' || item.id === 'settings',
+    (item) =>
+      item.id === 'contacts' || item.id === 'notes' || item.id === 'settings',
   )
 }
 

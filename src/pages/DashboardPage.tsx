@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import { WorkerHomeDefaultVehicleSheet } from '@/components/worker/WorkerHomeDefaultVehicleSheet'
 import { WorkerHomeRoadBackground } from '@/components/worker/WorkerHomeRoadBackground'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
@@ -16,8 +17,25 @@ import {
   warmWorkerOfflineBootstrap,
 } from '@/lib/workerOfflineBootstrap'
 import { getWorkerHomeQuickActionItems } from '@/lib/workerNavigation'
+import {
+  formatWorkerHomeStatusDetail,
+  previousTimesheetWeekStart,
+  resolveWorkerHomeTimesheetStatus,
+  resolveWorkerHomeVehicleCheckStatus,
+  type WorkerHomeStatusTone,
+} from '@/lib/workerHomeStatus'
+import {
+  formatLocalDateString,
+  getDefaultWeekStartMonday,
+} from '@/lib/timesheetUtils'
 import { cn } from '@/lib/utils'
-import { fetchVehicles } from '@/services/vehiclesService'
+import {
+  DriversServiceError,
+  setWorkerDefaultVehicle,
+} from '@/services/driversService'
+import { fetchTimesheetForDriverWeek } from '@/services/timesheetsService'
+import { fetchVehicleChecks } from '@/services/vehicleChecksService'
+import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import {
   ChevronRight,
   MoonStar,
@@ -26,7 +44,7 @@ import {
   Truck,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /** Tight crop of the Worker robot only (transparent WebP, no banner/road). */
 const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-only.webp'
@@ -48,6 +66,12 @@ function resetHorizontalScrollOffset() {
   document.documentElement.scrollLeft = 0
   document.body.scrollLeft = 0
   window.scrollTo(0, window.scrollY || window.pageYOffset || 0)
+}
+
+function statusDotClass(tone: WorkerHomeStatusTone): string {
+  if (tone === 'green') return 'bg-emerald-500'
+  if (tone === 'amber') return 'bg-amber-400'
+  return 'bg-rose-500'
 }
 
 function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
@@ -152,8 +176,8 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
           ) : null}
         </div>
 
-        {/* Left text — reserved right padding so copy stays clear of the robot. */}
-        <div className="relative z-[2] flex h-full min-h-[5.75rem] max-w-[58%] flex-col justify-end space-y-1 px-4 py-3 min-[380px]:min-h-[7.75rem] min-[380px]:max-w-[55%] sm:min-h-[9.75rem] sm:max-w-[52%] sm:space-y-1.5 sm:px-5 sm:py-4 lg:min-h-[12.25rem] lg:max-w-[50%]">
+        {/* Left text — top-aligned so copy clears the road/truck detail at the bottom. */}
+        <div className="relative z-[2] flex h-full min-h-[5.75rem] max-w-[58%] flex-col justify-start space-y-1 px-4 pt-3.5 pb-3 min-[380px]:min-h-[7.75rem] min-[380px]:max-w-[55%] min-[380px]:pt-4 sm:min-h-[9.75rem] sm:max-w-[52%] sm:space-y-1.5 sm:px-5 sm:pt-5 sm:pb-4 lg:min-h-[12.25rem] lg:max-w-[50%] lg:pt-6">
           <h2
             className={cn(
               'break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:700]',
@@ -195,17 +219,56 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
 
 function DashboardPage() {
   const { session } = useAuth()
-  const { worker, isLoading, error } = useCurrentWorker()
-  const { companyId, companyLoading } = useCompanySettings()
+  const { worker, isLoading, error, reload: reloadWorker } = useCurrentWorker()
+  const { companyId, companyLoading, settings } = useCompanySettings()
   const isDark = useIsWorkerDarkMode()
   const [isOnline, setIsOnline] = useState(true)
   const [offlinePrepared, setOfflinePrepared] = useState<boolean | null>(null)
+
+  const [vehicleCheckStatus, setVehicleCheckStatus] = useState(() =>
+    resolveWorkerHomeVehicleCheckStatus({
+      todayLocalDate: formatLocalDateString(new Date()),
+      completedChecks: [],
+    }),
+  )
+  const [timesheetStatus, setTimesheetStatus] = useState(() =>
+    resolveWorkerHomeTimesheetStatus({
+      currentWeek: null,
+      previousWeek: null,
+    }),
+  )
+  const [statusLoading, setStatusLoading] = useState(true)
+
+  const [fleetVehicles, setFleetVehicles] = useState<Vehicle[]>([])
+  const [vehicleSheetOpen, setVehicleSheetOpen] = useState(false)
+  const [isSavingDefaultVehicle, setIsSavingDefaultVehicle] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimerRef = useRef<number | null>(null)
 
   const greetingWorkerName = worker
     ? resolveGreetingFullName(worker.firstName, worker.lastName)
     : isLoading
       ? null
       : 'Worker'
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message)
+    if (toastTimerRef.current != null) {
+      window.clearTimeout(toastTimerRef.current)
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null)
+      toastTimerRef.current = null
+    }, 2800)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current != null) {
+        window.clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -299,6 +362,149 @@ function DashboardPage() {
     }
   }, [companyId, isOnline, session?.user.id, worker])
 
+  // Load Vehicle Check + Timesheet status for the compact Home status card.
+  useEffect(() => {
+    if (!isOnline || !worker?.id || isLoading || companyLoading) {
+      if (!isOnline) setStatusLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setStatusLoading(true)
+
+    void (async () => {
+      const todayLocalDate = formatLocalDateString(new Date())
+      const weekSettings = {
+        timesheetWeekStartDay: settings?.timesheetWeekStartDay ?? 'monday',
+      } as const
+      const currentWeekStart = getDefaultWeekStartMonday(weekSettings)
+      const previousWeekStart = previousTimesheetWeekStart(currentWeekStart)
+
+      try {
+        const [checksPage, currentTimesheet, previousTimesheet] =
+          await Promise.all([
+            fetchVehicleChecks({
+              workerId: worker.id,
+              status: 'Completed',
+              page: 1,
+              pageSize: 20,
+            }),
+            fetchTimesheetForDriverWeek(worker.id, currentWeekStart),
+            fetchTimesheetForDriverWeek(worker.id, previousWeekStart),
+          ])
+
+        if (cancelled) return
+
+        const completedChecks = checksPage.items
+          .filter((item) => item.status === 'Completed')
+          .map((item) => ({
+            inspectionDate: item.inspectionDate,
+            signedAt: item.signedAt,
+            inspectionCompletedAt: item.inspectionCompletedAt,
+          }))
+
+        setVehicleCheckStatus(
+          resolveWorkerHomeVehicleCheckStatus({
+            todayLocalDate,
+            completedChecks,
+          }),
+        )
+        setTimesheetStatus(
+          resolveWorkerHomeTimesheetStatus({
+            currentWeek: currentTimesheet
+              ? {
+                  status: currentTimesheet.status,
+                  submittedAt: currentTimesheet.submittedAt,
+                  updatedAt: currentTimesheet.updatedAt,
+                }
+              : null,
+            previousWeek: previousTimesheet
+              ? {
+                  status: previousTimesheet.status,
+                  submittedAt: previousTimesheet.submittedAt,
+                  updatedAt: previousTimesheet.updatedAt,
+                }
+              : null,
+          }),
+        )
+      } catch {
+        if (!cancelled) {
+          // Keep conservative defaults (not completed / in progress) — do not fabricate green.
+          setVehicleCheckStatus(
+            resolveWorkerHomeVehicleCheckStatus({
+              todayLocalDate,
+              completedChecks: [],
+            }),
+          )
+          setTimesheetStatus(
+            resolveWorkerHomeTimesheetStatus({
+              currentWeek: null,
+              previousWeek: null,
+            }),
+          )
+        }
+      } finally {
+        if (!cancelled) setStatusLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    companyLoading,
+    isLoading,
+    isOnline,
+    settings?.timesheetWeekStartDay,
+    worker?.id,
+  ])
+
+  // Prefetch active company vehicles for the default-vehicle sheet.
+  useEffect(() => {
+    if (!isOnline || !worker || isLoading || companyLoading) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await fetchVehicles({ lifecycle: 'active' })
+        if (!cancelled) setFleetVehicles(rows)
+      } catch {
+        if (!cancelled) setFleetVehicles([])
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [companyLoading, isLoading, isOnline, worker])
+
+  async function handleSelectDefaultVehicle(vehicle: Vehicle) {
+    if (vehicle.id === worker?.defaultVehicleId) {
+      setVehicleSheetOpen(false)
+      return
+    }
+
+    const registration = vehicle.registration?.trim() || 'No registration'
+    setIsSavingDefaultVehicle(true)
+    try {
+      await setWorkerDefaultVehicle(vehicle.id)
+      reloadWorker()
+      setVehicleSheetOpen(false)
+      showToast(`Default vehicle changed to ${registration}`)
+    } catch (saveError) {
+      // Keep sheet open and previous selection — do not optimistically flip.
+      showToast(
+        saveError instanceof DriversServiceError
+          ? saveError.message
+          : saveError instanceof Error && saveError.message.trim()
+            ? saveError.message
+            : 'Unable to change default vehicle.',
+      )
+    } finally {
+      setIsSavingDefaultVehicle(false)
+    }
+  }
+
   // Online: keep hard-fail when profile is missing.
   // Offline: always render Home shell + CTA (cached profile preferred).
   if (!isLoading && (error || !worker) && isOnline) {
@@ -324,6 +530,11 @@ function DashboardPage() {
   const quickActionItems = getWorkerHomeQuickActionItems()
   const showOfflineNotPrepared =
     !isOnline && offlinePrepared === false
+
+  const vehicleCheckDetail = formatWorkerHomeStatusDetail(
+    vehicleCheckStatus.detailAt,
+  )
+  const timesheetDetail = formatWorkerHomeStatusDetail(timesheetStatus.detailAt)
 
   const startVehicleCheckCta = (
     <Link
@@ -377,15 +588,21 @@ function DashboardPage() {
         <>
           <WorkerHomeRobotHero isDark={isDark} />
 
-          {defaultVehicleLabel ? (
-            <div className="worker-home-default-vehicle flex items-center gap-3.5 px-4 py-3.5">
-              <div className="worker-home-icon-well">
-                <Truck className="size-6" strokeWidth={1.75} aria-hidden />
+          <div className="worker-home-status-vehicle-row grid grid-cols-2 items-stretch gap-2.5">
+            <button
+              type="button"
+              onClick={() => setVehicleSheetOpen(true)}
+              className="worker-home-default-vehicle worker-home-default-vehicle--compact flex h-full min-w-0 items-center gap-2 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
+              aria-haspopup="dialog"
+              aria-expanded={vehicleSheetOpen}
+            >
+              <div className="worker-home-icon-well worker-home-icon-well--compact">
+                <Truck className="size-6" strokeWidth={2.25} aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
-                    'worker-home-dv-label text-[11px] font-medium uppercase tracking-[0.14em]',
+                    'worker-home-dv-label text-[9px] font-medium uppercase tracking-[0.12em]',
                     !isDark && 'text-[color:var(--worker-text-muted)]',
                   )}
                 >
@@ -393,15 +610,71 @@ function DashboardPage() {
                 </p>
                 <p
                   className={cn(
-                    'worker-home-dv-value mt-0.5 truncate text-[15px] font-semibold leading-snug',
+                    'worker-home-dv-value mt-0.5 truncate text-[13px] font-semibold leading-snug',
                     !isDark && 'text-[color:var(--worker-text)]',
                   )}
                 >
-                  {defaultVehicleLabel}
+                  {defaultVehicleLabel ?? 'Not set'}
                 </p>
               </div>
-            </div>
-          ) : null}
+              <ChevronRight className="worker-home-chevron size-4 shrink-0" aria-hidden />
+            </button>
+
+            <section
+              className="worker-home-status-card flex h-full min-w-0 flex-col justify-center gap-2.5 px-3 py-3"
+              aria-label="Worker status"
+              aria-busy={statusLoading}
+            >
+              <Link
+                to="/worker/vehicle-checks"
+                className="worker-home-status-row flex min-w-0 items-start gap-2 rounded-xl text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
+              >
+                <span
+                  className={cn(
+                    'mt-1.5 size-2 shrink-0 rounded-full',
+                    statusDotClass(vehicleCheckStatus.tone),
+                  )}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
+                    Vehicle Check
+                  </span>
+                  <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[color:var(--worker-text)]">
+                    {vehicleCheckStatus.title}
+                  </span>
+                  {vehicleCheckDetail ? (
+                    <span className="mt-0.5 block truncate text-[10px] leading-snug text-[color:var(--worker-text-secondary)]">
+                      {vehicleCheckDetail}
+                    </span>
+                  ) : null}
+                </span>
+              </Link>
+
+              <div className="worker-home-status-row flex min-w-0 items-start gap-2">
+                <span
+                  className={cn(
+                    'mt-1.5 size-2 shrink-0 rounded-full',
+                    statusDotClass(timesheetStatus.tone),
+                  )}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
+                    Timesheet
+                  </span>
+                  <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[color:var(--worker-text)]">
+                    {timesheetStatus.title}
+                  </span>
+                  {timesheetDetail ? (
+                    <span className="mt-0.5 block truncate text-[10px] leading-snug text-[color:var(--worker-text-secondary)]">
+                      {timesheetDetail}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            </section>
+          </div>
 
           <section className="space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--worker-text-muted)]">
@@ -423,7 +696,7 @@ function DashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="worker-home-icon-well">
-                        <Icon className="size-5" strokeWidth={1.75} aria-hidden />
+                        <Icon className="size-6" strokeWidth={2.25} aria-hidden />
                       </div>
                       <ChevronRight className="worker-home-chevron mt-0.5" aria-hidden />
                     </div>
@@ -444,6 +717,25 @@ function DashboardPage() {
           {startVehicleCheckCta}
         </>
       )}
+
+      <WorkerHomeDefaultVehicleSheet
+        open={vehicleSheetOpen}
+        vehicles={fleetVehicles}
+        selectedVehicleId={worker?.defaultVehicleId ?? null}
+        isSaving={isSavingDefaultVehicle}
+        onSelect={(vehicle) => {
+          void handleSelectDefaultVehicle(vehicle)
+        }}
+        onClose={() => {
+          if (!isSavingDefaultVehicle) setVehicleSheetOpen(false)
+        }}
+      />
+
+      {toastMessage ? (
+        <div className="worker-toast-success fixed bottom-24 left-1/2 z-[70] w-[min(92vw,24rem)] -translate-x-1/2 rounded-xl bg-[color:var(--worker-text)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--worker-bg)] shadow-lg">
+          {toastMessage}
+        </div>
+      ) : null}
     </div>
   )
 }

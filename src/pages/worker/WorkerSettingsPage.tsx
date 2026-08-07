@@ -22,10 +22,10 @@ import {
   setWorkerDefaultVehicle,
 } from '@/services/driversService'
 import {
+  Building2,
   ChevronRight,
   CircleHelp,
   Clock,
-  Contact,
   Lock,
   LogOut,
   Moon,
@@ -332,6 +332,18 @@ export default function WorkerSettingsPage() {
           isDark={isDark}
         />
 
+        <SettingsRowLink
+          to="/worker/settings/help/legal/company-privacy-notice"
+          icon={Building2}
+          title="Company Notice"
+          subtitle="Your employer’s privacy notice"
+          className={cn(
+            'worker-accent-divider border-t',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+          isDark={isDark}
+        />
+
         <div
           className={cn(
             'worker-accent-divider border-t px-4 py-3.5',
@@ -517,22 +529,10 @@ export default function WorkerSettingsPage() {
         </div>
 
         <SettingsRowLink
-          to="/worker/settings/contact-office"
-          icon={Contact}
-          title="Contact Office"
-          subtitle="Work, rota and company questions"
-          isDark={isDark}
-        />
-
-        <SettingsRowLink
           to="/worker/settings/help"
           icon={CircleHelp}
           title="Help & Support"
           subtitle="Guides, bugs, feedback and legal"
-          className={cn(
-            'worker-accent-divider border-t',
-            !isDark && 'border-[color:var(--worker-border)]',
-          )}
           isDark={isDark}
         />
 

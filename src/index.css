@@ -872,7 +872,7 @@ html.worker-dark #root {
   /* Matches --worker-bg dark value (src/styles/worker-theme.css). Hardcoded
      here because that custom property only resolves inside
      .worker-mobile-layout/.worker-theme-surface, not on body/#root. */
-  background-color: #0b0d12;
+  background-color: #000000;
   color-scheme: dark;
 }
 

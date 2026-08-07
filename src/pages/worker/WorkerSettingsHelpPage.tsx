@@ -13,7 +13,6 @@ import {
 import {
   BookOpen,
   Bug,
-  Building2,
   FileText,
   History,
   MessageSquarePlus,
@@ -48,31 +47,10 @@ export default function WorkerSettingsHelpPage() {
           Help & Support
         </h1>
         <p className="text-sm leading-relaxed text-[color:var(--worker-text-secondary)]">
-          Work, rota, vehicle or company questions should be sent to your Office.
-          App errors, technical problems and suggestions should be sent to DREVORA
-          Support.
+          Work, rota, vehicle or company questions belong in Contacts. App errors,
+          technical problems and suggestions should be sent to DREVORA Support.
         </p>
       </div>
-
-      <section className="space-y-2" aria-labelledby="help-office-heading">
-        <h2
-          id="help-office-heading"
-          className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
-        >
-          Office Support
-        </h2>
-        <ul className="worker-list-stack space-y-2">
-          <li>
-            <HelpNavCard
-              to="/worker/settings/contact-office"
-              title="Contact Office"
-              description="Working hours, rota, holidays, vehicles and operational help."
-              icon={Building2}
-              index={0}
-            />
-          </li>
-        </ul>
-      </section>
 
       <section className="space-y-2" aria-labelledby="help-drevora-heading">
         <h2
@@ -168,17 +146,6 @@ export default function WorkerSettingsHelpPage() {
               icon={Shield}
               index={1}
               disabled={!isLegalDocumentAvailable('privacy')}
-              unavailableMessage={LEGAL_UNAVAILABLE_MESSAGE}
-            />
-          </li>
-          <li>
-            <HelpNavCard
-              to={LEGAL_DOCUMENTS.company_privacy_notice.path ?? '#'}
-              title={LEGAL_DOCUMENTS.company_privacy_notice.title}
-              description="Your employer’s privacy notice for Worker data."
-              icon={Building2}
-              index={2}
-              disabled={!isLegalDocumentAvailable('company_privacy_notice')}
               unavailableMessage={LEGAL_UNAVAILABLE_MESSAGE}
             />
           </li>
