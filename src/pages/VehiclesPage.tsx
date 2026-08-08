@@ -529,6 +529,17 @@ function VehiclesPage() {
     setFormErrors((currentErrors) => ({ ...currentErrors, [name]: undefined }))
   }
 
+  function handleFormPatch(patch: Partial<VehicleInput>) {
+    setForm((currentForm) => ({ ...currentForm, ...patch }))
+    setFormErrors((currentErrors) => {
+      const next = { ...currentErrors }
+      for (const key of Object.keys(patch) as Array<keyof VehicleInput>) {
+        next[key] = undefined
+      }
+      return next
+    })
+  }
+
   async function handleSaveVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const validationErrors = validateVehicleForm(form)
@@ -951,6 +962,7 @@ function VehiclesPage() {
           submitError={saveError}
           isSubmitting={isSaving}
           onChange={handleFormChange}
+          onPatchForm={handleFormPatch}
           onClose={() => {
             if (isSaving) return
             setIsModalOpen(false)

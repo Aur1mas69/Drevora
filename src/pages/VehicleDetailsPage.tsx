@@ -455,6 +455,17 @@ function VehicleDetailsPage() {
     setVehicleFormErrors((currentErrors) => ({ ...currentErrors, [name]: undefined }))
   }
 
+  function handleVehicleFormPatch(patch: Partial<VehicleInput>) {
+    setVehicleForm((currentForm) => ({ ...currentForm, ...patch }))
+    setVehicleFormErrors((currentErrors) => {
+      const next = { ...currentErrors }
+      for (const key of Object.keys(patch) as Array<keyof VehicleInput>) {
+        next[key] = undefined
+      }
+      return next
+    })
+  }
+
   async function handleSaveVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!vehicle) return
@@ -815,6 +826,7 @@ function VehicleDetailsPage() {
           submitError={vehicleSaveError}
           isSubmitting={isSavingVehicle}
           onChange={handleVehicleFormChange}
+          onPatchForm={handleVehicleFormPatch}
           onClose={() => {
             if (isSavingVehicle) return
             setIsEditModalOpen(false)

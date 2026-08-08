@@ -8,12 +8,20 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
-import { Search } from 'lucide-react'
+import { LoaderCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { VehicleTypeTemplateChecksModal } from '@/components/vehicles/VehicleTypeTemplateChecksModal'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { resolveCompanyTextScope } from '@/lib/companySettingsGlobals'
+import {
+  buildDvlaInfoPanelRows,
+  buildVehicleFormPatchFromDvla,
+  isDvlaLookupUiEnabled,
+  isPlausibleRegistrationNumber,
+  normalizeRegistrationNumber,
+  type DvlaVehicleSummary,
+} from '@/lib/dvlaVehicleEnquiry'
 import {
   getDriverName,
   getScheduleReasonOptions,
@@ -22,6 +30,10 @@ import {
   type VehicleFormErrors,
 } from '@/lib/vehicleForm'
 import type { Driver } from '@/services/driversService'
+import {
+  DvlaVehicleEnquiryServiceError,
+  enquireDvlaVehicle,
+} from '@/services/dvlaVehicleEnquiryService'
 import {
   getVehicleTypeSelectOptions,
   type VehicleInput,
@@ -84,6 +96,31 @@ function DvlaSoonBadge() {
   )
 }
 
+function DvlaVehicleDataPanel({ vehicle }: { vehicle: DvlaVehicleSummary }) {
+  const rows = buildDvlaInfoPanelRows(vehicle)
+  if (rows.length === 0) return null
+
+  return (
+    <div className="sm:col-span-2 rounded-[14px] border border-[#D3E9FC] bg-[#F8FBFF] px-3.5 py-3 ring-1 ring-[#C5DFFB]/40 dark:border-white/10 dark:bg-slate-900/50 dark:ring-white/10">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B68BE]">
+        DVLA Vehicle Data
+      </p>
+      <dl className="mt-2.5 grid gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label} className="min-w-0">
+            <dt className="text-[11px] font-semibold text-[#5499BF] dark:text-slate-400">
+              {row.label}
+            </dt>
+            <dd className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
 function UnsavedChangesDialog({
   onContinueEditing,
   onDiscard,
@@ -138,6 +175,7 @@ type VehicleEditModalProps = {
   onChange: (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void
+  onPatchForm: (patch: Partial<VehicleInput>) => void
   onClose: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -152,12 +190,16 @@ export function VehicleEditModal({
   submitError,
   isSubmitting,
   onChange,
+  onPatchForm,
   onClose,
   onSubmit,
 }: VehicleEditModalProps) {
   const initialFormRef = useRef(form)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
   const [isTemplateChecksOpen, setIsTemplateChecksOpen] = useState(false)
+  const [isDvlaLookingUp, setIsDvlaLookingUp] = useState(false)
+  const [dvlaLookupError, setDvlaLookupError] = useState<string | null>(null)
+  const [dvlaVehicle, setDvlaVehicle] = useState<DvlaVehicleSummary | null>(null)
   const { settings, isLoading: isCompanyLoading } = useCompanySettings()
   const isScheduledStatus = scheduledAvailabilityStatuses.includes(form.status)
   const reasonOptions = getScheduleReasonOptions(form.status)
@@ -167,6 +209,36 @@ export function VehicleEditModal({
   const companyName = resolveCompanyTextScope(settings)
   const canManageTemplateChecks = Boolean(selectedVehicleType && companyName && !isCompanyLoading)
   const isDirty = isVehicleFormDirty(form, initialFormRef.current)
+  const dvlaLookupEnabled = isDvlaLookupUiEnabled(
+    import.meta.env.VITE_DVLA_LOOKUP_ENABLED,
+  )
+  const canCheckDvla =
+    dvlaLookupEnabled &&
+    !isTrailer &&
+    !isSubmitting &&
+    !isDvlaLookingUp &&
+    isPlausibleRegistrationNumber(normalizeRegistrationNumber(form.registration))
+
+  async function handleCheckDvla() {
+    if (!canCheckDvla) return
+    setIsDvlaLookingUp(true)
+    setDvlaLookupError(null)
+    try {
+      const vehicle = await enquireDvlaVehicle(form.registration)
+      onPatchForm(buildVehicleFormPatchFromDvla(vehicle))
+      setDvlaVehicle(vehicle)
+    } catch (error) {
+      // Failed lookup must not overwrite existing form values.
+      setDvlaVehicle(null)
+      const message =
+        error instanceof DvlaVehicleEnquiryServiceError
+          ? error.message
+          : 'Unable to look up this vehicle right now. Please try again.'
+      setDvlaLookupError(message)
+    } finally {
+      setIsDvlaLookingUp(false)
+    }
+  }
 
   const requestClose = useCallback(() => {
     if (isSubmitting) return
@@ -279,7 +351,31 @@ export function VehicleEditModal({
                     <span className={vehicleFormLabelClass}>
                       {isTrailer ? 'Registration Number (optional)' : 'Registration Number'}
                     </span>
-                    <DvlaSoonBadge />
+                    {isTrailer ? null : dvlaLookupEnabled ? (
+                      <button
+                        type="button"
+                        disabled={!canCheckDvla}
+                        onClick={() => {
+                          void handleCheckDvla()
+                        }}
+                        aria-label="Check DVLA"
+                        title={
+                          !form.registration.trim()
+                            ? 'Enter a registration number first'
+                            : 'Look up this registration with DVLA'
+                        }
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#B7D8F5] bg-gradient-to-r from-[#F5FAFF] to-[#EAF4FF] px-2.5 py-1 text-[11px] font-semibold text-[#0B68BE] ring-1 ring-[#C5DFFB]/70 transition enabled:hover:bg-[#EAF4FF] disabled:cursor-not-allowed disabled:opacity-55 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/50 dark:text-blue-300"
+                      >
+                        {isDvlaLookingUp ? (
+                          <LoaderCircle className="size-3 shrink-0 animate-spin" aria-hidden />
+                        ) : (
+                          <Search className="size-3 shrink-0" aria-hidden />
+                        )}
+                        {isDvlaLookingUp ? 'Checking…' : 'Check DVLA'}
+                      </button>
+                    ) : (
+                      <DvlaSoonBadge />
+                    )}
                   </div>
                   <Input
                     name="registration"
@@ -290,10 +386,17 @@ export function VehicleEditModal({
                   <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85 dark:text-slate-400">
                     {isTrailer
                       ? 'Optional for trailers. Leave blank if the trailer has no registration plate.'
-                      : 'DVLA lookup will be available in a future update.'}
+                      : dvlaLookupEnabled
+                        ? 'Enter the registration, then use Check DVLA to fill available details.'
+                        : 'DVLA lookup will be available in a future update.'}
                   </p>
+                  {dvlaLookupError ? (
+                    <p className="mt-1.5 text-xs font-medium text-rose-500">{dvlaLookupError}</p>
+                  ) : null}
                   <FieldError message={errors.registration} />
                 </label>
+
+                {dvlaVehicle ? <DvlaVehicleDataPanel vehicle={dvlaVehicle} /> : null}
 
                 {isTrailer ? (
                   <label className="block">
