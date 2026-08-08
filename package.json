@@ -46,6 +46,7 @@
     "verify:server-only-table-security": "npx tsx scripts/verify-server-only-table-security.ts",
     "verify:security-definer-trigger-privileges": "npx tsx scripts/verify-security-definer-trigger-privileges.ts",
     "verify:expiry-notifications-aal2": "npx tsx scripts/verify-expiry-notifications-aal2.ts",
+    "verify:support-attachment-private-schema": "npx tsx scripts/verify-support-attachment-private-schema.ts",
     "verify:worker-private-notes": "npx tsx scripts/verify-worker-private-notes.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
