@@ -17,6 +17,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.108.2'
+import { requireCallerAal2 } from '../_shared/requireAal2.ts'
 
 const OFFICE_ROLES = new Set([
   'Admin',
@@ -476,6 +477,15 @@ Deno.serve(async (req) => {
       ok: false,
       code: 'FORBIDDEN',
       message: 'Only Office roles can change Worker login email.',
+    })
+  }
+
+  const aal2 = await requireCallerAal2(userClient, token)
+  if (!aal2.ok) {
+    return jsonResponse(req, aal2.httpStatus, {
+      ok: false,
+      code: aal2.code,
+      message: aal2.message,
     })
   }
 

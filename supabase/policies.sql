@@ -178,6 +178,7 @@ create policy drivers_office_insert
     company_id is not null
     and archived_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
     and (
       default_vehicle_id is null
       or public.drevora_vehicle_in_company(default_vehicle_id, company_id)
@@ -192,11 +193,13 @@ create policy drivers_office_update
     company_id is not null
     and archived_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
   )
   with check (
     company_id is not null
     and archived_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
     and (
       default_vehicle_id is null
       or public.drevora_vehicle_in_company(default_vehicle_id, company_id)
@@ -317,6 +320,7 @@ create policy vehicles_office_insert
     and archive_reason is null
     and retention_expires_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
     and (
       current_driver_id is null
       or public.drevora_driver_in_company(current_driver_id, company_id)
@@ -331,11 +335,13 @@ create policy vehicles_office_update
     company_id is not null
     and archived_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
   )
   with check (
     company_id is not null
     and archived_at is null
     and public.drevora_auth_user_has_office_role_for_company(company_id)
+    and public.drevora_auth_session_is_aal2()
     and (
       current_driver_id is null
       or public.drevora_driver_in_company(current_driver_id, company_id)
@@ -1276,6 +1282,16 @@ revoke all on function public.drevora_office_soft_delete_tyre_check(uuid, text) 
 revoke all on function public.drevora_office_soft_delete_tyre_check(uuid, text) from anon;
 grant execute on function public.drevora_office_soft_delete_tyre_check(uuid, text)
   to authenticated;
+
+-- Office WRITE AAL2 helpers (end-user JWT sessions only).
+-- Canonical: migrations/20260808190000_office_write_require_aal2.sql
+revoke all on function public.drevora_auth_session_is_aal2() from public;
+revoke all on function public.drevora_auth_session_is_aal2() from anon;
+grant execute on function public.drevora_auth_session_is_aal2() to authenticated;
+
+revoke all on function public.drevora_auth_require_aal2() from public;
+revoke all on function public.drevora_auth_require_aal2() from anon;
+grant execute on function public.drevora_auth_require_aal2() to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Vehicle Tyre Layouts (persisted default per-axle Single/Dual per Vehicle)

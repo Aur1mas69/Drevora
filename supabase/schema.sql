@@ -5184,7 +5184,43 @@ grant all on table public.office_user_invitation_events to service_role;
 --   20260803180000_create_account_deletion_requests.sql
 -- Worker private notes (own-row RLS, no Office policies):
 --   20260807210000_create_worker_private_notes.sql
+-- Office WRITE AAL2 helpers + high-impact Office WRITE RPC aal2 gates +
+-- Office WRITE RLS (direct table INSERT/UPDATE/DELETE) aal2 gates:
+--   20260808190000_office_write_require_aal2.sql
+--   (tyre correction/delete; driver/vehicle archive/restore; timesheet approve/reject/
+--    clean/clear overrides; tyre layout Office branch; worker core + submission docs;
+--    Office RLS on documents/companies/drivers/vehicles/timesheets/holidays/contacts/
+--    consumables/compliance/vehicle_checks/templates/driver_reports/dashboard_notes/
+--    vehicle_availability)
 -- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- Office WRITE AAL2 helpers (canonical: 20260808190000_office_write_require_aal2.sql)
+-- End-user JWT sessions only — not for service_role Edge Function callers.
+-- -----------------------------------------------------------------------------
+create or replace function public.drevora_auth_session_is_aal2()
+returns boolean
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select coalesce(auth.jwt() ->> 'aal', '') = 'aal2';
+$$;
+
+create or replace function public.drevora_auth_require_aal2()
+returns void
+language plpgsql
+stable
+security invoker
+set search_path = public
+as $$
+begin
+  if not public.drevora_auth_session_is_aal2() then
+    raise exception 'DREVORA: MFA_REQUIRED Two-factor authentication is required.';
+  end if;
+end;
+$$;
 
 -- -----------------------------------------------------------------------------
 -- List Office users (canonical: migrations/20260808160000_list_office_users.sql)

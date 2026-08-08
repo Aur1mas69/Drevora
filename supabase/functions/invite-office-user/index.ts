@@ -22,6 +22,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.108.2'
+import { requireCallerAal2 } from '../_shared/requireAal2.ts'
 
 const TARGET_OFFICE_ROLES = new Set([
   'Admin',
@@ -705,6 +706,15 @@ async function handleInvite(req: Request): Promise<Response> {
       ok: false,
       code: 'forbidden',
       message: 'Only Office roles can invite Office users.',
+    })
+  }
+
+  const aal2 = await requireCallerAal2(userClient, token)
+  if (!aal2.ok) {
+    return jsonResponse(req, aal2.httpStatus, {
+      ok: false,
+      code: aal2.code,
+      message: aal2.message,
     })
   }
 

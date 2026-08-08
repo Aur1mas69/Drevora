@@ -14,6 +14,7 @@ import {
   MembershipLoadingScreen,
   useMembershipAccessState,
 } from '@/components/auth/MembershipAccessGate'
+import { RequireOfficeMfa } from '@/components/auth/RequireOfficeMfa'
 import { WORKER_ACCOUNT_ARCHIVED_MESSAGE } from '@/hooks/useCurrentWorker'
 import { getWorkerAccessStatus } from '@/services/driversService'
 import AdminDashboardRouteFallback from '@/components/dashboard/AdminDashboardRouteFallback'
@@ -142,8 +143,9 @@ function RootToLoginRedirect() {
 }
 
 /**
- * Office shell: verified company_members office role only.
+ * Office shell: verified company_members office role + AAL2 MFA.
  * Never uses sessionStorage portal. Does not render Office pages while loading.
+ * Drivers never enter this gate.
  */
 function RequireOfficeAccess({ children }: { children: ReactNode }) {
   const access = useMembershipAccessState()
@@ -181,7 +183,9 @@ function RequireOfficeAccess({ children }: { children: ReactNode }) {
   }
 
   return (
-    <RequireCustomerLegalAcceptance>{children}</RequireCustomerLegalAcceptance>
+    <RequireOfficeMfa>
+      <RequireCustomerLegalAcceptance>{children}</RequireCustomerLegalAcceptance>
+    </RequireOfficeMfa>
   )
 }
 

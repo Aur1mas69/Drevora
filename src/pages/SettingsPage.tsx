@@ -30,7 +30,7 @@ import { ConsumablesDefaultPricesPanel } from '@/components/consumables/Consumab
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
 import { DocumentsSettingsPanel } from '@/components/settings/DocumentsSettingsPanel'
-import { TwoFactorAuthComingLaterCard } from '@/components/settings/TwoFactorAuthComingLaterCard'
+import { OfficeMfaSettingsCard } from '@/components/settings/OfficeMfaSettingsCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -610,7 +610,7 @@ function SettingsPage() {
               >
                 <div className="space-y-4 sm:col-span-2">
                   <ChangePasswordCard />
-                  <TwoFactorAuthComingLaterCard />
+                  <OfficeMfaSettingsCard />
                 </div>
 
                 <div className={`mt-4 ${settingsDividerClassName} pt-6 sm:col-span-2`}>

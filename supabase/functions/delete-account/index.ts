@@ -19,6 +19,7 @@
 
 import { timingSafeEqual } from 'jsr:@std/crypto/timing-safe-equal'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.108.2'
+import { requireCallerAal2 } from '../_shared/requireAal2.ts'
 
 const CRON_SECRET_HEADER = 'x-drevora-account-deletion-cron-secret'
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
@@ -883,6 +884,15 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const hasOfficeRole = memberships.some((row) => OFFICE_ROLES.has(row.role))
   if (hasOfficeRole) {
+    const aal2 = await requireCallerAal2(userClient, token)
+    if (!aal2.ok) {
+      return jsonResponse(req, aal2.httpStatus, {
+        ok: false,
+        code: aal2.code,
+        message: aal2.message,
+      })
+    }
+
     return handleOfficeRequest({
       req,
       admin,
