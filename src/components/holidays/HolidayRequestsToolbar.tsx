@@ -1,7 +1,9 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
-import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
-import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
 import type { HolidayRequestStatusFilter } from '@/lib/holidayRequestTypes'
 import type { Driver } from '@/services/driversService'
 import { X } from 'lucide-react'
@@ -167,11 +169,11 @@ export function HolidayRequestsToolbar({
                 </select>
               </label>
 
-              <HolidayDatePickerGroup>
+              <CompanyDatePickerGroup>
                 <div className="grid min-w-0 grid-cols-2 gap-2">
                   <label className="block min-w-0 space-y-1.5">
                     <span className={filterFieldLabelClass}>Start date</span>
-                    <HolidayDateInput
+                    <CompanyDateInput
                       value={dateFrom}
                       onChange={onDateFromChange}
                       clearable
@@ -182,7 +184,7 @@ export function HolidayRequestsToolbar({
                   </label>
                   <label className="block min-w-0 space-y-1.5">
                     <span className={filterFieldLabelClass}>End date</span>
-                    <HolidayDateInput
+                    <CompanyDateInput
                       value={dateTo}
                       onChange={onDateToChange}
                       clearable
@@ -193,7 +195,7 @@ export function HolidayRequestsToolbar({
                     />
                   </label>
                 </div>
-              </HolidayDatePickerGroup>
+              </CompanyDatePickerGroup>
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#D3E9FC]/70 pt-3 dark:border-white/10">

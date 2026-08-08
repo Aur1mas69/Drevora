@@ -29,8 +29,10 @@ const WORKER_ROLE = 'Driver'
 const ADMIN_ROLE = 'Admin'
 const OFFICE_ROLES = new Set([
   'Admin',
-  'Transport Manager',
+  'Manager',
+  'Office',
   'Supervisor',
+  'Transport Manager',
   'Planner',
   'Office Staff',
 ])

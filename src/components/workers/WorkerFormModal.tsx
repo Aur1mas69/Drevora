@@ -298,6 +298,9 @@ export function WorkerFormModal({
                   </option>
                 ))}
               </select>
+              <p className="mt-1.5 text-xs font-medium text-[#5499BF]/90 dark:text-slate-400">
+                Job role only. System access is managed separately.
+              </p>
               <FieldError message={errors.role} />
             </label>
             <label className="block">

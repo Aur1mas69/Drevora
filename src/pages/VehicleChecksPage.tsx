@@ -84,6 +84,7 @@ export default function VehicleChecksPage() {
     } else {
       next.delete('tab')
       next.delete('section')
+      next.delete('tyre_check_id')
     }
     setSearchParams(next, { replace: true })
   }

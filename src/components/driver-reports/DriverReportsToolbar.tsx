@@ -1,4 +1,8 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
 import {
   DRIVER_REPORT_PRIORITIES,
@@ -228,30 +232,35 @@ function DriverReportsFilterPanelBody({
           </select>
         </label>
 
+        <CompanyDatePickerGroup>
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
             <span className={labelClassName}>From</span>
-            <input
-              type="date"
+            <CompanyDateInput
               value={draft.dateFrom}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, dateFrom: event.target.value }))
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, dateFrom: value }))
               }
+              clearable
               className={`${driverReportSelectClass} mt-1 w-full`}
+              aria-label="From date"
             />
           </label>
           <label className="block">
             <span className={labelClassName}>To</span>
-            <input
-              type="date"
+            <CompanyDateInput
               value={draft.dateTo}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, dateTo: event.target.value }))
+              min={draft.dateFrom || undefined}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, dateTo: value }))
               }
+              clearable
               className={`${driverReportSelectClass} mt-1 w-full`}
+              aria-label="To date"
             />
           </label>
         </div>
+        </CompanyDatePickerGroup>
 
         <label className="block">
           <span className={labelClassName}>View</span>

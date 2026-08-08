@@ -497,6 +497,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettingsInput = {
 
 export type CompanySettingsTab =
   | 'general'
+  | 'office-users'
   | 'regional'
   | 'timesheets'
   | 'holidays'
@@ -511,6 +512,7 @@ export const COMPANY_SETTINGS_TABS: {
   label: string
 }[] = [
   { id: 'general', label: 'General' },
+  { id: 'office-users', label: 'Office Users' },
   { id: 'regional', label: 'Regional' },
   { id: 'timesheets', label: 'Timesheets' },
   { id: 'holidays', label: 'Holidays' },

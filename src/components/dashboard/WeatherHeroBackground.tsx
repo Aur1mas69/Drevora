@@ -6,7 +6,7 @@ import {
 import { motion, useReducedMotion } from 'framer-motion'
 
 /**
- * Admin Dashboard hero background — always `/hero-backgrounds/hero.png`.
+ * Admin Dashboard hero background — always `/hero-backgrounds/admin-dashboard-hero.png`.
  * Not driven by weather, time of day, or user selection.
  */
 export function WeatherHeroBackground() {
@@ -18,8 +18,10 @@ export function WeatherHeroBackground() {
         className="absolute inset-0"
         style={{
           backgroundImage: `url(${ADMIN_DASHBOARD_HERO_BACKGROUND})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          // Fit width without cover-zoom so more of the lower yard/road stays visible.
+          backgroundSize: '100% auto',
+          // Keep trucks on the right; prefer bottom so the yard is not cropped away.
+          backgroundPosition: 'right bottom',
           backgroundRepeat: 'no-repeat',
         }}
         initial={{ opacity: prefersReducedMotion ? 1 : 0 }}

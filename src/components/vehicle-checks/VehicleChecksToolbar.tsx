@@ -1,6 +1,9 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import type {
   VehicleCheckResultFilter,
   VehicleCheckReviewStatusFilter,
@@ -168,27 +171,31 @@ export function VehicleChecksToolbar({
             </div>
 
             <div className="mt-4 grid gap-3">
+              <CompanyDatePickerGroup>
               <div className="grid min-w-0 grid-cols-2 gap-2">
                 <label className="block min-w-0 space-y-1.5">
                   <span className={labelClass}>Start date</span>
-                  <Input
-                    type="date"
+                  <CompanyDateInput
                     value={dateFrom}
-                    onChange={(event) => onDateFromChange(event.target.value)}
+                    onChange={onDateFromChange}
+                    clearable
                     className={`${selectClass} w-full min-w-0 px-2`}
+                    aria-label="Start date"
                   />
                 </label>
                 <label className="block min-w-0 space-y-1.5">
                   <span className={labelClass}>End date</span>
-                  <Input
-                    type="date"
+                  <CompanyDateInput
                     value={dateTo}
                     min={dateFrom || undefined}
-                    onChange={(event) => onDateToChange(event.target.value)}
+                    onChange={onDateToChange}
+                    clearable
                     className={`${selectClass} w-full min-w-0 px-2`}
+                    aria-label="End date"
                   />
                 </label>
               </div>
+              </CompanyDatePickerGroup>
 
               <label className="block space-y-1.5">
                 <span className={labelClass}>Vehicle</span>

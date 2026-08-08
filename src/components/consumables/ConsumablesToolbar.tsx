@@ -1,6 +1,9 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   CONSUMABLE_TYPES,
   type ConsumableSummaryPeriod,
@@ -219,40 +222,43 @@ export function ConsumablesToolbar({
       </label>
 
       {draft.period === 'custom' ? (
+        <CompanyDatePickerGroup>
         <div className="mt-3 grid grid-cols-1 gap-2">
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold text-[#5499BF]">Start date</span>
-            <Input
-              type="date"
+            <CompanyDateInput
               value={draft.customDateFrom}
-              onChange={(event) => {
+              onChange={(value) => {
                 setDraft((current) => ({
                   ...current,
-                  customDateFrom: event.target.value,
+                  customDateFrom: value,
                 }))
                 setCustomDateError(null)
               }}
+              clearable
               className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
               aria-label="Start date"
             />
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold text-[#5499BF]">End date</span>
-            <Input
-              type="date"
+            <CompanyDateInput
               value={draft.customDateTo}
-              onChange={(event) => {
+              min={draft.customDateFrom || undefined}
+              onChange={(value) => {
                 setDraft((current) => ({
                   ...current,
-                  customDateTo: event.target.value,
+                  customDateTo: value,
                 }))
                 setCustomDateError(null)
               }}
+              clearable
               className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
               aria-label="End date"
             />
           </label>
         </div>
+        </CompanyDatePickerGroup>
       ) : null}
 
       <label className="mt-3 block space-y-1.5">

@@ -1,6 +1,8 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
-import { HolidayDateInput } from '@/components/holidays/HolidayDateInput'
-import { HolidayDatePickerGroup } from '@/components/holidays/HolidayDatePickerGroup'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
 import { adminSelectSm } from '@/lib/adminUiStyles'
 import type {
@@ -125,11 +127,11 @@ function TimesheetFilterPanelBody({
   return (
     <>
       <div className="space-y-3">
-        <HolidayDatePickerGroup>
+        <CompanyDatePickerGroup>
           <div className="grid min-w-0 grid-cols-2 gap-2">
             <label className="block min-w-0 space-y-1.5">
               <span className={labelClassName}>From</span>
-              <HolidayDateInput
+              <CompanyDateInput
                 value={draft.dateFrom}
                 onChange={(value) =>
                   setDraft((current) => ({ ...current, dateFrom: value }))
@@ -141,7 +143,7 @@ function TimesheetFilterPanelBody({
             </label>
             <label className="block min-w-0 space-y-1.5">
               <span className={labelClassName}>To</span>
-              <HolidayDateInput
+              <CompanyDateInput
                 value={draft.dateTo}
                 onChange={(value) =>
                   setDraft((current) => ({ ...current, dateTo: value }))
@@ -153,7 +155,7 @@ function TimesheetFilterPanelBody({
               />
             </label>
           </div>
-        </HolidayDatePickerGroup>
+        </CompanyDatePickerGroup>
 
         <label className="block space-y-1.5">
           <span className={labelClassName}>Status</span>

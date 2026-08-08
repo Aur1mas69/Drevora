@@ -14,6 +14,7 @@ import type {
   AdminNotificationWithReadState,
   NotificationSeverity,
 } from '@/lib/adminNotificationTypes'
+import { resolveAdminNotificationTargetPath } from '@/lib/adminNotificationRouting'
 import { cn } from '@/lib/utils'
 
 function formatRelativeTime(iso: string): string {
@@ -40,29 +41,6 @@ function severityIcon(severity: NotificationSeverity) {
     return <AlertTriangle className="size-4 text-amber-600 dark:text-amber-300" aria-hidden />
   }
   return <Info className="size-4 text-blue-600 dark:text-blue-300" aria-hidden />
-}
-
-function resolveTargetPath(item: AdminNotificationWithReadState): string {
-  if (item.targetPath && item.targetPath.startsWith('/')) {
-    return item.targetPath
-  }
-
-  switch (item.notificationType) {
-    case 'timesheet_submitted':
-      return '/admin/timesheets'
-    case 'holiday_request_created':
-      return '/admin/holidays'
-    case 'vehicle_check_attention':
-      return '/admin/vehicle-checks'
-    case 'tyre_check_critical':
-      return '/admin/vehicle-checks?tab=tyre-check&section=history'
-    case 'driver_report_created':
-      return '/admin/driver-reports'
-    case 'document_expiry':
-      return '/documents'
-    default:
-      return '/admin'
-  }
 }
 
 export function AdminNotificationBell() {
@@ -132,7 +110,7 @@ export function AdminNotificationBell() {
         await markOneRead(item.id)
       }
       setOpen(false)
-      navigate(resolveTargetPath(item))
+      navigate(resolveAdminNotificationTargetPath(item))
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unable to open notification.')
     }

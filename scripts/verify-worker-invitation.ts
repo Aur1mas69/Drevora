@@ -21,6 +21,7 @@ import {
   doesGenerateLinkSendEmail,
   isAuthDeleteNotFoundError,
   isWorkerInvitationOfficeRole,
+  isWorkerJobRole,
   isWorkerOperationalRole,
   mapInviteDatabaseError,
   normalizeInvitationEmail,
@@ -66,17 +67,36 @@ run('2. Membership role for invited Workers is always Driver', () => {
 })
 
 run('3. Only Office roles may invite', () => {
-  assertEqual(WORKER_INVITATION_OFFICE_ROLES.length, 5, 'five office roles')
+  assertEqual(WORKER_INVITATION_OFFICE_ROLES.length, 7, 'MVP Office + legacy Office roles')
   assertTrue(isWorkerInvitationOfficeRole('Admin'), 'Admin allowed')
-  assertTrue(isWorkerInvitationOfficeRole('Transport Manager'), 'TM allowed')
+  assertTrue(isWorkerInvitationOfficeRole('Manager'), 'Manager allowed')
+  assertTrue(isWorkerInvitationOfficeRole('Office'), 'Office allowed')
+  assertTrue(isWorkerInvitationOfficeRole('Supervisor'), 'Supervisor allowed')
+  assertTrue(isWorkerInvitationOfficeRole('Transport Manager'), 'legacy TM allowed')
   assertTrue(!isWorkerInvitationOfficeRole('Driver'), 'Driver blocked')
   assertTrue(!isWorkerInvitationOfficeRole('Warehouse'), 'Warehouse blocked')
 })
 
-run('4. Operational role validation matches drivers.role vocabulary', () => {
+run('4. Operational role vocabulary includes job + legacy; new invites accept job roles only', () => {
   assertTrue(isWorkerOperationalRole('Driver'), 'Driver ok')
   assertTrue(isWorkerOperationalRole('Yardman'), 'Yardman ok')
+  assertTrue(isWorkerOperationalRole('Admin'), 'legacy Admin still known for existing rows')
   assertTrue(!isWorkerOperationalRole('Superuser'), 'unknown rejected')
+  assertTrue(isWorkerJobRole('Driver'), 'Driver is selectable job role')
+  assertTrue(isWorkerJobRole('Warehouse'), 'Warehouse is selectable job role')
+  assertTrue(!isWorkerJobRole('Admin'), 'Admin is not a selectable job role')
+  assertTrue(!isWorkerJobRole('Office Staff'), 'Office Staff is not a selectable job role')
+
+  const officeAsJob = validateWorkerInvitationProfile({
+    email: 'worker@example.com',
+    firstName: 'Sam',
+    lastName: 'Worker',
+    operationalRole: 'Admin',
+  })
+  assertEqual(officeAsJob.ok, false, 'Admin rejected for new Worker invite')
+  if (!officeAsJob.ok) {
+    assertEqual(officeAsJob.code, 'invalid_role', 'invalid_role code')
+  }
 })
 
 run('5. Profile validation requires email, names, and role', () => {

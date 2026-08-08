@@ -1,6 +1,9 @@
 import { ModuleListToolbar } from '@/components/common/ModuleListToolbar'
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import type {
   TyreCheckDefectFocusFilter,
   TyreCheckResultFilter,
@@ -277,27 +280,31 @@ export function TyreChecksToolbar({
                 </div>
               </div>
 
+              <CompanyDatePickerGroup>
               <div className="grid min-w-0 grid-cols-2 gap-2">
                 <label className="block min-w-0 space-y-1.5">
                   <span className={labelClass}>From date</span>
-                  <Input
-                    type="date"
+                  <CompanyDateInput
                     value={draftDateFrom}
-                    onChange={(event) => setDraftDateFrom(event.target.value)}
+                    onChange={setDraftDateFrom}
+                    clearable
                     className={`${selectClass} w-full min-w-0 px-2`}
+                    aria-label="From date"
                   />
                 </label>
                 <label className="block min-w-0 space-y-1.5">
                   <span className={labelClass}>To date</span>
-                  <Input
-                    type="date"
+                  <CompanyDateInput
                     value={draftDateTo}
                     min={draftDateFrom || undefined}
-                    onChange={(event) => setDraftDateTo(event.target.value)}
+                    onChange={setDraftDateTo}
+                    clearable
                     className={`${selectClass} w-full min-w-0 px-2`}
+                    aria-label="To date"
                   />
                 </label>
               </div>
+              </CompanyDatePickerGroup>
 
               <label className="block min-w-0 space-y-1.5">
                 <span className={labelClass}>Result / status</span>

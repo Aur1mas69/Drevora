@@ -1,5 +1,8 @@
+import {
+  CompanyDateInput,
+  CompanyDatePickerGroup,
+} from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   EXPORT_DATE_RANGE_OPTIONS,
   type ExportDateRangePreset,
@@ -22,6 +25,7 @@ type ExportDateRangeControlsProps = {
 /**
  * Shared Admin export date-range selector (This week / month / last month / custom / all time).
  * State is owned by the parent page and kept only while mounted.
+ * Custom dates use CompanyDateInput so Regional Date Format is honored.
  */
 export function ExportDateRangeControls({
   value,
@@ -57,38 +61,39 @@ export function ExportDateRangeControls({
 
       {value.preset === 'custom' ? (
         <div className="space-y-2 rounded-xl border border-[#D3E9FC] bg-[#F5FAFF] p-2.5 dark:border-white/10 dark:bg-slate-800/50">
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-[#5499BF]">Start date</span>
-            <Input
-              type="date"
-              value={value.customFrom}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  customFrom: event.target.value,
-                })
-              }
-              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
-              aria-label="Export start date"
-              aria-invalid={Boolean(customError)}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-[#5499BF]">End date</span>
-            <Input
-              type="date"
-              value={value.customTo}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  customTo: event.target.value,
-                })
-              }
-              className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
-              aria-label="Export end date"
-              aria-invalid={Boolean(customError)}
-            />
-          </label>
+          <CompanyDatePickerGroup>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-[#5499BF]">Start date</span>
+              <CompanyDateInput
+                value={value.customFrom}
+                onChange={(customFrom) =>
+                  onChange({
+                    ...value,
+                    customFrom,
+                  })
+                }
+                clearable
+                className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
+                aria-label="Export start date"
+              />
+            </label>
+            <label className="mt-2 block space-y-1">
+              <span className="text-xs font-semibold text-[#5499BF]">End date</span>
+              <CompanyDateInput
+                value={value.customTo}
+                min={value.customFrom || undefined}
+                onChange={(customTo) =>
+                  onChange({
+                    ...value,
+                    customTo,
+                  })
+                }
+                clearable
+                className="h-9 rounded-xl border-[#BFE3F5] bg-white text-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100"
+                aria-label="Export end date"
+              />
+            </label>
+          </CompanyDatePickerGroup>
           {customError ? (
             <p className="text-xs font-medium text-rose-600" role="alert">
               {customError}

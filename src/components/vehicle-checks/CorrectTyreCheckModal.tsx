@@ -9,6 +9,7 @@ import {
 } from '@/lib/tyreCheckTypes'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 type DraftRow = {
   itemId: string
@@ -107,7 +108,8 @@ export function CorrectTyreCheckModal({
     onConfirm({ reason: trimmed, pressureUnit, items })
   }
 
-  return (
+  // Portal to body so this sits above the View drawer portal and AdminLayout z-10.
+  return createPortal(
     <div className="fixed inset-0 z-[140] flex items-end justify-center bg-slate-950/45 px-0 py-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8">
       <div
         role="dialog"
@@ -274,6 +276,7 @@ export function CorrectTyreCheckModal({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

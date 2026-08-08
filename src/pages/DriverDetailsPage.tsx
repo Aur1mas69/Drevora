@@ -22,7 +22,6 @@ import {
   getDriverFormValues,
   type CreateDriverInput,
   type Driver,
-  type DriverRole,
   type DriverStatus,
   type LicenceCategory,
 } from '@/services/driversService'
@@ -44,6 +43,7 @@ import {
   isWorkerPlanLimitError,
 } from '@/lib/workerAllowance'
 import { isWorkerLoginEmailLocked } from '@/lib/workerLoginEmail'
+import { resolveWorkerFormRoleOptions } from '@/lib/workerInvitation'
 import { saveWorkerAvatarForDriver } from '@/services/workerAvatarStorageService'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
@@ -77,20 +77,6 @@ const driverStatuses: DriverStatus[] = [
   'Off Duty',
   'Holiday',
   'Suspended',
-]
-
-const workerRoles: DriverRole[] = [
-  'Admin',
-  'Driver',
-  'Mechanic',
-  'Transport Manager',
-  'Office Staff',
-  'Warehouse',
-  'Yardman',
-  'Cleaner',
-  'Supervisor',
-  'Planner',
-  'Other',
 ]
 
 function getDriverName(driver: Driver): string {
@@ -739,7 +725,7 @@ function DriverDetailsPage() {
             setAvatarError(null)
           }}
           vehicles={vehicles}
-          workerRoles={workerRoles}
+          workerRoles={resolveWorkerFormRoleOptions(driver?.role)}
           driverStatuses={driverStatuses}
           onChange={handleFormChange}
           onLicenceCategoriesChange={handleLicenceCategoriesChange}

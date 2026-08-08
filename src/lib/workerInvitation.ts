@@ -5,6 +5,7 @@
  */
 
 import {
+  ALL_OFFICE_MEMBERSHIP_ROLES,
   LOGIN_PATH,
   OFFICE_MEMBERSHIP_ROLES,
   WORKER_MEMBERSHIP_ROLE,
@@ -18,24 +19,51 @@ export const WORKER_INVITE_PASSWORD_PATH = '/reset-password'
 
 export const WORKER_INVITATION_MEMBERSHIP_ROLE = WORKER_MEMBERSHIP_ROLE
 
-export const WORKER_INVITATION_OFFICE_ROLES = OFFICE_MEMBERSHIP_ROLES
+/** Who may invite Workers: MVP Office roles + legacy Office membership roles. */
+export const WORKER_INVITATION_OFFICE_ROLES = ALL_OFFICE_MEMBERSHIP_ROLES
+
+/** Canonical Office roles for new Office users (not Worker job roles). */
+export const WORKER_INVITATION_CANONICAL_OFFICE_ROLES = OFFICE_MEMBERSHIP_ROLES
 
 /** Structured API / RPC code when the Auth user is active in another company. */
 export const USER_ALREADY_LINKED_TO_ANOTHER_COMPANY =
   'USER_ALREADY_LINKED_TO_ANOTHER_COMPANY' as const
 
-export const WORKER_OPERATIONAL_ROLES = [
-  'Admin',
+/**
+ * Selectable Worker job roles for Add/Edit Worker (`public.drivers.role`).
+ * These are operational labels only — never company_members system access.
+ */
+export const WORKER_JOB_ROLES = [
   'Driver',
+  'Mechanic',
+  'Warehouse',
   'Yardman',
   'Cleaner',
-  'Supervisor',
-  'Mechanic',
-  'Transport Manager',
-  'Planner',
-  'Office Staff',
-  'Warehouse',
   'Other',
+] as const
+
+export type WorkerJobRole = (typeof WORKER_JOB_ROLES)[number]
+
+/**
+ * Legacy values that may already exist on `public.drivers.role`.
+ * Kept readable when editing; not offered for new Workers.
+ * Do not confuse with company_members Office membership roles.
+ */
+export const WORKER_LEGACY_OPERATIONAL_ROLES = [
+  'Admin',
+  'Transport Manager',
+  'Office Staff',
+  'Supervisor',
+  'Planner',
+] as const
+
+export type WorkerLegacyOperationalRole =
+  (typeof WORKER_LEGACY_OPERATIONAL_ROLES)[number]
+
+/** Full known vocabulary for `public.drivers.role` (job + legacy). */
+export const WORKER_OPERATIONAL_ROLES = [
+  ...WORKER_JOB_ROLES,
+  ...WORKER_LEGACY_OPERATIONAL_ROLES,
 ] as const
 
 export type WorkerOperationalRole = (typeof WORKER_OPERATIONAL_ROLES)[number]
@@ -114,6 +142,24 @@ export function normalizeInvitationEmail(raw: unknown): string | null {
   return email
 }
 
+export function isWorkerJobRole(
+  value: string | null | undefined,
+): value is WorkerJobRole {
+  return (
+    typeof value === 'string' &&
+    (WORKER_JOB_ROLES as readonly string[]).includes(value)
+  )
+}
+
+export function isWorkerLegacyOperationalRole(
+  value: string | null | undefined,
+): value is WorkerLegacyOperationalRole {
+  return (
+    typeof value === 'string' &&
+    (WORKER_LEGACY_OPERATIONAL_ROLES as readonly string[]).includes(value)
+  )
+}
+
 export function isWorkerOperationalRole(
   value: string | null | undefined,
 ): value is WorkerOperationalRole {
@@ -121,6 +167,25 @@ export function isWorkerOperationalRole(
     typeof value === 'string' &&
     (WORKER_OPERATIONAL_ROLES as readonly string[]).includes(value)
   )
+}
+
+/**
+ * Role options for the Add/Edit Worker form.
+ * New Workers: job roles only.
+ * Existing Workers with a legacy value: keep that value selectable so edit
+ * does not silently overwrite it.
+ */
+export function resolveWorkerFormRoleOptions(
+  currentRole?: string | null,
+): WorkerOperationalRole[] {
+  const options: WorkerOperationalRole[] = [...WORKER_JOB_ROLES]
+  if (
+    isWorkerLegacyOperationalRole(currentRole) &&
+    !options.includes(currentRole)
+  ) {
+    options.push(currentRole)
+  }
+  return options
 }
 
 export function isWorkerInvitationOfficeRole(
@@ -153,7 +218,7 @@ export function buildWorkerInviteRedirectTo(
 export function validateWorkerInvitationProfile(
   input: WorkerInvitationProfileInput,
 ):
-  | { ok: true; email: string; firstName: string; lastName: string; operationalRole: WorkerOperationalRole; status: WorkerInvitationStatus }
+  | { ok: true; email: string; firstName: string; lastName: string; operationalRole: WorkerJobRole; status: WorkerInvitationStatus }
   | { ok: false; code: WorkerInvitationErrorCode; message: string } {
   const email = normalizeInvitationEmail(input.email)
   if (!email) {
@@ -174,11 +239,11 @@ export function validateWorkerInvitationProfile(
     }
   }
 
-  if (!isWorkerOperationalRole(input.operationalRole)) {
+  if (!isWorkerJobRole(input.operationalRole)) {
     return {
       ok: false,
       code: 'invalid_role',
-      message: 'Select a valid Worker operational role.',
+      message: 'Select a valid Worker job role.',
     }
   }
 

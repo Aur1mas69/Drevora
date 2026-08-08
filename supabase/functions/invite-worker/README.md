@@ -78,8 +78,9 @@ Never expose service-role keys or raw Auth internals in cleanup errors.
 }
 ```
 
-`operationalRole` is stored on `public.drivers.role`.  
-Membership role is always `Driver`.
+`operationalRole` is stored on `public.drivers.role` (job role only:
+Driver, Mechanic, Warehouse, Yardman, Cleaner, Other).  
+Membership role is always `Driver` — this field never grants Office access.
 
 ## Success response
 

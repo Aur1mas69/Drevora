@@ -76,7 +76,7 @@ import {
   inviteWorker,
   isWorkerInvitationServiceError,
 } from '@/services/workerInvitationService'
-import { formatInviteWorkerUserMessage, formatInviteWorkerAvatarFailureToast } from '@/lib/workerInvitation'
+import { formatInviteWorkerUserMessage, formatInviteWorkerAvatarFailureToast, resolveWorkerFormRoleOptions, WORKER_OPERATIONAL_ROLES } from '@/lib/workerInvitation'
 import { isWorkerLoginEmailLocked } from '@/lib/workerLoginEmail'
 import { vehiclesService, type Vehicle } from '@/services/vehiclesService'
 
@@ -125,19 +125,8 @@ function ActiveFilterChip({
   )
 }
 
-const workerRoles: DriverRole[] = [
-  'Admin',
-  'Driver',
-  'Mechanic',
-  'Transport Manager',
-  'Office Staff',
-  'Warehouse',
-  'Yardman',
-  'Cleaner',
-  'Supervisor',
-  'Planner',
-  'Other',
-]
+/** Filter options include legacy job labels so existing records stay findable. */
+const workerRoleFilterOptions: DriverRole[] = [...WORKER_OPERATIONAL_ROLES]
 
 const initialDriverForm: CreateDriverInput = emptyCreateDriverInput
 
@@ -307,7 +296,7 @@ function DriversToolbar({
                   aria-label="Filter by role"
                 >
                   <option value="All">All roles</option>
-                  {workerRoles.map((role) => (
+                  {workerRoleFilterOptions.map((role) => (
                     <option key={role} value={role}>
                       {role}
                     </option>
@@ -1271,7 +1260,7 @@ function DriversPage() {
             setAvatarError(null)
           }}
           vehicles={vehicles}
-          workerRoles={workerRoles}
+          workerRoles={resolveWorkerFormRoleOptions(editingDriver?.role)}
           driverStatuses={driverStatuses}
           onChange={handleFormChange}
           onLicenceCategoriesChange={handleLicenceCategoriesChange}

@@ -25,6 +25,7 @@ import { AdminDeleteAccountDialog } from '@/components/settings/AdminDeleteAccou
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard'
 import { CompanyLegalAcceptanceSummary } from '@/components/settings/CompanyLegalAcceptanceSummary'
 import { SettingsPlanSummary } from '@/components/settings/SettingsPlanSummary'
+import { OfficeUsersPanel } from '@/components/settings/OfficeUsersPanel'
 import { ConsumablesDefaultPricesPanel } from '@/components/consumables/ConsumablesDefaultPricesPanel'
 import { HolidaySettingsPanel } from '@/components/settings/HolidaySettingsPanel'
 import { TimesheetSettingsPanel } from '@/components/settings/TimesheetSettingsPanel'
@@ -100,8 +101,8 @@ function SettingsPage() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'consumables') {
-      setActiveTab('consumables')
+    if (tab === 'consumables' || tab === 'office-users') {
+      setActiveTab(tab)
     }
   }, [searchParams])
 
@@ -234,6 +235,12 @@ function SettingsPage() {
             {saveError ? (
               <div className="mb-6 rounded-[16px] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
                 {saveError}
+              </div>
+            ) : null}
+
+            {activeTab === 'office-users' ? (
+              <div className="sm:col-span-2">
+                <OfficeUsersPanel onToast={showToast} />
               </div>
             ) : null}
 
@@ -665,7 +672,9 @@ function SettingsPage() {
               </SettingsSection>
             ) : null}
 
-            {activeTab !== 'holidays' && activeTab !== 'consumables' ? (
+            {activeTab !== 'holidays' &&
+            activeTab !== 'consumables' &&
+            activeTab !== 'office-users' ? (
               <p className={`mt-8 ${settingsDividerClassName} pt-4 ${settingsStatusTextClassName}`}>
                 {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
               </p>
@@ -674,7 +683,9 @@ function SettingsPage() {
         </Card>
       </div>
 
-      {activeTab !== 'holidays' && activeTab !== 'consumables' ? (
+      {activeTab !== 'holidays' &&
+      activeTab !== 'consumables' &&
+      activeTab !== 'office-users' ? (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
           {toastMessage ? (
             <div className="rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
@@ -692,7 +703,7 @@ function SettingsPage() {
         </div>
       ) : null}
 
-      {activeTab === 'holidays' && toastMessage ? (
+      {(activeTab === 'holidays' || activeTab === 'office-users') && toastMessage ? (
         <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_20px_50px_rgba(15,23,42,0.28)]">
           {toastMessage}
         </div>

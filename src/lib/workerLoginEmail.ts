@@ -4,9 +4,9 @@
  * migration 20260806220000_worker_login_email_change.sql.
  */
 
-import { OFFICE_MEMBERSHIP_ROLES } from '@/lib/membershipRoles'
+import { ALL_OFFICE_MEMBERSHIP_ROLES } from '@/lib/membershipRoles'
 
-export const WORKER_LOGIN_EMAIL_OFFICE_ROLES = OFFICE_MEMBERSHIP_ROLES
+export const WORKER_LOGIN_EMAIL_OFFICE_ROLES = ALL_OFFICE_MEMBERSHIP_ROLES
 
 export const WORKER_LOGIN_EMAIL_CHANGE_REQUIRED =
   'WORKER_LOGIN_EMAIL_CHANGE_REQUIRED' as const

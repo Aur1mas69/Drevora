@@ -10,6 +10,7 @@ import { TyreChecksToolbar } from '@/components/vehicle-checks/TyreChecksToolbar
 import { ExportMenu } from '@/components/export/ExportMenu'
 import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import { Button } from '@/components/ui/button'
+import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { toExportUserMessage } from '@/lib/export/exportErrors'
@@ -30,6 +31,7 @@ import {
   adminTextMuted,
 } from '@/lib/adminUiStyles'
 import { getCurrentViewToday } from '@/lib/currentViewVisibility'
+import { TYRE_CHECK_NOTIFICATION_QUERY_KEY } from '@/lib/adminNotificationRouting'
 import {
   buildTyreLayout,
   DEFAULT_TRUCK_AXLE_COUNT,
@@ -70,8 +72,10 @@ import {
   ClipboardList,
   Clock3,
   Download,
+  Eye,
   Loader2,
   Pencil,
+  Trash2,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -157,14 +161,22 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     if (!viewingCheck) return
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !isDownloadingPdf) {
-        setViewingCheck(null)
+      if (event.key !== 'Escape' || isDownloadingPdf) return
+      // Prefer closing the correction modal first so Escape does not wipe the
+      // loaded check while Edit is open on top of the View drawer.
+      if (correctModalOpen) {
+        if (!isSavingCorrection) {
+          setCorrectModalOpen(false)
+          setCorrectionError(null)
+        }
+        return
       }
+      setViewingCheck(null)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [viewingCheck, isDownloadingPdf])
+  }, [viewingCheck, isDownloadingPdf, correctModalOpen, isSavingCorrection])
 
   const hasActiveHistoryFilters =
     debouncedSearch.trim().length > 0 ||
@@ -302,13 +314,13 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
     }
   }, [showOverviewWorkspace, loadHistory])
 
-  async function handleViewHistory(check: TyreCheckListItem) {
+  async function openTyreCheckDetailById(tyreCheckId: string): Promise<boolean> {
     setIsLoadingDetail(true)
     try {
-      const detail = await fetchTyreCheckDetail(check.id)
+      const detail = await fetchTyreCheckDetail(tyreCheckId)
       if (!detail) {
         showToast('Tyre check not found')
-        return
+        return false
       }
       const vehicleMakeModel = [detail.listItem.vehicleMake, detail.listItem.vehicleModel]
         .filter(Boolean)
@@ -339,6 +351,7 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
       })
       setCorrectModalOpen(false)
       setCorrectionError(null)
+      return true
     } catch (error) {
       const message =
         error instanceof TyreChecksServiceError
@@ -347,10 +360,39 @@ export function TyreCheckPanel({ vehicles, drivers }: TyreCheckPanelProps) {
             ? error.message
             : 'Failed to open tyre check'
       showToast(message)
+      return false
     } finally {
       setIsLoadingDetail(false)
     }
   }
+
+  async function handleViewHistory(check: TyreCheckListItem) {
+    await openTyreCheckDetailById(check.id)
+  }
+
+  const notificationTyreCheckId =
+    searchParams.get(TYRE_CHECK_NOTIFICATION_QUERY_KEY)?.trim() ?? ''
+
+  useEffect(() => {
+    if (!notificationTyreCheckId) return
+
+    let cancelled = false
+
+    void (async () => {
+      await openTyreCheckDetailById(notificationTyreCheckId)
+      if (cancelled) return
+      const next = new URLSearchParams(window.location.search)
+      if (!next.has(TYRE_CHECK_NOTIFICATION_QUERY_KEY)) return
+      next.delete(TYRE_CHECK_NOTIFICATION_QUERY_KEY)
+      setSearchParams(next, { replace: true })
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // Deep-link once whenever tyre_check_id appears in the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notificationTyreCheckId])
 
   async function handleEditHistory(check: TyreCheckListItem) {
     setIsLoadingDetail(true)
@@ -984,6 +1026,33 @@ function CompactKpiCard({
   )
 }
 
+function TyreCheckHistoryRowActions({
+  disabled,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  disabled: boolean
+  onView: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const actions: RowAction[] = [
+    { id: 'view', label: 'View', icon: Eye, disabled, onClick: onView },
+    { id: 'edit', label: 'Edit', icon: Pencil, disabled, onClick: onEdit },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      tone: 'danger',
+      disabled,
+      onClick: onDelete,
+    },
+  ]
+
+  return <RowActionsMenu actions={actions} align="end" />
+}
+
 function HistoryWorkspace({
   title,
   description,
@@ -1176,35 +1245,12 @@ function HistoryWorkspace({
                       {check.summaryLabel}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 rounded-[10px] px-2.5 text-xs"
-                          disabled={isLoadingDetail}
-                          onClick={() => onViewCheck(check)}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 rounded-[10px] px-2.5 text-xs"
-                          disabled={isLoadingDetail}
-                          onClick={() => onEditCheck(check)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 rounded-[10px] px-2.5 text-xs text-rose-700 ring-rose-200 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:ring-rose-900/40 dark:hover:bg-rose-950/30"
-                          disabled={isLoadingDetail}
-                          onClick={() => onDeleteCheck(check)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      <TyreCheckHistoryRowActions
+                        disabled={isLoadingDetail}
+                        onView={() => onViewCheck(check)}
+                        onEdit={() => onEditCheck(check)}
+                        onDelete={() => onDeleteCheck(check)}
+                      />
                     </td>
                   </tr>
                 ))

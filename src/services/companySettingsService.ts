@@ -453,6 +453,7 @@ function normalizeDriverRole(value: string | null | undefined): DriverRole {
     'Transport Manager',
     'Planner',
     'Office Staff',
+    'Warehouse',
     'Other',
   ]
   return allowed.includes(value as DriverRole) ? (value as DriverRole) : 'Driver'

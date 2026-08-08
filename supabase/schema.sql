@@ -3080,8 +3080,10 @@ begin
 
   if v_actor_role is null or v_actor_role not in (
     'Admin',
-    'Transport Manager',
+    'Manager',
+    'Office',
     'Supervisor',
+    'Transport Manager',
     'Planner',
     'Office Staff'
   ) then
@@ -3708,8 +3710,10 @@ begin
 
   if v_actor_role is null or v_actor_role not in (
     'Admin',
-    'Transport Manager',
+    'Manager',
+    'Office',
     'Supervisor',
+    'Transport Manager',
     'Planner',
     'Office Staff'
   ) then
@@ -4126,8 +4130,10 @@ begin
 
   if v_actor_role is null or v_actor_role not in (
     'Admin',
-    'Transport Manager',
+    'Manager',
+    'Office',
     'Supervisor',
+    'Transport Manager',
     'Planner',
     'Office Staff'
   ) then
@@ -4349,8 +4355,10 @@ begin
 
   if v_actor_role is null or v_actor_role not in (
     'Admin',
-    'Transport Manager',
+    'Manager',
+    'Office',
     'Supervisor',
+    'Transport Manager',
     'Planner',
     'Office Staff'
   ) then
@@ -5088,6 +5096,63 @@ create trigger worker_private_notes_set_updated_at
 
 
 -- -----------------------------------------------------------------------------
+-- Office-user invitation audit + link RPC
+-- Canonical: migrations/20260808150000_office_user_invitation_foundation.sql
+-- Prerequisite: migrations/20260808140000_mvp_system_membership_roles.sql
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.office_user_invitation_events (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies (id) on delete restrict,
+  invited_email text not null,
+  invited_role text not null,
+  actor_user_id uuid null references auth.users (id) on delete set null,
+  auth_user_id uuid null references auth.users (id) on delete set null,
+  membership_id uuid null references public.company_members (id) on delete set null,
+  full_name text null,
+  status text not null,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint office_user_invitation_events_invited_role_check check (
+    invited_role in ('Admin', 'Manager', 'Office', 'Supervisor')
+  ),
+  constraint office_user_invitation_events_status_check check (
+    status in (
+      'linked',
+      'already_linked',
+      'link_failed',
+      'invite_send_failed',
+      'email_failed'
+    )
+  )
+);
+
+comment on table public.office_user_invitation_events is
+  'Append-only Office-user invitation audit. No drivers rows. Writers are service-role / security-definer only.';
+
+create index if not exists office_user_invitation_events_company_created_at_idx
+  on public.office_user_invitation_events (company_id, created_at desc);
+
+create index if not exists office_user_invitation_events_email_created_at_idx
+  on public.office_user_invitation_events (lower(invited_email), created_at desc);
+
+create index if not exists office_user_invitation_events_auth_user_id_idx
+  on public.office_user_invitation_events (auth_user_id)
+  where auth_user_id is not null;
+
+alter table public.office_user_invitation_events enable row level security;
+
+revoke all on table public.office_user_invitation_events from public;
+revoke all on table public.office_user_invitation_events from anon;
+revoke all on table public.office_user_invitation_events from authenticated;
+grant all on table public.office_user_invitation_events to service_role;
+
+-- RPC bodies: see migrations/20260808150000_office_user_invitation_foundation.sql
+-- Apply that migration for drevora_link_invited_office_user +
+-- drevora_insert_office_user_invitation_event (service_role only).
+
+
+-- -----------------------------------------------------------------------------
 -- Next steps
 -- 1. Run policies.sql  — RLS configuration (MVP: disabled)
 -- 2. Run seed.sql      — optional demo data (local/dev only)
@@ -5109,6 +5174,10 @@ create trigger worker_private_notes_set_updated_at
 --   20260801140000_legal_documents_and_acceptances.sql
 -- Legal acceptance audit hardening (Admin accept, immutability, constraints):
 --   20260801150000_harden_legal_acceptance_audit.sql
+-- Office-user invitation foundation (membership-only, no drivers):
+--   20260808150000_office_user_invitation_foundation.sql
+-- Office users list RPC (Settings → Office Users):
+--   20260808160000_list_office_users.sql
 -- Timesheet submission confirmations RLS (INSERT-only Model B):
 --   20260802140000_timesheet_submission_confirmations_rls.sql
 -- Account deletion requests (Worker self-service, SELECT-own only):
@@ -5116,3 +5185,11 @@ create trigger worker_private_notes_set_updated_at
 -- Worker private notes (own-row RLS, no Office policies):
 --   20260807210000_create_worker_private_notes.sql
 -- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- List Office users (canonical: migrations/20260808160000_list_office_users.sql)
+-- -----------------------------------------------------------------------------
+-- SECURITY DEFINER RPC public.drevora_list_office_users()
+-- Returns: membership_id, full_name, email, role, is_active, created_at
+-- Excludes Driver. Company resolved from caller Office membership.
+-- Execute grants: authenticated + service_role (see policies.sql).

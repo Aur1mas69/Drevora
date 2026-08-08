@@ -20,8 +20,10 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.1
 
 const OFFICE_ROLES = new Set([
   'Admin',
-  'Transport Manager',
+  'Manager',
+  'Office',
   'Supervisor',
+  'Transport Manager',
   'Planner',
   'Office Staff',
 ])

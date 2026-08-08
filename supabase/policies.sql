@@ -1512,3 +1512,32 @@ revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, 
 revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from anon;
 revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from authenticated;
 grant execute on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) to service_role;
+
+-- -----------------------------------------------------------------------------
+-- Office-user invitation audit + RPCs
+-- (canonical: 20260808150000_office_user_invitation_foundation.sql)
+-- -----------------------------------------------------------------------------
+alter table public.office_user_invitation_events enable row level security;
+
+revoke all on table public.office_user_invitation_events from public;
+revoke all on table public.office_user_invitation_events from anon;
+revoke all on table public.office_user_invitation_events from authenticated;
+grant all on table public.office_user_invitation_events to service_role;
+
+revoke all on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) from public;
+revoke all on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) from anon;
+revoke all on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) from authenticated;
+grant execute on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) to service_role;
+
+revoke all on function public.drevora_insert_office_user_invitation_event(uuid, text, text, uuid, uuid, uuid, text, text, jsonb) from public;
+revoke all on function public.drevora_insert_office_user_invitation_event(uuid, text, text, uuid, uuid, uuid, text, text, jsonb) from anon;
+revoke all on function public.drevora_insert_office_user_invitation_event(uuid, text, text, uuid, uuid, uuid, text, text, jsonb) from authenticated;
+grant execute on function public.drevora_insert_office_user_invitation_event(uuid, text, text, uuid, uuid, uuid, text, text, jsonb) to service_role;
+
+-- -----------------------------------------------------------------------------
+-- Office users list RPC (canonical: 20260808160000_list_office_users.sql)
+-- -----------------------------------------------------------------------------
+revoke all on function public.drevora_list_office_users() from public;
+revoke all on function public.drevora_list_office_users() from anon;
+grant execute on function public.drevora_list_office_users() to authenticated;
+grant execute on function public.drevora_list_office_users() to service_role;
