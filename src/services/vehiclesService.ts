@@ -8,7 +8,12 @@ import {
   VEHICLE_PLAN_ALLOWANCE_UNAVAILABLE,
   VEHICLE_PLAN_LIMIT_REACHED,
 } from '@/lib/vehicleAllowance'
-import { todayString } from '@/lib/vehicleAvailability'
+import {
+  getVehicleStatusForDate,
+  todayString,
+} from '@/lib/vehicleAvailability'
+
+export { getVehicleStatusForDate } from '@/lib/vehicleAvailability'
 
 export const vehicleTypeOptions = [
   'Car',
@@ -357,21 +362,6 @@ function mapAvailabilityRow(row: VehicleAvailabilityRow): VehicleAvailability {
     reason: row.reason,
     notes: row.notes,
   }
-}
-
-export function getVehicleStatusForDate(
-  vehicle: Vehicle,
-  date = todayString(),
-): VehicleStatus {
-  const matchingRecords = vehicle.availabilityRecords
-    .filter((record) => {
-      return record.startDate <= date && (!record.endDate || record.endDate >= date)
-    })
-    .sort((firstRecord, secondRecord) =>
-      secondRecord.startDate.localeCompare(firstRecord.startDate),
-    )
-
-  return matchingRecords[0]?.status ?? vehicle.baseStatus ?? vehicle.status ?? 'Available'
 }
 
 function applyAvailabilityStatus(

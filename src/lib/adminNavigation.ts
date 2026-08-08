@@ -59,13 +59,29 @@ export const adminMainNavigationItems: AdminNavItem[] = [
   { label: 'Contacts', to: '/contacts', icon: ContactRound },
 ]
 
-/** Settings and support modules shown below the sidebar divider. */
-export const adminSecondaryNavigationItems: AdminNavItem[] = [
-  { label: 'Settings', to: '/admin/settings', icon: Settings },
-  { label: 'Customer Terms & Conditions', to: '/terms', icon: ScrollText },
+/** Settings — own item below the sidebar divider. */
+export const adminSettingsNavigationItem: AdminNavItem = {
+  label: 'Settings',
+  to: '/admin/settings',
+  icon: Settings,
+}
+
+/**
+ * Legal & Support group children (collapsible in the Admin sidebar).
+ * Labels are shortened so they fit the sidebar without truncation.
+ * Routes are unchanged.
+ */
+export const adminLegalSupportNavigationItems: AdminNavItem[] = [
+  { label: 'Customer Terms', to: '/terms', icon: ScrollText },
   { label: 'Privacy Policy', to: '/privacy', icon: ShieldCheck },
   { label: 'Data Processing Agreement', to: '/dpa', icon: FileSignature },
   { label: 'FAQ / Help', to: '/admin/faq', icon: CircleHelp },
+]
+
+/** Settings + legal/support (flat list for consumers that need every secondary link). */
+export const adminSecondaryNavigationItems: AdminNavItem[] = [
+  adminSettingsNavigationItem,
+  ...adminLegalSupportNavigationItems,
 ]
 
 /** Full sidebar navigation in display order (main, then secondary). */

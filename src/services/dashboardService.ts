@@ -17,6 +17,7 @@ import {
   emptyFleetComplianceAlertsSummary,
   type FleetComplianceAlertsSummary,
 } from '@/lib/fleetComplianceAlerts'
+import { countDashboardFleetStatus } from '@/lib/fleetEffectiveStatus'
 import {
   getAvailabilityRecordForDate,
   todayString,
@@ -145,6 +146,8 @@ export type DashboardFleetStatus = {
   available: number
   offRoad: number
   maintenanceDue: number
+  /** Off-road row helper; may note compliance blocking (MOT / insurance / tax). */
+  offRoadHelper: string
 }
 
 export type DashboardHolidaySummary = {
@@ -244,6 +247,7 @@ type VehicleRow = {
   mot_expiry: string | null
   road_tax_expiry: string | null
   tachograph_expiry: string | null
+  archived_at?: string | null
 }
 
 type AvailabilityRow = {
@@ -299,6 +303,7 @@ export const emptyDashboardStats: DashboardStats = {
     available: 0,
     offRoad: 0,
     maintenanceDue: 0,
+    offRoadHelper: 'Needs attention',
   },
   fleetComplianceAlerts: emptyFleetComplianceAlertsSummary,
   holidayRequests: {
@@ -430,7 +435,7 @@ function buildDashboardVehicle(
     availabilityRecords: availabilityRecords.filter(
       (record) => record.vehicleId === row.id,
     ),
-    archivedAt: null,
+    archivedAt: row.archived_at?.trim() || null,
     archiveReason: null,
     retentionExpiresAt: null,
   }
@@ -501,7 +506,7 @@ async function fetchDashboardVehicles(companyId: string): Promise<Vehicle[]> {
     const vehicleResult = await requireSupabase()
       .from('vehicles')
       .select(
-        'id, created_at, registration, make, model, status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry',
+        'id, created_at, registration, make, model, status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, archived_at',
       )
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
@@ -1169,25 +1174,31 @@ function countVehicleDocumentsExpiringSoon(rows: VehicleDocumentRow[]): number {
   return vehiclesWithAlerts.size
 }
 
-function countVehicleStatusesToday(vehicles: Vehicle[]): {
+function countVehicleStatusesToday(
+  vehicles: Vehicle[],
+  today = todayString(),
+): {
   availableVehicles: number
   offRoadOrOutOfService: number
   offRoadToday: number
   maintenanceToday: number
   outOfServiceToday: number
+  fleetStatus: {
+    available: number
+    offRoad: number
+    maintenanceDue: number
+    offRoadHelper: string
+  }
 } {
-  const today = todayString()
-  let availableVehicles = 0
+  // Operational counts for availabilityAlerts (manual / schedule status only).
   let offRoadToday = 0
   let maintenanceToday = 0
   let outOfServiceToday = 0
 
   for (const vehicle of vehicles) {
-    const status = getEffectiveStatusToday(vehicle, today)
+    if (vehicle.archivedAt) continue
 
-    if (!UNAVAILABLE_STATUSES.includes(status)) {
-      availableVehicles += 1
-    }
+    const status = getEffectiveStatusToday(vehicle, today)
 
     if (status === 'Off Road') {
       offRoadToday += 1
@@ -1202,12 +1213,17 @@ function countVehicleStatusesToday(vehicles: Vehicle[]): {
     }
   }
 
+  // Headline Fleet Status uses effective status (compliance-blocking expiries).
+  // Same MOT/insurance/tax overdue semantics as Fleet Compliance Alerts.
+  const fleetStatus = countDashboardFleetStatus(vehicles, today)
+
   return {
-    availableVehicles,
+    availableVehicles: fleetStatus.available,
     offRoadToday,
     maintenanceToday,
     outOfServiceToday,
-    offRoadOrOutOfService: offRoadToday + outOfServiceToday,
+    offRoadOrOutOfService: fleetStatus.offRoad,
+    fleetStatus,
   }
 }
 
@@ -1847,7 +1863,10 @@ export async function loadDashboardStatsProgressively(
     if (isAborted(signal)) return
 
     const companyToday = getCompanyTodayIsoDate(companyScope.timezone)
-    const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
+    const vehicleStatusCounts = countVehicleStatusesToday(
+      dashboardVehicles,
+      companyToday,
+    )
     const fleetComplianceAlerts = buildFleetComplianceAlertsSummary(
       dashboardVehicles,
       companyToday,
@@ -1859,11 +1878,7 @@ export async function loadDashboardStatsProgressively(
       vehicles: dashboardVehicles.length,
       availableVehicles: vehicleStatusCounts.availableVehicles,
       offRoadOrOutOfService: vehicleStatusCounts.offRoadOrOutOfService,
-      fleetStatus: {
-        available: vehicleStatusCounts.availableVehicles,
-        offRoad: vehicleStatusCounts.offRoadToday + vehicleStatusCounts.outOfServiceToday,
-        maintenanceDue: vehicleStatusCounts.maintenanceToday,
-      },
+      fleetStatus: vehicleStatusCounts.fleetStatus,
       fleetComplianceAlerts,
       availabilityAlerts: {
         offRoadToday: vehicleStatusCounts.offRoadToday,
@@ -2003,7 +2018,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     )
     const recentActivity = await fetchAllRecentActivity(vehicleRegistrations, companyScope)
 
-    const vehicleStatusCounts = countVehicleStatusesToday(dashboardVehicles)
+    const vehicleStatusCounts = countVehicleStatusesToday(
+      dashboardVehicles,
+      companyToday,
+    )
     const fleetComplianceAlerts = buildFleetComplianceAlertsSummary(
       dashboardVehicles,
       companyToday,
@@ -2032,11 +2050,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
         ),
       },
       timesheetOverview,
-      fleetStatus: {
-        available: vehicleStatusCounts.availableVehicles,
-        offRoad: vehicleStatusCounts.offRoadToday + vehicleStatusCounts.outOfServiceToday,
-        maintenanceDue: vehicleStatusCounts.maintenanceToday,
-      },
+      fleetStatus: vehicleStatusCounts.fleetStatus,
       fleetComplianceAlerts,
       holidayRequests,
       driverReports,

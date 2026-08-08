@@ -29,6 +29,7 @@
     "verify:office-invitation": "npx tsx scripts/verify-office-invitation.ts",
     "verify:office-users-ui": "npx tsx scripts/verify-office-users-ui.ts",
     "verify:company-date-format": "npx tsx scripts/verify-company-date-format.ts",
+    "verify:fleet-status-compliance-blocking": "npx tsx scripts/verify-fleet-status-compliance-blocking.ts",
     "verify:office-mfa-gate": "npx tsx scripts/verify-office-mfa-gate.ts",
     "verify:office-mfa-enroll": "npx tsx scripts/verify-office-mfa-enroll.ts",
     "verify:office-mfa-remove": "npx tsx scripts/verify-office-mfa-remove.ts",

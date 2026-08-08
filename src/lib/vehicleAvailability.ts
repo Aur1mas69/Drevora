@@ -3,7 +3,6 @@ import type {
   VehicleAvailability,
   VehicleStatus,
 } from '@/services/vehiclesService'
-import { getVehicleStatusForDate } from '@/services/vehiclesService'
 
 export type TimelineEntry = {
   id: string
@@ -90,6 +89,19 @@ export function getAvailabilityRecordForDate(
     )
 
   return matchingRecords[0] ?? null
+}
+
+/** Active availability override for the date, else base/manual vehicle status. */
+export function getVehicleStatusForDate(
+  vehicle: Vehicle,
+  date = todayString(),
+): VehicleStatus {
+  return (
+    getAvailabilityRecordForDate(vehicle, date)?.status ??
+    vehicle.baseStatus ??
+    vehicle.status ??
+    'Available'
+  )
 }
 
 export function getNextScheduledEvent(

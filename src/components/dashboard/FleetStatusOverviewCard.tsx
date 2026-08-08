@@ -34,7 +34,7 @@ function buildFleetStatusRows(fleetStatus: DashboardFleetStatus): FleetStatusRow
     {
       key: 'off-road',
       label: 'Off road',
-      helper: 'Needs attention',
+      helper: fleetStatus.offRoadHelper || 'Needs attention',
       value: fleetStatus.offRoad,
       icon: AlertTriangle,
       iconWrapClass: 'bg-red-50 ring-red-100 dark:bg-red-950/40 dark:ring-red-800/50',

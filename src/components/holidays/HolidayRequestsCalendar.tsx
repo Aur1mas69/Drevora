@@ -258,6 +258,25 @@ function groupByStatus(requests: HolidayRequest[]): Record<'Approved' | 'Pending
   }
 }
 
+const holidayDayDetailsPanelShellClass =
+  'rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white via-[#FAFCFF] to-[#EFF7FF] p-4 shadow-[0_12px_32px_rgba(17,60,105,0.14)] ring-1 ring-[#D3E9FC]/80'
+
+function HolidayCalendarDayDetailsEmptyState() {
+  return (
+    <div
+      className={`${holidayDayDetailsPanelShellClass} flex min-h-[220px] flex-col justify-center`}
+      aria-live="polite"
+    >
+      <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF]">
+        Selected day details
+      </p>
+      <p className="mt-3 text-sm font-medium leading-6 text-[#5499BF]">
+        Select a day to view details
+      </p>
+    </div>
+  )
+}
+
 function HolidayCalendarDayDetailsPanel({
   day,
   workersById,
@@ -277,9 +296,9 @@ function HolidayCalendarDayDetailsPanel({
   const hasWorkersOff = dayRequests.length > 0
 
   return (
-    <div className="mt-4 rounded-[16px] border border-[#C5DFFB] bg-gradient-to-br from-white via-[#FAFCFF] to-[#EFF7FF] p-4 shadow-[0_12px_32px_rgba(17,60,105,0.14)] ring-1 ring-[#D3E9FC]/80">
+    <div className={`${holidayDayDetailsPanelShellClass} min-h-[220px]`}>
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5499BF]">
             Selected day details
           </p>
@@ -300,7 +319,7 @@ function HolidayCalendarDayDetailsPanel({
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-[10px] px-2 py-1 text-xs font-semibold text-[#5499BF] hover:bg-[#EFF7FF] hover:text-[#0B68BE]"
+          className="shrink-0 rounded-[10px] px-2 py-1 text-xs font-semibold text-[#5499BF] hover:bg-[#EFF7FF] hover:text-[#0B68BE]"
         >
           Clear
         </button>
@@ -592,120 +611,131 @@ export function HolidayRequestsCalendar({
         </div>
       ) : null}
 
-      <div className="mt-4 overflow-x-auto overflow-y-visible pb-1">
-        <div className="min-w-[720px] overflow-visible sm:min-w-0">
-          <div className="grid grid-cols-7 gap-2">
-            {WEEKDAY_LABELS.map((day, index) => {
-              const isNonWorkingHeader = !workingDays.includes(WEEKDAY_HEADER_KEYS[index])
+      <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-start">
+        <aside
+          className="order-2 w-full shrink-0 xl:order-1 xl:sticky xl:top-4 xl:w-[320px]"
+          aria-label="Selected day details"
+        >
+          {selectedDayDetails ? (
+            <HolidayCalendarDayDetailsPanel
+              day={selectedDayDetails}
+              workersById={workersById}
+              onDismiss={() => setSelectedDay(null)}
+            />
+          ) : (
+            <HolidayCalendarDayDetailsEmptyState />
+          )}
+        </aside>
 
-              return (
-                <div key={day} className={getWeekdayHeaderClass(isNonWorkingHeader)}>
-                  {day}
-                </div>
-              )
-            })}
-          </div>
+        <div className="order-1 min-w-0 flex-1 xl:order-2">
+          <div className="overflow-x-auto overflow-y-visible pb-1">
+            <div className="min-w-[720px] overflow-visible sm:min-w-0">
+              <div className="grid grid-cols-7 gap-2">
+                {WEEKDAY_LABELS.map((day, index) => {
+                  const isNonWorkingHeader = !workingDays.includes(WEEKDAY_HEADER_KEYS[index])
 
-          <div className="mt-2 grid grid-cols-7 gap-2 overflow-visible">
-            {days.map((day) => {
-              const dayRequests = dedupeRequestsByWorker(
-                day.requests.map((request) => ({
-                  ...request,
-                  workerName: resolveCalendarWorkerName(request, workersById),
-                })),
-              )
-              const offCount = new Set(dayRequests.map((request) => request.workerId)).size
-              const isOverLimit = offCount > HOLIDAY_MAX_WORKERS_OFF_PER_DAY
-              const hasHoliday = dayRequests.length > 0
-              const isSelectedDay = selectedDay === day.iso
-              const hasApproved = dayRequests.some((request) => request.status === 'Approved')
-              const hasPending = dayRequests.some((request) => request.status === 'Pending')
-              const hasUnpaid = dayRequests.some((request) => request.leaveType === 'unpaid_leave')
+                  return (
+                    <div key={day} className={getWeekdayHeaderClass(isNonWorkingHeader)}>
+                      {day}
+                    </div>
+                  )
+                })}
+              </div>
 
-              return (
-                <button
-                  key={day.iso}
-                  type="button"
-                  onClick={() => setSelectedDay(day.iso)}
-                  className={`relative box-border flex h-[112px] min-h-[112px] flex-col overflow-hidden rounded-[16px] border p-2 text-left transition-[border-color,box-shadow,filter] sm:h-[132px] sm:min-h-[132px] ${
-                    day.isCurrentMonth || view === 'week' || hasHoliday ? 'opacity-100' : 'opacity-55'
-                  } ${getDayCellBackgroundClass(dayRequests, day.isNonWorkingDay)} ${
-                    isOverLimit
-                      ? 'border-orange-300 bg-orange-50/70 ring-2 ring-inset ring-orange-100'
-                      : ''
-                  } ${
-                    day.isToday ? 'border-[#218EE7] ring-2 ring-inset ring-[#BFE3F5]' : ''
-                  } ${
-                    isSelectedDay
-                      ? 'z-10 border-[#218EE7] ring-2 ring-inset ring-[#89CFF0]'
-                      : 'z-0 hover:border-[#89CFF0] hover:ring-2 hover:ring-inset hover:ring-[#BFE3F5]/80 hover:brightness-[1.02]'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span
-                      className={`flex size-7 items-center justify-center rounded-full text-sm font-bold ${getDayNumberClass(
-                        day.isToday,
-                        day.isNonWorkingDay,
-                      )}`}
+              <div className="mt-2 grid grid-cols-7 gap-2 overflow-visible">
+                {days.map((day) => {
+                  const dayRequests = dedupeRequestsByWorker(
+                    day.requests.map((request) => ({
+                      ...request,
+                      workerName: resolveCalendarWorkerName(request, workersById),
+                    })),
+                  )
+                  const offCount = new Set(dayRequests.map((request) => request.workerId)).size
+                  const isOverLimit = offCount > HOLIDAY_MAX_WORKERS_OFF_PER_DAY
+                  const hasHoliday = dayRequests.length > 0
+                  const isSelectedDay = selectedDay === day.iso
+                  const hasApproved = dayRequests.some((request) => request.status === 'Approved')
+                  const hasPending = dayRequests.some((request) => request.status === 'Pending')
+                  const hasUnpaid = dayRequests.some((request) => request.leaveType === 'unpaid_leave')
+
+                  return (
+                    <button
+                      key={day.iso}
+                      type="button"
+                      onClick={() => setSelectedDay(day.iso)}
+                      className={`relative box-border flex h-[112px] min-h-[112px] flex-col overflow-hidden rounded-[16px] border p-2 text-left transition-[border-color,box-shadow,filter] sm:h-[132px] sm:min-h-[132px] ${
+                        day.isCurrentMonth || view === 'week' || hasHoliday ? 'opacity-100' : 'opacity-55'
+                      } ${getDayCellBackgroundClass(dayRequests, day.isNonWorkingDay)} ${
+                        isOverLimit
+                          ? 'border-orange-300 bg-orange-50/70 ring-2 ring-inset ring-orange-100'
+                          : ''
+                      } ${
+                        day.isToday ? 'border-[#218EE7] ring-2 ring-inset ring-[#BFE3F5]' : ''
+                      } ${
+                        isSelectedDay
+                          ? 'z-10 border-[#218EE7] ring-2 ring-inset ring-[#89CFF0]'
+                          : 'z-0 hover:border-[#89CFF0] hover:ring-2 hover:ring-inset hover:ring-[#BFE3F5]/80 hover:brightness-[1.02]'
+                      }`}
                     >
-                      {day.label}
-                    </span>
-                    {offCount > 0 ? (
-                      <span className="rounded-full bg-[#D3E9FC] px-2 py-0.5 text-[11px] font-bold text-[#0B68BE]">
-                        {offCount} off
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {hasHoliday ? (
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                      <div className="flex items-center gap-1.5">
-                        {hasApproved ? (
-                          <span
-                            className="size-2.5 rounded-full bg-teal-500 ring-2 ring-white/80"
-                            title="Approved"
-                          />
-                        ) : null}
-                        {hasPending ? (
-                          <span
-                            className="size-2.5 rounded-full bg-amber-500 ring-2 ring-white/80"
-                            title="Pending"
-                          />
-                        ) : null}
-                        {hasUnpaid ? (
-                          <span
-                            className="size-2.5 rounded-full bg-slate-500 ring-2 ring-white/80"
-                            title="Unpaid leave"
-                          />
-                        ) : null}
-                        {isOverLimit ? (
-                          <span
-                            className="size-2.5 rounded-full bg-orange-600 ring-2 ring-white/80"
-                            title="Over limit"
-                          />
+                      <div className="flex items-start justify-between gap-2">
+                        <span
+                          className={`flex size-7 items-center justify-center rounded-full text-sm font-bold ${getDayNumberClass(
+                            day.isToday,
+                            day.isNonWorkingDay,
+                          )}`}
+                        >
+                          {day.label}
+                        </span>
+                        {offCount > 0 ? (
+                          <span className="rounded-full bg-[#D3E9FC] px-2 py-0.5 text-[11px] font-bold text-[#0B68BE]">
+                            {offCount} off
+                          </span>
                         ) : null}
                       </div>
-                      {isOverLimit ? (
-                        <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700 ring-1 ring-orange-200">
-                          Limit
-                        </span>
+
+                      {hasHoliday ? (
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                          <div className="flex items-center gap-1.5">
+                            {hasApproved ? (
+                              <span
+                                className="size-2.5 rounded-full bg-teal-500 ring-2 ring-white/80"
+                                title="Approved"
+                              />
+                            ) : null}
+                            {hasPending ? (
+                              <span
+                                className="size-2.5 rounded-full bg-amber-500 ring-2 ring-white/80"
+                                title="Pending"
+                              />
+                            ) : null}
+                            {hasUnpaid ? (
+                              <span
+                                className="size-2.5 rounded-full bg-slate-500 ring-2 ring-white/80"
+                                title="Unpaid leave"
+                              />
+                            ) : null}
+                            {isOverLimit ? (
+                              <span
+                                className="size-2.5 rounded-full bg-orange-600 ring-2 ring-white/80"
+                                title="Over limit"
+                              />
+                            ) : null}
+                          </div>
+                          {isOverLimit ? (
+                            <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-bold text-orange-700 ring-1 ring-orange-200">
+                              Limit
+                            </span>
+                          ) : null}
+                        </div>
                       ) : null}
-                    </div>
-                  ) : null}
-                </button>
-              )
-            })}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      {selectedDayDetails ? (
-        <HolidayCalendarDayDetailsPanel
-          day={selectedDayDetails}
-          workersById={workersById}
-          onDismiss={() => setSelectedDay(null)}
-        />
-      ) : null}
 
       {!isLoading && !error && !hasScheduledHolidays ? (
         <div className="mt-4 rounded-[16px] border border-dashed border-[#BFE3F5] bg-white/70 px-4 py-6 text-center text-sm font-medium text-[#5499BF] dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-400">
