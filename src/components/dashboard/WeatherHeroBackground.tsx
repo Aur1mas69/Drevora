@@ -18,10 +18,11 @@ export function WeatherHeroBackground() {
         className="absolute inset-0"
         style={{
           backgroundImage: `url(${ADMIN_DASHBOARD_HERO_BACKGROUND})`,
-          // Fit width without cover-zoom so more of the lower yard/road stays visible.
-          backgroundSize: '100% auto',
-          // Keep trucks on the right; prefer bottom so the yard is not cropped away.
-          backgroundPosition: 'right bottom',
+          // Cover fills the hero without stretching; crops evenly on resize.
+          backgroundSize: 'cover',
+          // Bias slightly left so the bright open road stays under greeting text;
+          // keep enough right-side road for the weather card.
+          backgroundPosition: 'left center',
           backgroundRepeat: 'no-repeat',
         }}
         initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
