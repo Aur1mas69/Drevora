@@ -3,6 +3,7 @@ import { PwaRuntime } from '@/components/pwa/PwaRuntime'
 import { SupabaseConfigNotice } from '@/components/SupabaseConfigNotice'
 import { AppLockProvider } from '@/contexts/AppLockContext'
 import { startOfflineVehicleChecksAutoSync } from '@/services/offlineVehicleChecksService'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useEffect } from 'react'
 
 /**
@@ -19,6 +20,7 @@ function App() {
       <SupabaseConfigNotice />
       <PwaRuntime />
       <WorkerAppRouter />
+      <SpeedInsights />
     </AppLockProvider>
   )
 }
