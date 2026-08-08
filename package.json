@@ -44,6 +44,7 @@
     "verify:worker-access-email": "npx tsx scripts/verify-worker-access-email.ts",
     "verify:worker-access-email-ui": "npx tsx scripts/verify-worker-access-email-ui.ts",
     "verify:server-only-table-security": "npx tsx scripts/verify-server-only-table-security.ts",
+    "verify:security-definer-trigger-privileges": "npx tsx scripts/verify-security-definer-trigger-privileges.ts",
     "verify:worker-private-notes": "npx tsx scripts/verify-worker-private-notes.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
