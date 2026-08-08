@@ -1512,7 +1512,16 @@ revoke all on table public.worker_access_email_dispatches from anon;
 revoke all on table public.worker_access_email_dispatches from authenticated;
 grant all on table public.worker_access_email_dispatches to service_role;
 
--- No authenticated policies — browser has no dispatch-table access.
+-- Explicit deny for client roles (Security Advisor 0008). No permissive client access.
+drop policy if exists worker_access_email_dispatches_deny_client_access
+  on public.worker_access_email_dispatches;
+
+create policy worker_access_email_dispatches_deny_client_access
+  on public.worker_access_email_dispatches
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
 
 revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from public;
 revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from anon;
@@ -1539,6 +1548,17 @@ revoke all on table public.office_user_invitation_events from public;
 revoke all on table public.office_user_invitation_events from anon;
 revoke all on table public.office_user_invitation_events from authenticated;
 grant all on table public.office_user_invitation_events to service_role;
+
+-- Explicit deny for client roles (Security Advisor 0008). No permissive client access.
+drop policy if exists office_user_invitation_events_deny_client_access
+  on public.office_user_invitation_events;
+
+create policy office_user_invitation_events_deny_client_access
+  on public.office_user_invitation_events
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
 
 revoke all on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) from public;
 revoke all on function public.drevora_link_invited_office_user(uuid, uuid, uuid, text, text, text) from anon;

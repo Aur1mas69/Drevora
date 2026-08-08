@@ -4038,7 +4038,7 @@ create table if not exists public.worker_access_email_dispatches (
 );
 
 comment on table public.worker_access_email_dispatches is
-  'Private access-email send reservations. No browser SELECT/INSERT/UPDATE/DELETE. Writers are service-role SECURITY DEFINER RPCs only.';
+  'Private access-email send reservations. No browser SELECT/INSERT/UPDATE/DELETE. Writers are service-role SECURITY DEFINER RPCs only. Explicit deny policy for anon/authenticated.';
 
 create index if not exists worker_access_email_dispatches_driver_created_at_idx
   on public.worker_access_email_dispatches (driver_id, created_at desc);
@@ -4059,7 +4059,15 @@ revoke all on table public.worker_access_email_dispatches from anon;
 revoke all on table public.worker_access_email_dispatches from authenticated;
 grant all on table public.worker_access_email_dispatches to service_role;
 
--- No authenticated policies — browser has no access.
+drop policy if exists worker_access_email_dispatches_deny_client_access
+  on public.worker_access_email_dispatches;
+
+create policy worker_access_email_dispatches_deny_client_access
+  on public.worker_access_email_dispatches
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
 
 -- Drop superseded assert/record helpers if a prior draft of this migration existed.
 drop function if exists public.drevora_assert_worker_access_email_allowed(uuid, uuid, integer);
@@ -5128,7 +5136,7 @@ create table if not exists public.office_user_invitation_events (
 );
 
 comment on table public.office_user_invitation_events is
-  'Append-only Office-user invitation audit. No drivers rows. Writers are service-role / security-definer only.';
+  'Append-only Office-user invitation audit. No browser SELECT/INSERT/UPDATE/DELETE. Writers are service-role / security-definer only. Explicit deny policy for anon/authenticated.';
 
 create index if not exists office_user_invitation_events_company_created_at_idx
   on public.office_user_invitation_events (company_id, created_at desc);
@@ -5146,6 +5154,16 @@ revoke all on table public.office_user_invitation_events from public;
 revoke all on table public.office_user_invitation_events from anon;
 revoke all on table public.office_user_invitation_events from authenticated;
 grant all on table public.office_user_invitation_events to service_role;
+
+drop policy if exists office_user_invitation_events_deny_client_access
+  on public.office_user_invitation_events;
+
+create policy office_user_invitation_events_deny_client_access
+  on public.office_user_invitation_events
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
 
 -- RPC bodies: see migrations/20260808150000_office_user_invitation_foundation.sql
 -- Apply that migration for drevora_link_invited_office_user +
