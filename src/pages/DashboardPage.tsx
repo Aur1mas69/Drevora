@@ -68,6 +68,7 @@ function resetHorizontalScrollOffset() {
   window.scrollTo(0, window.scrollY || window.pageYOffset || 0)
 }
 
+
 function statusDotClass(tone: WorkerHomeStatusTone): string {
   if (tone === 'green') return 'bg-emerald-500'
   if (tone === 'amber') return 'bg-amber-400'
@@ -121,7 +122,7 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
       <div className="worker-home-greeting-icon" aria-hidden>
         <GreetingIcon className="size-8" strokeWidth={2} />
       </div>
-      <div className="min-w-0 flex-1 space-y-2.5">
+      <div className="worker-home-greeting-text min-w-0 flex-1">
         <h1 className="worker-home-greeting-script max-w-full break-words">
           {greeting}
         </h1>
@@ -151,7 +152,7 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
  */
 function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
-    <section className="relative isolate pt-5 sm:pt-6">
+    <section className="worker-home-hero relative isolate pt-5 sm:pt-6">
       {/* Height comes only from the banner shell — not from the robot. */}
       <div className="relative min-h-[5.75rem] min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]">
         {/* Clipped banner surface (road / dark). Robot is NOT a child here. */}
@@ -557,7 +558,7 @@ function DashboardPage() {
   // and Quick Actions, and always expose the cached Vehicle Check entry point.
   if (!isOnline) {
     return (
-      <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
+      <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-clip lg:max-w-3xl">
         <WorkerHomeHeader workerName={greetingWorkerName} />
 
         {showOfflineNotPrepared ? (
@@ -575,7 +576,7 @@ function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-5 overflow-x-clip lg:max-w-3xl">
+    <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-clip lg:max-w-3xl">
       <WorkerHomeHeader workerName={greetingWorkerName} />
 
       {isLoading || companyLoading ? (
@@ -676,11 +677,11 @@ function DashboardPage() {
             </section>
           </div>
 
-          <section className="space-y-3">
+          <section className="worker-home-quick-actions">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--worker-text-muted)]">
               Quick actions
             </h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="worker-home-quick-actions-grid grid grid-cols-2 gap-3">
               {quickActionItems.map((item, index) => {
                 const Icon = item.icon
                 const accentClass = isDark
