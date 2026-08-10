@@ -30,6 +30,8 @@ export type VehicleCheckLocationResult =
   | { status: 'failure'; reason: VehicleCheckLocationFailureReason }
 
 const DEFAULT_TIMEOUT_MS = 9000
+/** Absolute wall-clock fallback — some iOS WKWebView builds ignore Geolocation `timeout`. */
+const HARD_TIMEOUT_BUFFER_MS = 1500
 
 function isGeolocationSupported(): boolean {
   return (
@@ -55,6 +57,10 @@ function mapPositionErrorCode(code: number): VehicleCheckLocationFailureReason {
 /**
  * Requests the current device position once. Always resolves — never throws
  * — so it is safe to call without wrapping in try/catch at the call site.
+ *
+ * Uses both the Geolocation API timeout and an absolute Promise.race timer so
+ * native iOS WKWebView cannot leave completion hung when the API timeout is ignored
+ * (e.g. missing NSLocationWhenInUseUsageDescription / stuck permission UI).
  */
 export function captureVehicleCheckLocation(
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
@@ -65,11 +71,21 @@ export function captureVehicleCheckLocation(
 
   return new Promise((resolve) => {
     let settled = false
+    let hardTimer: ReturnType<typeof setTimeout> | null = null
+
     const settle = (result: VehicleCheckLocationResult) => {
       if (settled) return
       settled = true
+      if (hardTimer != null) {
+        clearTimeout(hardTimer)
+        hardTimer = null
+      }
       resolve(result)
     }
+
+    hardTimer = setTimeout(() => {
+      settle({ status: 'failure', reason: 'timeout' })
+    }, Math.max(0, timeoutMs) + HARD_TIMEOUT_BUFFER_MS)
 
     try {
       navigator.geolocation.getCurrentPosition(

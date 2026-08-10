@@ -70,9 +70,9 @@ function resetHorizontalScrollOffset() {
 
 
 function statusDotClass(tone: WorkerHomeStatusTone): string {
-  if (tone === 'green') return 'bg-emerald-500'
-  if (tone === 'amber') return 'bg-amber-400'
-  return 'bg-rose-500'
+  if (tone === 'green') return 'worker-home-status-dot--green'
+  if (tone === 'amber') return 'worker-home-status-dot--amber'
+  return 'worker-home-status-dot--red'
 }
 
 function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
@@ -632,7 +632,7 @@ function DashboardPage() {
               >
                 <span
                   className={cn(
-                    'mt-1.5 size-2 shrink-0 rounded-full',
+                    'worker-home-status-dot mt-1 shrink-0',
                     statusDotClass(vehicleCheckStatus.tone),
                   )}
                   aria-hidden
@@ -655,7 +655,7 @@ function DashboardPage() {
               <div className="worker-home-status-row flex min-w-0 items-start gap-2">
                 <span
                   className={cn(
-                    'mt-1.5 size-2 shrink-0 rounded-full',
+                    'worker-home-status-dot mt-1 shrink-0',
                     statusDotClass(timesheetStatus.tone),
                   )}
                   aria-hidden

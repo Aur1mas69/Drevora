@@ -742,7 +742,7 @@ function WorkerMobileDaySelector({
               className={cn(
                 'flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl border px-0.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED] focus-visible:ring-offset-2',
                 state === 'valid' &&
-                  'worker-day-complete border-emerald-300 bg-emerald-50 text-emerald-900',
+                  'worker-day-complete border-emerald-300 bg-emerald-50 text-[color:var(--worker-primary)]',
                 state === 'partial' &&
                   'border-amber-300 bg-amber-50 text-amber-900',
                 state === 'error' && 'border-rose-300 bg-rose-50 text-rose-900',
