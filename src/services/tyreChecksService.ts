@@ -661,6 +661,8 @@ export async function fetchTyreCheckAdminOverview(
     table: 'tyre_checks',
     data,
     error,
+    // Zero rows is normal: no matching tyre checks for the admin overview window.
+    warnOnEmpty: false,
   })
 
   if (error) {

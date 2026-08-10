@@ -1541,6 +1541,8 @@ async function fetchTodayTyreCheckRows(
     table: 'tyre_checks',
     data,
     error,
+    // Zero rows is normal: company may have no submitted tyre checks today.
+    warnOnEmpty: false,
   })
 
   if (error) {

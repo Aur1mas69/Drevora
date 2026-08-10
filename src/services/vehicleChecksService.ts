@@ -340,6 +340,8 @@ async function attachLinkedCorrectionSummaries(
     table: 'vehicle_checks',
     data: data ?? [],
     error,
+    // Zero rows is normal: most originals have no linked corrections yet.
+    warnOnEmpty: false,
   })
 
   if (error) {

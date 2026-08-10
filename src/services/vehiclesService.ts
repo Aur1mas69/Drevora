@@ -691,6 +691,8 @@ export async function fetchVehicles(
     table: 'vehicle_availability',
     data: availabilityRecords,
     error: null,
+    // Zero rows is normal: company may have no relevant availability records.
+    warnOnEmpty: false,
   })
 
   return vehicles.map((vehicle) =>
