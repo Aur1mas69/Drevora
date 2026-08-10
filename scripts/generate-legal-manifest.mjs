@@ -64,9 +64,21 @@ const DOCUMENTS = [
   },
 ]
 
+/**
+ * Canonicalize line endings to LF for cross-platform hashing / comparison.
+ * Converts CRLF -> LF, then any remaining lone CR -> LF.
+ * Does not change document text beyond EOL bytes.
+ * @param {string} text
+ */
+function canonicalizeEol(text) {
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+}
+
 function sha256File(filePath) {
-  const buf = fs.readFileSync(filePath)
-  return crypto.createHash('sha256').update(buf).digest('hex')
+  // Hash canonical LF content so Windows core.autocrlf checkouts match
+  // committed LF hashes (macOS/Linux). Document text/version are unchanged.
+  const canonical = canonicalizeEol(fs.readFileSync(filePath, 'utf8'))
+  return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex')
 }
 
 function buildManifestSource(entries) {
@@ -175,7 +187,9 @@ function main() {
       process.exit(1)
     }
     const current = fs.readFileSync(outFile, 'utf8')
-    if (current !== next) {
+    // Compare LF-canonical forms so a CRLF checkout of legalManifest.ts
+    // does not false-fail; real content/hash/version drift still fails.
+    if (canonicalizeEol(current) !== canonicalizeEol(next)) {
       console.error(
         'Legal manifest is out of date. A legal Markdown file changed without updating the manifest.',
       )
