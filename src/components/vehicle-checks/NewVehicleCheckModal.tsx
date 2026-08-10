@@ -421,7 +421,7 @@ export function NewVehicleCheckModal({
 
               <div ref={vehicleSearchRef} className="relative">
                 <label className="block text-sm font-medium text-slate-700" htmlFor="vehicle-check-search">
-                  Number plate
+                  Vehicle registration
                 </label>
                 <div className="relative mt-1.5">
                   <Search
@@ -439,7 +439,7 @@ export function NewVehicleCheckModal({
                       setError(null)
                     }}
                     onFocus={() => setShowVehicleResults(true)}
-                    placeholder="Search registration, e.g. PN23 JUF"
+                    placeholder="Search registration"
                     autoComplete="off"
                     className="h-10 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-[#F8FBFF] pl-9"
                   />
