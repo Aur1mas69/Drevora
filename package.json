@@ -54,6 +54,7 @@
     "verify:remaining-storage-private-schema": "npx tsx scripts/verify-remaining-storage-private-schema.ts",
     "verify:worker-private-notes": "npx tsx scripts/verify-worker-private-notes.ts",
     "verify:timesheet-management-helper-private": "npx tsx scripts/verify-timesheet-management-helper-private.ts",
+    "verify:security-definer-search-paths": "npx tsx scripts/verify-security-definer-search-paths.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },
