@@ -1090,7 +1090,7 @@ export default function WorkerVehicleChecksPage() {
       ) : null}
 
       {step === 'checklist' ? (
-        <section className="worker-vc-flow space-y-4">
+        <section className="worker-vc-flow min-w-0 w-full max-w-full space-y-4">
           {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
 
           <form

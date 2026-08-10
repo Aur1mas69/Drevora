@@ -90,7 +90,7 @@ export function VehicleCheckDefectPhotoField({
   }
 
   return (
-    <div>
+    <div className="worker-vc-defect-photo min-w-0 w-full max-w-full">
       <input
         ref={inputRef}
         type="file"
@@ -102,13 +102,13 @@ export function VehicleCheckDefectPhotoField({
       />
 
       {previewUrl ? (
-        <div className="flex items-center gap-2 rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-2 py-1.5">
+        <div className="flex min-w-0 max-w-full items-center gap-2 rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-2 py-1.5">
           <img
             src={previewUrl}
             alt={displayName ? `Preview of ${displayName}` : 'Defect photo preview'}
             className="size-12 shrink-0 rounded-[8px] object-cover"
           />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <p className="truncate text-xs font-semibold text-[#113C69]">
               {displayName ?? 'Defect photo'}
             </p>
@@ -136,12 +136,12 @@ export function VehicleCheckDefectPhotoField({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || isProcessing}
-          className="worker-vc-add-photo inline-flex min-h-11 items-center gap-1.5 rounded-[10px] border border-dashed border-[#C5DFFB] bg-white px-3 py-2 text-xs font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] disabled:opacity-60"
+          className="worker-vc-add-photo inline-flex max-w-full min-h-11 items-center gap-1.5 rounded-[10px] border border-dashed border-[#C5DFFB] bg-white px-3 py-2 text-xs font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] disabled:opacity-60"
         >
           {isProcessing ? (
-            <Loader2 className="size-3.5 animate-spin" />
+            <Loader2 className="size-3.5 shrink-0 animate-spin" />
           ) : (
-            <Camera className="size-3.5" />
+            <Camera className="size-3.5 shrink-0" />
           )}
           {isProcessing ? 'Preparing photo…' : 'Add photo'}
         </button>

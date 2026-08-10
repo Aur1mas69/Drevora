@@ -2307,6 +2307,22 @@ html.worker-dark .worker-toast-error {
   color: #94a3b8 !important;
 }
 
+/* Keep Defect expand panels inside the checklist card on all platforms. */
+.worker-mobile-layout .worker-vc-checklist,
+.worker-mobile-layout .worker-vc-item,
+.worker-mobile-layout .worker-vc-defect-panel,
+.worker-mobile-layout .worker-vc-defect-photo {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.worker-mobile-layout .worker-vc-defect-notes {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .worker-dark .worker-mobile-layout .worker-vc-add-photo {
   border-color: rgba(163, 241, 171, 0.45) !important;
   background-color: var(--worker-elevated) !important;
