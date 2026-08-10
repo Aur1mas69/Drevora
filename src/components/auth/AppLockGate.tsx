@@ -4,10 +4,14 @@ import { useAppLock } from '@/contexts/AppLockContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import type { AppLockAvailabilityStatus } from '@/lib/appLockNative'
+import { Capacitor } from '@capacitor/core'
 import { Loader2, LockKeyhole } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import drevoraLogoFull from '@/assets/drevora-logo-full.png'
+
+/** Auto Face ID / device auth is iOS-only; Android keeps tap-to-Unlock. */
+const AUTO_UNLOCK_ON_LOCK = Capacitor.getPlatform() === 'ios'
 
 function availabilityGuidance(status: AppLockAvailabilityStatus): string {
   switch (status) {
@@ -50,12 +54,20 @@ export function AppLockGate({ children }: { children: ReactNode }) {
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  // One automatic unlock() per locked cycle. Reset only when the gate unlocks.
+  const autoUnlockAttemptedForCycleRef = useRef(false)
 
   useEffect(() => {
     if (isEnabled && isLocked) {
       void refreshAvailability()
     }
   }, [isEnabled, isLocked, refreshAvailability])
+
+  useEffect(() => {
+    if (!isLocked) {
+      autoUnlockAttemptedForCycleRef.current = false
+    }
+  }, [isLocked])
 
   async function handleUnlock() {
     setStatusMessage(null)
@@ -75,6 +87,44 @@ export function AppLockGate({ children }: { children: ReactNode }) {
       setStatusMessage(availabilityGuidance(availability))
     }
   }
+
+  // iOS: when a new lock cycle becomes visible, prompt Face ID / device auth once.
+  // Cancel/fail leaves the gate locked; the ref blocks automatic retries until unlock.
+  useEffect(() => {
+    if (!AUTO_UNLOCK_ON_LOCK) return
+    if (isInitializing || initError) return
+    if (!isEnabled || !isLocked) return
+    if (autoUnlockAttemptedForCycleRef.current) return
+    if (availability === 'noHardware') return
+
+    autoUnlockAttemptedForCycleRef.current = true
+
+    void (async () => {
+      setStatusMessage(null)
+      const result = await unlock()
+      if (!result.success) {
+        if (result.code === 'cancelled') {
+          setStatusMessage('Unlock cancelled. DREVORA stays locked.')
+          return
+        }
+        if (result.code === 'lockedOut' || result.code === 'permanentlyLockedOut') {
+          setStatusMessage('Too many attempts. Try again later, or sign out.')
+          return
+        }
+        if (result.code === 'promptAlreadyActive') {
+          return
+        }
+        setStatusMessage(availabilityGuidance(availability))
+      }
+    })()
+  }, [
+    availability,
+    initError,
+    isEnabled,
+    isInitializing,
+    isLocked,
+    unlock,
+  ])
 
   async function handleSignOut() {
     if (isSigningOut) return
