@@ -999,9 +999,15 @@ html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-greeting-text
   gap: 0.25rem; /* greeting -> worker name: 10px -> 4px */
 }
 
-/* Hero banner itself (image/copy) is untouched — only its top margin shrinks. */
+/* Hero: restore a little breathing room above (header → hero) without
+ * changing the banner's min-height / artwork. */
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-hero {
-  padding-top: 0;
+  padding-top: 1.25rem; /* was 0.75rem; +8px header → hero */
+}
+
+/* Hero → status row: extra space beyond the 0.25rem stack gap. */
+html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-status-vehicle-row {
+  margin-top: 1rem; /* was 0.5rem; +8px hero → top 2 boxes */
 }
 
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-status-vehicle-row > .worker-home-status-card,
@@ -1026,21 +1032,29 @@ html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-status-row .m
 
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-quick-actions {
   gap: 0.5rem; /* 0.75rem (12px) -> 8px, heading -> grid */
+  margin-top: 0.5rem; /* +8px status row → Quick Actions (beyond stack gap) */
 }
 
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-quick-actions-grid {
-  gap: 0.375rem; /* gap-3 (12px) -> 6px */
+  gap: 0.75rem; /* match web/PWA gap-3 — comfortable space between the two rows */
   grid-auto-rows: 1fr; /* both rows track the same height, independent of per-card label length */
 }
 
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-quick-action {
-  /* Fixed height (not min-height) so all 4 cards stay visually identical even
-     when one label (e.g. "Holiday Requests") is longer than its row-mates. */
-  height: 5rem; /* 6.5rem (104px) -> 5rem (80px); still >> 44px tap target */
-  min-height: 5rem;
-  padding: 0.625rem; /* 1rem (16px) -> 10px */
+  /* Match web/PWA card height (6.5rem / 1rem padding). Fixed height keeps all 4 equal. */
+  height: 6.5rem;
+  min-height: 6.5rem;
+  padding: 1rem;
 }
 
 html.drevora-native.drevora-ios .worker-mobile-layout .worker-home-cta {
   min-height: 3rem; /* 3.5rem (56px) -> 48px; still a generous primary CTA */
+  /* Vehicles/Documents → Start Vehicle Check: clearly larger gap (~18px with stack gap). */
+  margin-top: 0.875rem; /* 14px + 4px stack gap ≈ 18px */
+}
+
+/* Small gap between the shell border-t (blue divider) and the rounded nav
+ * pill. Safe-area bottom padding and pill height stay unchanged. */
+html.drevora-native.drevora-ios .worker-mobile-layout .worker-bottom-nav-shell {
+  padding-top: 0.5rem; /* ~8px; was 0 — divider/pill no longer almost touching */
 }
