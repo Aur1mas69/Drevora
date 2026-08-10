@@ -72,33 +72,7 @@
         flex-shrink: 0;
       }
     </style>
-    <script>
-      // Prevent a Light flash before React mounts when a Worker previously
-      // chose Dark on this device. Best-effort only: if more than one Worker
-      // account has saved a preference on this browser, we cannot yet know
-      // which is signed in, so we defer to the normal post-mount apply.
-      // Inert outside the Worker app: worker-dark only affects CSS scoped to
-      // .worker-mobile-layout / .worker-theme-surface (see worker-theme.css).
-      ;(function () {
-        try {
-          var prefix = 'drevora.worker.appearance:'
-          var match = null
-          var matchCount = 0
-          for (var i = 0; i < window.localStorage.length; i++) {
-            var key = window.localStorage.key(i)
-            if (key && key.indexOf(prefix) === 0) {
-              matchCount++
-              match = window.localStorage.getItem(key)
-            }
-          }
-          if (matchCount === 1 && match === 'dark') {
-            document.documentElement.classList.add('worker-dark')
-          }
-        } catch (e) {
-          /* localStorage unavailable (private mode) — skip, no visual harm. */
-        }
-      })()
-    </script>
+    <script src="/worker-dark-boot.js"></script>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
