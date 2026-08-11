@@ -84,7 +84,8 @@ export function buildVehicleCardComplianceEvents(
 
     events.push({
       type: field.type,
-      label: field.label,
+      label:
+        trailerAsset && field.type === 'mot' ? 'Annual Test / MOT' : field.label,
       dueDate: raw,
       daysUntilDue,
       urgency: resolveUrgency(daysUntilDue),

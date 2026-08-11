@@ -533,7 +533,7 @@ function VehiclesPage() {
 
     setForm(
       isTrailersMode
-        ? { ...initialVehicleForm, vehicleType: 'Trailer' }
+        ? { ...initialVehicleForm, vehicleType: 'Trailer', trailerType: 'Other' }
         : initialVehicleForm,
     )
     setFormErrors({})
@@ -571,7 +571,9 @@ function VehiclesPage() {
       ...currentForm,
       [name]: value,
       ...(name === 'status' ? { offRoadReason: '' } : {}),
-      ...(name === 'vehicleType' && value !== 'Trailer' ? { trailerNumber: '' } : {}),
+      ...(name === 'vehicleType' && value !== 'Trailer'
+        ? { trailerNumber: '', trailerType: '' }
+        : {}),
     }))
     setFormErrors((currentErrors) => ({ ...currentErrors, [name]: undefined }))
   }

@@ -38,6 +38,7 @@ export const initialVehicleForm: VehicleInput = {
   fleetNumber: '',
   trailerNumber: '',
   vehicleType: '',
+  trailerType: '',
   make: '',
   model: '',
   year: '',
@@ -66,6 +67,7 @@ export function getVehicleFormValues(vehicle: Vehicle): VehicleInput {
     fleetNumber: vehicle.fleetNumber ?? '',
     trailerNumber: vehicle.trailerNumber ?? '',
     vehicleType: vehicle.vehicleType ?? '',
+    trailerType: vehicle.trailerType ?? '',
     make: vehicle.make,
     model: vehicle.model,
     year: vehicle.year?.toString() ?? '',
@@ -98,6 +100,9 @@ export function validateVehicleForm(form: VehicleInput): VehicleFormErrors {
   if (isTrailer) {
     if (!form.trailerNumber.trim()) {
       errors.trailerNumber = 'Trailer number is required for Trailer vehicles.'
+    }
+    if (!form.trailerType.trim()) {
+      errors.trailerType = 'Trailer type is required for Trailer vehicles.'
     }
   } else if (!form.registration.trim()) {
     errors.registration = 'Registration is required.'

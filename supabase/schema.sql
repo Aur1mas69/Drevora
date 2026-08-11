@@ -311,6 +311,36 @@ create unique index if not exists vehicles_company_trailer_number_ci_uidx
     and company_id is not null;
 
 alter table public.vehicles
+  add column if not exists trailer_type text;
+
+comment on column public.vehicles.trailer_type is
+  'Trailer subtype (Curtainsider, Box, Reefer, Bulk, Tanker, Tipper, Flatbed, Low Loader, Other). '
+  'Only set when vehicle_type = Trailer. NULL for all other vehicle types. '
+  'Distinct from the powered vehicle_type option "Low Loader" — that option does '
+  'not make a row a Trailer fleet asset.';
+
+alter table public.vehicles
+  drop constraint if exists vehicles_trailer_type_matches_vehicle_type;
+
+alter table public.vehicles
+  add constraint vehicles_trailer_type_matches_vehicle_type
+  check (
+    (
+      vehicle_type is not null
+      and btrim(vehicle_type) = 'Trailer'
+      and trailer_type is not null
+      and btrim(trailer_type) <> ''
+    )
+    or (
+      coalesce(btrim(vehicle_type), '') is distinct from 'Trailer'
+      and trailer_type is null
+    )
+  );
+
+comment on constraint vehicles_trailer_type_matches_vehicle_type on public.vehicles is
+  'trailer_type is required and non-empty when vehicle_type = Trailer, and must be NULL for every other vehicle_type.';
+
+alter table public.vehicles
   add column if not exists archived_at timestamptz;
 
 comment on column public.vehicles.archived_at is

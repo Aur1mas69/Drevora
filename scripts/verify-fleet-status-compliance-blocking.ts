@@ -49,6 +49,7 @@ function makeVehicle(
     vin: null,
     currentOdometer: null,
     vehicleType: null,
+    trailerType: null,
     baseStatus: overrides.baseStatus ?? status,
     status,
     availabilityStatus: status,

@@ -438,6 +438,7 @@ function buildDashboardVehicle(
     archivedAt: row.archived_at?.trim() || null,
     archiveReason: null,
     retentionExpiresAt: null,
+    trailerType: null,
   }
 }
 

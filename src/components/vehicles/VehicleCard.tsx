@@ -150,7 +150,7 @@ export function VehicleCard({
         className="relative mt-2 flex min-w-0 flex-1 flex-col items-stretch rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
         aria-label={
           isTrailer
-            ? `${primaryTitle}, ${registration !== 'No registration' ? registration : 'no registration'}, ${makeModel}, Trailer, ${status}, next event ${nextEventSummary}`
+            ? `${primaryTitle}, ${registration !== 'No registration' ? registration : 'no registration'}, ${makeModel}, ${vehicle.trailerType?.trim() || 'Trailer'}, ${status}, next event ${nextEventSummary}`
             : `${registration}, ${makeModel}, ${vehicle.vehicleType ?? 'Vehicle'}, ${status}, assigned ${assignedDisplay}, next event ${nextEventSummary}`
         }
       >
@@ -178,7 +178,9 @@ export function VehicleCard({
         </p>
 
         <p className="mt-0.5 truncate text-[11px] font-semibold text-[#0B68BE]/90 dark:text-blue-300/90">
-          {vehicle.vehicleType?.trim() || (isTrailer ? 'Trailer' : 'No type')}
+          {isTrailer
+            ? vehicle.trailerType?.trim() || 'Trailer'
+            : vehicle.vehicleType?.trim() || 'No type'}
         </p>
 
         {isArchived ? (

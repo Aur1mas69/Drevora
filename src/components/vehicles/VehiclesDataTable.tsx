@@ -253,7 +253,7 @@ export function VehiclesDataTable({
                 {isTrailersMode ? 'Trailer #' : 'Registration'}
               </th>
               <th className="px-4 py-3">Fleet #</th>
-              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">{isTrailersMode ? 'Trailer Type' : 'Type'}</th>
               <th className="px-4 py-3">Make / Model</th>
               {isTrailersMode ? null : (
                 <th className="px-4 py-3">Assigned Worker</th>
@@ -261,7 +261,7 @@ export function VehiclesDataTable({
               <th className="px-4 py-3">Current Status</th>
               <th className="px-4 py-3">Next Event</th>
               <th className="px-4 py-3">
-                {isTrailersMode ? 'MOT / annual test' : 'MOT Expiry'}
+                {isTrailersMode ? 'Annual Test / MOT' : 'MOT Expiry'}
               </th>
               <th className="px-4 py-3">Insurance Expiry</th>
               <TableActionsHeader className="px-4 py-3" />
@@ -310,7 +310,11 @@ export function VehiclesDataTable({
                   <FleetNumberBadge fleetNumber={vehicle.fleetNumber} />
                 </td>
                 <td className="px-4 py-3">
-                  <VehicleTypeBadge vehicleType={vehicle.vehicleType} />
+                  <VehicleTypeBadge
+                    vehicleType={
+                      isTrailersMode ? vehicle.trailerType : vehicle.vehicleType
+                    }
+                  />
                 </td>
                 <td className="max-w-[180px] px-4 py-3">
                   <span className="block truncate text-sm font-medium text-[#113C69]">

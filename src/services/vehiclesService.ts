@@ -53,6 +53,37 @@ export const vehicleTypeOptions = [
 
 export type VehicleType = (typeof vehicleTypeOptions)[number]
 
+/**
+ * Trailer subtype catalogue (`vehicles.trailer_type`). Only meaningful when
+ * `vehicle_type = 'Trailer'`. Distinct from the powered `vehicle_type` option
+ * `'Low Loader'` above — that option does not make a row a Trailer fleet asset,
+ * and `trailer_type = 'Low Loader'` does not make a row a powered vehicle.
+ */
+export const trailerTypeOptions = [
+  'Curtainsider',
+  'Box',
+  'Reefer',
+  'Bulk',
+  'Tanker',
+  'Tipper',
+  'Flatbed',
+  'Low Loader',
+  'Other',
+] as const
+
+export type TrailerType = (typeof trailerTypeOptions)[number]
+
+const trailerTypeOptionSet = new Set<string>(trailerTypeOptions)
+
+export function getTrailerTypeSelectOptions(currentValue?: string | null): string[] {
+  const trimmed = currentValue?.trim()
+  if (!trimmed || trailerTypeOptionSet.has(trimmed)) {
+    return [...trailerTypeOptions]
+  }
+
+  return [trimmed, ...trailerTypeOptions]
+}
+
 const vehicleTypeOptionSet = new Set<string>(vehicleTypeOptions)
 
 export function getVehicleTypeSelectOptions(currentValue?: string | null): string[] {
@@ -123,6 +154,8 @@ export type Vehicle = {
   vin: string | null
   currentOdometer: number | null
   vehicleType: string | null
+  /** Trailer subtype (`vehicles.trailer_type`). Null for non-Trailer vehicles. */
+  trailerType: string | null
   baseStatus: VehicleStatus
   status: VehicleStatus
   availabilityStatus: VehicleStatus
@@ -155,6 +188,8 @@ export type VehicleInput = {
   fleetNumber: string
   trailerNumber: string
   vehicleType: string
+  /** Trailer subtype. Required when vehicleType is Trailer; ignored otherwise. */
+  trailerType: string
   make: string
   model: string
   year: string
@@ -180,6 +215,7 @@ type VehicleRow = {
   fleet_number: string | null
   trailer_number: string | null
   vehicle_type: string | null
+  trailer_type?: string | null
   make: string
   model: string
   year: number | null
@@ -398,6 +434,7 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
     fleetNumber: row.fleet_number,
     trailerNumber: row.trailer_number?.trim() || null,
     vehicleType: row.vehicle_type?.trim() || null,
+    trailerType: row.trailer_type?.trim() || null,
     make: row.make,
     model: row.model,
     year: row.year,
@@ -429,14 +466,14 @@ function mapVehicleRow(row: VehicleRow): Vehicle {
 }
 
 const vehicleSelect =
-  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason, retention_expires_at'
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, trailer_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason, retention_expires_at'
 
 /** Archive columns without retention (pre-retention migration / partial apply). */
 const vehicleSelectWithoutRetention =
-  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason'
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, trailer_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes, archived_at, archive_reason'
 
 const vehicleSelectLegacy =
-  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
+  'id, created_at, registration, fleet_number, trailer_number, vehicle_type, trailer_type, make, model, year, vin, current_odometer, status, availability_status, current_driver_id, insurance_expiry, mot_expiry, road_tax_expiry, tachograph_expiry, off_road_reason, off_road_start_date, off_road_expected_return_date, off_road_start, off_road_return, off_road_notes, notes'
 
 function isMissingRetentionColumnError(error: {
   message?: string
@@ -531,6 +568,7 @@ function buildVehiclePayload(input: VehicleInput) {
     fleet_number: input.fleetNumber.trim() || null,
     trailer_number: isTrailer ? input.trailerNumber.trim() || null : null,
     vehicle_type: input.vehicleType.trim(),
+    trailer_type: isTrailer ? input.trailerType.trim() || null : null,
     make: input.make.trim(),
     model: input.model.trim(),
     year: parseOptionalInteger(input.year),

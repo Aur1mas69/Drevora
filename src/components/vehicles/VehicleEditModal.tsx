@@ -35,6 +35,7 @@ import {
   enquireDvlaVehicle,
 } from '@/services/dvlaVehicleEnquiryService'
 import {
+  getTrailerTypeSelectOptions,
   getVehicleTypeSelectOptions,
   type VehicleInput,
   type VehicleStatus,
@@ -64,14 +65,22 @@ const vehicleFormLabelClass = 'text-sm font-semibold text-[#113C69] dark:text-sl
 function VehicleFormSection({
   title,
   children,
+  compact = false,
 }: {
   title: string
   children: ReactNode
+  compact?: boolean
 }) {
   return (
-    <section className="rounded-[16px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#F5FAFF]/95 p-4 ring-1 ring-[#C5DFFB]/35 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10 sm:p-5">
+    <section
+      className={`rounded-[16px] border border-[#D3E9FC] bg-gradient-to-br from-[#FAFCFF] to-[#F5FAFF]/95 ring-1 ring-[#C5DFFB]/35 dark:border-white/10 dark:from-slate-900/70 dark:to-slate-900/60 dark:ring-white/10 ${
+        compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5'
+      }`}
+    >
       <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-[#0B68BE]">{title}</h3>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
+      <div className={`grid sm:grid-cols-2 ${compact ? 'mt-3 gap-3' : 'mt-4 gap-4'}`}>
+        {children}
+      </div>
     </section>
   )
 }
@@ -195,7 +204,7 @@ export function VehicleEditModal({
   onPatchForm,
   onClose,
   onSubmit,
-  lockVehicleType = false,
+  lockVehicleType: _lockVehicleType = false,
 }: VehicleEditModalProps) {
   const initialFormRef = useRef(form)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
@@ -209,6 +218,7 @@ export function VehicleEditModal({
   const vehicleTypeSelectOptions = getVehicleTypeSelectOptions(form.vehicleType)
   const selectedVehicleType = form.vehicleType.trim()
   const isTrailer = selectedVehicleType === 'Trailer'
+  const trailerTypeSelectOptions = getTrailerTypeSelectOptions(form.trailerType)
   const companyName = resolveCompanyTextScope(settings)
   const canManageTemplateChecks = Boolean(selectedVehicleType && companyName && !isCompanyLoading)
   const isDirty = isVehicleFormDirty(form, initialFormRef.current)
@@ -281,15 +291,21 @@ export function VehicleEditModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm ${
+          isTrailer ? 'py-4 sm:py-5' : 'py-8'
+        }`}
         onClick={handleBackdropClick}
       >
         <div
-          className="flex max-h-[min(100%,calc(100vh-4rem))] w-full max-w-3xl flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10"
+          className={`flex w-full min-w-0 flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] ring-1 ring-blue-100 dark:bg-slate-900/95 dark:ring-white/10 ${
+            isTrailer
+              ? 'max-h-[min(100%,calc(100vh-2rem))] max-w-4xl'
+              : 'max-h-[min(100%,calc(100vh-4rem))] max-w-3xl'
+          }`}
           onClick={(event) => event.stopPropagation()}
         >
           <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 px-5 pt-5 sm:px-6 sm:pt-6">
+            <div className={`shrink-0 px-5 sm:px-6 ${isTrailer ? 'pt-4 sm:pt-5' : 'pt-5 sm:pt-6'}`}>
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#3B82F6]">
                 {eyebrow}
               </p>
@@ -304,7 +320,236 @@ export function VehicleEditModal({
               ) : null}
             </div>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 sm:px-6">
+            <div
+              className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 sm:px-6 ${
+                isTrailer ? 'space-y-3 py-3' : 'space-y-4 py-4'
+              }`}
+            >
+              {isTrailer ? (
+                <>
+                  <VehicleFormSection title="Trailer details" compact>
+                    <label className="block min-w-0 sm:col-span-2">
+                      <span className={vehicleFormLabelClass}>Trailer Type</span>
+                      <select
+                        name="trailerType"
+                        value={form.trailerType}
+                        onChange={(event) => {
+                          onPatchForm({ trailerType: event.currentTarget.value })
+                        }}
+                        required
+                        className={vehicleFormSelectClass}
+                      >
+                        <option value="">Select trailer type</option>
+                        {trailerTypeSelectOptions.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                      <FieldError message={errors.trailerType} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>
+                        Registration Number (optional)
+                      </span>
+                      <Input
+                        name="registration"
+                        value={form.registration}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.registration} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Trailer number</span>
+                      <Input
+                        name="trailerNumber"
+                        value={form.trailerNumber}
+                        onChange={onChange}
+                        placeholder="PVG4546"
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.trailerNumber} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Fleet Number</span>
+                      <Input
+                        name="fleetNumber"
+                        value={form.fleetNumber}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.fleetNumber} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>VIN / chassis</span>
+                      <Input
+                        name="vin"
+                        value={form.vin}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.vin} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Make</span>
+                      <Input
+                        name="make"
+                        value={form.make}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.make} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Model</span>
+                      <Input
+                        name="model"
+                        value={form.model}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.model} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Year</span>
+                      <Input
+                        name="year"
+                        value={form.year}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                      <FieldError message={errors.year} />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Status</span>
+                      <select
+                        name="status"
+                        value={form.status}
+                        onChange={onChange}
+                        className={vehicleFormSelectClass}
+                      >
+                        {vehicleStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>
+                        Annual Test / MOT Expiry
+                      </span>
+                      <Input
+                        name="motExpiry"
+                        type="date"
+                        value={form.motExpiry}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                    </label>
+
+                    <label className="block min-w-0">
+                      <span className={vehicleFormLabelClass}>Insurance Expiry</span>
+                      <Input
+                        name="insuranceExpiry"
+                        type="date"
+                        value={form.insuranceExpiry}
+                        onChange={onChange}
+                        className={vehicleFormInputClass}
+                      />
+                    </label>
+
+                    {isScheduledStatus ? (
+                      <>
+                        <label className="block min-w-0">
+                          <span className={vehicleFormLabelClass}>Reason</span>
+                          {reasonOptions.length > 0 ? (
+                            <select
+                              name="offRoadReason"
+                              value={form.offRoadReason}
+                              onChange={onChange}
+                              className={vehicleFormSelectClass}
+                            >
+                              <option value="">Select reason</option>
+                              {reasonOptions.map((reason) => (
+                                <option key={reason} value={reason}>
+                                  {reason}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              name="offRoadReason"
+                              value={form.offRoadReason}
+                              onChange={onChange}
+                              className={vehicleFormInputClass}
+                            />
+                          )}
+                          <FieldError message={errors.offRoadReason} />
+                        </label>
+
+                        <label className="block min-w-0">
+                          <span className={vehicleFormLabelClass}>Start Date</span>
+                          <Input
+                            name="offRoadStartDate"
+                            type="date"
+                            value={form.offRoadStartDate}
+                            onChange={onChange}
+                            className={vehicleFormInputClass}
+                          />
+                          <FieldError message={errors.offRoadStartDate} />
+                        </label>
+
+                        <label className="block min-w-0">
+                          <span className={vehicleFormLabelClass}>End Date</span>
+                          <Input
+                            name="offRoadExpectedReturnDate"
+                            type="date"
+                            value={form.offRoadExpectedReturnDate}
+                            onChange={onChange}
+                            className={vehicleFormInputClass}
+                          />
+                          <FieldError message={errors.offRoadExpectedReturnDate} />
+                        </label>
+
+                        <label className="block min-w-0 sm:col-span-2">
+                          <span className={vehicleFormLabelClass}>Availability Notes</span>
+                          <textarea
+                            name="offRoadNotes"
+                            value={form.offRoadNotes}
+                            onChange={onChange}
+                            rows={2}
+                            className={vehicleFormTextareaClass}
+                          />
+                          <FieldError message={errors.offRoadNotes} />
+                        </label>
+                      </>
+                    ) : null}
+
+                    <label className="block min-w-0 sm:col-span-2">
+                      <span className={vehicleFormLabelClass}>Notes</span>
+                      <textarea
+                        name="notes"
+                        value={form.notes}
+                        onChange={onChange}
+                        rows={2}
+                        className={vehicleFormTextareaClass}
+                      />
+                    </label>
+                  </VehicleFormSection>
+                </>
+              ) : (
+                <>
               <VehicleFormSection title="Basic Details">
                 <label className="block sm:col-span-2">
                   <span className={vehicleFormLabelClass}>Vehicle type / category</span>
@@ -313,7 +558,6 @@ export function VehicleEditModal({
                     value={form.vehicleType}
                     onChange={onChange}
                     required
-                    disabled={lockVehicleType}
                     className={vehicleFormSelectClass}
                   >
                     <option value="">Select vehicle type</option>
@@ -325,7 +569,6 @@ export function VehicleEditModal({
                   </select>
                   <FieldError message={errors.vehicleType} />
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {isTrailer ? null : (
                     <Button
                       type="button"
                       variant="outline"
@@ -335,8 +578,7 @@ export function VehicleEditModal({
                     >
                       + Template Checks
                     </Button>
-                    )}
-                    {isTrailer ? null : !selectedVehicleType ? (
+                    {!selectedVehicleType ? (
                       <span className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
                         Select vehicle type first.
                       </span>
@@ -355,9 +597,9 @@ export function VehicleEditModal({
                 <label className="block">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
                     <span className={vehicleFormLabelClass}>
-                      {isTrailer ? 'Registration Number (optional)' : 'Registration Number'}
+                      Registration Number
                     </span>
-                    {isTrailer ? null : dvlaLookupEnabled ? (
+                    {dvlaLookupEnabled ? (
                       <button
                         type="button"
                         disabled={!canCheckDvla}
@@ -390,11 +632,9 @@ export function VehicleEditModal({
                     className={vehicleFormInputClass}
                   />
                   <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85 dark:text-slate-400">
-                    {isTrailer
-                      ? 'Optional for trailers. Leave blank if the trailer has no registration plate.'
-                      : dvlaLookupEnabled
-                        ? 'Enter the registration, then use Check DVLA to fill available details.'
-                        : 'DVLA lookup will be available in a future update.'}
+                    {dvlaLookupEnabled
+                      ? 'Enter the registration, then use Check DVLA to fill available details.'
+                      : 'DVLA lookup will be available in a future update.'}
                   </p>
                   {dvlaLookupError ? (
                     <p className="mt-1.5 text-xs font-medium text-rose-500">{dvlaLookupError}</p>
@@ -404,29 +644,12 @@ export function VehicleEditModal({
 
                 {dvlaVehicle ? <DvlaVehicleDataPanel vehicle={dvlaVehicle} /> : null}
 
-                {isTrailer ? (
-                  <label className="block">
-                    <span className={vehicleFormLabelClass}>Trailer number</span>
-                    <Input
-                      name="trailerNumber"
-                      value={form.trailerNumber}
-                      onChange={onChange}
-                      placeholder="PVG4546"
-                      className={vehicleFormInputClass}
-                    />
-                    <p className="mt-1.5 text-xs font-medium text-[#5499BF]/85 dark:text-slate-400">
-                      Internal fleet or trailer identification number.
-                    </p>
-                    <FieldError message={errors.trailerNumber} />
-                  </label>
-                ) : null}
-
                 {[
                   ['fleetNumber', 'Fleet Number'],
                   ['make', 'Make'],
                   ['model', 'Model'],
                   ['year', 'Year'],
-                  ['vin', isTrailer ? 'VIN / chassis' : 'VIN'],
+                  ['vin', 'VIN'],
                 ].map(([name, label]) => (
                   <label key={name} className="block">
                     <span className={vehicleFormLabelClass}>{label}</span>
@@ -442,8 +665,6 @@ export function VehicleEditModal({
               </VehicleFormSection>
 
               <VehicleFormSection title="Assignment & Status">
-
-                {isTrailer ? null : (
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Current Driver</span>
                   <select
@@ -470,7 +691,6 @@ export function VehicleEditModal({
                     </p>
                   ) : null}
                 </label>
-                )}
 
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Status</span>
@@ -488,7 +708,6 @@ export function VehicleEditModal({
                   </select>
                 </label>
 
-                {isTrailer ? null : (
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Current Odometer</span>
                   <Input
@@ -499,7 +718,6 @@ export function VehicleEditModal({
                   />
                   <FieldError message={errors.currentOdometer} />
                 </label>
-                )}
 
                 {isScheduledStatus ? (
                   <>
@@ -570,24 +788,20 @@ export function VehicleEditModal({
               </VehicleFormSection>
 
               <VehicleFormSection title="Compliance Dates">
-                {(isTrailer
-                  ? [
-                      ['motExpiry', 'MOT / annual test expiry'],
-                      ['insuranceExpiry', 'Insurance Expiry'],
-                    ]
-                  : [
-                      ['motExpiry', 'MOT Expiry'],
-                      ['insuranceExpiry', 'Insurance Expiry'],
-                      ['roadTaxExpiry', 'Road Tax Expiry'],
-                      ['tachographExpiry', 'Tachograph Calibration Expiry'],
-                    ]
+                {(
+                  [
+                    ['motExpiry', 'MOT Expiry'],
+                    ['insuranceExpiry', 'Insurance Expiry'],
+                    ['roadTaxExpiry', 'Road Tax Expiry'],
+                    ['tachographExpiry', 'Tachograph Calibration Expiry'],
+                  ] as const
                 ).map(([name, label]) => (
                   <label key={name} className="block">
                     <span className={vehicleFormLabelClass}>{label}</span>
                     <Input
                       name={name}
                       type="date"
-                      value={form[name as keyof VehicleInput]}
+                      value={form[name]}
                       onChange={onChange}
                       className={vehicleFormInputClass}
                     />
@@ -607,9 +821,15 @@ export function VehicleEditModal({
                   />
                 </label>
               </VehicleFormSection>
+                </>
+              )}
             </div>
 
-            <div className="shrink-0 border-t border-[#D3E9FC]/80 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:px-6 sm:py-5">
+            <div
+              className={`shrink-0 border-t border-[#D3E9FC]/80 bg-white px-5 dark:border-white/10 dark:bg-slate-900/95 sm:px-6 ${
+                isTrailer ? 'py-3 sm:py-4' : 'py-4 sm:py-5'
+              }`}
+            >
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
