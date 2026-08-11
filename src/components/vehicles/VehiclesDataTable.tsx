@@ -27,8 +27,10 @@ import {
 import type { Driver } from '@/services/driversService'
 import {
   getVehicleStatusForDate,
+  isTrailerFleetAsset,
   type Vehicle,
 } from '@/services/vehiclesService'
+import type { VehiclesFleetMode } from '@/components/vehicles/VehiclesFilterBar'
 import {
   ChevronLeft,
   ChevronRight,
@@ -185,7 +187,7 @@ function VehicleRowActions({
       },
       {
         id: 'archive',
-        label: 'Archive Vehicle',
+        label: isTrailerFleetAsset(vehicle) ? 'Archive Trailer' : 'Archive Vehicle',
         icon: Trash2,
         tone: 'danger',
         onClick: onArchive,
@@ -212,6 +214,7 @@ type VehiclesDataTableProps = {
   onArchiveVehicle: (vehicle: Vehicle) => void
   onRestoreVehicle: (vehicle: Vehicle) => void
   onOpenAvailabilityEvent: (vehicle: Vehicle, event: PlanningEvent) => void
+  fleetMode?: VehiclesFleetMode
 }
 
 export function VehiclesDataTable({
@@ -223,7 +226,9 @@ export function VehiclesDataTable({
   onArchiveVehicle,
   onRestoreVehicle,
   onOpenAvailabilityEvent,
+  fleetMode = 'vehicles',
 }: VehiclesDataTableProps) {
+  const isTrailersMode = fleetMode === 'trailers'
   const [pageSize, setPageSize] = useState(VEHICLES_PAGE_SIZE)
   const total = vehicles.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -244,20 +249,32 @@ export function VehiclesDataTable({
         <table className="w-full min-w-[1100px] border-collapse text-left">
           <thead>
             <tr className={vehicleTableHeadClass}>
-              <th className="px-4 py-3">Registration</th>
+              <th className="px-4 py-3">
+                {isTrailersMode ? 'Trailer #' : 'Registration'}
+              </th>
               <th className="px-4 py-3">Fleet #</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Make / Model</th>
-              <th className="px-4 py-3">Assigned Worker</th>
+              {isTrailersMode ? null : (
+                <th className="px-4 py-3">Assigned Worker</th>
+              )}
               <th className="px-4 py-3">Current Status</th>
               <th className="px-4 py-3">Next Event</th>
-              <th className="px-4 py-3">MOT Expiry</th>
+              <th className="px-4 py-3">
+                {isTrailersMode ? 'MOT / annual test' : 'MOT Expiry'}
+              </th>
               <th className="px-4 py-3">Insurance Expiry</th>
               <TableActionsHeader className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
-            {pageVehicles.map((vehicle) => (
+            {pageVehicles.map((vehicle) => {
+              const trailerNumber = vehicle.trailerNumber?.trim() || ''
+              const identityLabel = isTrailersMode
+                ? trailerNumber || vehicle.registration || '—'
+                : vehicle.registration
+
+              return (
               <tr key={vehicle.id} className={`${vehicleTableRowClass} text-xs`}>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
@@ -265,8 +282,13 @@ export function VehiclesDataTable({
                       to={`/vehicles/${vehicle.id}`}
                       className={`${adminTableEntityName} transition-colors hover:text-[#218EE7]`}
                     >
-                      {vehicle.registration}
+                      {identityLabel}
                     </Link>
+                    {isTrailersMode && trailerNumber && vehicle.registration ? (
+                      <span className="text-[11px] font-medium text-[#5499BF] dark:text-slate-400">
+                        {vehicle.registration}
+                      </span>
+                    ) : null}
                     {vehicle.archivedAt ? (
                       <div className="flex flex-col gap-1">
                         <span className="inline-flex w-fit max-w-full truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
@@ -295,11 +317,13 @@ export function VehiclesDataTable({
                     {getVehicleName(vehicle) || '—'}
                   </span>
                 </td>
+                {isTrailersMode ? null : (
                 <td className="max-w-[160px] px-4 py-3">
                   <span className={`block truncate ${adminTableEntityName}`}>
                     {getDriverLabel(vehicle, drivers)}
                   </span>
                 </td>
+                )}
                 <td className="px-4 py-3">
                   <VehicleStatusBadge status={getVehicleStatusForDate(vehicle)} />
                 </td>
@@ -324,7 +348,8 @@ export function VehiclesDataTable({
                   />
                 </TableActionsCell>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -333,7 +358,10 @@ export function VehiclesDataTable({
         className={`flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${vehicleTableFooterClass}`}
       >
         <p className="text-sm font-medium text-[#5499BF] dark:text-slate-400">
-          Showing {rangeStart}–{rangeEnd} of {total} vehicle{total === 1 ? '' : 's'}
+          Showing {rangeStart}–{rangeEnd} of {total}{' '}
+          {isTrailersMode
+            ? `trailer${total === 1 ? '' : 's'}`
+            : `vehicle${total === 1 ? '' : 's'}`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-1.5 text-xs font-medium text-[#5499BF] dark:text-slate-400">

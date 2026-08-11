@@ -1,5 +1,5 @@
 import { formatShortDate, getDaysUntilDate, todayString } from '@/lib/vehicleAvailability'
-import type { Vehicle } from '@/services/vehiclesService'
+import { isTrailerFleetAsset, type Vehicle } from '@/services/vehiclesService'
 
 /** Matches Vehicles page document warning window (`getDocumentStatus` default). */
 export const VEHICLE_CARD_DUE_SOON_DAYS = 30
@@ -70,7 +70,12 @@ export function buildVehicleCardComplianceEvents(
 ): VehicleCardComplianceEvent[] {
   const events: VehicleCardComplianceEvent[] = []
 
+  const trailerAsset = isTrailerFleetAsset(vehicle)
+
   for (const field of COMPLIANCE_FIELDS) {
+    if (trailerAsset && (field.type === 'tachograph' || field.type === 'road_tax')) {
+      continue
+    }
     const raw = field.getDate(vehicle)?.trim() || ''
     if (!raw || !isValidDateString(raw)) continue
 

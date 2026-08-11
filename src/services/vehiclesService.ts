@@ -451,8 +451,13 @@ function isMissingRetentionColumnError(error: {
 const vehicleAvailabilitySelect =
   'id, created_at, vehicle_id, status, start_date, end_date, reason, notes'
 
-function isTrailerVehicleType(vehicleType: string): boolean {
-  return vehicleType.trim() === 'Trailer'
+export function isTrailerVehicleType(vehicleType: string | null | undefined): boolean {
+  return vehicleType?.trim() === 'Trailer'
+}
+
+/** Company fleet trailer row (`vehicle_type = 'Trailer'`). */
+export function isTrailerFleetAsset(vehicle: Pick<Vehicle, 'vehicleType'>): boolean {
+  return isTrailerVehicleType(vehicle.vehicleType)
 }
 
 function mapVehicleWriteError(error: unknown): never {

@@ -98,24 +98,30 @@ export function vehicleMatchesSearch(
 export function exportVehiclesToCsv(
   vehicles: Vehicle[],
   drivers: Driver[],
+  options?: { includeTrailerNumber?: boolean; omitAssignedDriver?: boolean },
 ): void {
+  const includeTrailerNumber = options?.includeTrailerNumber === true
+  const omitAssignedDriver = options?.omitAssignedDriver === true
+
   const headers = [
+    ...(includeTrailerNumber ? ['Trailer #'] : []),
     'Registration',
     'Fleet #',
     'Make',
     'Model',
-    'Assigned Driver',
+    ...(omitAssignedDriver ? [] : ['Assigned Driver']),
     'Status',
     'MOT Expiry',
     'Insurance Expiry',
   ]
 
   const rows = vehicles.map((vehicle) => [
+    ...(includeTrailerNumber ? [vehicle.trailerNumber ?? ''] : []),
     vehicle.registration,
     vehicle.fleetNumber ?? '',
     vehicle.make,
     vehicle.model,
-    getDriverLabel(vehicle, drivers),
+    ...(omitAssignedDriver ? [] : [getDriverLabel(vehicle, drivers)]),
     getVehicleStatusForDate(vehicle),
     vehicle.motExpiry ?? '',
     vehicle.insuranceExpiry ?? '',
@@ -131,7 +137,9 @@ export function exportVehiclesToCsv(
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `drevora-vehicles-${todayString()}.csv`
+  link.download = includeTrailerNumber
+    ? `drevora-trailers-${todayString()}.csv`
+    : `drevora-vehicles-${todayString()}.csv`
   link.click()
   URL.revokeObjectURL(url)
 }

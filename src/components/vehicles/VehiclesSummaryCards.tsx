@@ -55,6 +55,8 @@ type VehiclesSummaryCardsProps = {
   isLoading?: boolean
   activeKey?: VehicleKpiKey | null
   onSelect?: (key: VehicleKpiKey) => void
+  /** Trailers mode: same cards, trailer-specific first-three labels. */
+  fleetMode?: 'vehicles' | 'trailers'
 }
 
 function VehicleKpiCard({
@@ -156,22 +158,34 @@ export function VehiclesSummaryCards({
   isLoading = false,
   activeKey = null,
   onSelect,
+  fleetMode = 'vehicles',
 }: VehiclesSummaryCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
-      {cards.map((card) => (
-        <VehicleKpiCard
-          key={card.key}
-          label={card.label}
-          helper={card.helper}
-          icon={card.icon}
-          value={stats[card.key]}
-          isLoading={isLoading}
-          styleKey={card.key}
-          isActive={activeKey === card.key}
-          onSelect={onSelect}
-        />
-      ))}
+      {cards.map((card) => {
+        const label =
+          fleetMode === 'trailers' && card.key === 'available'
+            ? 'Available Trailers'
+            : card.label
+        const helper =
+          fleetMode === 'trailers' && card.key === 'available'
+            ? 'Ready for use'
+            : card.helper
+
+        return (
+          <VehicleKpiCard
+            key={card.key}
+            label={label}
+            helper={helper}
+            icon={card.icon}
+            value={stats[card.key]}
+            isLoading={isLoading}
+            styleKey={card.key}
+            isActive={activeKey === card.key}
+            onSelect={onSelect}
+          />
+        )
+      })}
     </div>
   )
 }

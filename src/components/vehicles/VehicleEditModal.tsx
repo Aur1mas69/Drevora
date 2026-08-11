@@ -178,6 +178,8 @@ type VehicleEditModalProps = {
   onPatchForm: (patch: Partial<VehicleInput>) => void
   onClose: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  /** When true, vehicle type cannot be changed (Add/Edit Trailer). */
+  lockVehicleType?: boolean
 }
 
 export function VehicleEditModal({
@@ -193,6 +195,7 @@ export function VehicleEditModal({
   onPatchForm,
   onClose,
   onSubmit,
+  lockVehicleType = false,
 }: VehicleEditModalProps) {
   const initialFormRef = useRef(form)
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false)
@@ -310,6 +313,7 @@ export function VehicleEditModal({
                     value={form.vehicleType}
                     onChange={onChange}
                     required
+                    disabled={lockVehicleType}
                     className={vehicleFormSelectClass}
                   >
                     <option value="">Select vehicle type</option>
@@ -321,6 +325,7 @@ export function VehicleEditModal({
                   </select>
                   <FieldError message={errors.vehicleType} />
                   <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {isTrailer ? null : (
                     <Button
                       type="button"
                       variant="outline"
@@ -330,7 +335,8 @@ export function VehicleEditModal({
                     >
                       + Template Checks
                     </Button>
-                    {!selectedVehicleType ? (
+                    )}
+                    {isTrailer ? null : !selectedVehicleType ? (
                       <span className="text-xs font-medium text-[#5499BF] dark:text-slate-400">
                         Select vehicle type first.
                       </span>
@@ -420,7 +426,7 @@ export function VehicleEditModal({
                   ['make', 'Make'],
                   ['model', 'Model'],
                   ['year', 'Year'],
-                  ['vin', 'VIN'],
+                  ['vin', isTrailer ? 'VIN / chassis' : 'VIN'],
                 ].map(([name, label]) => (
                   <label key={name} className="block">
                     <span className={vehicleFormLabelClass}>{label}</span>
@@ -437,6 +443,7 @@ export function VehicleEditModal({
 
               <VehicleFormSection title="Assignment & Status">
 
+                {isTrailer ? null : (
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Current Driver</span>
                   <select
@@ -463,6 +470,7 @@ export function VehicleEditModal({
                     </p>
                   ) : null}
                 </label>
+                )}
 
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Status</span>
@@ -480,6 +488,7 @@ export function VehicleEditModal({
                   </select>
                 </label>
 
+                {isTrailer ? null : (
                 <label className="block">
                   <span className={vehicleFormLabelClass}>Current Odometer</span>
                   <Input
@@ -490,6 +499,7 @@ export function VehicleEditModal({
                   />
                   <FieldError message={errors.currentOdometer} />
                 </label>
+                )}
 
                 {isScheduledStatus ? (
                   <>
@@ -560,12 +570,18 @@ export function VehicleEditModal({
               </VehicleFormSection>
 
               <VehicleFormSection title="Compliance Dates">
-                {[
-                  ['motExpiry', 'MOT Expiry'],
-                  ['insuranceExpiry', 'Insurance Expiry'],
-                  ['roadTaxExpiry', 'Road Tax Expiry'],
-                  ['tachographExpiry', 'Tachograph Calibration Expiry'],
-                ].map(([name, label]) => (
+                {(isTrailer
+                  ? [
+                      ['motExpiry', 'MOT / annual test expiry'],
+                      ['insuranceExpiry', 'Insurance Expiry'],
+                    ]
+                  : [
+                      ['motExpiry', 'MOT Expiry'],
+                      ['insuranceExpiry', 'Insurance Expiry'],
+                      ['roadTaxExpiry', 'Road Tax Expiry'],
+                      ['tachographExpiry', 'Tachograph Calibration Expiry'],
+                    ]
+                ).map(([name, label]) => (
                   <label key={name} className="block">
                     <span className={vehicleFormLabelClass}>{label}</span>
                     <Input

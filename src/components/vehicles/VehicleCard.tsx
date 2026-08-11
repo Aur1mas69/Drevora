@@ -19,6 +19,7 @@ import { getDriverLabel } from '@/lib/vehiclePageUtils'
 import type { Driver } from '@/services/driversService'
 import {
   getVehicleStatusForDate,
+  isTrailerFleetAsset,
   type Vehicle,
 } from '@/services/vehiclesService'
 import { Droplets, Eye, Pencil, RotateCcw, Trash2, Truck } from 'lucide-react'
@@ -49,13 +50,17 @@ export function VehicleCard({
 }: VehicleCardProps) {
   const navigate = useNavigate()
   const profilePath = `/vehicles/${vehicle.id}`
+  const isTrailer = isTrailerFleetAsset(vehicle)
   const registration = registrationLabel(vehicle)
+  const trailerNumber = vehicle.trailerNumber?.trim() || ''
+  const primaryTitle = isTrailer
+    ? trailerNumber || registration
+    : registration
   const makeModel = makeModelLabel(vehicle)
   const status = getVehicleStatusForDate(vehicle)
   const assignedWorker = getDriverLabel(vehicle, drivers)
   const assignedDisplay =
     assignedWorker === 'Unassigned' ? 'Not assigned' : assignedWorker
-  const trailer = vehicle.trailerNumber?.trim() || ''
   const nextEvent = getVehicleCardNextEvent(vehicle)
   const accent = resolveVehicleCardAccent(
     status,
@@ -92,7 +97,7 @@ export function VehicleCard({
       },
       {
         id: 'archive',
-        label: 'Archive Vehicle',
+        label: isTrailer ? 'Archive Trailer' : 'Archive Vehicle',
         icon: Trash2,
         tone: 'danger',
         onClick: () => onArchive(vehicle),
@@ -125,7 +130,7 @@ export function VehicleCard({
           type="button"
           onClick={openProfile}
           className={`flex size-11 items-center justify-center rounded-full ring-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/45 ${vehicleCardIconClass[accent]}`}
-          aria-label={`View vehicle profile for ${registration}`}
+          aria-label={`View ${isTrailer ? 'trailer' : 'vehicle'} profile for ${primaryTitle}`}
         >
           <Truck className="size-5" aria-hidden="true" />
         </button>
@@ -143,14 +148,27 @@ export function VehicleCard({
         type="button"
         onClick={openProfile}
         className="relative mt-2 flex min-w-0 flex-1 flex-col items-stretch rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40"
-        aria-label={`${registration}, ${makeModel}, ${vehicle.vehicleType ?? 'Vehicle'}, ${status}, assigned ${assignedDisplay}, next event ${nextEventSummary}`}
+        aria-label={
+          isTrailer
+            ? `${primaryTitle}, ${registration !== 'No registration' ? registration : 'no registration'}, ${makeModel}, Trailer, ${status}, next event ${nextEventSummary}`
+            : `${registration}, ${makeModel}, ${vehicle.vehicleType ?? 'Vehicle'}, ${status}, assigned ${assignedDisplay}, next event ${nextEventSummary}`
+        }
       >
         <p
           className="truncate text-[13px] font-semibold leading-snug tracking-[-0.02em] text-[#113C69] transition-colors group-hover:text-[#0B68BE] dark:text-slate-100 dark:group-hover:text-blue-300"
-          title={registration}
+          title={primaryTitle}
         >
-          {registration}
+          {primaryTitle}
         </p>
+
+        {isTrailer && trailerNumber && registration !== 'No registration' ? (
+          <p
+            className="mt-0.5 truncate text-[11px] font-medium text-[#3D7A9C] dark:text-slate-300"
+            title={registration}
+          >
+            {registration}
+          </p>
+        ) : null}
 
         <p
           className="mt-1 truncate text-[11px] font-medium text-[#3D7A9C] dark:text-slate-300"
@@ -160,7 +178,7 @@ export function VehicleCard({
         </p>
 
         <p className="mt-0.5 truncate text-[11px] font-semibold text-[#0B68BE]/90 dark:text-blue-300/90">
-          {vehicle.vehicleType?.trim() || 'No type'}
+          {vehicle.vehicleType?.trim() || (isTrailer ? 'Trailer' : 'No type')}
         </p>
 
         {isArchived ? (
@@ -181,21 +199,23 @@ export function VehicleCard({
         <div className="mt-auto flex flex-col gap-1.5 pt-2">
           {isArchived ? null : <VehicleStatusBadge status={status} />}
 
-          <p
-            className="truncate text-[11px] font-medium text-[#113C69] dark:text-slate-200"
-            title={assignedDisplay}
-          >
-            <span className={metaLabelClass}>Worker: </span>
-            {assignedDisplay}
-          </p>
-
-          {trailer ? (
+          {isTrailer ? null : (
             <p
               className="truncate text-[11px] font-medium text-[#113C69] dark:text-slate-200"
-              title={trailer}
+              title={assignedDisplay}
+            >
+              <span className={metaLabelClass}>Worker: </span>
+              {assignedDisplay}
+            </p>
+          )}
+
+          {!isTrailer && trailerNumber ? (
+            <p
+              className="truncate text-[11px] font-medium text-[#113C69] dark:text-slate-200"
+              title={trailerNumber}
             >
               <span className={metaLabelClass}>Trailer: </span>
-              {trailer}
+              {trailerNumber}
             </p>
           ) : null}
         </div>

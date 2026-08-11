@@ -41,6 +41,12 @@ export function buildVehicleSlotPage(input: {
   page: number
   /** When true (search/filters), show matching Vehicles only — no empty slots. */
   constrainToVehiclesOnly: boolean
+  /**
+   * Occupied plan seats for empty-slot math. Defaults to `vehicles.length`.
+   * Pass the full-company active count when the displayed list is a subset
+   * (e.g. Vehicles tab excludes Trailers that still occupy plan seats).
+   */
+  occupiedSlotCount?: number
 }): VehicleSlotPageResult {
   const pageSize = VEHICLE_PLAN_SLOTS_PER_PAGE
   const safeRequestedPage = Math.max(1, input.page)
@@ -70,10 +76,11 @@ export function buildVehicleSlotPage(input: {
   }
 
   const allowance = input.allowance
-  const activeCount = input.vehicles.length
+  const displayedCount = input.vehicles.length
+  const occupiedSlotCount = input.occupiedSlotCount ?? displayedCount
 
-  if (activeCount > allowance) {
-    const totalSlots = activeCount
+  if (occupiedSlotCount > allowance) {
+    const totalSlots = displayedCount
     const totalPages = Math.max(1, Math.ceil(totalSlots / pageSize))
     const page = Math.min(safeRequestedPage, totalPages)
     const start = (page - 1) * pageSize
@@ -93,7 +100,8 @@ export function buildVehicleSlotPage(input: {
     }
   }
 
-  const totalSlots = allowance
+  const availableSlotCount = Math.max(0, allowance - occupiedSlotCount)
+  const totalSlots = displayedCount + availableSlotCount
   const totalPages = Math.max(1, Math.ceil(totalSlots / pageSize))
   const page = Math.min(safeRequestedPage, totalPages)
   const start = (page - 1) * pageSize
@@ -101,11 +109,11 @@ export function buildVehicleSlotPage(input: {
   const items: VehicleSlotItem[] = []
 
   for (let index = start; index < end; index += 1) {
-    if (index < activeCount) {
+    if (index < displayedCount) {
       const vehicle = input.vehicles[index]
       items.push({ kind: 'vehicle', key: vehicle.id, vehicle })
     } else {
-      const slotNumber = index + 1
+      const slotNumber = occupiedSlotCount + (index - displayedCount) + 1
       items.push({
         kind: 'available',
         key: `available-vehicle-slot-${slotNumber}`,

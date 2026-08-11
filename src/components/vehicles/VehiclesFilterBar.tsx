@@ -18,6 +18,8 @@ export type StatusFilter = VehicleStatus | 'All' | 'Unavailable' | 'MaintenanceD
 
 export type VehiclesLifecycleFilter = 'active' | 'archived'
 
+export type VehiclesFleetMode = 'vehicles' | 'trailers'
+
 type VehiclesFilterBarProps = {
   searchTerm: string
   onSearchTermChange: (value: string) => void
@@ -39,6 +41,8 @@ type VehiclesFilterBarProps = {
   viewMode: VehiclesViewMode
   onViewModeChange: (mode: VehiclesViewMode) => void
   hasActiveFilters: boolean
+  fleetMode: VehiclesFleetMode
+  onFleetModeChange: (mode: VehiclesFleetMode) => void
 }
 
 const documentFilterOptions: DocumentFilter[] = [
@@ -69,7 +73,10 @@ export function VehiclesFilterBar({
   viewMode,
   onViewModeChange,
   hasActiveFilters,
+  fleetMode,
+  onFleetModeChange,
 }: VehiclesFilterBarProps) {
+  const isTrailersMode = fleetMode === 'trailers'
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
 
@@ -84,11 +91,11 @@ export function VehiclesFilterBar({
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (statusFilter !== 'All') count += 1
-    if (driverFilter !== 'All') count += 1
+    if (!isTrailersMode && driverFilter !== 'All') count += 1
     if (motFilter !== 'All') count += 1
     if (insuranceFilter !== 'All') count += 1
     return count
-  }, [driverFilter, insuranceFilter, motFilter, statusFilter])
+  }, [driverFilter, insuranceFilter, isTrailersMode, motFilter, statusFilter])
 
   useEffect(() => {
     if (!isFiltersOpen) return
@@ -120,46 +127,85 @@ export function VehiclesFilterBar({
 
   return (
     <div className="space-y-3">
-      <div
-        className="inline-flex rounded-2xl border border-[#D3E9FC] bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
-        role="tablist"
-        aria-label="Vehicle lifecycle"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={lifecycleFilter === 'active'}
-          onClick={() => onLifecycleFilterChange('active')}
-          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
-            lifecycleFilter === 'active'
-              ? 'bg-[#218EE7] text-white'
-              : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
-          }`}
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="inline-flex rounded-2xl border border-[#D3E9FC] bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
+          role="tablist"
+          aria-label="Fleet type"
         >
-          Active
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={lifecycleFilter === 'archived'}
-          onClick={() => onLifecycleFilterChange('archived')}
-          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
-            lifecycleFilter === 'archived'
-              ? 'bg-[#218EE7] text-white'
-              : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
-          }`}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={fleetMode === 'vehicles'}
+            onClick={() => onFleetModeChange('vehicles')}
+            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+              fleetMode === 'vehicles'
+                ? 'bg-[#218EE7] text-white'
+                : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+            }`}
+          >
+            Vehicles
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={fleetMode === 'trailers'}
+            onClick={() => onFleetModeChange('trailers')}
+            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+              fleetMode === 'trailers'
+                ? 'bg-[#218EE7] text-white'
+                : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+            }`}
+          >
+            Trailers
+          </button>
+        </div>
+
+        <div
+          className="inline-flex rounded-2xl border border-[#D3E9FC] bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900/70"
+          role="tablist"
+          aria-label={isTrailersMode ? 'Trailer lifecycle' : 'Vehicle lifecycle'}
         >
-          Archived
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={lifecycleFilter === 'active'}
+            onClick={() => onLifecycleFilterChange('active')}
+            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+              lifecycleFilter === 'active'
+                ? 'bg-[#218EE7] text-white'
+                : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+            }`}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={lifecycleFilter === 'archived'}
+            onClick={() => onLifecycleFilterChange('archived')}
+            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
+              lifecycleFilter === 'archived'
+                ? 'bg-[#218EE7] text-white'
+                : 'text-[#3D7A9C] hover:bg-[#E8F3FE] hover:text-[#0B68BE]'
+            }`}
+          >
+            Archived
+          </button>
+        </div>
       </div>
 
     <ModuleListToolbar
-      primaryActionLabel="Add Vehicle"
+      primaryActionLabel={isTrailersMode ? 'Add Trailer' : 'Add Vehicle'}
       onPrimaryAction={onAddVehicle}
       primaryActionDisabled={!canAddVehicle || lifecycleFilter === 'archived'}
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}
-      searchPlaceholder="Search registration, fleet #, make/model, or driver…"
+      searchPlaceholder={
+        isTrailersMode
+          ? 'Search trailer number, registration, fleet #, or make/model…'
+          : 'Search registration, fleet #, make/model, or driver…'
+      }
       onFilterToggle={() => setIsFiltersOpen((open) => !open)}
       filterOpen={isFiltersOpen}
       activeFilterCount={activeFilterCount}
@@ -170,12 +216,14 @@ export function VehiclesFilterBar({
             id="vehicles-filters-panel"
             className={vehicleFilterPanelClass}
             role="dialog"
-            aria-label="Vehicle filters"
+            aria-label={isTrailersMode ? 'Trailer filters' : 'Vehicle filters'}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-[#113C69]">Filters</p>
-                <p className="mt-0.5 text-xs text-[#5499BF]">Refine your fleet list</p>
+                <p className="mt-0.5 text-xs text-[#5499BF]">
+                  {isTrailersMode ? 'Refine your trailer list' : 'Refine your fleet list'}
+                </p>
               </div>
               <button
                 type="button"
@@ -209,6 +257,7 @@ export function VehiclesFilterBar({
                 </select>
               </label>
 
+              {isTrailersMode ? null : (
               <label className="block space-y-1.5">
                 <span className={vehicleFilterFieldLabelClass}>Driver</span>
                 <select
@@ -226,6 +275,7 @@ export function VehiclesFilterBar({
                   ))}
                 </select>
               </label>
+              )}
 
               <label className="block space-y-1.5">
                 <span className={vehicleFilterFieldLabelClass}>MOT</span>

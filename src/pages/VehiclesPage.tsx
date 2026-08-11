@@ -39,6 +39,7 @@ import {
 import {
   VehiclesFilterBar,
   type StatusFilter,
+  type VehiclesFleetMode,
   type VehiclesLifecycleFilter,
 } from '@/components/vehicles/VehiclesFilterBar'
 import type { VehicleArchiveReason } from '@/lib/vehicleArchive'
@@ -84,6 +85,8 @@ import { driversService, type Driver } from '@/services/driversService'
 import {
   vehiclesService,
   getVehicleStatusForDate,
+  isTrailerFleetAsset,
+  isTrailerVehicleType,
   type Vehicle,
   type VehicleAvailability,
   type VehicleAvailabilityInput,
@@ -132,6 +135,7 @@ function VehiclesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [fleetMode, setFleetMode] = useState<VehiclesFleetMode>('vehicles')
   const [lifecycleFilter, setLifecycleFilter] =
     useState<VehiclesLifecycleFilter>('active')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
@@ -266,6 +270,7 @@ function VehiclesPage() {
     setGridPage(1)
   }, [
     searchTerm,
+    fleetMode,
     lifecycleFilter,
     statusFilter,
     driverFilter,
@@ -273,14 +278,24 @@ function VehiclesPage() {
     insuranceFilter,
   ])
 
+  const isTrailersMode = fleetMode === 'trailers'
+
+  const fleetVehicles = useMemo(
+    () =>
+      vehicles.filter((vehicle) =>
+        isTrailersMode ? isTrailerFleetAsset(vehicle) : !isTrailerFleetAsset(vehicle),
+      ),
+    [isTrailersMode, vehicles],
+  )
+
   const activeVehicles = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.archivedAt == null),
-    [vehicles],
+    () => fleetVehicles.filter((vehicle) => vehicle.archivedAt == null),
+    [fleetVehicles],
   )
 
   const archivedVehicles = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.archivedAt != null),
-    [vehicles],
+    () => fleetVehicles.filter((vehicle) => vehicle.archivedAt != null),
+    [fleetVehicles],
   )
 
   const visibleVehicles = useMemo(
@@ -317,6 +332,7 @@ function VehiclesPage() {
             ? currentStatus === 'Maintenance' || currentStatus === 'Workshop'
             : currentStatus === statusFilter)
       const matchesDriver =
+        isTrailersMode ||
         driverFilter === 'All' ||
         (driverFilter === 'Unassigned'
           ? !vehicle.currentDriverId
@@ -339,6 +355,7 @@ function VehiclesPage() {
     driverFilter,
     drivers,
     insuranceFilter,
+    isTrailersMode,
     motFilter,
     searchTerm,
     statusFilter,
@@ -352,9 +369,17 @@ function VehiclesPage() {
     motFilter !== 'All' ||
     insuranceFilter !== 'All'
 
-  const activeVehiclesForSlots = useMemo(
+  const allActiveVehiclesForPlan = useMemo(
     () => vehicles.filter(isActiveVehicleForPlanSlot),
     [vehicles],
+  )
+
+  const activeVehiclesForSlots = useMemo(
+    () =>
+      allActiveVehiclesForPlan.filter((vehicle) =>
+        isTrailersMode ? isTrailerFleetAsset(vehicle) : !isTrailerFleetAsset(vehicle),
+      ),
+    [allActiveVehiclesForPlan, isTrailersMode],
   )
 
   const slotVehicles = useMemo(() => {
@@ -370,9 +395,17 @@ function VehiclesPage() {
         vehicles: slotVehicles,
         allowance: vehicleAllowance.allowance,
         page: gridPage,
-        constrainToVehiclesOnly: hasListConstraints,
+        constrainToVehiclesOnly: hasListConstraints || isTrailersMode,
+        occupiedSlotCount: allActiveVehiclesForPlan.length,
       }),
-    [gridPage, hasListConstraints, slotVehicles, vehicleAllowance.allowance],
+    [
+      allActiveVehiclesForPlan.length,
+      gridPage,
+      hasListConstraints,
+      isTrailersMode,
+      slotVehicles,
+      vehicleAllowance.allowance,
+    ],
   )
 
   useEffect(() => {
@@ -386,6 +419,16 @@ function VehiclesPage() {
   }, [showFullCalendar])
 
   const hasActiveFilters = hasListConstraints
+
+  function handleFleetModeChange(mode: VehiclesFleetMode) {
+    if (mode === fleetMode) return
+    setFleetMode(mode)
+    if (mode === 'trailers') {
+      setDriverFilter('All')
+    }
+    setTablePage(1)
+    setGridPage(1)
+  }
 
   function handleViewModeChange(mode: VehiclesViewMode) {
     if (mode === viewMode) return
@@ -488,7 +531,11 @@ function VehiclesPage() {
       return
     }
 
-    setForm(initialVehicleForm)
+    setForm(
+      isTrailersMode
+        ? { ...initialVehicleForm, vehicleType: 'Trailer' }
+        : initialVehicleForm,
+    )
     setFormErrors({})
     setSaveError(null)
     setEditingVehicle(null)
@@ -596,10 +643,15 @@ function VehiclesPage() {
       setEditingVehicle(null)
       setForm(initialVehicleForm)
       await loadVehicles()
+      const savedAsTrailer = isTrailerFleetAsset(savedVehicle)
       setToastMessage(
         editingVehicle
-          ? 'Vehicle updated successfully.'
-          : 'Vehicle created successfully.',
+          ? savedAsTrailer
+            ? 'Trailer updated successfully.'
+            : 'Vehicle updated successfully.'
+          : savedAsTrailer
+            ? 'Trailer created successfully.'
+            : 'Vehicle created successfully.',
       )
     } catch (error) {
       if (isVehiclePlanLimitError(error)) {
@@ -628,7 +680,11 @@ function VehiclesPage() {
       await vehiclesService.archiveVehicle(archivingVehicle.id, input)
       setArchivingVehicle(null)
       await loadVehicles()
-      setToastMessage('Vehicle archived successfully.')
+      setToastMessage(
+        isTrailerFleetAsset(archivingVehicle)
+          ? 'Trailer archived successfully.'
+          : 'Vehicle archived successfully.',
+      )
     } catch (error) {
       setArchiveError(
         error instanceof Error
@@ -650,7 +706,11 @@ function VehiclesPage() {
       setRestoringVehicle(null)
       setLifecycleFilter('active')
       await loadVehicles()
-      setToastMessage('Vehicle restored successfully.')
+      setToastMessage(
+        isTrailerFleetAsset(restoringVehicle)
+          ? 'Trailer restored successfully.'
+          : 'Vehicle restored successfully.',
+      )
     } catch (error) {
       if (isVehiclePlanLimitError(error)) {
         setRestoreError(formatVehiclePlanLimitError(error))
@@ -765,6 +825,7 @@ function VehiclesPage() {
             insuranceFilter,
           )}
           onSelect={handleQuickFilterSelect}
+          fleetMode={fleetMode}
         />
 
         {!isLoading && !loadError ? (
@@ -784,12 +845,19 @@ function VehiclesPage() {
               onInsuranceFilterChange={setInsuranceFilter}
               drivers={drivers}
               onClearFilters={clearAllFilters}
-              onExportCsv={() => exportVehiclesToCsv(filteredVehicles, drivers)}
+              onExportCsv={() =>
+                exportVehiclesToCsv(filteredVehicles, drivers, {
+                  includeTrailerNumber: isTrailersMode,
+                  omitAssignedDriver: isTrailersMode,
+                })
+              }
               onAddVehicle={openAddVehicleModal}
               canAddVehicle={vehicleAllowance.canAddVehicle}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               hasActiveFilters={hasActiveFilters}
+              fleetMode={fleetMode}
+              onFleetModeChange={handleFleetModeChange}
             />
             {lifecycleFilter === 'active' ? (
               <VehiclesAllowanceNotice allowance={vehicleAllowance} />
@@ -828,14 +896,16 @@ function VehiclesPage() {
                 <Truck className="size-6" />
               </div>
               <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
-                No archived vehicles
+                {isTrailersMode ? 'No archived trailers' : 'No archived vehicles'}
               </p>
               <p className={`mt-2 text-sm ${adminTextMuted}`}>
-                Archived vehicles appear here. Active vehicles stay on the Active
-                tab and count toward your plan.
+                {isTrailersMode
+                  ? 'Archived trailers appear here. Active trailers stay on the Active tab and count toward your plan.'
+                  : 'Archived vehicles appear here. Active vehicles stay on the Active tab and count toward your plan.'}
               </p>
             </div>
           ) : viewMode === 'grid' &&
+            !isTrailersMode &&
             vehicleAllowance.allowance != null &&
             vehicleAllowance.canAddVehicle ? (
             <VehiclesCardGrid
@@ -859,11 +929,13 @@ function VehiclesPage() {
                 <Truck className="size-6" />
               </div>
               <p className={`mt-4 text-lg font-semibold ${adminHeading}`}>
-                No vehicles yet
+                {isTrailersMode ? 'No trailers yet' : 'No vehicles yet'}
               </p>
               <p className={`mt-2 text-sm ${adminTextMuted}`}>
                 {vehicleAllowance.canAddVehicle
-                  ? 'Add your first vehicle to start managing your fleet.'
+                  ? isTrailersMode
+                    ? 'Add your first trailer to start managing your trailer fleet.'
+                    : 'Add your first vehicle to start managing your fleet.'
                   : 'Vehicle creation is blocked until a valid plan allowance is available.'}
               </p>
               <Button
@@ -873,7 +945,7 @@ function VehiclesPage() {
                 className="mt-5 rounded-[12px] bg-[#2563EB] text-white"
               >
                 <Plus className="size-4" />
-                Add Vehicle
+                {isTrailersMode ? 'Add Trailer' : 'Add Vehicle'}
               </Button>
             </div>
           )
@@ -884,7 +956,9 @@ function VehiclesPage() {
             {hasListConstraints && filteredVehicles.length === 0 ? (
               <div className={`${adminEmptyState} py-12`}>
                 <p className={`text-lg font-semibold ${adminHeading}`}>
-                  No Vehicles match your search or filters.
+                  {isTrailersMode
+                    ? 'No trailers match your search or filters.'
+                    : 'No Vehicles match your search or filters.'}
                 </p>
                 <p className={`mt-2 text-sm ${adminTextMuted}`}>
                   Try adjusting your search or filter criteria.
@@ -924,6 +998,7 @@ function VehiclesPage() {
                 onArchiveVehicle={openArchiveVehicleModal}
                 onRestoreVehicle={openRestoreVehicleModal}
                 onOpenAvailabilityEvent={openAvailabilityFromNextEvent}
+                fleetMode={fleetMode}
               />
             )}
 
@@ -953,14 +1028,42 @@ function VehiclesPage() {
 
       {isModalOpen ? (
         <VehicleEditModal
-          eyebrow={editingVehicle ? 'Edit Vehicle' : 'New Vehicle'}
-          title={editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
-          submitLabel={editingVehicle ? 'Save Changes' : 'Create Vehicle'}
+          eyebrow={
+            isTrailerVehicleType(form.vehicleType)
+              ? editingVehicle
+                ? 'Edit Trailer'
+                : 'New Trailer'
+              : editingVehicle
+                ? 'Edit Vehicle'
+                : 'New Vehicle'
+          }
+          title={
+            isTrailerVehicleType(form.vehicleType)
+              ? editingVehicle
+                ? 'Edit Trailer'
+                : 'Add Trailer'
+              : editingVehicle
+                ? 'Edit Vehicle'
+                : 'Add Vehicle'
+          }
+          submitLabel={
+            isTrailerVehicleType(form.vehicleType)
+              ? editingVehicle
+                ? 'Save Changes'
+                : 'Create Trailer'
+              : editingVehicle
+                ? 'Save Changes'
+                : 'Create Vehicle'
+          }
           form={form}
           drivers={drivers}
           errors={formErrors}
           submitError={saveError}
           isSubmitting={isSaving}
+          lockVehicleType={
+            isTrailersMode ||
+            (editingVehicle != null && isTrailerFleetAsset(editingVehicle))
+          }
           onChange={handleFormChange}
           onPatchForm={handleFormPatch}
           onClose={() => {
