@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { LoaderCircle, Search } from 'lucide-react'
+import { CompanyDateInput } from '@/components/common/CompanyDateInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { VehicleTypeTemplateChecksModal } from '@/components/vehicles/VehicleTypeTemplateChecksModal'
@@ -445,29 +446,36 @@ export function VehicleEditModal({
                       </select>
                     </label>
 
-                    <label className="block min-w-0">
+                    {/* Not a <label>: label activation would forward calendar taps back to the input. */}
+                    <div className="block min-w-0">
                       <span className={vehicleFormLabelClass}>
                         Annual Test / MOT Expiry
                       </span>
-                      <Input
-                        name="motExpiry"
-                        type="date"
+                      <CompanyDateInput
                         value={form.motExpiry}
-                        onChange={onChange}
+                        onChange={(value) => onPatchForm({ motExpiry: value })}
                         className={vehicleFormInputClass}
+                        layout="modal"
+                        clearable
+                        blurOnSelect
+                        aria-label="Annual Test / MOT Expiry"
                       />
-                    </label>
+                    </div>
 
-                    <label className="block min-w-0">
+                    <div className="block min-w-0">
                       <span className={vehicleFormLabelClass}>Insurance Expiry</span>
-                      <Input
-                        name="insuranceExpiry"
-                        type="date"
+                      <CompanyDateInput
                         value={form.insuranceExpiry}
-                        onChange={onChange}
+                        onChange={(value) =>
+                          onPatchForm({ insuranceExpiry: value })
+                        }
                         className={vehicleFormInputClass}
+                        layout="modal"
+                        clearable
+                        blurOnSelect
+                        aria-label="Insurance Expiry"
                       />
-                    </label>
+                    </div>
 
                     {isScheduledStatus ? (
                       <>

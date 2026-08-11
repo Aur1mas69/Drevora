@@ -11,6 +11,19 @@ export type VehicleCheckResult = 'Pass' | 'Advisory' | 'Fail'
 
 export type VehicleCheckItemResult = VehicleCheckResult
 
+/**
+ * Trailer attachment on a towing vehicle's Vehicle Check
+ * (`vehicle_checks.trailer_source`). No standalone Trailer Check.
+ * DB foundation only until Worker/Admin pairing UI lands.
+ */
+export type VehicleCheckTrailerSource = 'none' | 'company' | 'third_party'
+
+/**
+ * Checklist answer ownership (`vehicle_check_items.asset_scope`).
+ * Existing historical rows default to `vehicle`.
+ */
+export type VehicleCheckAssetScope = 'vehicle' | 'trailer' | 'combination'
+
 /** Manager operational decision for inspections that contain defects. */
 export type VehicleCheckDefectReviewStatus =
   | 'awaiting_review'
@@ -39,6 +52,11 @@ export type VehicleCheckItem = {
   allowNotes: boolean
   allowPhoto: boolean
   failOnDefect: boolean
+  /**
+   * DB `asset_scope`. Not selected/exposed in UI yet; mapper defaults to
+   * `vehicle` until Step 3B-2 loads the column.
+   */
+  assetScope: VehicleCheckAssetScope
 }
 
 /**
@@ -93,6 +111,18 @@ export type VehicleCheckListItem = {
   linkedCorrectionCount: number
   /** Newest linked correction id for this original, if any. */
   latestCorrectionId: string | null
+  /**
+   * Trailer attachment fields (DB foundation). Not selected/exposed in UI yet;
+   * service mapper defaults keep current behaviour until pairing UI lands.
+   */
+  trailerSource: VehicleCheckTrailerSource
+  trailerVehicleId: string | null
+  vehicleRegistrationSnapshot: string | null
+  vehicleFleetNumberSnapshot: string | null
+  trailerNumberSnapshot: string | null
+  trailerRegistrationSnapshot: string | null
+  trailerTypeSnapshot: string | null
+  trailerLabelSnapshot: string | null
 }
 
 export type VehicleCheck = VehicleCheckListItem & {
@@ -151,6 +181,8 @@ export type VehicleCheckItemInput = {
   allowNotes?: boolean
   allowPhoto?: boolean
   failOnDefect?: boolean
+  /** Optional until Trailer Base UI writes scope; defaults to vehicle on save. */
+  assetScope?: VehicleCheckAssetScope
   /** Form-only flag: false until the worker selects OK, Defect, or N/A. */
   isAnswered?: boolean
 }

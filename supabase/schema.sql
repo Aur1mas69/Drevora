@@ -1142,6 +1142,14 @@ create table if not exists public.vehicle_checks (
   completed_longitude double precision,
   completed_location_accuracy double precision,
   completed_location_at timestamptz,
+  vehicle_registration_snapshot text,
+  vehicle_fleet_number_snapshot text,
+  trailer_source text not null default 'none',
+  trailer_vehicle_id uuid references public.vehicles (id) on delete restrict,
+  trailer_number_snapshot text,
+  trailer_registration_snapshot text,
+  trailer_type_snapshot text,
+  trailer_label_snapshot text,
   constraint vehicle_checks_status_check check (
     status in ('Completed', 'Pending', 'In Progress')
   ),
@@ -1186,7 +1194,84 @@ alter table public.vehicle_checks
   add column if not exists completed_latitude double precision,
   add column if not exists completed_longitude double precision,
   add column if not exists completed_location_accuracy double precision,
-  add column if not exists completed_location_at timestamptz;
+  add column if not exists completed_location_at timestamptz,
+  add column if not exists vehicle_registration_snapshot text,
+  add column if not exists vehicle_fleet_number_snapshot text,
+  add column if not exists trailer_source text not null default 'none',
+  add column if not exists trailer_vehicle_id uuid
+    references public.vehicles (id) on delete restrict,
+  add column if not exists trailer_number_snapshot text,
+  add column if not exists trailer_registration_snapshot text,
+  add column if not exists trailer_type_snapshot text,
+  add column if not exists trailer_label_snapshot text;
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_trailer_source_check;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_trailer_source_check
+  check (trailer_source in ('none', 'company', 'third_party'));
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_truck_trailer_distinct_check;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_truck_trailer_distinct_check
+  check (
+    trailer_vehicle_id is null
+    or trailer_vehicle_id <> vehicle_id
+  );
+
+alter table public.vehicle_checks
+  drop constraint if exists vehicle_checks_trailer_attachment_consistency_check;
+
+alter table public.vehicle_checks
+  add constraint vehicle_checks_trailer_attachment_consistency_check
+  check (
+    (
+      trailer_source = 'none'
+      and trailer_vehicle_id is null
+      and trailer_number_snapshot is null
+      and trailer_registration_snapshot is null
+      and trailer_type_snapshot is null
+      and trailer_label_snapshot is null
+    )
+    or (
+      trailer_source = 'company'
+      and trailer_vehicle_id is not null
+      and (
+        (
+          trailer_number_snapshot is not null
+          and btrim(trailer_number_snapshot) <> ''
+        )
+        or (
+          trailer_label_snapshot is not null
+          and btrim(trailer_label_snapshot) <> ''
+        )
+      )
+    )
+    or (
+      trailer_source = 'third_party'
+      and trailer_vehicle_id is null
+      and (
+        (
+          trailer_number_snapshot is not null
+          and btrim(trailer_number_snapshot) <> ''
+        )
+        or (
+          trailer_label_snapshot is not null
+          and btrim(trailer_label_snapshot) <> ''
+        )
+      )
+    )
+  );
+
+create index if not exists vehicle_checks_trailer_vehicle_id_idx
+  on public.vehicle_checks (trailer_vehicle_id)
+  where trailer_vehicle_id is not null;
+
+create index if not exists vehicle_checks_company_trailer_source_idx
+  on public.vehicle_checks (company_id, trailer_source);
 
 update public.vehicle_checks
 set odometer_unit = 'miles'
@@ -1253,8 +1338,12 @@ create table if not exists public.vehicle_check_items (
   allow_notes boolean not null default true,
   allow_photo boolean not null default false,
   fail_on_defect boolean not null default true,
+  asset_scope text not null default 'vehicle',
   constraint vehicle_check_items_result_check check (
     result in ('Pass', 'Advisory', 'Fail')
+  ),
+  constraint vehicle_check_items_asset_scope_check check (
+    asset_scope in ('vehicle', 'trailer', 'combination')
   )
 );
 
@@ -1262,7 +1351,15 @@ alter table public.vehicle_check_items
   add column if not exists guidance text,
   add column if not exists allow_notes boolean not null default true,
   add column if not exists allow_photo boolean not null default false,
-  add column if not exists fail_on_defect boolean not null default true;
+  add column if not exists fail_on_defect boolean not null default true,
+  add column if not exists asset_scope text not null default 'vehicle';
+
+alter table public.vehicle_check_items
+  drop constraint if exists vehicle_check_items_asset_scope_check;
+
+alter table public.vehicle_check_items
+  add constraint vehicle_check_items_asset_scope_check
+  check (asset_scope in ('vehicle', 'trailer', 'combination'));
 
 create index if not exists vehicle_checks_vehicle_id_idx on public.vehicle_checks (vehicle_id);
 create index if not exists vehicle_checks_worker_id_idx on public.vehicle_checks (worker_id);
@@ -1343,7 +1440,15 @@ begin
        or new.completed_latitude is distinct from old.completed_latitude
        or new.completed_longitude is distinct from old.completed_longitude
        or new.completed_location_accuracy is distinct from old.completed_location_accuracy
-       or new.completed_location_at is distinct from old.completed_location_at then
+       or new.completed_location_at is distinct from old.completed_location_at
+       or new.vehicle_registration_snapshot is distinct from old.vehicle_registration_snapshot
+       or new.vehicle_fleet_number_snapshot is distinct from old.vehicle_fleet_number_snapshot
+       or new.trailer_source is distinct from old.trailer_source
+       or new.trailer_vehicle_id is distinct from old.trailer_vehicle_id
+       or new.trailer_number_snapshot is distinct from old.trailer_number_snapshot
+       or new.trailer_registration_snapshot is distinct from old.trailer_registration_snapshot
+       or new.trailer_type_snapshot is distinct from old.trailer_type_snapshot
+       or new.trailer_label_snapshot is distinct from old.trailer_label_snapshot then
       raise exception 'DREVORA: Completed Vehicle Checks are read-only. Create a correction to amend.';
     end if;
   end if;
@@ -1352,8 +1457,9 @@ begin
 end;
 $$;
 
--- (canonical: 20260729180000_vehicle_checks_gps_capture.sql — extends the
--- protected field list above with started_*/completed_* GPS columns)
+-- (canonical: 20260729180000_vehicle_checks_gps_capture.sql — GPS fields;
+--  20260811220000_vehicle_checks_trailer_attachment_foundation.sql — trailer
+--  identity snapshots + trailer_source / trailer_vehicle_id protected above)
 
 drop trigger if exists drevora_enforce_vehicle_check_completed_immutable
   on public.vehicle_checks;
@@ -1366,6 +1472,241 @@ create trigger drevora_enforce_vehicle_check_completed_immutable
 revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from public;
 revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from anon;
 revoke all on function public.drevora_enforce_vehicle_check_completed_immutable() from authenticated;
+
+-- Trailer attachment resolve + before-write
+-- (canonical: 20260811220000_vehicle_checks_trailer_attachment_foundation.sql)
+create or replace function public.drevora_vehicle_check_apply_trailer_attachment(
+  p_company_id uuid,
+  p_vehicle_id uuid,
+  p_trailer_source text,
+  p_trailer_vehicle_id uuid,
+  p_trailer_number_snapshot text,
+  p_trailer_registration_snapshot text,
+  p_trailer_type_snapshot text,
+  p_trailer_label_snapshot text
+)
+returns table (
+  trailer_source text,
+  trailer_vehicle_id uuid,
+  trailer_number_snapshot text,
+  trailer_registration_snapshot text,
+  trailer_type_snapshot text,
+  trailer_label_snapshot text,
+  vehicle_registration_snapshot text,
+  vehicle_fleet_number_snapshot text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_source text := coalesce(nullif(btrim(p_trailer_source), ''), 'none');
+  v_truck_type text;
+  v_truck_registration text;
+  v_truck_fleet text;
+  v_trailer_type text;
+  v_trailer_number text;
+  v_trailer_registration text;
+  v_trailer_trailer_type text;
+  v_trailer_label text;
+  v_in_number text := nullif(btrim(coalesce(p_trailer_number_snapshot, '')), '');
+  v_in_registration text := nullif(btrim(coalesce(p_trailer_registration_snapshot, '')), '');
+  v_in_type text := nullif(btrim(coalesce(p_trailer_type_snapshot, '')), '');
+  v_in_label text := nullif(btrim(coalesce(p_trailer_label_snapshot, '')), '');
+begin
+  if p_vehicle_id is null then
+    raise exception 'DREVORA: vehicle_id is required.';
+  end if;
+
+  if p_company_id is null then
+    raise exception 'DREVORA: company_id is required.';
+  end if;
+
+  if v_source not in ('none', 'company', 'third_party') then
+    raise exception
+      'DREVORA: trailer_source must be none, company, or third_party.';
+  end if;
+
+  select
+    nullif(btrim(v.vehicle_type), ''),
+    nullif(btrim(v.registration), ''),
+    nullif(btrim(v.fleet_number), '')
+  into v_truck_type, v_truck_registration, v_truck_fleet
+  from public.vehicles v
+  where v.id = p_vehicle_id;
+
+  if not found then
+    raise exception 'DREVORA: vehicle_id does not reference an existing vehicle.';
+  end if;
+
+  if not public.drevora_vehicle_in_company(p_vehicle_id, p_company_id) then
+    raise exception 'DREVORA: vehicle_id does not belong to company_id.';
+  end if;
+
+  if v_truck_type is not distinct from 'Trailer' then
+    raise exception
+      'DREVORA: vehicle_id must reference the towing (non-Trailer) vehicle.';
+  end if;
+
+  if v_source = 'none' then
+    return query select
+      'none'::text,
+      null::uuid,
+      null::text,
+      null::text,
+      null::text,
+      null::text,
+      v_truck_registration,
+      v_truck_fleet;
+    return;
+  end if;
+
+  if v_source = 'third_party' then
+    if p_trailer_vehicle_id is not null then
+      raise exception
+        'DREVORA: third_party trailers must not set trailer_vehicle_id (do not create a vehicles row).';
+    end if;
+
+    if v_in_number is null and v_in_label is null then
+      raise exception
+        'DREVORA: third_party trailer requires trailer_number_snapshot or trailer_label_snapshot.';
+    end if;
+
+    v_trailer_label := coalesce(v_in_label, v_in_number);
+
+    return query select
+      'third_party'::text,
+      null::uuid,
+      v_in_number,
+      v_in_registration,
+      v_in_type,
+      v_trailer_label,
+      v_truck_registration,
+      v_truck_fleet;
+    return;
+  end if;
+
+  if p_trailer_vehicle_id is null then
+    raise exception
+      'DREVORA: company trailer_source requires trailer_vehicle_id.';
+  end if;
+
+  if p_trailer_vehicle_id = p_vehicle_id then
+    raise exception 'DREVORA: Towing vehicle and trailer cannot be the same row.';
+  end if;
+
+  select
+    nullif(btrim(v.vehicle_type), ''),
+    nullif(btrim(v.trailer_number), ''),
+    nullif(btrim(v.registration), ''),
+    nullif(btrim(v.trailer_type), '')
+  into
+    v_trailer_type,
+    v_trailer_number,
+    v_trailer_registration,
+    v_trailer_trailer_type
+  from public.vehicles v
+  where v.id = p_trailer_vehicle_id;
+
+  if not found then
+    raise exception
+      'DREVORA: trailer_vehicle_id does not reference an existing vehicle.';
+  end if;
+
+  if v_trailer_type is distinct from 'Trailer' then
+    raise exception
+      'DREVORA: trailer_vehicle_id must reference a Trailer vehicle.';
+  end if;
+
+  if not public.drevora_vehicle_in_company(p_trailer_vehicle_id, p_company_id) then
+    raise exception
+      'DREVORA: trailer_vehicle_id does not belong to company_id.';
+  end if;
+
+  if v_trailer_number is null then
+    raise exception
+      'DREVORA: Selected company trailer has no trailer_number. Set vehicles.trailer_number before attaching it.';
+  end if;
+
+  v_trailer_label := coalesce(
+    v_in_label,
+    v_trailer_number,
+    v_trailer_registration,
+    'Trailer'
+  );
+
+  return query select
+    'company'::text,
+    p_trailer_vehicle_id,
+    v_trailer_number,
+    v_trailer_registration,
+    coalesce(v_trailer_trailer_type, v_in_type),
+    v_trailer_label,
+    v_truck_registration,
+    v_truck_fleet;
+end;
+$$;
+
+revoke all on function public.drevora_vehicle_check_apply_trailer_attachment(
+  uuid, uuid, text, uuid, text, text, text, text
+) from public;
+revoke all on function public.drevora_vehicle_check_apply_trailer_attachment(
+  uuid, uuid, text, uuid, text, text, text, text
+) from anon;
+revoke all on function public.drevora_vehicle_check_apply_trailer_attachment(
+  uuid, uuid, text, uuid, text, text, text, text
+) from authenticated;
+
+create or replace function public.drevora_vehicle_checks_before_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_resolved record;
+begin
+  if tg_op = 'UPDATE'
+     and public.drevora_vehicle_check_is_final(old.status, old.signed_at) then
+    return new;
+  end if;
+
+  select *
+  into v_resolved
+  from public.drevora_vehicle_check_apply_trailer_attachment(
+    new.company_id,
+    new.vehicle_id,
+    new.trailer_source,
+    new.trailer_vehicle_id,
+    new.trailer_number_snapshot,
+    new.trailer_registration_snapshot,
+    new.trailer_type_snapshot,
+    new.trailer_label_snapshot
+  );
+
+  new.trailer_source := v_resolved.trailer_source;
+  new.trailer_vehicle_id := v_resolved.trailer_vehicle_id;
+  new.trailer_number_snapshot := v_resolved.trailer_number_snapshot;
+  new.trailer_registration_snapshot := v_resolved.trailer_registration_snapshot;
+  new.trailer_type_snapshot := v_resolved.trailer_type_snapshot;
+  new.trailer_label_snapshot := v_resolved.trailer_label_snapshot;
+  new.vehicle_registration_snapshot := v_resolved.vehicle_registration_snapshot;
+  new.vehicle_fleet_number_snapshot := v_resolved.vehicle_fleet_number_snapshot;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists vehicle_checks_before_write on public.vehicle_checks;
+create trigger vehicle_checks_before_write
+  before insert or update on public.vehicle_checks
+  for each row
+  execute function public.drevora_vehicle_checks_before_write();
+
+revoke all on function public.drevora_vehicle_checks_before_write() from public;
+revoke all on function public.drevora_vehicle_checks_before_write() from anon;
+revoke all on function public.drevora_vehicle_checks_before_write() from authenticated;
 
 create or replace function public.drevora_enforce_vehicle_check_item_completed_immutable()
 returns trigger
@@ -4650,8 +4991,8 @@ begin
         using errcode = 'P0001',
               hint = 'Active Vehicles cannot have archive_reason or retention_expires_at.';
     end if;
-    new.archive_reason := null;
-    new.retention_expires_at := null;
+    -- Already null: do not assign RPC-only lifecycle columns (see 20260811240000).
+    return new;
   else
     if new.archive_reason is null
       or btrim(new.archive_reason) = '' then
@@ -4723,7 +5064,12 @@ declare
   v_limit integer;
   v_active_count integer;
   v_becoming_active boolean := false;
+  v_new_is_trailer boolean;
+  v_old_is_trailer boolean;
 begin
+  v_new_is_trailer := coalesce(btrim(new.vehicle_type), '') = 'Trailer';
+  v_old_is_trailer := tg_op = 'UPDATE' and coalesce(btrim(old.vehicle_type), '') = 'Trailer';
+
   if tg_op = 'INSERT' then
     v_becoming_active := (new.archived_at is null);
   elsif tg_op = 'UPDATE' then
@@ -4733,6 +5079,13 @@ begin
         new.archived_at is null
         and old.company_id is distinct from new.company_id
       );
+
+    -- Trailer -> non-Trailer while remaining active must be checked even
+    -- when neither archived_at nor company_id changed — it starts
+    -- consuming a powered-vehicle slot from this point on.
+    if new.archived_at is null and v_old_is_trailer and not v_new_is_trailer then
+      v_becoming_active := true;
+    end if;
   end if;
 
   if not v_becoming_active then
@@ -4767,6 +5120,13 @@ begin
             );
   end if;
 
+  -- Trailers never consume or require a powered-vehicle plan slot. The
+  -- subscription itself must still be valid (checked above), but no slot
+  -- is resolved, counted, or enforced for a Trailer-typed row.
+  if v_new_is_trailer then
+    return new;
+  end if;
+
   v_limit := public.drevora_active_vehicle_limit_for_plan(v_plan_code);
 
   if v_limit is null then
@@ -4780,6 +5140,7 @@ begin
   from public.vehicles v
   where v.company_id = v_company_id
     and v.archived_at is null
+    and coalesce(btrim(v.vehicle_type), '') is distinct from 'Trailer'
     and (tg_op = 'INSERT' or v.id is distinct from new.id);
 
   if v_active_count >= v_limit then
@@ -4796,9 +5157,12 @@ begin
 end;
 $$;
 
+comment on function public.drevora_enforce_vehicle_plan_allowance() is
+  'Prevents creating or reactivating non-Trailer Vehicles above the company active-Vehicle plan allowance. Trailers (vehicle_type = Trailer) are exempt — they never consume or require a slot.';
+
 drop trigger if exists vehicles_enforce_vehicle_plan_allowance on public.vehicles;
 create trigger vehicles_enforce_vehicle_plan_allowance
-  before insert or update of archived_at, company_id
+  before insert or update of archived_at, company_id, vehicle_type
   on public.vehicles
   for each row
   execute function public.drevora_enforce_vehicle_plan_allowance();

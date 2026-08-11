@@ -541,8 +541,24 @@ function mapVehicleWriteError(error: unknown): never {
     throw new VehiclesServiceError('This trailer number is already in use.')
   }
 
+  if (
+    supabaseError?.code === '42501' ||
+    /permission denied/i.test(message)
+  ) {
+    const deniedMessage = supabaseError?.message?.trim()
+    throw new VehiclesServiceError(
+      deniedMessage ||
+        'You do not have permission to save this vehicle.',
+    )
+  }
+
   if (error instanceof VehiclesServiceError) {
     throw error
+  }
+
+  const rawMessage = supabaseError?.message?.trim()
+  if (rawMessage) {
+    throw new VehiclesServiceError(rawMessage)
   }
 
   if (error instanceof Error && error.message.trim()) {

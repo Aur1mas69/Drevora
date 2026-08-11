@@ -108,7 +108,7 @@ const vehicleCheckListSelect = `
   correction_created_by,
   correction_created_at,
   drivers ( first_name, last_name ),
-  vehicles ( registration, fleet_number, make, model, vehicle_type, status ),
+  vehicles!vehicle_id ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
 `
 
@@ -147,7 +147,7 @@ const vehicleCheckDetailSelect = `
   completed_location_accuracy,
   completed_location_at,
   drivers ( first_name, last_name ),
-  vehicles ( registration, fleet_number, make, model, vehicle_type, status ),
+  vehicles!vehicle_id ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
 `
 
@@ -246,6 +246,8 @@ function mapItemRow(row: VehicleCheckItemRow): VehicleCheckItem {
     allowNotes: true,
     allowPhoto: false,
     failOnDefect: true,
+    // Not selected from DB until Step 3B-2; historical default is vehicle.
+    assetScope: 'vehicle',
   }
 }
 
@@ -311,6 +313,16 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     correctionCreatedAt: row.correction_created_at ?? null,
     linkedCorrectionCount: 0,
     latestCorrectionId: null,
+    // Trailer attachment columns exist in DB after 3B-1 migration but are not
+    // selected/exposed in UI yet. Defaults preserve current towing-only behaviour.
+    trailerSource: 'none',
+    trailerVehicleId: null,
+    vehicleRegistrationSnapshot: null,
+    vehicleFleetNumberSnapshot: null,
+    trailerNumberSnapshot: null,
+    trailerRegistrationSnapshot: null,
+    trailerTypeSnapshot: null,
+    trailerLabelSnapshot: null,
   }
 }
 

@@ -46,7 +46,7 @@ const vehicleCheckSearchSelect = `
   notes,
   worker_id,
   drivers ( first_name, last_name ),
-  vehicles ( registration, fleet_number )
+  vehicles!vehicle_id ( registration, fleet_number )
 `
 
 function sanitizeSearchTerm(term: string): string {
