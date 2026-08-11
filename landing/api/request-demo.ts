@@ -1,5 +1,14 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Resend } from 'resend'
+
+interface DemoRequestHandlerReq {
+    method?: string
+    body?: unknown
+}
+
+interface DemoRequestHandlerRes {
+    status(code: number): DemoRequestHandlerRes
+    json(body: unknown): void
+}
 
 const DEFAULT_TARGET_EMAIL = 'admin@drevora.uk'
 const FROM_EMAIL = 'DREVORA Demo <noreply@notify.drevora.uk>'
@@ -111,7 +120,7 @@ function buildHtmlEmail(fields: {
 </html>`
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: DemoRequestHandlerReq, res: DemoRequestHandlerRes) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' })
     }
