@@ -26,6 +26,13 @@ export type VehicleAllowanceBlockReason =
 export type VehicleAllowanceSnapshot = VehiclePlanUsageView & {
   planCode: CompanyPlanRecord['planCode']
   canAddVehicle: boolean
+  /**
+   * Trailers do not consume/require a vehicle plan slot (see
+   * `isVehicleCountedForPlanAllowance` and DB `drevora_enforce_vehicle_plan_allowance`).
+   * Only an expired trial blocks adding a Trailer — the vehicle count limit,
+   * "at limit", and unresolved/custom plan states never do.
+   */
+  canAddTrailer: boolean
   blockReason: VehicleAllowanceBlockReason
   title: string
   detail: string | null
@@ -66,6 +73,7 @@ export function buildVehicleAllowanceSnapshot(input: {
       ...usage,
       planCode,
       canAddVehicle: false,
+      canAddTrailer: false,
       blockReason: 'expired',
       title: 'Trial expired',
       detail: formatSubscriptionExpiredMessage(expiryLabel),
@@ -83,6 +91,7 @@ export function buildVehicleAllowanceSnapshot(input: {
       availableCount: 0,
       overCount: 0,
       canAddVehicle: false,
+      canAddTrailer: true,
       blockReason: 'custom',
       title: 'Custom Vehicle allowance not configured',
       detail:
@@ -96,6 +105,7 @@ export function buildVehicleAllowanceSnapshot(input: {
       ...usage,
       planCode,
       canAddVehicle: false,
+      canAddTrailer: true,
       blockReason: 'unavailable',
       title: 'Vehicle allowance unavailable',
       detail:
@@ -109,6 +119,7 @@ export function buildVehicleAllowanceSnapshot(input: {
       ...usage,
       planCode,
       canAddVehicle: false,
+      canAddTrailer: true,
       blockReason: 'limit',
       title: 'Vehicle allowance reached',
       detail: `${usage.activeCount} / ${usage.allowance} Vehicles · ${usage.overCount} Vehicle${usage.overCount === 1 ? '' : 's'} over the current allowance. Archive an inactive Vehicle or change the company plan to add another Vehicle.`,
@@ -121,6 +132,7 @@ export function buildVehicleAllowanceSnapshot(input: {
       ...usage,
       planCode,
       canAddVehicle: false,
+      canAddTrailer: true,
       blockReason: 'limit',
       title: 'Vehicle allowance reached',
       detail:
@@ -133,6 +145,7 @@ export function buildVehicleAllowanceSnapshot(input: {
     ...usage,
     planCode,
     canAddVehicle: true,
+    canAddTrailer: true,
     blockReason: null,
     title: '',
     detail: null,

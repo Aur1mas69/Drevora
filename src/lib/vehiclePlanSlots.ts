@@ -1,20 +1,40 @@
 import type { SubscriptionPlanDefinition } from '@/lib/subscriptionPlans'
 import type { Vehicle } from '@/services/vehiclesService'
 
+// Inlined rather than importing `isTrailerFleetAsset` from vehiclesService to
+// avoid a module cycle (vehiclesService -> vehicleAllowance -> vehiclePlanSlots).
+// Must stay logically identical to isTrailerVehicleType/isTrailerFleetAsset there.
+function isTrailerVehicle(vehicle: Pick<Vehicle, 'vehicleType'>): boolean {
+  return vehicle.vehicleType?.trim() === 'Trailer'
+}
+
 /** Maximum visual plan slots shown on one Vehicles grid page. */
 export const VEHICLE_PLAN_SLOTS_PER_PAGE = 50
 
 /**
- * Vehicles that occupy an active plan slot.
+ * Vehicles that are "active" for slot/grid bookkeeping.
  * Archived Vehicles (`archived_at` set) do not occupy a seat.
  * Operational status (Available / Off Road / Maintenance / etc.) does not free a slot.
+ * NOTE: this does not exclude Trailers — it is reused for both the Vehicles and
+ * Trailers tabs' "active" grid lists. Use `isVehicleCountedForPlanAllowance` for
+ * the subscription plan slot count specifically.
  */
 export function isActiveVehicleForPlanSlot(vehicle: Vehicle): boolean {
   return vehicle.archivedAt == null
 }
 
+/**
+ * Vehicles that consume/count toward the subscription vehicle plan allowance.
+ * Trailers (`vehicle_type = 'Trailer'`) never consume a plan slot — the allowance
+ * applies only to non-Trailer fleet assets. Mirrors the DB enforcement in
+ * `drevora_enforce_vehicle_plan_allowance()`.
+ */
+export function isVehicleCountedForPlanAllowance(vehicle: Vehicle): boolean {
+  return vehicle.archivedAt == null && !isTrailerVehicle(vehicle)
+}
+
 export function countActiveVehiclesForPlan(vehicles: Vehicle[]): number {
-  return vehicles.filter(isActiveVehicleForPlanSlot).length
+  return vehicles.filter(isVehicleCountedForPlanAllowance).length
 }
 
 export type VehicleSlotItem =
@@ -43,8 +63,9 @@ export function buildVehicleSlotPage(input: {
   constrainToVehiclesOnly: boolean
   /**
    * Occupied plan seats for empty-slot math. Defaults to `vehicles.length`.
-   * Pass the full-company active count when the displayed list is a subset
-   * (e.g. Vehicles tab excludes Trailers that still occupy plan seats).
+   * Pass the full-company non-Trailer active count (see
+   * `isVehicleCountedForPlanAllowance`) when the displayed list is a subset —
+   * Trailers never occupy a plan seat, so they must not be included here.
    */
   occupiedSlotCount?: number
 }): VehicleSlotPageResult {

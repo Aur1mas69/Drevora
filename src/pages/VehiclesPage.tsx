@@ -312,6 +312,12 @@ function VehiclesPage() {
     [companyPlan, vehicles],
   )
 
+  // Trailers never consume/require a vehicle plan slot — only an expired trial
+  // blocks adding a Trailer (see vehicleAllowance.canAddTrailer).
+  const canAddForCurrentMode = isTrailersMode
+    ? vehicleAllowance.canAddTrailer
+    : vehicleAllowance.canAddVehicle
+
   const summaryStats = useMemo(
     () => computeFleetSummaryStats(activeVehicles),
     [activeVehicles],
@@ -396,17 +402,17 @@ function VehiclesPage() {
         allowance: vehicleAllowance.allowance,
         page: gridPage,
         constrainToVehiclesOnly: hasListConstraints || isTrailersMode,
-        occupiedSlotCount: allActiveVehiclesForPlan.length,
+        occupiedSlotCount: vehicleAllowance.activeCount,
       }),
     [
-      allActiveVehiclesForPlan.length,
       gridPage,
       hasListConstraints,
       isTrailersMode,
       slotVehicles,
+      vehicleAllowance.activeCount,
       vehicleAllowance.allowance,
     ],
-  )
+    )
 
   useEffect(() => {
     if (gridPage !== slotPage.page) {
@@ -526,7 +532,7 @@ function VehiclesPage() {
   }
 
   function openAddVehicleModal() {
-    if (!vehicleAllowance.canAddVehicle) {
+    if (!canAddForCurrentMode) {
       setToastMessage(vehicleAllowance.title || 'Vehicle allowance reached')
       return
     }
@@ -597,7 +603,11 @@ function VehiclesPage() {
 
     if (Object.keys(validationErrors).length > 0) return
 
-    if (!editingVehicle && !vehicleAllowance.canAddVehicle) {
+    const isSavingTrailer = isTrailerVehicleType(form.vehicleType)
+    const canSave = isSavingTrailer
+      ? vehicleAllowance.canAddTrailer
+      : vehicleAllowance.canAddVehicle
+    if (!editingVehicle && !canSave) {
       setSaveError(
         vehicleAllowance.detail ??
           'Vehicle allowance reached. Archive an inactive Vehicle or change the company plan to add another Vehicle.',
@@ -854,14 +864,14 @@ function VehiclesPage() {
                 })
               }
               onAddVehicle={openAddVehicleModal}
-              canAddVehicle={vehicleAllowance.canAddVehicle}
+              canAddVehicle={canAddForCurrentMode}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               hasActiveFilters={hasActiveFilters}
               fleetMode={fleetMode}
               onFleetModeChange={handleFleetModeChange}
             />
-            {lifecycleFilter === 'active' ? (
+            {lifecycleFilter === 'active' && !isTrailersMode ? (
               <VehiclesAllowanceNotice allowance={vehicleAllowance} />
             ) : null}
           </div>
@@ -902,14 +912,14 @@ function VehiclesPage() {
               </p>
               <p className={`mt-2 text-sm ${adminTextMuted}`}>
                 {isTrailersMode
-                  ? 'Archived trailers appear here. Active trailers stay on the Active tab and count toward your plan.'
+                  ? 'Archived trailers appear here. Active trailers stay on the Active tab.'
                   : 'Archived vehicles appear here. Active vehicles stay on the Active tab and count toward your plan.'}
               </p>
             </div>
           ) : viewMode === 'grid' &&
             !isTrailersMode &&
             vehicleAllowance.allowance != null &&
-            vehicleAllowance.canAddVehicle ? (
+            canAddForCurrentMode ? (
             <VehiclesCardGrid
               items={slotPage.items}
               drivers={drivers}
@@ -934,16 +944,18 @@ function VehiclesPage() {
                 {isTrailersMode ? 'No trailers yet' : 'No vehicles yet'}
               </p>
               <p className={`mt-2 text-sm ${adminTextMuted}`}>
-                {vehicleAllowance.canAddVehicle
+                {canAddForCurrentMode
                   ? isTrailersMode
                     ? 'Add your first trailer to start managing your trailer fleet.'
                     : 'Add your first vehicle to start managing your fleet.'
-                  : 'Vehicle creation is blocked until a valid plan allowance is available.'}
+                  : isTrailersMode
+                    ? 'Trailer creation is blocked until a valid plan allowance is available.'
+                    : 'Vehicle creation is blocked until a valid plan allowance is available.'}
               </p>
               <Button
                 type="button"
                 onClick={openAddVehicleModal}
-                disabled={!vehicleAllowance.canAddVehicle}
+                disabled={!canAddForCurrentMode}
                 className="mt-5 rounded-[12px] bg-[#2563EB] text-white"
               >
                 <Plus className="size-4" />
