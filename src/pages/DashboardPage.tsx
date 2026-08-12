@@ -36,15 +36,65 @@ import {
 import { fetchTimesheetForDriverWeek } from '@/services/timesheetsService'
 import { fetchVehicleChecks } from '@/services/vehicleChecksService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import defaultVehicleIcon from '@/assets/worker-dashboard/default-vehicle.png'
+import timesheetsIcon from '@/assets/worker-dashboard/timesheets.png'
+import holidayIcon from '@/assets/worker-dashboard/holiday.png'
+import vehiclesIcon from '@/assets/worker-dashboard/vehicles.png'
+import documentsIcon from '@/assets/worker-dashboard/documents.png'
 import {
   ChevronRight,
   MoonStar,
   ShieldCheck,
   Sun,
-  Truck,
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+/** Default Vehicle card icon size. */
+const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-11 shrink-0 object-contain'
+
+/** Quick Actions — one shared 56px slot for all four cards. */
+const WORKER_HOME_QUICK_ACTION_ICON_CLASS = 'size-14 shrink-0 object-contain'
+
+const WORKER_HOME_QUICK_ACTION_ICONS: Record<string, string> = {
+  timesheets: timesheetsIcon,
+  holidays: holidayIcon,
+  vehicles: vehiclesIcon,
+  documents: documentsIcon,
+}
+
+const WORKER_HOME_QUICK_ACTION_LABELS: Record<string, string> = {
+  timesheets: 'Timesheets',
+  holidays: 'Holiday',
+  vehicles: 'Vehicles',
+  documents: 'Documents',
+}
+
+function WorkerHomeDefaultVehicleIcon({ src }: { src: string }) {
+  return (
+    <img
+      src={src}
+      alt=""
+      width={44}
+      height={44}
+      draggable={false}
+      className={WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS}
+    />
+  )
+}
+
+function WorkerHomeQuickActionIcon({ src }: { src: string }) {
+  return (
+    <img
+      src={src}
+      alt=""
+      width={56}
+      height={56}
+      draggable={false}
+      className={WORKER_HOME_QUICK_ACTION_ICON_CLASS}
+    />
+  )
+}
 
 /** Tight crop of the Worker robot only (transparent WebP, no banner/road). */
 const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-only.webp'
@@ -598,7 +648,7 @@ function DashboardPage() {
               aria-expanded={vehicleSheetOpen}
             >
               <div className="worker-home-icon-well worker-home-icon-well--compact">
-                <Truck className="size-6" strokeWidth={2.25} aria-hidden />
+                <WorkerHomeDefaultVehicleIcon src={defaultVehicleIcon} />
               </div>
               <div className="min-w-0 flex-1">
                 <p
@@ -683,7 +733,9 @@ function DashboardPage() {
             </h2>
             <div className="worker-home-quick-actions-grid grid grid-cols-2 gap-3">
               {quickActionItems.map((item, index) => {
-                const Icon = item.icon
+                const iconSrc = WORKER_HOME_QUICK_ACTION_ICONS[item.id]
+                const label =
+                  WORKER_HOME_QUICK_ACTION_LABELS[item.id] ?? item.label
                 const accentClass = isDark
                   ? index % 2 === 0
                     ? 'worker-quick-action-mint'
@@ -695,20 +747,23 @@ function DashboardPage() {
                     to={item.to}
                     className={cn('worker-home-quick-action', accentClass)}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="worker-home-icon-well">
-                        <Icon className="size-6" strokeWidth={2.25} aria-hidden />
-                      </div>
-                      <ChevronRight className="worker-home-chevron mt-0.5" aria-hidden />
+                    <div className="worker-home-icon-well shrink-0">
+                      {iconSrc ? (
+                        <WorkerHomeQuickActionIcon src={iconSrc} />
+                      ) : null}
                     </div>
                     <p
                       className={cn(
-                        'worker-home-qa-label text-[15px] font-semibold leading-snug',
+                        'worker-home-qa-label min-w-0 flex-1 text-[15px] font-semibold leading-snug',
                         !isDark && 'text-[color:var(--worker-text)]',
                       )}
                     >
-                      {item.label}
+                      {label}
                     </p>
+                    <ChevronRight
+                      className="worker-home-chevron shrink-0"
+                      aria-hidden
+                    />
                   </Link>
                 )
               })}

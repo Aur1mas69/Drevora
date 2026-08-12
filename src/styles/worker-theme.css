@@ -1338,8 +1338,9 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 .worker-mobile-layout .worker-home-quick-action {
   display: flex;
   min-height: 6.5rem;
-  flex-direction: column;
-  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
   border-radius: 1.5rem;
   border: 1.5px solid #7eb8e8;
   background-color: #bfe3f5;
