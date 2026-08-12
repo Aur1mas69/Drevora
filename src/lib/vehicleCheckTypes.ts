@@ -80,6 +80,7 @@ export type VehicleCheckListItem = {
   fleetNumber: string | null
   vehicleMake: string | null
   vehicleModel: string | null
+  vehicleType: string | null
   vehicleStatus: string | null
   workerId: string
   workerName: string
@@ -111,8 +112,8 @@ export type VehicleCheckListItem = {
   /** Newest linked correction id for this original, if any. */
   latestCorrectionId: string | null
   /**
-   * Trailer attachment fields. List/report queries do not select these yet;
-   * create/save writes them. Mapper defaults keep historical list rows as none.
+   * Trailer attachment fields. List queries may omit them (mapper defaults to none).
+   * Detail/report queries select stored snapshots.
    */
   trailerSource: VehicleCheckTrailerSource
   trailerVehicleId: string | null

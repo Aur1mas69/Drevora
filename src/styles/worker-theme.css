@@ -1283,28 +1283,27 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   color: #0b0d12;
 }
 
-/* Compact UK-style plate — hugs the registration letters. */
+/* Compact UK-style plate — hugs the registration, centred in the card. */
 .worker-mobile-layout .worker-home-dv-plate {
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
-  align-self: flex-start;
   align-items: center;
   justify-content: center;
   border-radius: 0.25rem;
   border: 1px solid rgba(15, 23, 42, 0.18);
   background-color: #f7f7f2;
-  padding: 0.08rem 0.22rem 0.06rem;
+  padding: 0.12rem 0.28rem 0.1rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
 }
 
 .worker-mobile-layout .worker-home-dv-plate-text {
   max-width: 100%;
   overflow: visible;
-  font-size: 16px;
+  font-size: 1.375rem;
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: #111111;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1381,6 +1380,31 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.worker-mobile-layout .worker-home-quick-action .worker-home-qa-description {
+  color: var(--worker-text-secondary);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint .worker-home-qa-description {
+  color: rgba(11, 13, 18, 0.62);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo .worker-home-qa-description {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.worker-mobile-layout .worker-home-quick-action--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.worker-mobile-layout .worker-home-quick-action--disabled:hover,
+.worker-mobile-layout .worker-home-quick-action--disabled:active {
+  transform: none;
+  filter: none;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 .worker-mobile-layout .worker-home-quick-action {

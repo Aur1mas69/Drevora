@@ -35,7 +35,7 @@ import {
 } from '@/services/driversService'
 import { fetchTimesheetForDriverWeek } from '@/services/timesheetsService'
 import { fetchVehicleChecks } from '@/services/vehicleChecksService'
-import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import { fetchVehicles, isTrailerFleetAsset, type Vehicle } from '@/services/vehiclesService'
 import defaultVehicleIcon from '@/assets/worker-dashboard/default-vehicle.png'
 import timesheetsIcon from '@/assets/worker-dashboard/timesheets.png'
 import holidayIcon from '@/assets/worker-dashboard/holiday.png'
@@ -46,7 +46,7 @@ import afternoonGreetingIcon from '@/assets/worker-greetings/afternoon.png'
 import eveningGreetingIcon from '@/assets/worker-greetings/evening.png'
 import nightGreetingIcon from '@/assets/worker-greetings/night.png'
 import { ChevronRight, ShieldCheck } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 /** Default Vehicle card icon size. */
 const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-[53px] shrink-0 object-contain'
@@ -301,6 +301,10 @@ function DashboardPage() {
   const [statusLoading, setStatusLoading] = useState(true)
 
   const [fleetVehicles, setFleetVehicles] = useState<Vehicle[]>([])
+  const poweredFleetVehicles = useMemo(
+    () => fleetVehicles.filter((vehicle) => !isTrailerFleetAsset(vehicle)),
+    [fleetVehicles],
+  )
   const [vehicleSheetOpen, setVehicleSheetOpen] = useState(false)
   const [isSavingDefaultVehicle, setIsSavingDefaultVehicle] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -540,6 +544,7 @@ function DashboardPage() {
   }, [companyLoading, isLoading, isOnline, worker])
 
   async function handleSelectDefaultVehicle(vehicle: Vehicle) {
+    if (isTrailerFleetAsset(vehicle)) return
     if (vehicle.id === worker?.defaultVehicleId) {
       setVehicleSheetOpen(false)
       return
@@ -678,18 +683,22 @@ function DashboardPage() {
                 <ChevronRight className="worker-home-chevron size-4 shrink-0" aria-hidden />
               </div>
               {defaultVehicleLabel ? (
-                <span className="worker-home-dv-plate">
-                  <span className="worker-home-dv-plate-text">{defaultVehicleLabel}</span>
-                </span>
+                <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+                  <span className="worker-home-dv-plate">
+                    <span className="worker-home-dv-plate-text">{defaultVehicleLabel}</span>
+                  </span>
+                </div>
               ) : (
-                <p
-                  className={cn(
-                    'worker-home-dv-value text-[13px] font-bold leading-tight',
-                    !isDark && 'text-[color:var(--worker-text)]',
-                  )}
-                >
-                  Not set
-                </p>
+                <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+                  <p
+                    className={cn(
+                      'worker-home-dv-value text-[13px] font-bold leading-tight',
+                      !isDark && 'text-[color:var(--worker-text)]',
+                    )}
+                  >
+                    Not set
+                  </p>
+                </div>
               )}
             </button>
 
@@ -812,7 +821,7 @@ function DashboardPage() {
 
       <WorkerHomeDefaultVehicleSheet
         open={vehicleSheetOpen}
-        vehicles={fleetVehicles}
+        vehicles={poweredFleetVehicles}
         selectedVehicleId={worker?.defaultVehicleId ?? null}
         isSaving={isSavingDefaultVehicle}
         onSelect={(vehicle) => {

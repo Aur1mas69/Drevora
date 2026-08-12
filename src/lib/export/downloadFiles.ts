@@ -65,10 +65,26 @@ export function resolveDownloadFileName(
   return `${safe}${extension}`
 }
 
+function isFetchableFileUrl(value: string): boolean {
+  const trimmed = value.trim()
+  return /^https?:\/\//i.test(trimmed) || trimmed.startsWith('blob:')
+}
+
+function isHtmlOrAppShellBlob(blob: Blob): boolean {
+  const type = blob.type.trim().toLowerCase()
+  return type.startsWith('text/html') || type.startsWith('application/xhtml')
+}
+
 /** Fetch a Blob from a short-lived signed URL (or any absolute URL). */
 export async function fetchBlobFromUrl(url: string): Promise<Blob> {
   const trimmed = url.trim()
   if (!trimmed) {
+    throw new ExportUserError('Unable to download file.')
+  }
+
+  // Relative paths hit the SPA and download index.html (often looking like
+  // the on-screen description/notes) instead of the Storage object.
+  if (!isFetchableFileUrl(trimmed)) {
     throw new ExportUserError('Unable to download file.')
   }
 
@@ -83,11 +99,18 @@ export async function fetchBlobFromUrl(url: string): Promise<Blob> {
     throw new ExportUserError('Unable to download file. Please try again.')
   }
 
+  let blob: Blob
   try {
-    return await response.blob()
+    blob = await response.blob()
   } catch {
     throw new ExportUserError('Unable to download file. Please try again.')
   }
+
+  if (!blob || blob.size <= 0 || isHtmlOrAppShellBlob(blob)) {
+    throw new ExportUserError('Unable to download file. Please try again.')
+  }
+
+  return blob
 }
 
 /**
@@ -101,6 +124,21 @@ export async function downloadFileFromSignedUrl(
   const blob = await fetchBlobFromUrl(signedUrl)
   const safeName = sanitizeDownloadFileName(fileName)
   downloadBlob(blob, safeName)
+}
+
+/** Apply the original filename and MIME type, then trigger a browser download. */
+export function downloadTypedBlob(
+  blob: Blob,
+  fileName: string,
+  mimeType?: string | null,
+): void {
+  const safeName = resolveDownloadFileName(fileName, mimeType)
+  const normalizedMime = mimeType?.trim() || null
+  const typed =
+    normalizedMime && blob.type !== normalizedMime
+      ? new Blob([blob], { type: normalizedMime })
+      : blob
+  downloadBlob(typed, safeName)
 }
 
 export type ZipFileEntry = {

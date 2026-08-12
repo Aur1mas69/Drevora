@@ -1,8 +1,9 @@
 import { Input } from '@/components/ui/input'
+import { WorkerVehicleMobilePicker } from '@/components/worker/WorkerVehicleMobilePicker'
 import {
-  WorkerVehicleMobilePicker,
+  WorkerVehicleOptionRow,
   vehicleSecondaryLabel,
-} from '@/components/worker/WorkerVehicleMobilePicker'
+} from '@/components/worker/WorkerVehicleOptionRow'
 import { cn } from '@/lib/utils'
 import { vehicleMatchesWorkerVehicleQuery } from '@/lib/vehicleRegistrationSearch'
 import type { Vehicle } from '@/services/vehiclesService'
@@ -271,28 +272,15 @@ export function WorkerVehicleCombobox({
                 No active company vehicles match that registration.
               </p>
             ) : (
-              filteredVehicles.map((vehicle) => {
-                const selected = vehicle.id === selectedVehicleId
-                const registration = vehicle.registration || 'No registration'
-                const secondary = vehicleSecondaryLabel(vehicle)
-                return (
-                  <button
-                    key={vehicle.id}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    aria-label={`Select vehicle ${registration}${secondary ? `, ${secondary}` : ''}`}
-                    onClick={() => handleSelect(vehicle)}
-                    className={cn(
-                      'flex min-h-12 w-full flex-col items-start px-3 py-2.5 text-left text-sm transition-colors hover:bg-[color:var(--worker-row-hover)]',
-                      selected ? 'bg-[color:var(--worker-primary-soft)]' : '',
-                    )}
-                  >
-                    <span className="font-semibold text-[color:var(--worker-text)]">{registration}</span>
-                    <span className="text-xs text-[color:var(--worker-text-secondary)]">{secondary}</span>
-                  </button>
-                )
-              })
+              filteredVehicles.map((vehicle) => (
+                <WorkerVehicleOptionRow
+                  key={vehicle.id}
+                  vehicle={vehicle}
+                  selected={vehicle.id === selectedVehicleId}
+                  compact
+                  onSelect={handleSelect}
+                />
+              ))
             )}
           </div>,
           document.body,
@@ -314,9 +302,11 @@ export function WorkerVehicleCombobox({
               <p className="mt-0.5 truncate text-sm font-semibold text-[color:var(--worker-text)]">
                 {selectedVehicle.registration || 'No registration'}
               </p>
-              <p className="truncate text-xs text-[color:var(--worker-text-secondary)]">
-                {vehicleSecondaryLabel(selectedVehicle)}
-              </p>
+              {vehicleSecondaryLabel(selectedVehicle) ? (
+                <p className="truncate text-xs text-[color:var(--worker-text-secondary)]">
+                  {vehicleSecondaryLabel(selectedVehicle)}
+                </p>
+              ) : null}
             </div>
             {onClear ? (
               <button

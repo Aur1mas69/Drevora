@@ -1,20 +1,12 @@
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { WorkerVehicleOptionRow } from '@/components/worker/WorkerVehicleOptionRow'
 import { vehicleMatchesWorkerVehicleQuery } from '@/lib/vehicleRegistrationSearch'
 import type { Vehicle } from '@/services/vehiclesService'
 import { ArrowLeft, Search, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-export function vehicleSecondaryLabel(vehicle: Vehicle): string {
-  const makeModel = [vehicle.make, vehicle.model].filter(Boolean).join(' ')
-  const parts = [
-    makeModel || null,
-    vehicle.fleetNumber ? `Fleet ${vehicle.fleetNumber}` : null,
-    vehicle.vehicleType?.trim() || null,
-  ].filter(Boolean)
-  return parts.join(' · ') || 'Vehicle'
-}
+export { vehicleSecondaryLabel } from '@/components/worker/WorkerVehicleOptionRow'
 
 export type WorkerVehicleMobilePickerProps = {
   open: boolean
@@ -241,30 +233,14 @@ export function WorkerVehicleMobilePicker({
             No active company vehicles match that registration.
           </p>
         ) : (
-          filteredVehicles.map((vehicle) => {
-            const selected = vehicle.id === selectedVehicleId
-            const registration = vehicle.registration || 'No registration'
-            const secondary = vehicleSecondaryLabel(vehicle)
-            return (
-              <button
-                key={vehicle.id}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                aria-label={`Select vehicle ${registration}${secondary ? `, ${secondary}` : ''}`}
-                onClick={() => onSelect(vehicle)}
-                className={cn(
-                  'flex min-h-14 w-full flex-col items-start rounded-xl px-3 py-3 text-left text-sm transition-colors hover:bg-[color:var(--worker-row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--worker-primary)]',
-                  selected ? 'bg-[color:var(--worker-primary-soft)]' : '',
-                )}
-              >
-                <span className="font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase">
-                  {registration}
-                </span>
-                <span className="text-xs text-[color:var(--worker-text-secondary)]">{secondary}</span>
-              </button>
-            )
-          })
+          filteredVehicles.map((vehicle) => (
+            <WorkerVehicleOptionRow
+              key={vehicle.id}
+              vehicle={vehicle}
+              selected={vehicle.id === selectedVehicleId}
+              onSelect={onSelect}
+            />
+          ))
         )}
       </div>
     </div>,

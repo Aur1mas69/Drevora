@@ -323,7 +323,9 @@ export function VehicleCheckChecklistForm({
         >
           <div className="worker-vc-section-head bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
             <h3 className="worker-vc-muted text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-              {category}
+              {category === DREVORA_RECOMMENDED_SECTION && assetScope === 'trailer'
+                ? 'DREVORA Recommended — Trailer'
+                : category}
             </h3>
             {category === DREVORA_RECOMMENDED_SECTION ? (
               <p className="mt-0.5 text-[11px] font-medium leading-4 text-[#7FAFCC] dark:text-slate-400">

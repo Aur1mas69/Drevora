@@ -4,6 +4,7 @@ import {
   isExternalDriverReportUrl,
   validateDriverReportFile,
 } from '@/lib/driverReportFileStorage'
+import { fetchBlobFromUrl } from '@/lib/export/downloadFiles'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -91,6 +92,34 @@ export async function getDriverReportFileSignedUrl(
 
   if (error) throw new DriverReportFileStorageError(error.message)
   return data?.signedUrl ?? null
+}
+
+export async function downloadDriverReportFileBlob(
+  storagePathOrUrl: string,
+): Promise<Blob> {
+  const trimmed = storagePathOrUrl.trim()
+  if (!trimmed) {
+    throw new DriverReportFileStorageError('No file is available to download.')
+  }
+
+  if (isExternalDriverReportUrl(trimmed)) {
+    return fetchBlobFromUrl(trimmed)
+  }
+
+  const resolved = resolveBucketAndPath(trimmed)
+  if (!resolved) {
+    throw new DriverReportFileStorageError('No file is available to download.')
+  }
+
+  const { data, error } = await requireSupabase()
+    .storage.from(resolved.bucket)
+    .download(resolved.path)
+
+  if (error || !data || data.size <= 0) {
+    throw new DriverReportFileStorageError(error?.message ?? 'Unable to download file.')
+  }
+
+  return data
 }
 
 export async function applyDriverReportFileChanges(input: {

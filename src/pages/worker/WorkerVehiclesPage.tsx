@@ -21,10 +21,10 @@ import {
 } from '@/services/vehiclesService'
 import {
   ChevronRight,
-  ClipboardCheck,
-  CircleDot,
-  FileWarning,
+  Disc3,
+  FileExclamationPoint,
   Fuel,
+  ListChecks,
   Loader2,
   X,
   type LucideIcon,
@@ -37,34 +37,8 @@ const VEHICLES_LOAD_FALLBACK = 'Unable to load vehicles.'
 const VEHICLES_RECONNECT_RETRY_MS = 2500
 const VEHICLES_RECONNECT_MAX_ATTEMPTS = 4
 
-type VehicleActionTone = 'violet' | 'amber' | 'rose'
-
-const VEHICLE_ACTION_TONE: Record<
-  VehicleActionTone,
-  { card: string; iconWell: string; icon: string; hover: string; active: string }
-> = {
-  violet: {
-    card: 'border-violet-200/80 bg-violet-50/90',
-    iconWell: 'bg-violet-100 text-violet-700',
-    icon: 'text-violet-700',
-    hover: 'hover:border-violet-300 hover:bg-violet-100/90',
-    active: 'active:border-violet-300 active:bg-violet-100',
-  },
-  amber: {
-    card: 'border-amber-200/80 bg-amber-50/90',
-    iconWell: 'bg-amber-100 text-amber-800',
-    icon: 'text-amber-800',
-    hover: 'hover:border-amber-300 hover:bg-amber-100/90',
-    active: 'active:border-amber-300 active:bg-amber-100',
-  },
-  rose: {
-    card: 'border-rose-200/80 bg-rose-50/90',
-    iconWell: 'bg-rose-100 text-rose-700',
-    icon: 'text-rose-700',
-    hover: 'hover:border-rose-300 hover:bg-rose-100/90',
-    active: 'active:border-rose-300 active:bg-rose-100',
-  },
-}
+/** Prominent Lucide size in the Dashboard Quick Action icon well (PNG slot is 68px). */
+const VEHICLE_QUICK_ACTION_ICON_CLASS = 'size-[52px] shrink-0'
 
 function VehicleActionCard({
   title,
@@ -72,85 +46,53 @@ function VehicleActionCard({
   icon: Icon,
   to,
   disabled,
-  comingSoon,
-  tone,
   accentIndex = 0,
   isDark = false,
+  className: extraClassName,
 }: {
   title: string
   description: string
   icon: LucideIcon
   to?: string
   disabled?: boolean
-  comingSoon?: boolean
-  tone: VehicleActionTone
   accentIndex?: number
   isDark?: boolean
+  className?: string
 }) {
-  const toneStyles = VEHICLE_ACTION_TONE[tone]
   const className = cn(
-    'worker-list-card flex h-full min-h-[5.25rem] w-full flex-col justify-between text-left transition-colors',
-    disabled
-      ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400 shadow-none'
-      : isDark
-        ? workerAccentCardClass(accentIndex, true)
-        : cn(toneStyles.card, 'shadow-slate-200/40', toneStyles.hover, toneStyles.active),
+    'worker-home-quick-action h-full min-w-0 w-full text-left',
+    disabled && 'worker-home-quick-action--disabled',
+    !disabled &&
+      isDark &&
+      (accentIndex % 2 === 0
+        ? 'worker-quick-action-mint'
+        : 'worker-quick-action-indigo'),
+    extraClassName,
   )
 
   const body = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <div
-          className={cn(
-            'flex size-9 items-center justify-center rounded-xl',
-            disabled
-              ? 'bg-slate-100 text-slate-400'
-              : isDark
-                ? 'worker-accent-icon-well'
-                : toneStyles.iconWell,
-          )}
-        >
-          <Icon
-            className={cn(
-              'size-4',
-              disabled ? 'text-slate-400' : !isDark && toneStyles.icon,
-            )}
-            strokeWidth={1.75}
-            aria-hidden
-          />
-        </div>
-        {comingSoon ? (
-          <span className="rounded-full bg-slate-200/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-            Coming soon
-          </span>
-        ) : null}
+      <div className="worker-home-icon-well shrink-0">
+        <Icon
+          className={VEHICLE_QUICK_ACTION_ICON_CLASS}
+          strokeWidth={1.6}
+          aria-hidden
+        />
       </div>
-      <div>
+      <div className="min-w-0 flex-1 pr-5">
         <p
           className={cn(
-            'text-sm font-semibold leading-snug',
-            disabled
-              ? 'text-slate-400'
-              : isDark
-                ? 'worker-accent-title'
-                : 'text-slate-950',
+            'worker-home-qa-label text-[15px] font-semibold leading-snug break-words',
+            !isDark && 'text-[color:var(--worker-text)]',
           )}
         >
           {title}
         </p>
-        <p
-          className={cn(
-            'mt-0.5 text-xs leading-snug',
-            disabled
-              ? 'text-slate-400'
-              : isDark
-                ? 'worker-accent-secondary'
-                : 'text-slate-600',
-          )}
-        >
+        <p className="worker-home-qa-description mt-0.5 line-clamp-2 text-xs font-normal leading-snug break-words">
           {description}
         </p>
       </div>
+      <ChevronRight className="worker-home-chevron shrink-0" aria-hidden />
     </>
   )
 
@@ -703,7 +645,7 @@ export default function WorkerVehiclesPage() {
         </p>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-visible">
         {selectedVehicle ? (
           <Link
             to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
@@ -714,7 +656,7 @@ export default function WorkerVehiclesPage() {
           >
             <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
               <span className="flex min-w-0 items-center gap-2.5">
-                <ClipboardCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+                <ListChecks className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
                 <span className="truncate">Start Vehicle Check</span>
               </span>
               <span className="pl-7 text-left text-xs font-normal text-white/85">
@@ -733,7 +675,7 @@ export default function WorkerVehiclesPage() {
           >
             <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
               <span className="flex min-w-0 items-center gap-2.5">
-                <ClipboardCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+                <ListChecks className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
                 <span className="truncate">Start Vehicle Check</span>
               </span>
               <span className="pl-7 text-left text-xs font-normal text-white/85">
@@ -744,12 +686,11 @@ export default function WorkerVehiclesPage() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+        <section className="worker-home-quick-actions-grid grid grid-cols-2 gap-3 overflow-visible">
           <VehicleActionCard
             title="Start Tyre Check"
             description="Tyre inspection workflow."
-            icon={CircleDot}
-            tone="violet"
+            icon={Disc3}
             accentIndex={0}
             isDark={isDark}
             disabled={!selectedVehicle}
@@ -759,7 +700,6 @@ export default function WorkerVehiclesPage() {
             title="Add Consumable"
             description="Record fuel, AdBlue or other consumables."
             icon={Fuel}
-            tone="amber"
             accentIndex={1}
             isDark={isDark}
             disabled={!selectedVehicle}
@@ -768,12 +708,12 @@ export default function WorkerVehiclesPage() {
           <VehicleActionCard
             title="Create Driver Report"
             description="Report a defect or operational issue."
-            icon={FileWarning}
-            tone="rose"
+            icon={FileExclamationPoint}
             accentIndex={2}
             isDark={isDark}
             disabled={!selectedVehicle}
             to={vehicleHref('/worker/driver-reports', selectedVehicleId)}
+            className="col-span-2"
           />
         </section>
       </div>

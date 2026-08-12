@@ -248,7 +248,7 @@ function DocumentActionsMenu({
     return <RowActionsMenu actions={actions} align="end" />
   }
 
-  if (hasDocumentFile(document) && document.filePath?.trim()) {
+  if (hasDocumentFile(document) && (document.filePath?.trim() || document.fileUrl?.trim())) {
     actions.push({
       id: 'file',
       label: 'Open file',

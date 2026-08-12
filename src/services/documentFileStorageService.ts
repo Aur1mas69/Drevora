@@ -4,6 +4,7 @@ import {
   isExternalDocumentUrl,
   validateDocumentFile,
 } from '@/lib/documentFileStorage'
+import { fetchBlobFromUrl } from '@/lib/export/downloadFiles'
 import { requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 
@@ -116,6 +117,41 @@ export async function getDocumentFileSignedUrl(
   }
 
   return data?.signedUrl ?? null
+}
+
+export async function downloadDocumentFileBlob(
+  storagePathOrUrl: string,
+): Promise<Blob> {
+  const trimmed = storagePathOrUrl.trim()
+  if (!trimmed) {
+    throw new DocumentFileStorageError('No file is available to download.')
+  }
+
+  if (isExternalDocumentUrl(trimmed)) {
+    return fetchBlobFromUrl(trimmed)
+  }
+
+  const resolved = resolveBucketAndPath(trimmed)
+  if (!resolved) {
+    throw new DocumentFileStorageError('No file is available to download.')
+  }
+
+  const { data, error } = await requireSupabase()
+    .storage.from(resolved.bucket)
+    .download(resolved.path)
+
+  logSupabaseQuery({
+    service: 'documentFileStorageService.downloadDocumentFileBlob',
+    table: `storage:${DOCUMENT_FILES_BUCKET}`,
+    data: data ? [{ path: resolved.path, size: data.size }] : [],
+    error,
+  })
+
+  if (error || !data || data.size <= 0) {
+    throw new DocumentFileStorageError(error?.message ?? 'Unable to download file.')
+  }
+
+  return data
 }
 
 export async function applyDocumentFileChanges(input: {

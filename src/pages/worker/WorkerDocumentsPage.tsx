@@ -26,7 +26,11 @@ import {
   type WorkerDocumentSubmission,
   type WorkerSubmissionDocumentType,
 } from '@/lib/workerDocumentSubmissionTypes'
-import { getWorkerSubmissionFileSignedUrl } from '@/services/workerDocumentSubmissionStorageService'
+import {
+  downloadWorkerSubmissionFile,
+  getWorkerSubmissionFileSignedUrl,
+  WorkerDocumentSubmissionStorageError,
+} from '@/services/workerDocumentSubmissionStorageService'
 import {
   createWorkerDocumentSubmission,
   fetchMyWorkerDocumentSubmissions,
@@ -193,6 +197,26 @@ export default function WorkerDocumentsPage() {
       if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
       setHistoryError('Unable to open that file. Please try again.')
+    } finally {
+      setOpeningFileId(null)
+    }
+  }
+
+  async function downloadAttachment(
+    filePath: string,
+    originalFileName: string,
+    attachmentId: string,
+    mimeType?: string | null,
+  ) {
+    setOpeningFileId(attachmentId)
+    try {
+      await downloadWorkerSubmissionFile(filePath, originalFileName, mimeType)
+    } catch (error) {
+      setHistoryError(
+        error instanceof WorkerDocumentSubmissionStorageError
+          ? error.message
+          : 'Unable to download that file. Please try again.',
+      )
     } finally {
       setOpeningFileId(null)
     }
@@ -508,7 +532,12 @@ export default function WorkerDocumentsPage() {
                         type="button"
                         disabled={openingFileId === attachment.id}
                         onClick={() =>
-                          void openAttachment(attachment.filePath, attachment.id)
+                          void downloadAttachment(
+                            attachment.filePath,
+                            attachment.originalFileName,
+                            attachment.id,
+                            attachment.mimeType,
+                          )
                         }
                         className="min-h-11 px-1 text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                       >

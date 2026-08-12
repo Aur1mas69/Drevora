@@ -153,6 +153,14 @@ const vehicleCheckDetailSelect = `
   completed_longitude,
   completed_location_accuracy,
   completed_location_at,
+  vehicle_registration_snapshot,
+  vehicle_fleet_number_snapshot,
+  trailer_source,
+  trailer_vehicle_id,
+  trailer_number_snapshot,
+  trailer_registration_snapshot,
+  trailer_type_snapshot,
+  trailer_label_snapshot,
   drivers ( first_name, last_name ),
   vehicles!vehicle_id ( registration, fleet_number, make, model, vehicle_type, status ),
   vehicle_check_items ( ${completedCheckItemSelect} )
@@ -193,6 +201,14 @@ type VehicleCheckRow = {
   completed_longitude?: number | null
   completed_location_accuracy?: number | null
   completed_location_at?: string | null
+  vehicle_registration_snapshot?: string | null
+  vehicle_fleet_number_snapshot?: string | null
+  trailer_source?: string | null
+  trailer_vehicle_id?: string | null
+  trailer_number_snapshot?: string | null
+  trailer_registration_snapshot?: string | null
+  trailer_type_snapshot?: string | null
+  trailer_label_snapshot?: string | null
   drivers: DriverJoinRow | DriverJoinRow[] | null
   vehicles:
     | (VehicleJoinRow & { status?: string | null })
@@ -299,6 +315,7 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     fleetNumber: vehicle?.fleet_number ?? null,
     vehicleMake: vehicle?.make ?? null,
     vehicleModel: vehicle?.model ?? null,
+    vehicleType: vehicle?.vehicle_type?.trim() || null,
     vehicleStatus: vehicle?.status ?? null,
     workerId: row.worker_id,
     workerName: driver ? `${driver.first_name} ${driver.last_name}`.trim() : 'Unknown',
@@ -415,9 +432,16 @@ function mapLocationSnapshot(
 function mapDetailRow(row: VehicleCheckRow): VehicleCheck {
   const list = mapListRow(row)
   const items = (row.vehicle_check_items ?? []).map(mapItemRow)
-  items.sort((a, b) => a.itemName.localeCompare(b.itemName))
   return {
     ...list,
+    trailerSource: normalizeTrailerSource(row.trailer_source),
+    trailerVehicleId: row.trailer_vehicle_id ?? null,
+    vehicleRegistrationSnapshot: row.vehicle_registration_snapshot ?? null,
+    vehicleFleetNumberSnapshot: row.vehicle_fleet_number_snapshot ?? null,
+    trailerNumberSnapshot: row.trailer_number_snapshot ?? null,
+    trailerRegistrationSnapshot: row.trailer_registration_snapshot ?? null,
+    trailerTypeSnapshot: row.trailer_type_snapshot ?? null,
+    trailerLabelSnapshot: row.trailer_label_snapshot ?? null,
     items,
     startedLocation: mapLocationSnapshot(
       row.started_latitude,

@@ -1,6 +1,10 @@
-import { sanitizeDocumentFileName } from '@/lib/documentFileStorage'
 import {
-  downloadFileFromSignedUrl,
+  isExternalDocumentUrl,
+  sanitizeDocumentFileName,
+} from '@/lib/documentFileStorage'
+import {
+  downloadTypedBlob,
+  fetchBlobFromUrl,
   resolveDownloadFileName,
 } from '@/lib/export/downloadFiles'
 import { ExportUserError } from '@/lib/export/exportErrors'
@@ -22,6 +26,20 @@ export class WorkerDocumentSubmissionStorageError extends Error {
     super(message)
     this.name = 'WorkerDocumentSubmissionStorageError'
   }
+}
+
+function resolveBucketAndPath(storagePathOrUrl: string): { bucket: string; path: string } | null {
+  const trimmed = storagePathOrUrl.trim()
+  if (!trimmed || isExternalDocumentUrl(trimmed)) return null
+
+  if (trimmed.startsWith(`${DOCUMENT_FILES_BUCKET}/`)) {
+    return {
+      bucket: DOCUMENT_FILES_BUCKET,
+      path: trimmed.slice(DOCUMENT_FILES_BUCKET.length + 1),
+    }
+  }
+
+  return { bucket: DOCUMENT_FILES_BUCKET, path: trimmed }
 }
 
 export type StagedWorkerSubmissionUpload = {
@@ -128,6 +146,10 @@ export async function getWorkerSubmissionFileSignedUrl(
 ): Promise<string | null> {
   const trimmed = storagePath?.trim()
   if (!trimmed) return null
+  if (isExternalDocumentUrl(trimmed)) return trimmed
+
+  const resolved = resolveBucketAndPath(trimmed)
+  if (!resolved) return null
 
   const downloadOption =
     options?.downloadFileName === undefined
@@ -137,9 +159,9 @@ export async function getWorkerSubmissionFileSignedUrl(
         : sanitizeDocumentFileName(String(options.downloadFileName))
 
   const { data, error } = await requireSupabase()
-    .storage.from(DOCUMENT_FILES_BUCKET)
+    .storage.from(resolved.bucket)
     .createSignedUrl(
-      trimmed,
+      resolved.path,
       SIGNED_URL_EXPIRY_SECONDS,
       downloadOption !== undefined ? { download: downloadOption } : undefined,
     )
@@ -158,9 +180,55 @@ export async function getWorkerSubmissionFileSignedUrl(
   return data?.signedUrl ?? null
 }
 
+/** Load the stored Worker submission object as a Blob (private bucket, authenticated). */
+export async function fetchWorkerSubmissionFileBlob(
+  storagePath: string | null | undefined,
+): Promise<Blob> {
+  const trimmed = storagePath?.trim()
+  if (!trimmed) {
+    throw new WorkerDocumentSubmissionStorageError('Unable to create download link.')
+  }
+
+  if (isExternalDocumentUrl(trimmed)) {
+    try {
+      return await fetchBlobFromUrl(trimmed)
+    } catch (error) {
+      if (error instanceof ExportUserError) {
+        throw new WorkerDocumentSubmissionStorageError(error.message)
+      }
+      throw new WorkerDocumentSubmissionStorageError('Unable to download file.')
+    }
+  }
+
+  const resolved = resolveBucketAndPath(trimmed)
+  if (!resolved) {
+    throw new WorkerDocumentSubmissionStorageError('Unable to create download link.')
+  }
+
+  const { data, error } = await requireSupabase()
+    .storage.from(resolved.bucket)
+    .download(resolved.path)
+
+  logSupabaseQuery({
+    service: 'workerDocumentSubmissionStorageService.download',
+    table: `storage:${resolved.bucket}`,
+    data: data ? [{ path: resolved.path, size: data.size }] : [],
+    error,
+  })
+
+  if (error || !data || data.size <= 0) {
+    throw new WorkerDocumentSubmissionStorageError(
+      error?.message ?? 'Unable to download file.',
+    )
+  }
+
+  return data
+}
+
 /**
- * Downloads a private Worker submission attachment via a short-lived signed URL,
- * fetching the Blob so the browser preserves the original filename and extension.
+ * Downloads a private Worker submission attachment as the original stored file.
+ * Uses authenticated Storage download so the bytes are the uploaded object,
+ * not description/notes text or the app shell.
  */
 export async function downloadWorkerSubmissionFile(
   storagePath: string | null | undefined,
@@ -171,14 +239,12 @@ export async function downloadWorkerSubmissionFile(
     originalFileName || sanitizeDocumentFileName(originalFileName || 'file'),
     mimeType,
   )
-  const url = await getWorkerSubmissionFileSignedUrl(storagePath)
-  if (!url) {
-    throw new WorkerDocumentSubmissionStorageError('Unable to create download link.')
-  }
 
   try {
-    await downloadFileFromSignedUrl(url, safeName)
+    const blob = await fetchWorkerSubmissionFileBlob(storagePath)
+    downloadTypedBlob(blob, safeName, mimeType)
   } catch (error) {
+    if (error instanceof WorkerDocumentSubmissionStorageError) throw error
     if (error instanceof ExportUserError) {
       throw new WorkerDocumentSubmissionStorageError(error.message)
     }

@@ -1,7 +1,7 @@
-import { cn } from '@/lib/utils'
-import type { Vehicle } from '@/services/vehiclesService'
-import { Check, X } from 'lucide-react'
-import { useEffect, useId } from 'react'
+import { WorkerVehicleOptionRow } from '@/components/worker/WorkerVehicleOptionRow'
+import { isTrailerFleetAsset, type Vehicle } from '@/services/vehiclesService'
+import { X } from 'lucide-react'
+import { useEffect, useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
 export type WorkerHomeDefaultVehicleSheetProps = {
@@ -15,7 +15,7 @@ export type WorkerHomeDefaultVehicleSheetProps = {
 
 /**
  * Mobile bottom sheet for picking the Worker’s default vehicle on Home.
- * Lists active company vehicles only; marks the current default with a check.
+ * Lists active powered company vehicles only; marks the current default with a check.
  */
 export function WorkerHomeDefaultVehicleSheet({
   open,
@@ -27,6 +27,10 @@ export function WorkerHomeDefaultVehicleSheet({
 }: WorkerHomeDefaultVehicleSheetProps) {
   const titleId = useId()
   const listId = useId()
+  const poweredVehicles = useMemo(
+    () => vehicles.filter((vehicle) => !isTrailerFleetAsset(vehicle)),
+    [vehicles],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -84,9 +88,9 @@ export function WorkerHomeDefaultVehicleSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[min(78vh,32rem)] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] shadow-xl sm:rounded-[24px]"
+        className="relative flex max-h-[min(78vh,32rem)] w-full max-w-md flex-col overflow-hidden rounded-t-[24px] border border-[color:var(--worker-border)] bg-[color:var(--worker-bg)] shadow-xl sm:rounded-[24px]"
       >
-        <header className="flex shrink-0 items-center gap-3 border-b border-[color:var(--worker-border)] px-4 py-3.5">
+        <header className="flex shrink-0 items-center gap-3 border-b border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)] px-4 py-3.5">
           <h2
             id={titleId}
             className="min-w-0 flex-1 text-base font-semibold tracking-[-0.02em] text-[color:var(--worker-text)]"
@@ -107,49 +111,29 @@ export function WorkerHomeDefaultVehicleSheet({
         <div
           id={listId}
           role="listbox"
-          aria-label="Active company vehicles"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2"
+          aria-label="Active powered company vehicles"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          style={{
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch',
+          }}
         >
-          {vehicles.length === 0 ? (
+          {poweredVehicles.length === 0 ? (
             <p className="px-3 py-6 text-sm text-[color:var(--worker-text-secondary)]">
-              No active company vehicles available.
+              No active powered vehicles available.
             </p>
           ) : (
-            vehicles.map((vehicle) => {
-              const registration =
-                vehicle.registration?.trim() || 'No registration'
-              const selected = vehicle.id === selectedVehicleId
-              return (
-                <button
-                  key={vehicle.id}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  disabled={isSaving}
-                  aria-label={`${selected ? 'Current default ' : 'Select '}${registration}`}
-                  onClick={() => onSelect(vehicle)}
-                  className={cn(
-                    'flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors',
-                    'hover:bg-[color:var(--worker-row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--worker-primary)]',
-                    selected ? 'bg-[color:var(--worker-primary-soft)]' : '',
-                    isSaving ? 'opacity-70' : '',
-                  )}
-                >
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase">
-                    {registration}
-                  </span>
-                  {selected ? (
-                    <Check
-                      className="size-5 shrink-0 text-[color:var(--worker-primary)]"
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
-                  ) : (
-                    <span className="size-5 shrink-0" aria-hidden />
-                  )}
-                </button>
-              )
-            })
+            poweredVehicles.map((vehicle) => (
+              <WorkerVehicleOptionRow
+                key={vehicle.id}
+                vehicle={vehicle}
+                selected={vehicle.id === selectedVehicleId}
+                disabled={isSaving}
+                onSelect={onSelect}
+              />
+            ))
           )}
         </div>
       </section>

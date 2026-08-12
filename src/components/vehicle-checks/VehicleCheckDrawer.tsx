@@ -29,6 +29,11 @@ import {
 } from '@/lib/vehicleCheckLocation'
 import type { VehicleCheckLocationSnapshot } from '@/lib/vehicleCheckTypes'
 import {
+  formatVehicleCheckReportDefectLabel,
+  getVehicleCheckReportIdentity,
+  toVehicleCheckReportChecklistView,
+} from '@/lib/vehicleCheckReportGrouping'
+import {
   collectVehicleCheckDownloadableFiles,
 } from '@/lib/export/modules/vehicleChecksExport'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
@@ -219,24 +224,17 @@ export function VehicleCheckDrawer({
   const editable = isVehicleCheckEditable(check)
   const isFinal = isVehicleCheckFinal(check)
   const isCorrection = Boolean(check.originalCheckId)
-
-  const checklistItems = check.items.map((item) => ({
-    category: item.category,
-    itemName: item.itemName,
-    result: item.result,
-    comment: item.comment ?? '',
-    templateItem: item.templateItem,
-    description: item.description,
-    allowNotes: item.allowNotes,
-    allowPhoto: item.allowPhoto,
-    failOnDefect: item.failOnDefect,
-  }))
-  const passedItems = check.items.filter((item) => item.result === 'Pass')
-  const naItems = check.items.filter((item) => item.result === 'Fail')
-  const defectItems = check.items.filter((item) => item.result === 'Advisory')
-  const photoItems = check.items.filter(
-    (item) => item.photoUrl && item.result === 'Advisory',
-  )
+  const reportChecklist = toVehicleCheckReportChecklistView(check.items)
+  const reportIdentity = getVehicleCheckReportIdentity(check)
+  const defectItems = reportChecklist.model.numberedItems
+    .filter((entry) => entry.item.result === 'Advisory')
+    .map((entry) => entry.item)
+  const photoItems = reportChecklist.model.numberedItems
+    .filter(
+      (entry) => entry.item.photoUrl && entry.item.result === 'Advisory',
+    )
+    .map((entry) => entry.item)
+  const { ok, defect, na } = reportChecklist.model.summary
   const downloadableFiles = collectVehicleCheckDownloadableFiles(check)
   const downloadFilesLabel =
     downloadableFiles.length > 1 ? 'Download files (.zip)' : 'Download file'
@@ -266,11 +264,13 @@ export function VehicleCheckDrawer({
                 {isCorrection ? 'Correction' : 'Vehicle Inspection'}
               </p>
               <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#2A376F] dark:text-slate-100">
-                {check.vehicleRegistration}
+                {reportIdentity.vehicle.registration}
               </h2>
               <p className="mt-0.5 text-sm text-slate-500">
-                {check.fleetNumber ? `Fleet ${check.fleetNumber} · ` : ''}
-                {check.workerName}
+                {reportIdentity.vehicle.fleetNumber
+                  ? `Fleet ${reportIdentity.vehicle.fleetNumber} · `
+                  : ''}
+                {reportIdentity.workerName}
               </p>
               {isFinal ? (
                 <p
@@ -401,6 +401,99 @@ export function VehicleCheckDrawer({
 
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Vehicle
+            </h3>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-slate-500">Registration</dt>
+                <dd className="text-right font-medium text-[#2A376F] dark:text-slate-100">
+                  {reportIdentity.vehicle.registration}
+                </dd>
+              </div>
+              {reportIdentity.vehicle.fleetNumber ? (
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="text-slate-500">Fleet number</dt>
+                  <dd className="text-right text-slate-700 dark:text-slate-200">
+                    {reportIdentity.vehicle.fleetNumber}
+                  </dd>
+                </div>
+              ) : null}
+              {reportIdentity.vehicle.makeModel ? (
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="text-slate-500">Make / model</dt>
+                  <dd className="text-right text-slate-700 dark:text-slate-200">
+                    {reportIdentity.vehicle.makeModel}
+                  </dd>
+                </div>
+              ) : null}
+              {reportIdentity.vehicle.vehicleType ? (
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="text-slate-500">Vehicle type</dt>
+                  <dd className="text-right text-slate-700 dark:text-slate-200">
+                    {reportIdentity.vehicle.vehicleType}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </section>
+
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Worker
+            </h3>
+            <p className="mt-3 text-sm font-medium text-[#2A376F] dark:text-slate-100">
+              {reportIdentity.workerName}
+            </p>
+          </section>
+
+          {reportIdentity.trailer ? (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Trailer
+              </h3>
+              <dl className="mt-3 space-y-2 text-sm">
+                {reportIdentity.trailer.isThirdParty ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">Source</dt>
+                    <dd className="text-right font-medium text-[#2A376F] dark:text-slate-100">
+                      Third-party
+                    </dd>
+                  </div>
+                ) : null}
+                {reportIdentity.trailer.number ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">
+                      {reportIdentity.trailer.isThirdParty
+                        ? 'Trailer identifier / number'
+                        : 'Trailer number'}
+                    </dt>
+                    <dd className="text-right text-slate-700 dark:text-slate-200">
+                      {reportIdentity.trailer.number}
+                    </dd>
+                  </div>
+                ) : null}
+                {reportIdentity.trailer.trailerType ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">Trailer type</dt>
+                    <dd className="text-right text-slate-700 dark:text-slate-200">
+                      {reportIdentity.trailer.trailerType}
+                    </dd>
+                  </div>
+                ) : null}
+                {reportIdentity.trailer.registration ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-500">Registration</dt>
+                    <dd className="text-right text-slate-700 dark:text-slate-200">
+                      {reportIdentity.trailer.registration}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
+
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
               Summary
             </h3>
             <dl className="mt-3 space-y-3 text-sm">
@@ -487,8 +580,8 @@ export function VehicleCheckDrawer({
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Checklist summary</dt>
                 <dd className="text-right text-slate-700">
-                  {passedItems.length} OK · {defectItems.length} defect
-                  {defectItems.length === 1 ? '' : 's'} · {naItems.length} N/A
+                  {ok} OK · {defect} defect
+                  {defect === 1 ? '' : 's'} · {na} N/A
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
@@ -551,7 +644,9 @@ export function VehicleCheckDrawer({
                     className="rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-amber-950">{item.itemName}</p>
+                      <p className="text-sm font-semibold text-amber-950">
+                        {formatVehicleCheckReportDefectLabel(item)}
+                      </p>
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${getItemResultBadgeClass(item.result)}`}
                       >
@@ -587,7 +682,8 @@ export function VehicleCheckDrawer({
             </h3>
             <div className="mt-3">
               <VehicleCheckChecklistForm
-                items={checklistItems}
+                items={reportChecklist.formItems}
+                sections={reportChecklist.formSections}
                 onChange={() => undefined}
                 readOnly
               />

@@ -1,8 +1,7 @@
 import { downloadCsvFile } from '@/lib/export/csvExport'
 import {
-  downloadFileFromSignedUrl,
+  downloadTypedBlob,
   downloadZipArchive,
-  fetchBlobFromUrl,
   resolveDownloadFileName,
   type ZipFileEntry,
 } from '@/lib/export/downloadFiles'
@@ -21,11 +20,11 @@ import {
 } from '@/lib/documentUtils'
 import { getDocumentFileDisplayName } from '@/lib/documentFileStorage'
 import {
-  getDocumentFileSignedUrl,
+  downloadDocumentFileBlob,
   DocumentFileStorageError,
 } from '@/services/documentFileStorageService'
 import {
-  getWorkerSubmissionFileSignedUrl,
+  fetchWorkerSubmissionFileBlob,
   WorkerDocumentSubmissionStorageError,
 } from '@/services/workerDocumentSubmissionStorageService'
 
@@ -252,7 +251,7 @@ export function countDownloadableDocumentFiles(documents: Document[]): number {
       count += document.attachments?.length ?? 0
       continue
     }
-    if (document.filePath?.trim()) count += 1
+    if (document.filePath?.trim() || document.fileUrl?.trim()) count += 1
   }
   return count
 }
@@ -268,12 +267,7 @@ async function fetchWorkerAttachmentEntry(input: {
     ? `${sanitizeFileNamePart(input.namePrefix, 50)}_${fileName}`
     : fileName
 
-  const url = await getWorkerSubmissionFileSignedUrl(input.filePath)
-  if (!url) {
-    throw new ExportUserError('Unable to download one or more files.')
-  }
-
-  const blob = await fetchBlobFromUrl(url)
+  const blob = await fetchWorkerSubmissionFileBlob(input.filePath)
   return { fileName: entryName, blob }
 }
 
@@ -321,18 +315,27 @@ export async function downloadWorkerSubmissionOriginalFile(input: {
   mimeType?: string | null
 }): Promise<void> {
   const fileName = resolveDownloadFileName(input.originalFileName, input.mimeType)
-  const url = await getWorkerSubmissionFileSignedUrl(input.filePath)
-  if (!url) {
+  try {
+    const blob = await fetchWorkerSubmissionFileBlob(input.filePath)
+    downloadTypedBlob(blob, fileName, input.mimeType)
+  } catch (error) {
+    if (error instanceof ExportUserError) throw error
+    if (error instanceof WorkerDocumentSubmissionStorageError) {
+      throw new ExportUserError(error.message)
+    }
     throw new ExportUserError('Unable to download file.')
   }
-  await downloadFileFromSignedUrl(url, fileName)
+}
+
+function getManagedDocumentStoragePath(document: Document): string | null {
+  return document.filePath?.trim() || document.fileUrl?.trim() || null
 }
 
 /** Download one Managed Document private file as the original file. */
 export async function downloadManagedDocumentOriginalFile(
   document: Document,
 ): Promise<void> {
-  const path = document.filePath?.trim()
+  const path = getManagedDocumentStoragePath(document)
   if (!path) {
     throw new ExportUserError('No file is available to download.')
   }
@@ -343,11 +346,8 @@ export async function downloadManagedDocumentOriginalFile(
   )
 
   try {
-    const url = await getDocumentFileSignedUrl(path)
-    if (!url) {
-      throw new ExportUserError('Unable to download file.')
-    }
-    await downloadFileFromSignedUrl(url, fileName)
+    const blob = await downloadDocumentFileBlob(path)
+    downloadTypedBlob(blob, fileName, blob.type || null)
   } catch (error) {
     if (error instanceof ExportUserError) throw error
     if (error instanceof DocumentFileStorageError) {
@@ -394,18 +394,12 @@ export async function downloadFilteredDocumentsZip(
       continue
     }
 
-    const path = document.filePath?.trim()
+    const path = getManagedDocumentStoragePath(document)
     if (!path) continue
 
     try {
-      const url = await getDocumentFileSignedUrl(path)
-      if (!url) {
-        throw new ExportUserError(
-          'One or more files could not be downloaded. The archive was not created.',
-        )
-      }
-      const blob = await fetchBlobFromUrl(url)
-      const fileName = resolveDownloadFileName(getDocumentFileDisplayName(path), null)
+      const blob = await downloadDocumentFileBlob(path)
+      const fileName = resolveDownloadFileName(getDocumentFileDisplayName(path), blob.type || null)
       const prefix = sanitizeFileNamePart(
         document.documentName || document.documentType || 'Document',
         50,

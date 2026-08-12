@@ -2,9 +2,8 @@ import { MAX_ZIP_PDFS } from '@/lib/export/constants'
 import { downloadCsvFile } from '@/lib/export/csvExport'
 import { downloadBlob } from '@/lib/export/downloadBlob'
 import {
-  downloadFileFromSignedUrl,
+  downloadTypedBlob,
   downloadZipArchive,
-  fetchBlobFromUrl,
   resolveDownloadFileName,
   type ZipFileEntry,
 } from '@/lib/export/downloadFiles'
@@ -33,6 +32,7 @@ import type { DriverReport } from '@/lib/driverReportTypes'
 import { hasDriverReportAttachment } from '@/lib/driverReportUtils'
 import {
   DriverReportFileStorageError,
+  downloadDriverReportFileBlob,
   getDriverReportFileSignedUrl,
 } from '@/services/driverReportFileStorageService'
 
@@ -154,11 +154,8 @@ export async function downloadDriverReportOriginalFile(
   const fileName = resolveDownloadFileName(getDriverReportFileDisplayName(path), null)
 
   try {
-    const url = await getDriverReportFileSignedUrl(path)
-    if (!url) {
-      throw new ExportUserError('Unable to download file.')
-    }
-    await downloadFileFromSignedUrl(url, fileName)
+    const blob = await downloadDriverReportFileBlob(path)
+    downloadTypedBlob(blob, fileName, blob.type || null)
   } catch (error) {
     if (error instanceof ExportUserError) throw error
     if (error instanceof DriverReportFileStorageError) {
@@ -179,14 +176,8 @@ export async function downloadFilteredDriverReportsZip(
     if (!path) continue
 
     try {
-      const url = await getDriverReportFileSignedUrl(path)
-      if (!url) {
-        throw new ExportUserError(
-          'One or more files could not be downloaded. The archive was not created.',
-        )
-      }
-      const blob = await fetchBlobFromUrl(url)
-      const fileName = resolveDownloadFileName(getDriverReportFileDisplayName(path), null)
+      const blob = await downloadDriverReportFileBlob(path)
+      const fileName = resolveDownloadFileName(getDriverReportFileDisplayName(path), blob.type || null)
       const prefix = sanitizeFileNamePart(
         [report.workerName || 'Worker', report.title || report.reportType || 'Report'].join(
           '_',

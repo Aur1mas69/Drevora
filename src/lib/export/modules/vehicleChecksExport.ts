@@ -43,6 +43,15 @@ import {
   resolveInspectionResult,
 } from '@/lib/vehicleCheckUtils'
 import {
+  formatVehicleCheckReportDefectLabel,
+  getVehicleCheckReportIdentity,
+  groupVehicleCheckReportItems,
+} from '@/lib/vehicleCheckReportGrouping'
+import {
+  formatVehicleCheckAccuracy,
+  formatVehicleCheckCoordinatePair,
+} from '@/lib/vehicleCheckLocation'
+import {
   getVehicleCheckPhotoSignedUrl,
   VehicleCheckPhotoStorageError,
 } from '@/services/vehicleCheckPhotoStorageService'
@@ -135,6 +144,28 @@ function formatDuration(seconds: number | null | undefined): string {
   const secs = seconds % 60
   if (mins <= 0) return `${secs}s`
   return `${mins}m ${secs}s`
+}
+
+function ensurePdfSectionStart(
+  doc: ReturnType<typeof createBrandedPdf>,
+  y: number,
+  neededMm = 28,
+): number {
+  const pageHeight = doc.internal.pageSize.getHeight()
+  if (y + neededMm > pageHeight - 18) {
+    doc.addPage()
+    return 16
+  }
+  return y
+}
+
+function formatPdfLocation(
+  location: VehicleCheck['startedLocation'],
+): string {
+  const pair = formatVehicleCheckCoordinatePair(location.latitude, location.longitude)
+  if (!pair) return 'Unavailable'
+  const accuracy = formatVehicleCheckAccuracy(location.accuracy)
+  return accuracy === '—' ? pair : `${pair} (${accuracy})`
 }
 
 export async function exportVehicleChecksExcel(
@@ -405,15 +436,48 @@ export async function generateVehicleCheckPdfBlob(
   const inspectionResult = formatVehicleCheckResultLabel(
     resolveInspectionResult(check.overallResult, check.defectCount),
   )
+  const identity = getVehicleCheckReportIdentity(check)
+  const report = groupVehicleCheckReportItems(check.items)
 
+  y = renderSectionTitle(doc, 'Vehicle', y)
   y = renderKeyValueSection(doc, y, [
-    { label: 'Vehicle', value: pdfText(check.vehicleRegistration) },
-    { label: 'Fleet', value: pdfText(check.fleetNumber) },
-    { label: 'Worker', value: pdfText(check.workerName) },
+    { label: 'Registration', value: pdfText(identity.vehicle.registration) },
+    { label: 'Fleet number', value: pdfText(identity.vehicle.fleetNumber) },
+    { label: 'Make / model', value: pdfText(identity.vehicle.makeModel) },
+    { label: 'Vehicle type', value: pdfText(identity.vehicle.vehicleType) },
+  ])
+
+  y = renderSectionTitle(doc, 'Worker', y)
+  y = renderKeyValueSection(doc, y, [
+    { label: 'Worker', value: pdfText(identity.workerName) },
+  ], 1)
+
+  if (identity.trailer) {
+    y = ensurePdfSectionStart(doc, y, 32)
+    y = renderSectionTitle(doc, 'Trailer', y)
+    const trailerFields = identity.trailer.isThirdParty
+      ? [
+          { label: 'Source', value: 'Third-party' },
+          {
+            label: 'Trailer identifier / number',
+            value: pdfText(identity.trailer.number),
+          },
+          { label: 'Registration', value: pdfText(identity.trailer.registration) },
+        ]
+      : [
+          { label: 'Trailer number', value: pdfText(identity.trailer.number) },
+          { label: 'Trailer type', value: pdfText(identity.trailer.trailerType) },
+          { label: 'Registration', value: pdfText(identity.trailer.registration) },
+        ]
+    y = renderKeyValueSection(doc, y, trailerFields)
+  }
+
+  y = ensurePdfSectionStart(doc, y, 40)
+  y = renderSectionTitle(doc, 'Summary', y)
+  y = renderKeyValueSection(doc, y, [
     { label: 'Inspection date', value: formatDateFromIso(check.inspectionDate) },
-    { label: 'Duration', value: formatDuration(check.durationSeconds) },
     {
-      label: 'Odometer',
+      label: 'Mileage',
       value:
         check.odometer == null ? '—' : `${check.odometer} ${check.odometerUnit}`,
     },
@@ -423,6 +487,22 @@ export async function generateVehicleCheckPdfBlob(
       label: 'Manager review',
       value: formatDefectReviewStatusLabel(check.defectReviewStatus, check.defectCount),
     },
+    {
+      label: 'Submitted',
+      value: formatDateTimeFromIso(check.createdAt),
+    },
+    {
+      label: 'Checklist summary',
+      value: `${report.summary.ok} OK · ${report.summary.defect} defect${
+        report.summary.defect === 1 ? '' : 's'
+      } · ${report.summary.na} N/A`,
+    },
+    { label: 'Duration', value: formatDuration(check.durationSeconds) },
+    { label: 'Start location', value: formatPdfLocation(check.startedLocation) },
+    {
+      label: 'Completion location',
+      value: formatPdfLocation(check.completedLocation),
+    },
     { label: 'Reviewed by', value: pdfText(check.defectReviewedByName) },
     {
       label: 'Reviewed at',
@@ -430,28 +510,51 @@ export async function generateVehicleCheckPdfBlob(
         ? formatDateTimeFromIso(check.defectReviewedAt)
         : '—',
     },
-    { label: 'Defect count', value: String(check.defectCount) },
   ])
 
-  y = renderSectionTitle(doc, 'Checklist', y)
-  y = renderPdfTable(
-    doc,
-    y,
-    ['Item', 'Result', 'Notes'],
-    check.items.map((item) => [
-      `${item.category}: ${item.itemName}`,
-      formatVehicleCheckItemResultLabel(item.result),
-      pdfText(item.comment),
-    ]),
-  )
-
   if (check.notes?.trim()) {
+    y = ensurePdfSectionStart(doc, y, 28)
     y = renderSectionTitle(doc, 'Overall notes', y)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     const notes = doc.splitTextToSize(check.notes.trim(), 186)
     doc.text(notes, 12, y)
     y += notes.length * 4.2 + 4
+  }
+
+  for (const section of report.sections) {
+    const numbered = report.numberedItems.filter(
+      (entry) => entry.section === section,
+    )
+    y = ensurePdfSectionStart(doc, y, 32)
+    y = renderSectionTitle(doc, section.title, y)
+    if (section.subtitle) {
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(8)
+      doc.setTextColor(61, 122, 156)
+      const hint = doc.splitTextToSize(section.subtitle, 186)
+      doc.text(hint, 12, y)
+      y += hint.length * 3.6 + 2
+    }
+    y = renderPdfTable(
+      doc,
+      y,
+      ['#', 'Item', 'Result', 'Notes'],
+      numbered.map((entry) => [
+        String(entry.displayNumber),
+        entry.item.itemName,
+        formatVehicleCheckItemResultLabel(entry.item.result),
+        pdfText(entry.item.comment),
+      ]),
+      {
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 78 },
+          2: { cellWidth: 22 },
+        },
+        rowPageBreak: 'avoid',
+      },
+    )
   }
 
   if (check.defectReviewNotes?.trim()) {
@@ -463,9 +566,9 @@ export async function generateVehicleCheckPdfBlob(
     y += notes.length * 4.2 + 4
   }
 
-  const defectPhotos = check.items.filter(
-    (item) => item.photoUrl?.trim() && item.result === 'Advisory',
-  )
+  const defectPhotos = report.numberedItems
+    .filter((entry) => entry.item.photoUrl?.trim() && entry.item.result === 'Advisory')
+    .map((entry) => entry.item)
 
   if (defectPhotos.length > 0) {
     y = renderSectionTitle(doc, 'Defect photos', y)
@@ -476,7 +579,7 @@ export async function generateVehicleCheckPdfBlob(
       }
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8)
-      doc.text(item.itemName, 12, y)
+      doc.text(formatVehicleCheckReportDefectLabel(item), 12, y)
       y += 4
       try {
         const signed = await getVehicleCheckPhotoSignedUrl(item.photoUrl!)
