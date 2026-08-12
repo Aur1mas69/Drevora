@@ -16,8 +16,56 @@ import {
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
 import { subscribeWorkerVisualViewportSync } from '@/lib/workerVisualViewport'
-import { Home } from 'lucide-react'
+import homeBlueIcon from '@/assets/worker-nav/home-blue.png'
+import homeGrayIcon from '@/assets/worker-nav/home-gray.png'
+import contactsBlueIcon from '@/assets/worker-nav/contacts-blue.png'
+import contactsGrayIcon from '@/assets/worker-nav/contacts-gray.png'
+import notesBlueIcon from '@/assets/worker-nav/notes-blue.png'
+import notesGrayIcon from '@/assets/worker-nav/notes-gray.png'
+import settingsBlueIcon from '@/assets/worker-nav/settings-blue.png'
+import settingsGrayIcon from '@/assets/worker-nav/settings-gray.png'
 import { useLayoutEffect, useMemo, type MouseEvent } from 'react'
+
+const WORKER_BOTTOM_NAV_ICONS: Record<
+  string,
+  { active: string; inactive: string }
+> = {
+  home: { active: homeBlueIcon, inactive: homeGrayIcon },
+  contacts: { active: contactsBlueIcon, inactive: contactsGrayIcon },
+  notes: { active: notesBlueIcon, inactive: notesGrayIcon },
+  settings: { active: settingsBlueIcon, inactive: settingsGrayIcon },
+}
+
+function WorkerBottomNavIcon({
+  id,
+  active,
+}: {
+  id: keyof typeof WORKER_BOTTOM_NAV_ICONS | string
+  active: boolean
+}) {
+  const pair = WORKER_BOTTOM_NAV_ICONS[id]
+  if (!pair) return null
+  // Notes/Settings: larger for internal PNG padding. Active Home/Contacts: +2px.
+  let sizePx = 32
+  if (id === 'notes' || id === 'settings') sizePx = 38
+  else if (active && (id === 'home' || id === 'contacts')) sizePx = 34
+  return (
+    <img
+      src={active ? pair.active : pair.inactive}
+      alt=""
+      width={sizePx}
+      height={sizePx}
+      draggable={false}
+      className={`shrink-0 object-contain ${
+        sizePx === 38
+          ? 'size-[38px]'
+          : sizePx === 34
+            ? 'size-[34px]'
+            : 'size-8'
+      }`}
+    />
+  )
+}
 
 function navButtonClass(active: boolean) {
   return cn(
@@ -56,7 +104,6 @@ function MainLayoutShell() {
   }
 
   function renderNavLink(item: WorkerNavItem) {
-    const Icon = item.icon
     const active = isWorkerNavPathActive(location.pathname, item.to)
     return (
       <NavLink
@@ -67,7 +114,7 @@ function MainLayoutShell() {
       >
         {active ? <span className="worker-nav-indicator" aria-hidden /> : null}
         <span className="worker-nav-icon-wrap" aria-hidden>
-          <Icon className="size-5 shrink-0" strokeWidth={active ? 2.5 : 2.25} />
+          <WorkerBottomNavIcon id={item.id} active={active} />
         </span>
         <span className="truncate">{item.shortLabel ?? item.label}</span>
       </NavLink>
@@ -95,9 +142,9 @@ function MainLayoutShell() {
                 <span className="worker-nav-indicator" aria-hidden />
               ) : null}
               <span className="worker-nav-icon-wrap" aria-hidden>
-                <Home
-                  className="size-5 shrink-0"
-                  strokeWidth={location.pathname === WORKER_HOME_PATH ? 2.5 : 2.25}
+                <WorkerBottomNavIcon
+                  id="home"
+                  active={location.pathname === WORKER_HOME_PATH}
                 />
               </span>
               <span className="truncate">Home</span>
