@@ -659,32 +659,38 @@ function DashboardPage() {
             <button
               type="button"
               onClick={() => setVehicleSheetOpen(true)}
-              className="worker-home-default-vehicle worker-home-default-vehicle--compact flex h-full min-w-0 items-center gap-2 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
+              className="worker-home-default-vehicle worker-home-default-vehicle--compact flex h-full min-w-0 flex-col justify-between gap-1.5 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
               aria-haspopup="dialog"
               aria-expanded={vehicleSheetOpen}
             >
-              <div className="worker-home-icon-well worker-home-icon-well--compact">
-                <WorkerHomeDefaultVehicleIcon src={defaultVehicleIcon} />
-              </div>
-              <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="worker-home-icon-well worker-home-icon-well--compact">
+                  <WorkerHomeDefaultVehicleIcon src={defaultVehicleIcon} />
+                </div>
                 <p
                   className={cn(
-                    'worker-home-dv-label text-[9px] font-medium uppercase tracking-[0.12em]',
+                    'worker-home-dv-label min-w-0 flex-1 text-[9px] font-medium uppercase tracking-[0.12em]',
                     !isDark && 'text-[color:var(--worker-text-muted)]',
                   )}
                 >
                   Default vehicle
                 </p>
+                <ChevronRight className="worker-home-chevron size-4 shrink-0" aria-hidden />
+              </div>
+              {defaultVehicleLabel ? (
+                <span className="worker-home-dv-plate">
+                  <span className="worker-home-dv-plate-text">{defaultVehicleLabel}</span>
+                </span>
+              ) : (
                 <p
                   className={cn(
-                    'worker-home-dv-value mt-0.5 truncate text-[17px] font-bold leading-tight tracking-wide',
+                    'worker-home-dv-value text-[13px] font-bold leading-tight',
                     !isDark && 'text-[color:var(--worker-text)]',
                   )}
                 >
-                  {defaultVehicleLabel ?? 'Not set'}
+                  Not set
                 </p>
-              </div>
-              <ChevronRight className="worker-home-chevron size-4 shrink-0" aria-hidden />
+              )}
             </button>
 
             <section
@@ -768,14 +774,28 @@ function DashboardPage() {
                         <WorkerHomeQuickActionIcon src={iconSrc} />
                       ) : null}
                     </div>
-                    <p
-                      className={cn(
-                        'worker-home-qa-label min-w-0 flex-1 text-[15px] font-semibold leading-snug',
-                        !isDark && 'text-[color:var(--worker-text)]',
-                      )}
-                    >
-                      {label}
-                    </p>
+                    {item.id === 'holidays' ? (
+                      <p
+                        className={cn(
+                          'worker-home-qa-label worker-home-qa-label--holiday min-w-0 flex-1 text-[15px] font-semibold leading-snug',
+                          !isDark && 'text-[color:var(--worker-text)]',
+                        )}
+                      >
+                        <span className="block leading-tight">Holiday</span>
+                        <span className="worker-home-qa-request-line mt-0.5 block leading-tight">
+                          Request
+                        </span>
+                      </p>
+                    ) : (
+                      <p
+                        className={cn(
+                          'worker-home-qa-label min-w-0 flex-1 text-[15px] font-semibold leading-snug',
+                          !isDark && 'text-[color:var(--worker-text)]',
+                        )}
+                      >
+                        {label}
+                      </p>
+                    )}
                     <ChevronRight
                       className="worker-home-chevron shrink-0"
                       aria-hidden

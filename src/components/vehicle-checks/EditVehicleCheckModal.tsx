@@ -8,6 +8,7 @@ import {
   loadVehicleChecklist,
   type VehicleChecklistLoadStatus,
 } from '@/lib/vehicleCheckTemplateLoader'
+import { composeOptionsFromExistingChecklistItems } from '@/lib/vehicleCheckTrailerChecklist'
 import { computeOverallResult, isChecklistFullyAnswered } from '@/lib/vehicleCheckUtils'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
@@ -129,6 +130,7 @@ export function EditVehicleCheckModal({
           activeCheck.vehicleId,
           vehicle?.vehicleType,
           savedItems,
+          composeOptionsFromExistingChecklistItems(savedItems),
         )
 
         if (cancelled) return
@@ -171,6 +173,7 @@ export function EditVehicleCheckModal({
           vehicleId,
           selectedVehicle?.vehicleType,
           itemsRef.current,
+          composeOptionsFromExistingChecklistItems(itemsRef.current),
         )
 
         if (cancelled) return

@@ -5,6 +5,7 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
+import { VehicleCheckTrailerFields } from '@/components/vehicle-checks/VehicleCheckTrailerFields'
 import type { VehicleCheckItemInput, VehicleChecklistSection, VehicleCheckOdometerUnit } from '@/lib/vehicleCheckTypes'
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import {
@@ -21,6 +22,19 @@ import {
   setRememberedVehicleCheckId,
 } from '@/lib/vehicleCheckRememberedVehicle'
 import { computeOverallResult, isChecklistFullyAnswered, todayIsoDate } from '@/lib/vehicleCheckUtils'
+import {
+  emptyVehicleCheckTrailerDraft,
+  filterCompanyTrailersForVehicleCheck,
+  filterPoweredVehiclesForVehicleCheck,
+  formatVehicleCheckTrailerSummary,
+  getCompanyTrailerTypeForDraft,
+  isPoweredVehicleForVehicleCheck,
+  isVehicleCheckTrailerDraftReady,
+  toVehicleCheckTrailerWriteFields,
+  validateVehicleCheckTrailerDraft,
+  type VehicleCheckTrailerDraft,
+  type VehicleCheckTrailerWriteFields,
+} from '@/lib/vehicleCheckTrailerAttachment'
 import {
   findVehicleByRegistrationQuery,
   vehicleMatchesRegistrationQuery,
@@ -46,7 +60,7 @@ type NewVehicleCheckModalProps = {
     signatureFile: File
     inspectionStartedAt: string
     items: VehicleCheckItemInput[]
-  }) => Promise<void>
+  } & VehicleCheckTrailerWriteFields) => Promise<void>
 }
 
 const selectClassName =
@@ -84,6 +98,9 @@ export function NewVehicleCheckModal({
 }: NewVehicleCheckModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [vehicleId, setVehicleId] = useState('')
+  const [trailerDraft, setTrailerDraft] = useState<VehicleCheckTrailerDraft>(
+    emptyVehicleCheckTrailerDraft,
+  )
   const [vehicleSearch, setVehicleSearch] = useState('')
   const [showVehicleResults, setShowVehicleResults] = useState(false)
   const [rememberVehicle, setRememberVehicle] = useState(false)
@@ -115,24 +132,38 @@ export function NewVehicleCheckModal({
     [drivers],
   )
 
+  const poweredVehicles = useMemo(
+    () => filterPoweredVehiclesForVehicleCheck(vehicles),
+    [vehicles],
+  )
+  const companyTrailers = useMemo(
+    () => filterCompanyTrailersForVehicleCheck(vehicles),
+    [vehicles],
+  )
+
   const selectedVehicle = useMemo(
-    () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
-    [vehicleId, vehicles],
+    () => poweredVehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
+    [vehicleId, poweredVehicles],
   )
 
   const rememberedVehicle = useMemo(() => {
     const rememberedId = getRememberedVehicleCheckId()
     if (!rememberedId) return null
-    return vehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
-  }, [vehicles, isOpen])
+    return poweredVehicles.find((vehicle) => vehicle.id === rememberedId) ?? null
+  }, [poweredVehicles, isOpen])
 
   const filteredVehicles = useMemo(() => {
-    const matches = vehicles.filter((vehicle) =>
+    const matches = poweredVehicles.filter((vehicle) =>
       vehicleMatchesRegistrationQuery(vehicle, vehicleSearch),
     )
 
     return [...matches].sort((a, b) => a.registration.localeCompare(b.registration))
-  }, [vehicleSearch, vehicles])
+  }, [vehicleSearch, poweredVehicles])
+
+  const trailerSummary = useMemo(
+    () => formatVehicleCheckTrailerSummary(trailerDraft, companyTrailers),
+    [companyTrailers, trailerDraft],
+  )
 
   const overallResult = useMemo(() => computeOverallResult(items), [items])
 
@@ -167,12 +198,16 @@ export function NewVehicleCheckModal({
     setVehicleSearch(vehicle.registration)
     setShowVehicleResults(false)
     setError(null)
+    if (trailerDraft.trailerVehicleId === vehicle.id) {
+      setTrailerDraft(emptyVehicleCheckTrailerDraft())
+    }
   }
 
   useEffect(() => {
     if (!isOpen) return
     setStep(1)
     setVehicleId('')
+    setTrailerDraft(emptyVehicleCheckTrailerDraft())
     setVehicleSearch('')
     setShowVehicleResults(false)
     setWorkerId(sortedDrivers[0]?.id ?? '')
@@ -249,11 +284,17 @@ export function NewVehicleCheckModal({
     event.preventDefault()
     setError(null)
 
-    const exactMatch = findVehicleByRegistrationQuery(vehicles, vehicleSearch)
+    const exactMatch = findVehicleByRegistrationQuery(poweredVehicles, vehicleSearch)
     const vehicle = selectedVehicle ?? exactMatch
 
-    if (!vehicle) {
-      setError('Search and select a vehicle by number plate.')
+    if (!vehicle || !isPoweredVehicleForVehicleCheck(vehicle)) {
+      setError('Search and select a powered vehicle by number plate.')
+      return
+    }
+
+    const trailerError = validateVehicleCheckTrailerDraft(trailerDraft, companyTrailers)
+    if (trailerError) {
+      setError(trailerError)
       return
     }
 
@@ -276,7 +317,11 @@ export function NewVehicleCheckModal({
 
     setIsLoadingChecklist(true)
     try {
-      const checklist = await loadVehicleChecklist(vehicle.id, vehicle.vehicleType)
+      const checklist = await loadVehicleChecklist(vehicle.id, vehicle.vehicleType, undefined, {
+        trailerAttached: trailerDraft.source !== 'none',
+        trailerSource: trailerDraft.source,
+        trailerType: getCompanyTrailerTypeForDraft(trailerDraft, companyTrailers),
+      })
       setItems(checklist.items)
       setChecklistSections(checklist.sections)
       setChecklistNotice(checklist.notice)
@@ -297,8 +342,14 @@ export function NewVehicleCheckModal({
     event.preventDefault()
     setError(null)
 
-    if (!vehicleId || !workerId) {
-      setError('Please select a vehicle and worker.')
+    if (!vehicleId || !workerId || !isPoweredVehicleForVehicleCheck(selectedVehicle)) {
+      setError('Please select a powered vehicle and worker.')
+      return
+    }
+
+    const trailerError = validateVehicleCheckTrailerDraft(trailerDraft, companyTrailers)
+    if (trailerError) {
+      setError(trailerError)
       return
     }
 
@@ -347,6 +398,7 @@ export function NewVehicleCheckModal({
         signatureFile,
         inspectionStartedAt: confirmedStartedAt,
         items,
+        ...toVehicleCheckTrailerWriteFields(trailerDraft),
       })
       onClose()
     } catch (submitError) {
@@ -448,7 +500,7 @@ export function NewVehicleCheckModal({
                 {showVehicleResults && vehicleSearch.trim() ? (
                   <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-[12px] border border-[#C5DFFB] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-slate-900 dark:shadow-black/40">
                     {filteredVehicles.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-slate-500">No vehicles match that number plate.</p>
+                      <p className="px-3 py-2 text-sm text-slate-500">No powered vehicles match that number plate.</p>
                     ) : (
                       filteredVehicles.map((vehicle) => (
                         <button
@@ -472,6 +524,19 @@ export function NewVehicleCheckModal({
               </div>
 
               {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
+
+              {selectedVehicle ? (
+                <VehicleCheckTrailerFields
+                  tone="admin"
+                  draft={trailerDraft}
+                  companyTrailers={companyTrailers}
+                  onChange={(next) => {
+                    setTrailerDraft(next)
+                    setError(null)
+                  }}
+                  disabled={isSaving || isLoadingChecklist}
+                />
+              ) : null}
 
               <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
                 <input
@@ -517,8 +582,13 @@ export function NewVehicleCheckModal({
           ) : (
             <form id="vehicle-check-step-2" onSubmit={(event) => void handleSave(event)}>
               {selectedVehicle ? (
-                <div className="mb-2 sm:mb-4">
+                <div className="mb-2 sm:mb-4 space-y-2">
                   <VehicleSummaryCard vehicle={selectedVehicle} />
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">Trailer</span>
+                    {' · '}
+                    {trailerSummary}
+                  </p>
                 </div>
               ) : null}
 
@@ -623,7 +693,11 @@ export function NewVehicleCheckModal({
             <Button
               type="submit"
               form="vehicle-check-step-1"
-              disabled={sortedDrivers.length === 0 || isLoadingChecklist}
+              disabled={
+                sortedDrivers.length === 0 ||
+                isLoadingChecklist ||
+                !isVehicleCheckTrailerDraftReady(trailerDraft, companyTrailers)
+              }
               className="h-12 w-full rounded-[12px] bg-[#218EE7] px-4 text-sm font-bold text-white hover:bg-[#0B68BE] max-sm:order-1 sm:h-10 sm:w-auto sm:font-semibold"
             >
               {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}

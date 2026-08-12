@@ -13,6 +13,7 @@ import type {
   SaveVehicleCheckDefectReviewInput,
   UpdateVehicleCheckInput,
   VehicleCheck,
+  VehicleCheckAssetScope,
   VehicleCheckDefectReviewStatus,
   VehicleCheckItem,
   VehicleCheckItemInput,
@@ -25,6 +26,7 @@ import type {
   VehicleChecksQuery,
   VehicleCheckStatus,
   VehicleCheckSummaryStats,
+  VehicleCheckTrailerSource,
 } from '@/lib/vehicleCheckTypes'
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { calculateInspectionDurationSeconds } from '@/lib/vehicleCheckDurationUtils'
@@ -38,6 +40,7 @@ import { isOfficeMembershipRole } from '@/lib/membershipRoles'
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase'
 import { logSupabaseQuery } from '@/lib/supabaseQueryLog'
 import { resolveCurrentCompanyMembership } from '@/services/companyMembershipService'
+import { isTrailerVehicleType } from '@/services/vehiclesService'
 import { fetchTemplateItemsByVehicleType } from '@/services/vehicleCheckTemplatesService'
 import {
   deleteVehicleCheckPhoto,
@@ -69,6 +72,8 @@ type VehicleCheckItemRow = {
   result: string
   comment: string | null
   photo_url: string | null
+  guidance?: string | null
+  asset_scope?: string | null
 }
 
 const completedCheckItemSelect = `
@@ -78,7 +83,9 @@ const completedCheckItemSelect = `
   item_name,
   result,
   comment,
-  photo_url
+  photo_url,
+  guidance,
+  asset_scope
 `
 
 const vehicleCheckListSelect = `
@@ -232,6 +239,13 @@ function normalizeOdometerUnit(
   return value === 'km' ? 'km' : DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT
 }
 
+function normalizeAssetScope(
+  value: string | null | undefined,
+): VehicleCheckAssetScope {
+  if (value === 'trailer' || value === 'combination') return value
+  return 'vehicle'
+}
+
 function mapItemRow(row: VehicleCheckItemRow): VehicleCheckItem {
   return {
     id: row.id,
@@ -241,13 +255,12 @@ function mapItemRow(row: VehicleCheckItemRow): VehicleCheckItem {
     result: normalizeResult(row.result),
     comment: row.comment,
     photoUrl: row.photo_url,
-    description: null,
+    description: row.guidance ?? null,
     templateItem: null,
     allowNotes: true,
     allowPhoto: false,
     failOnDefect: true,
-    // Not selected from DB until Step 3B-2; historical default is vehicle.
-    assetScope: 'vehicle',
+    assetScope: normalizeAssetScope(row.asset_scope),
   }
 }
 
@@ -313,8 +326,7 @@ function mapListRow(row: VehicleCheckRow): VehicleCheckListItem {
     correctionCreatedAt: row.correction_created_at ?? null,
     linkedCorrectionCount: 0,
     latestCorrectionId: null,
-    // Trailer attachment columns exist in DB after 3B-1 migration but are not
-    // selected/exposed in UI yet. Defaults preserve current towing-only behaviour.
+    // List/report select does not include trailer columns in this step.
     trailerSource: 'none',
     trailerVehicleId: null,
     vehicleRegistrationSnapshot: null,
@@ -436,7 +448,7 @@ async function assertWorkerAndVehicleInCompany(
       .maybeSingle(),
     requireSupabase()
       .from('vehicles')
-      .select('id')
+      .select('id, vehicle_type')
       .eq('id', vehicleId)
       .eq('company_id', companyId)
       .maybeSingle(),
@@ -449,6 +461,106 @@ async function assertWorkerAndVehicleInCompany(
   }
   if (!vehicleResult.data) {
     throw new VehicleChecksServiceError('That vehicle is not available for your company.')
+  }
+  if (isTrailerVehicleType(vehicleResult.data.vehicle_type)) {
+    throw new VehicleChecksServiceError(
+      'Vehicle Check must start from a powered vehicle, not a Trailer.',
+    )
+  }
+}
+
+function normalizeTrailerSource(
+  value: string | null | undefined,
+): VehicleCheckTrailerSource {
+  if (value === 'company' || value === 'third_party') return value
+  return 'none'
+}
+
+function trailerWriteColumns(input: {
+  trailerSource?: VehicleCheckTrailerSource
+  trailerVehicleId?: string | null
+  trailerNumberSnapshot?: string | null
+  trailerRegistrationSnapshot?: string | null
+  trailerLabelSnapshot?: string | null
+}): {
+  trailer_source: VehicleCheckTrailerSource
+  trailer_vehicle_id: string | null
+  trailer_number_snapshot: string | null
+  trailer_registration_snapshot: string | null
+  trailer_label_snapshot: string | null
+} {
+  const source = normalizeTrailerSource(input.trailerSource)
+
+  if (source === 'none') {
+    return {
+      trailer_source: 'none',
+      trailer_vehicle_id: null,
+      trailer_number_snapshot: null,
+      trailer_registration_snapshot: null,
+      trailer_label_snapshot: null,
+    }
+  }
+
+  if (source === 'company') {
+    const trailerVehicleId = input.trailerVehicleId?.trim() || null
+    if (!trailerVehicleId) {
+      throw new VehicleChecksServiceError(
+        'Select a company trailer, or choose No trailer.',
+      )
+    }
+    return {
+      trailer_source: 'company',
+      trailer_vehicle_id: trailerVehicleId,
+      trailer_number_snapshot: null,
+      trailer_registration_snapshot: null,
+      trailer_label_snapshot: null,
+    }
+  }
+
+  const identifier = input.trailerNumberSnapshot?.trim() || null
+  const label = input.trailerLabelSnapshot?.trim() || null
+  if (!identifier && !label) {
+    throw new VehicleChecksServiceError(
+      'Enter a trailer identifier / number, or choose No trailer.',
+    )
+  }
+  return {
+    trailer_source: 'third_party',
+    trailer_vehicle_id: null,
+    trailer_number_snapshot: identifier,
+    trailer_registration_snapshot: input.trailerRegistrationSnapshot?.trim() || null,
+    trailer_label_snapshot: label,
+  }
+}
+
+async function assertCompanyTrailerInCompany(
+  trailerVehicleId: string,
+  towingVehicleId: string,
+  companyId: string,
+): Promise<void> {
+  if (trailerVehicleId === towingVehicleId) {
+    throw new VehicleChecksServiceError(
+      'Towing vehicle and trailer cannot be the same.',
+    )
+  }
+
+  const { data, error } = await requireSupabase()
+    .from('vehicles')
+    .select('id, vehicle_type')
+    .eq('id', trailerVehicleId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error) throw new VehicleChecksServiceError(error.message)
+  if (!data) {
+    throw new VehicleChecksServiceError(
+      'That company trailer is not available for your company.',
+    )
+  }
+  if (!isTrailerVehicleType(data.vehicle_type)) {
+    throw new VehicleChecksServiceError(
+      'Company trailer must be a Trailer fleet asset.',
+    )
   }
 }
 
@@ -724,6 +836,10 @@ async function prepareItemsWithUploadedPhotos(
   )
 }
 
+function itemGuidanceText(item: VehicleCheckItemInput): string | null {
+  return item.templateItem?.description?.trim() || item.description?.trim() || null
+}
+
 function buildItemRows(checkId: string, items: VehicleCheckItemInput[]) {
   // Completed answers only — template settings live on vehicle_check_template_items.
   return items.map((item) => ({
@@ -733,6 +849,8 @@ function buildItemRows(checkId: string, items: VehicleCheckItemInput[]) {
     result: item.result,
     comment: item.comment?.trim() || null,
     photo_url: item.photoUrl?.trim() || null,
+    guidance: itemGuidanceText(item),
+    asset_scope: normalizeAssetScope(item.assetScope),
   }))
 }
 
@@ -911,6 +1029,15 @@ async function createVehicleCheckInternal(
     verifiedCompanyId,
   )
 
+  const trailerColumns = trailerWriteColumns(input)
+  if (trailerColumns.trailer_source === 'company' && trailerColumns.trailer_vehicle_id) {
+    await assertCompanyTrailerInCompany(
+      trailerColumns.trailer_vehicle_id,
+      input.vehicleId,
+      verifiedCompanyId,
+    )
+  }
+
   const startedLocationColumns = toVehicleCheckLocationColumns(
     input.startedLocation ? { status: 'success', location: input.startedLocation } : null,
   )
@@ -939,6 +1066,11 @@ async function createVehicleCheckInternal(
       started_longitude: startedLocationColumns.longitude,
       started_location_accuracy: startedLocationColumns.accuracy,
       started_location_at: startedLocationColumns.locationAt,
+      trailer_source: trailerColumns.trailer_source,
+      trailer_vehicle_id: trailerColumns.trailer_vehicle_id,
+      trailer_number_snapshot: trailerColumns.trailer_number_snapshot,
+      trailer_registration_snapshot: trailerColumns.trailer_registration_snapshot,
+      trailer_label_snapshot: trailerColumns.trailer_label_snapshot,
     })
     .select('id')
     .single()
@@ -1555,6 +1687,7 @@ export async function createVehicleCheckCorrection(
       allowNotes: item.allowNotes,
       allowPhoto: item.allowPhoto,
       failOnDefect: item.failOnDefect,
+      assetScope: item.assetScope,
       isAnswered: true,
     }))
 

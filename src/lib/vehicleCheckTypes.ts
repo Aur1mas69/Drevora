@@ -14,7 +14,6 @@ export type VehicleCheckItemResult = VehicleCheckResult
 /**
  * Trailer attachment on a towing vehicle's Vehicle Check
  * (`vehicle_checks.trailer_source`). No standalone Trailer Check.
- * DB foundation only until Worker/Admin pairing UI lands.
  */
 export type VehicleCheckTrailerSource = 'none' | 'company' | 'third_party'
 
@@ -53,8 +52,8 @@ export type VehicleCheckItem = {
   allowPhoto: boolean
   failOnDefect: boolean
   /**
-   * DB `asset_scope`. Not selected/exposed in UI yet; mapper defaults to
-   * `vehicle` until Step 3B-2 loads the column.
+   * DB `asset_scope`. Trailer Base items persist as `trailer`;
+   * combination DVSA items persist as `combination` when a trailer is attached.
    */
   assetScope: VehicleCheckAssetScope
 }
@@ -112,8 +111,8 @@ export type VehicleCheckListItem = {
   /** Newest linked correction id for this original, if any. */
   latestCorrectionId: string | null
   /**
-   * Trailer attachment fields (DB foundation). Not selected/exposed in UI yet;
-   * service mapper defaults keep current behaviour until pairing UI lands.
+   * Trailer attachment fields. List/report queries do not select these yet;
+   * create/save writes them. Mapper defaults keep historical list rows as none.
    */
   trailerSource: VehicleCheckTrailerSource
   trailerVehicleId: string | null
@@ -181,7 +180,7 @@ export type VehicleCheckItemInput = {
   allowNotes?: boolean
   allowPhoto?: boolean
   failOnDefect?: boolean
-  /** Optional until Trailer Base UI writes scope; defaults to vehicle on save. */
+  /** Written on save. Defaults to vehicle when omitted. */
   assetScope?: VehicleCheckAssetScope
   /** Form-only flag: false until the worker selects OK, Defect, or N/A. */
   isAnswered?: boolean
@@ -202,6 +201,12 @@ export type CreateVehicleCheckInput = {
   startedLocation?: VehicleCheckLocationCapture | null
   /** Device GPS captured once immediately before this completed Vehicle Check was saved. Omit/null when unavailable. */
   completedLocation?: VehicleCheckLocationCapture | null
+  /** Optional trailer on this towing-vehicle check. Omit/none = no trailer. */
+  trailerSource?: VehicleCheckTrailerSource
+  trailerVehicleId?: string | null
+  trailerNumberSnapshot?: string | null
+  trailerRegistrationSnapshot?: string | null
+  trailerLabelSnapshot?: string | null
 }
 
 export type UpdateVehicleCheckInput = {
@@ -242,4 +247,6 @@ export type VehicleCheckReviewStatusFilter =
 export type VehicleChecklistSection = {
   section: string
   itemNames: string[]
+  /** Set when two DREVORA Recommended layers share the heading but differ by asset. */
+  assetScope?: VehicleCheckAssetScope
 }

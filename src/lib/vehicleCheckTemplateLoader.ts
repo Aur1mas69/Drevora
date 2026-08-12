@@ -1,4 +1,8 @@
-import type { VehicleCheckItemInput, VehicleChecklistSection } from '@/lib/vehicleCheckTypes'
+import type {
+  VehicleCheckItemInput,
+  VehicleCheckTrailerSource,
+  VehicleChecklistSection,
+} from '@/lib/vehicleCheckTypes'
 import type { DefaultVehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import {
@@ -19,6 +23,7 @@ import {
   getDefaultVehicleCheckItems,
 } from '@/services/vehicleCheckTemplatesService'
 import { fetchVehicleTypeById } from '@/services/vehiclesService'
+import { composeVehicleCheckTemplatesForTrailer } from '@/lib/vehicleCheckTrailerChecklist'
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -171,6 +176,12 @@ export type LoadVehicleChecklistOptions = {
    * Pass an empty array to allow the existing DVSA merge fallback.
    */
   offlineTemplateItems?: VehicleCheckTemplateItem[] | null
+  /** When true, append Trailer Base 11 and apply trailer/combination scoping. */
+  trailerAttached?: boolean
+  /** Company vs third-party. Recommended packs apply to company trailers only. */
+  trailerSource?: VehicleCheckTrailerSource | null
+  /** `vehicles.trailer_type` of the selected company trailer. */
+  trailerType?: string | null
 }
 
 export async function loadVehicleChecklist(
@@ -223,7 +234,15 @@ export async function loadVehicleChecklist(
     }
   }
 
-  const templates = mergeBasicAndExtraChecklistTemplates(dbTemplates)
+  const templates = composeVehicleCheckTemplatesForTrailer(
+    mergeBasicAndExtraChecklistTemplates(dbTemplates),
+    {
+      trailerAttached: options?.trailerAttached === true,
+      trailerSource: options?.trailerSource,
+      trailerType: options?.trailerType,
+      vehicleType,
+    },
+  )
   const notice = dbTemplates.length === 0 ? DVSA_FALLBACK_NOTICE : null
 
   return buildChecklistFromTemplates(templates, existingItems, notice)

@@ -49,6 +49,7 @@ import type {
   VehicleCheckSummaryStats,
 } from '@/lib/vehicleCheckTypes'
 import { DEFAULT_VEHICLE_CHECK_PAGE_SIZE } from '@/lib/vehicleCheckTypes'
+import type { VehicleCheckTrailerWriteFields } from '@/lib/vehicleCheckTrailerAttachment'
 import { fetchDrivers, type Driver } from '@/services/driversService'
 import {
   createVehicleCheck,
@@ -474,7 +475,7 @@ export default function VehicleChecksPage() {
     signatureFile: File
     inspectionStartedAt: string
     items: Parameters<typeof createVehicleCheck>[0]['items']
-  }) {
+  } & VehicleCheckTrailerWriteFields) {
     setIsSaving(true)
     try {
       await createVehicleCheck({
@@ -487,6 +488,11 @@ export default function VehicleChecksPage() {
         signatureFile: input.signatureFile,
         inspectionStartedAt: input.inspectionStartedAt,
         items: input.items,
+        trailerSource: input.trailerSource,
+        trailerVehicleId: input.trailerVehicleId,
+        trailerNumberSnapshot: input.trailerNumberSnapshot,
+        trailerRegistrationSnapshot: input.trailerRegistrationSnapshot,
+        trailerLabelSnapshot: input.trailerLabelSnapshot,
       })
       showToast('Inspection saved')
       await loadChecks()

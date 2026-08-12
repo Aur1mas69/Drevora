@@ -1,5 +1,6 @@
 import type { VehicleCheckTemplateItem } from '@/lib/vehicleCheckTemplateTypes'
 import type {
+  VehicleCheckAssetScope,
   VehicleCheckDefectReviewStatus,
   VehicleCheckItem,
   VehicleCheckItemInput,
@@ -9,6 +10,7 @@ import type {
   VehicleCheckSummaryStats,
   VehicleChecklistSection,
 } from '@/lib/vehicleCheckTypes'
+import { DREVORA_RECOMMENDED_SECTION } from '@/lib/defaultDrevoraRecommendedCheckItems'
 
 /** Defect answers are stored as Advisory. N/A is stored as Fail and must never count as a defect. */
 export function isVehicleCheckDefectResult(result: string | null | undefined): boolean {
@@ -62,9 +64,20 @@ export function getVehicleCheckTemplateGuidance(
 }
 
 export function getVehicleCheckItemKey(
-  item: Pick<VehicleCheckItemInput, 'category' | 'itemName'>,
+  item: Pick<VehicleCheckItemInput, 'category' | 'itemName' | 'assetScope'>,
 ): string {
-  return `${item.category}-${item.itemName}`
+  return `${item.category}-${item.assetScope ?? 'vehicle'}-${item.itemName}`
+}
+
+export function vehicleCheckItemMatches(
+  item: Pick<VehicleCheckItemInput, 'category' | 'itemName' | 'assetScope'>,
+  category: string,
+  itemName: string,
+  assetScope?: VehicleCheckAssetScope | null,
+): boolean {
+  if (item.category !== category || item.itemName !== itemName) return false
+  if (assetScope == null) return true
+  return (item.assetScope ?? 'vehicle') === assetScope
 }
 
 export function isVehicleCheckItemAnswered(item: VehicleCheckItemInput): boolean {
@@ -76,15 +89,18 @@ export function buildExpectedChecklistItems(
   sections?: VehicleChecklistSection[],
 ): VehicleCheckItemInput[] {
   if (sections && sections.length > 0) {
-    return sections.flatMap(({ section, itemNames }) =>
+    return sections.flatMap(({ section, itemNames, assetScope }) =>
       itemNames.map((itemName) => {
         return (
-          items.find((entry) => entry.category === section && entry.itemName === itemName) ?? {
+          items.find((entry) =>
+            vehicleCheckItemMatches(entry, section, itemName, assetScope),
+          ) ?? {
             category: section,
             itemName,
             result: 'Pass' as VehicleCheckItemResult,
             comment: '',
             isAnswered: false,
+            assetScope,
           }
         )
       }),
@@ -132,7 +148,10 @@ export function enrichVehicleCheckItemsWithTemplates(
 ): VehicleCheckItem[] {
   return items.map((item) => {
     const template = templates.find(
-      (entry) => entry.section === item.category && entry.label === item.itemName,
+      (entry) =>
+        entry.section === item.category &&
+        entry.label === item.itemName &&
+        (entry.assetScope ?? 'vehicle') === (item.assetScope ?? 'vehicle'),
     )
     const templateItem = template
       ? {
@@ -170,6 +189,8 @@ export function createChecklistItemsFromTemplates(
       allowNotes: template.allowNotes,
       allowPhoto: template.allowPhoto,
       failOnDefect: template.failOnDefect,
+      assetScope: template.assetScope ?? 'vehicle',
+      description: template.description,
     }
   })
 }
@@ -177,20 +198,26 @@ export function createChecklistItemsFromTemplates(
 export function groupTemplatesBySection(
   templates: VehicleCheckTemplateItem[],
 ): VehicleChecklistSection[] {
-  const order: string[] = []
+  const order: Array<{ key: string; section: string; assetScope?: VehicleCheckAssetScope }> = []
   const map = new Map<string, string[]>()
 
   for (const template of templates) {
-    if (!map.has(template.section)) {
-      order.push(template.section)
-      map.set(template.section, [])
+    const isRecommended = template.section === DREVORA_RECOMMENDED_SECTION
+    const assetScope = isRecommended ? (template.assetScope ?? 'vehicle') : undefined
+    const key = isRecommended
+      ? `${template.section}::${assetScope ?? 'vehicle'}`
+      : template.section
+    if (!map.has(key)) {
+      order.push({ key, section: template.section, assetScope })
+      map.set(key, [])
     }
-    map.get(template.section)?.push(template.label)
+    map.get(key)?.push(template.label)
   }
 
-  return order.map((section) => ({
-    section,
-    itemNames: map.get(section) ?? [],
+  return order.map((entry) => ({
+    section: entry.section,
+    itemNames: map.get(entry.key) ?? [],
+    assetScope: entry.assetScope,
   }))
 }
 
@@ -199,9 +226,13 @@ export function mergeChecklistWithExistingItems(
   existing: VehicleCheckItemInput[],
 ): VehicleCheckItemInput[] {
   return templates.map((template) => {
-    const match = existing.find(
-      (item) =>
-        item.category === template.section && item.itemName === template.label,
+    const match = existing.find((item) =>
+      vehicleCheckItemMatches(
+        item,
+        template.section,
+        template.label,
+        template.assetScope,
+      ),
     )
 
     const templateItem = { description: template.description }
@@ -219,6 +250,8 @@ export function mergeChecklistWithExistingItems(
       allowNotes: template.allowNotes,
       allowPhoto: template.allowPhoto,
       failOnDefect: template.failOnDefect,
+      assetScope: template.assetScope ?? match?.assetScope ?? 'vehicle',
+      description: template.description,
     }
   })
 }

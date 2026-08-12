@@ -6,6 +6,7 @@ import {
   VehicleCheckCompletionSection,
 } from '@/components/vehicle-checks/VehicleCheckCompletionSection'
 import { VehicleCheckChecklistForm } from '@/components/vehicle-checks/VehicleCheckChecklistForm'
+import { VehicleCheckTrailerFields } from '@/components/vehicle-checks/VehicleCheckTrailerFields'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanyTenantGate } from '@/hooks/useCompanyTenantGate'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
@@ -39,6 +40,18 @@ import type {
 } from '@/lib/vehicleCheckTypes'
 import { DEFAULT_VEHICLE_CHECK_ODOMETER_UNIT } from '@/lib/vehicleCheckTypes'
 import { computeOverallResult, isChecklistFullyAnswered, todayIsoDate } from '@/lib/vehicleCheckUtils'
+import {
+  emptyVehicleCheckTrailerDraft,
+  filterCompanyTrailersForVehicleCheck,
+  filterPoweredVehiclesForVehicleCheck,
+  formatVehicleCheckTrailerSummary,
+  getCompanyTrailerTypeForDraft,
+  isPoweredVehicleForVehicleCheck,
+  isVehicleCheckTrailerDraftReady,
+  toVehicleCheckTrailerWriteFields,
+  validateVehicleCheckTrailerDraft,
+  type VehicleCheckTrailerDraft,
+} from '@/lib/vehicleCheckTrailerAttachment'
 import {
   captureVehicleCheckLocation,
   type VehicleCheckLocationResult,
@@ -197,6 +210,9 @@ export default function WorkerVehicleChecksPage() {
   const [isRetryingSync, setIsRetryingSync] = useState(false)
 
   const [vehicleId, setVehicleId] = useState(searchParams.get('vehicleId')?.trim() || '')
+  const [trailerDraft, setTrailerDraft] = useState<VehicleCheckTrailerDraft>(
+    emptyVehicleCheckTrailerDraft,
+  )
   const [rememberVehicle, setRememberVehicle] = useState(false)
   const [odometer, setOdometer] = useState('')
   const [odometerUnit, setOdometerUnit] = useState<VehicleCheckOdometerUnit>(
@@ -340,23 +356,37 @@ export default function WorkerVehicleChecksPage() {
     })
   }
 
-  const selectedVehicle = useMemo(
-    () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
-    [vehicleId, vehicles],
+  const poweredVehicles = useMemo(
+    () => filterPoweredVehiclesForVehicleCheck(vehicles),
+    [vehicles],
+  )
+  const companyTrailers = useMemo(
+    () => filterCompanyTrailersForVehicleCheck(vehicles),
+    [vehicles],
   )
 
-  // A remembered vehicle id that no longer matches an active company vehicle
-  // (archived, deleted, or from another company) is stale local storage —
+  const selectedVehicle = useMemo(
+    () => poweredVehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
+    [vehicleId, poweredVehicles],
+  )
+
+  const trailerSummary = useMemo(
+    () => formatVehicleCheckTrailerSummary(trailerDraft, companyTrailers),
+    [companyTrailers, trailerDraft],
+  )
+
+  // A remembered vehicle id that no longer matches an active powered company
+  // vehicle (archived, deleted, Trailer, or from another company) is stale —
   // drop it so it never resurfaces as a convenience default.
   useEffect(() => {
-    if (vehicles.length === 0) return
+    if (poweredVehicles.length === 0 && vehicles.length === 0) return
     const rememberedId = getRememberedVehicleCheckId()
     if (!rememberedId) return
-    const stillValid = vehicles.some((vehicle) => vehicle.id === rememberedId)
+    const stillValid = poweredVehicles.some((vehicle) => vehicle.id === rememberedId)
     if (!stillValid) {
       setRememberedVehicleCheckId(null)
     }
-  }, [vehicles])
+  }, [poweredVehicles, vehicles.length])
 
   const overallResult = useMemo(() => computeOverallResult(items), [items])
 
@@ -504,23 +534,23 @@ export default function WorkerVehicleChecksPage() {
     if (step !== 'setup' || workerLoading || vehiclesLoading) return
     if (!worker || vehicles.length === 0) return
     if (userClearedSelectionRef.current) {
-      if (vehicleId && !isVehicleInFleet(vehicles, vehicleId)) {
+      if (vehicleId && !isVehicleInFleet(poweredVehicles, vehicleId)) {
         setVehicleId('')
       }
       return
     }
 
-    if (isVehicleInFleet(vehicles, vehicleId)) return
+    if (isVehicleInFleet(poweredVehicles, vehicleId)) return
 
-    // Stale id (archived / other company / missing from cache) — drop it.
-    if (vehicleId && !isVehicleInFleet(vehicles, vehicleId)) {
+    // Stale id (archived / trailer / other company / missing from cache) — drop it.
+    if (vehicleId && !isVehicleInFleet(poweredVehicles, vehicleId)) {
       setVehicleId('')
     }
 
     const fromUrl = searchParams.get('vehicleId')?.trim() || ''
     const fromDefault = worker.defaultVehicleId?.trim() || ''
     const fromRemembered = getRememberedVehicleCheckId()?.trim() || ''
-    const match = resolvePreferredWorkerVehicle(vehicles, [
+    const match = resolvePreferredWorkerVehicle(poweredVehicles, [
       fromUrl,
       fromDefault,
       fromRemembered,
@@ -538,6 +568,7 @@ export default function WorkerVehicleChecksPage() {
     vehicleId,
     vehicles,
     vehiclesLoading,
+    poweredVehicles,
     worker,
     workerLoading,
   ])
@@ -579,8 +610,14 @@ export default function WorkerVehicleChecksPage() {
     }
 
     const vehicle = selectedVehicle
-    if (!vehicle) {
-      setError('Search and select a vehicle from your company fleet.')
+    if (!vehicle || !isPoweredVehicleForVehicleCheck(vehicle)) {
+      setError('Search and select a powered vehicle from your company fleet.')
+      return
+    }
+
+    const trailerError = validateVehicleCheckTrailerDraft(trailerDraft, companyTrailers)
+    if (trailerError) {
+      setError(trailerError)
       return
     }
 
@@ -611,7 +648,12 @@ export default function WorkerVehicleChecksPage() {
         vehicle.id,
         vehicle.vehicleType,
         undefined,
-        { offlineTemplateItems },
+        {
+          offlineTemplateItems,
+          trailerAttached: trailerDraft.source !== 'none',
+          trailerSource: trailerDraft.source,
+          trailerType: getCompanyTrailerTypeForDraft(trailerDraft, companyTrailers),
+        },
       )
       setItems(checklist.items)
       setChecklistSections(checklist.sections)
@@ -647,8 +689,14 @@ export default function WorkerVehicleChecksPage() {
       return
     }
 
-    if (!vehicleId) {
-      setError('Please select a vehicle.')
+    if (!vehicleId || !isPoweredVehicleForVehicleCheck(selectedVehicle)) {
+      setError('Please select a powered vehicle.')
+      return
+    }
+
+    const trailerError = validateVehicleCheckTrailerDraft(trailerDraft, companyTrailers)
+    if (trailerError) {
+      setError(trailerError)
       return
     }
 
@@ -708,6 +756,8 @@ export default function WorkerVehicleChecksPage() {
         const completedLocation =
           completedLocationResult.status === 'success' ? completedLocationResult.location : null
 
+        const trailerFields = toVehicleCheckTrailerWriteFields(trailerDraft)
+
         // Full offline save: checklist + photos + signature to private filesystem.
         // No Supabase calls until sync.
         await saveOfflineCheck({
@@ -723,6 +773,7 @@ export default function WorkerVehicleChecksPage() {
           signatureFile,
           startedLocation,
           completedLocation,
+          ...trailerFields,
         })
         setCompletedResult(computeOverallResult(items))
         setSavedOffline(true)
@@ -750,6 +801,7 @@ export default function WorkerVehicleChecksPage() {
         items,
         startedLocation,
         completedLocation,
+        ...toVehicleCheckTrailerWriteFields(trailerDraft),
       })
       setCompletedResult(created.overallResult)
       setSavedOffline(false)
@@ -1012,21 +1064,24 @@ export default function WorkerVehicleChecksPage() {
               <VehicleSummaryCard vehicle={selectedVehicle} onClear={clearSelectedVehicle} />
             ) : (
               <p className="text-sm text-slate-500">
-                Search and select an active company vehicle to continue. A saved
+                Search and select an active powered vehicle to continue. A saved
                 default is applied automatically when available.
               </p>
             )}
 
-            {vehicles.length > 0 ? (
+            {poweredVehicles.length > 0 ? (
               <WorkerVehicleCombobox
                 id="worker-vehicle-check-vehicle"
-                vehicles={vehicles}
+                vehicles={poweredVehicles}
                 selectedVehicleId={vehicleId || null}
                 onSelect={(vehicle) => {
                   userClearedSelectionRef.current = false
                   setVehicleId(vehicle.id)
                   setRememberVehicle(getRememberedVehicleCheckId() === vehicle.id)
                   setError(null)
+                  if (trailerDraft.trailerVehicleId === vehicle.id) {
+                    setTrailerDraft(emptyVehicleCheckTrailerDraft())
+                  }
                 }}
                 onClear={clearSelectedVehicle}
                 label="Select vehicle"
@@ -1045,9 +1100,21 @@ export default function WorkerVehicleChecksPage() {
               </p>
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                No active company vehicles are available right now.
+                No active powered vehicles are available right now.
               </p>
             )}
+
+            {selectedVehicle ? (
+              <VehicleCheckTrailerFields
+                tone="worker"
+                draft={trailerDraft}
+                companyTrailers={companyTrailers}
+                onChange={(next) => {
+                  setTrailerDraft(next)
+                  setError(null)
+                }}
+              />
+            ) : null}
 
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
               <input
@@ -1079,7 +1146,12 @@ export default function WorkerVehicleChecksPage() {
 
             <Button
               type="submit"
-              disabled={isLoadingChecklist || vehicles.length === 0 || !selectedVehicle}
+              disabled={
+                isLoadingChecklist ||
+                poweredVehicles.length === 0 ||
+                !selectedVehicle ||
+                !isVehicleCheckTrailerDraftReady(trailerDraft, companyTrailers)
+              }
               className="h-12 w-full rounded-2xl bg-[#2563EB] text-base font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
             >
               {isLoadingChecklist ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -1092,6 +1164,13 @@ export default function WorkerVehicleChecksPage() {
       {step === 'checklist' ? (
         <section className="worker-vc-flow min-w-0 w-full max-w-full space-y-4">
           {selectedVehicle ? <VehicleSummaryCard vehicle={selectedVehicle} /> : null}
+          {selectedVehicle ? (
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold text-slate-800">Trailer</span>
+              {' · '}
+              {trailerSummary}
+            </p>
+          ) : null}
 
           <form
             onSubmit={(event) => void handleSave(event)}

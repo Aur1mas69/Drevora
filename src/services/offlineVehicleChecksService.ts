@@ -33,6 +33,8 @@ import type {
   VehicleCheckItemInput,
   VehicleCheckOdometerUnit,
   VehicleCheckItemResult,
+  VehicleCheckAssetScope,
+  VehicleCheckTrailerSource,
 } from '@/lib/vehicleCheckTypes'
 import {
   createVehicleCheck,
@@ -59,6 +61,11 @@ export type OfflineVehicleCheckItemPayload = {
   result: VehicleCheckItemResult
   comment?: string | null
   isAnswered?: boolean
+  assetScope?: VehicleCheckAssetScope
+  description?: string | null
+  allowNotes?: boolean
+  allowPhoto?: boolean
+  failOnDefect?: boolean
   localPhotoPath?: string | null
   photoMimeType?: string | null
   uploadedPhotoUrl?: string | null
@@ -77,6 +84,11 @@ export type OfflineVehicleCheckPayload = {
   items: OfflineVehicleCheckItemPayload[]
   startedLocation?: VehicleCheckLocationCapture | null
   completedLocation?: VehicleCheckLocationCapture | null
+  trailerSource?: VehicleCheckTrailerSource
+  trailerVehicleId?: string | null
+  trailerNumberSnapshot?: string | null
+  trailerRegistrationSnapshot?: string | null
+  trailerLabelSnapshot?: string | null
   /** Local filesystem path (Directory.Data relative). */
   localSignaturePath?: string | null
   signatureMimeType?: string | null
@@ -108,6 +120,11 @@ export type SaveOfflineVehicleCheckInput = {
   signatureFile: File
   startedLocation?: VehicleCheckLocationCapture | null
   completedLocation?: VehicleCheckLocationCapture | null
+  trailerSource?: VehicleCheckTrailerSource
+  trailerVehicleId?: string | null
+  trailerNumberSnapshot?: string | null
+  trailerRegistrationSnapshot?: string | null
+  trailerLabelSnapshot?: string | null
 }
 
 export type OfflineVehicleChecksQueueStats = {
@@ -213,6 +230,11 @@ async function persistLocalMedia(
         result: item.result,
         comment: item.comment ?? null,
         isAnswered: item.isAnswered !== false,
+        assetScope: item.assetScope ?? 'vehicle',
+        description: item.templateItem?.description ?? item.description ?? null,
+        allowNotes: item.allowNotes,
+        allowPhoto: item.allowPhoto,
+        failOnDefect: item.failOnDefect,
         localPhotoPath: null,
         photoMimeType: null,
         uploadedPhotoUrl: null,
@@ -293,6 +315,14 @@ async function hydrateCreateInput(
       result: item.result,
       comment: item.comment ?? null,
       isAnswered: item.isAnswered !== false,
+      assetScope: item.assetScope ?? 'vehicle',
+      description: item.description ?? null,
+      templateItem: item.description
+        ? { description: item.description }
+        : null,
+      allowNotes: item.allowNotes,
+      allowPhoto: item.allowPhoto,
+      failOnDefect: item.failOnDefect,
       photoFile,
       photoUrl: item.uploadedPhotoUrl ?? null,
       photoPreviewUrl: null,
@@ -413,6 +443,11 @@ async function syncOneQueuedCheck(
       items: hydrated.items,
       startedLocation: payload.startedLocation ?? null,
       completedLocation: payload.completedLocation ?? null,
+      trailerSource: payload.trailerSource ?? 'none',
+      trailerVehicleId: payload.trailerVehicleId ?? null,
+      trailerNumberSnapshot: payload.trailerNumberSnapshot ?? null,
+      trailerRegistrationSnapshot: payload.trailerRegistrationSnapshot ?? null,
+      trailerLabelSnapshot: payload.trailerLabelSnapshot ?? null,
     }
 
     let created
@@ -549,6 +584,11 @@ export async function saveOfflineCheck(
     items: media.items,
     startedLocation: input.startedLocation ?? null,
     completedLocation: input.completedLocation ?? null,
+    trailerSource: input.trailerSource ?? 'none',
+    trailerVehicleId: input.trailerVehicleId ?? null,
+    trailerNumberSnapshot: input.trailerNumberSnapshot ?? null,
+    trailerRegistrationSnapshot: input.trailerRegistrationSnapshot ?? null,
+    trailerLabelSnapshot: input.trailerLabelSnapshot ?? null,
     localSignaturePath: media.localSignaturePath,
     signatureMimeType: media.signatureMimeType,
     uploadedSignatureUrl: null,

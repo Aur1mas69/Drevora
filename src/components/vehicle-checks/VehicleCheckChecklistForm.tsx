@@ -1,4 +1,5 @@
 import type {
+  VehicleCheckAssetScope,
   VehicleCheckItemInput,
   VehicleCheckItemResult,
   VehicleChecklistSection,
@@ -9,8 +10,14 @@ import {
   getVehicleCheckItemKey,
   getVehicleCheckTemplateGuidance,
   isVehicleCheckItemAnswered,
+  vehicleCheckItemMatches,
 } from '@/lib/vehicleCheckUtils'
 import { VehicleCheckDefectPhotoField } from '@/components/vehicle-checks/VehicleCheckDefectPhotoField'
+import {
+  DREVORA_RECOMMENDED_SECTION,
+  DREVORA_RECOMMENDED_SECTION_HINT,
+  DREVORA_RECOMMENDED_VEHICLE_HINT,
+} from '@/lib/defaultDrevoraRecommendedCheckItems'
 import { Camera, Check, Info, X } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 
@@ -101,45 +108,51 @@ export function VehicleCheckChecklistForm({
   const progressPercent = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
 
   const grouped = useMemo(() => {
-    const map = new Map<string, VehicleCheckItemInput[]>()
-
     if (sections && sections.length > 0) {
-      for (const { section, itemNames } of sections) {
-        const categoryItems = itemNames.map((itemName) => {
+      return sections.map(({ section, itemNames, assetScope }, index) => ({
+        key: `${section}::${assetScope ?? 'vehicle'}::${index}`,
+        category: section,
+        assetScope,
+        categoryItems: itemNames.map((itemName) => {
           return (
-            expectedItems.find(
-              (entry) => entry.category === section && entry.itemName === itemName,
+            expectedItems.find((entry) =>
+              vehicleCheckItemMatches(entry, section, itemName, assetScope),
             ) ?? {
               category: section,
               itemName,
               result: 'Pass' as VehicleCheckItemResult,
               comment: '',
               isAnswered: false,
+              assetScope,
             }
           )
-        })
-        map.set(section, categoryItems)
-      }
-      return map
+        }),
+      }))
     }
 
+    const map = new Map<string, VehicleCheckItemInput[]>()
     for (const item of expectedItems) {
       const group = map.get(item.category) ?? []
       group.push(item)
       map.set(item.category, group)
     }
 
-    return map
+    return [...map.entries()].map(([category, categoryItems]) => ({
+      key: category,
+      category,
+      assetScope: undefined as VehicleCheckAssetScope | undefined,
+      categoryItems,
+    }))
   }, [expectedItems, sections])
 
   const numberedItems = useMemo(() => {
     let index = 0
     const numbers = new Map<string, number>()
 
-    for (const [, categoryItems] of grouped) {
+    for (const { categoryItems } of grouped) {
       for (const item of categoryItems) {
         index += 1
-        numbers.set(`${item.category}-${item.itemName}`, index)
+        numbers.set(getVehicleCheckItemKey(item), index)
       }
     }
 
@@ -148,7 +161,7 @@ export function VehicleCheckChecklistForm({
 
   const currentCheckNumber = useMemo(() => {
     if (totalCount === 0) return 0
-    for (const [, categoryItems] of grouped) {
+    for (const { categoryItems } of grouped) {
       for (const item of categoryItems) {
         if (!isVehicleCheckItemAnswered(item)) {
           return numberedItems.get(getVehicleCheckItemKey(item)) ?? 1
@@ -168,9 +181,10 @@ export function VehicleCheckChecklistForm({
     category: string,
     itemName: string,
     patch: Partial<VehicleCheckItemInput>,
+    assetScope?: VehicleCheckAssetScope | null,
   ) {
-    const index = items.findIndex(
-      (entry) => entry.category === category && entry.itemName === itemName,
+    const index = items.findIndex((entry) =>
+      vehicleCheckItemMatches(entry, category, itemName, assetScope),
     )
     const currentItem =
       index >= 0
@@ -255,7 +269,7 @@ export function VehicleCheckChecklistForm({
     return blocks
   }
 
-  if (emptyMessage && grouped.size === 0) {
+  if (emptyMessage && grouped.length === 0) {
     return (
       <p className="rounded-[10px] bg-[#F8FBFF] px-3 py-2 text-sm text-slate-600">
         {emptyMessage}
@@ -302,15 +316,22 @@ export function VehicleCheckChecklistForm({
         </div>
       ) : null}
 
-      {[...grouped.entries()].map(([category, categoryItems]) => (
+      {grouped.map(({ key, category, assetScope, categoryItems }) => (
         <section
-          key={category}
+          key={key}
           className="worker-vc-section min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[#D3E9FC] bg-white shadow-[0_4px_14px_rgba(33,142,231,0.06)] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20"
         >
           <div className="worker-vc-section-head bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
             <h3 className="worker-vc-muted text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
               {category}
             </h3>
+            {category === DREVORA_RECOMMENDED_SECTION ? (
+              <p className="mt-0.5 text-[11px] font-medium leading-4 text-[#7FAFCC] dark:text-slate-400">
+                {assetScope === 'trailer'
+                  ? DREVORA_RECOMMENDED_SECTION_HINT
+                  : DREVORA_RECOMMENDED_VEHICLE_HINT}
+              </p>
+            ) : null}
           </div>
           <div className="min-w-0 divide-y divide-[#D3E9FC]/70 dark:divide-white/10">
             {categoryItems.map((item) => {
@@ -388,7 +409,7 @@ export function VehicleCheckChecklistForm({
                                       result: option,
                                       isAnswered: true,
                                       comment: option === 'Advisory' ? item.comment ?? '' : '',
-                                    })
+                                    }, item.assetScope)
                                   }
                                   className={`${resultButtonBaseClassName} ${resultButtonStyles[option]} worker-result-${option === 'Pass' ? 'ok' : option === 'Advisory' ? 'defect' : 'na'}`}
                                   data-selected={selected}
@@ -421,7 +442,7 @@ export function VehicleCheckChecklistForm({
                                 onChange={(event) =>
                                   updateItem(item.category, item.itemName, {
                                     comment: event.target.value,
-                                  })
+                                  }, item.assetScope)
                                 }
                                 rows={2}
                                 placeholder="Describe the defect…"
@@ -448,7 +469,7 @@ export function VehicleCheckChecklistForm({
                                     photoFile: file,
                                     photoPreviewUrl: previewUrl,
                                     photoUrl: null,
-                                  })
+                                  }, item.assetScope)
                                 }}
                                 onPhotoRemoved={() => {
                                   clearDefectPhoto(item)
@@ -456,7 +477,7 @@ export function VehicleCheckChecklistForm({
                                     photoFile: null,
                                     photoPreviewUrl: null,
                                     photoUrl: null,
-                                  })
+                                  }, item.assetScope)
                                 }}
                               />
                             </div>

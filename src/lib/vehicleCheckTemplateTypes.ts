@@ -1,3 +1,5 @@
+import type { VehicleCheckAssetScope } from '@/lib/vehicleCheckTypes'
+
 export type VehicleCheckTemplate = {
   id: string
   company: string | null
@@ -24,6 +26,10 @@ export type VehicleCheckTemplateItem = {
   isActive: boolean
   isCustom: boolean
   createdAt: string
+  /** Client composition only — not a vehicle_check_template_items column. */
+  assetScope?: VehicleCheckAssetScope
+  /** Client composition only — not a DB column. */
+  source?: 'dvsa' | 'trailer_base' | 'drevora_recommended' | 'company_custom'
 }
 
 export type VehicleCheckTemplateWithItems = VehicleCheckTemplate & {
