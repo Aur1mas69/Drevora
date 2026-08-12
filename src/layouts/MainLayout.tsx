@@ -45,24 +45,14 @@ function WorkerBottomNavIcon({
 }) {
   const pair = WORKER_BOTTOM_NAV_ICONS[id]
   if (!pair) return null
-  // Notes/Settings: larger for internal PNG padding. Active Home/Contacts: +2px.
-  let sizePx = 32
-  if (id === 'notes' || id === 'settings') sizePx = 38
-  else if (active && (id === 'home' || id === 'contacts')) sizePx = 34
   return (
     <img
       src={active ? pair.active : pair.inactive}
       alt=""
-      width={sizePx}
-      height={sizePx}
+      width={32}
+      height={32}
       draggable={false}
-      className={`shrink-0 object-contain ${
-        sizePx === 38
-          ? 'size-[38px]'
-          : sizePx === 34
-            ? 'size-[34px]'
-            : 'size-8'
-      }`}
+      className="worker-nav-icon-img size-8 shrink-0 object-contain"
     />
   )
 }

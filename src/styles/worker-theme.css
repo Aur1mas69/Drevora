@@ -280,17 +280,28 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-active svg {
   stroke-width: 2.5;
 }
 
-/* Icon slot only — no circular chips; active/inactive = PNG assets. */
+/* Icon slot only — no circular chips; active/inactive = PNG assets.
+ * Fixed slot size keeps bar height, item spacing, and labels stable.
+ * Active icons enlarge via transform scale (does not affect layout). */
 .worker-mobile-layout .worker-nav-icon-wrap {
   position: relative;
   z-index: 1;
   display: flex;
-  width: 2.375rem; /* 38px — equal slots; Home/Contacts stay 32px inside */
-  height: 2.375rem;
+  width: 2rem; /* 32px shared base slot for all four icons */
+  height: 2rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   background-color: transparent;
+}
+
+.worker-mobile-layout .worker-nav-icon-wrap .worker-nav-icon-img {
+  transform-origin: center center;
+  transform: scale(1);
+}
+
+.worker-mobile-layout .worker-nav-active .worker-nav-icon-wrap .worker-nav-icon-img {
+  transform: scale(1.15);
 }
 
 .worker-mobile-layout .worker-nav-item > span:not(.worker-nav-indicator):not(.worker-nav-icon-wrap),
