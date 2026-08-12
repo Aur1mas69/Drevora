@@ -117,9 +117,9 @@ function MainLayoutShell() {
         <Outlet />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 worker-bottom-nav-shell w-full max-w-full border-t border-[color:var(--worker-border)] bg-[color:var(--worker-card)]/95 px-3 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
+      <div className="fixed bottom-0 left-0 right-0 z-30 worker-bottom-nav-shell w-full max-w-full bg-[color:var(--worker-card)]/95 px-3 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
         <div className="relative mx-auto w-full min-w-0 max-w-md lg:max-w-lg">
-          <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-0.5 rounded-[1.35rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-0.5">
+          <div className="worker-bottom-nav-inner flex w-full min-w-0 items-center justify-between gap-0.5 rounded-[1.35rem] bg-[color:var(--worker-card)] p-0.5">
             <NavLink
               to={WORKER_HOME_PATH}
               onClick={(event) => handleGuardedNavigate(WORKER_HOME_PATH, event)}

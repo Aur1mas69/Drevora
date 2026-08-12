@@ -1094,8 +1094,8 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 
 .worker-mobile-layout .worker-home-greeting-icon {
   display: flex;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 4.5rem; /* 72px — matches rendered greeting PNG size */
+  height: 4.5rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -1174,10 +1174,10 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 /* Compact Home status card — same light-blue language as Default Vehicle / Quick Actions. */
 .worker-mobile-layout .worker-home-status-card {
   border-radius: 1.25rem;
-  border: 1.5px solid #7eb8e8;
+  border: none;
   background-color: #bfe3f5;
   background-image: var(--worker-home-blue-gradient, linear-gradient(105deg, #9fd0f0 0%, #bfe3f5 28%, #dceeff 58%, #f5faff 100%));
-  box-shadow: none;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 /* Dark: indigo like Documents Quick Action — readable light text via local tokens. */
@@ -1185,11 +1185,11 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   --worker-text: #ffffff;
   --worker-text-muted: rgba(255, 255, 255, 0.72);
   --worker-text-secondary: rgba(255, 255, 255, 0.78);
-  border-color: #3536d4;
+  border: none;
   background-color: #4344f6;
   background-image: none;
   color: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
 /* Worker Home status dots — shared semantic indicators (web/PWA + Android + iOS).
@@ -1244,10 +1244,10 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 /* Default Vehicle card — same stronger baby-blue gradient; clickable on Home. */
 .worker-mobile-layout .worker-home-default-vehicle {
   border-radius: 1.5rem;
-  border: 1.5px solid #7eb8e8;
+  border: none;
   background-color: #bfe3f5;
   background-image: var(--worker-home-blue-gradient, linear-gradient(105deg, #9fd0f0 0%, #bfe3f5 28%, #dceeff 58%, #f5faff 100%));
-  box-shadow: none;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 .worker-mobile-layout .worker-home-default-vehicle--compact {
@@ -1263,11 +1263,11 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 
 /* Dark: mint like Timesheet Quick Action. */
 .worker-dark .worker-mobile-layout .worker-home-default-vehicle {
-  border-color: #8ad994;
+  border: none;
   background-color: #a3f1ab;
   background-image: none;
   color: #0b0d12;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
 .worker-dark .worker-mobile-layout .worker-home-default-vehicle .worker-home-icon-well {
@@ -1342,11 +1342,11 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   align-items: center;
   gap: 0.75rem;
   border-radius: 1.5rem;
-  border: 1.5px solid #7eb8e8;
+  border: none;
   background-color: #bfe3f5;
   background-image: var(--worker-home-blue-gradient, linear-gradient(105deg, #9fd0f0 0%, #bfe3f5 28%, #dceeff 58%, #f5faff 100%));
   padding: 1rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
   transition:
     background-color 180ms ease,
     background-image 180ms ease,
@@ -1356,19 +1356,19 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action {
-  border-color: var(--worker-border);
+  border: none;
   background-color: var(--worker-card);
   background-image: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
 /* Dark Home Quick actions — solid mint / blue fills (checkerboard via JS classes). */
 .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint {
-  border-color: #8ad994;
+  border: none;
   background-color: #a3f1ab;
   background-image: none;
   color: #0b0d12;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint .worker-home-icon-well {
@@ -1385,11 +1385,11 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo {
-  border-color: #3536d4;
+  border: none;
   background-color: #4344f6;
   background-image: none;
   color: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo .worker-home-icon-well {
@@ -1482,6 +1482,18 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:hover .worker-home-chevron {
     color: #ffffff;
   }
+
+  .worker-mobile-layout .worker-home-quick-action:hover {
+    border: none;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+  }
+
+  .worker-dark .worker-mobile-layout .worker-home-quick-action:hover,
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:hover,
+  .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:hover {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  }
 }
 
 .worker-mobile-layout .worker-home-quick-action:active,
@@ -1489,6 +1501,10 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   background-color: #e8f2ff;
   border-color: #3b82f6;
   transform: scale(0.98);
+}
+
+.worker-mobile-layout .worker-home-quick-action:active {
+  border: none;
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action:active,
@@ -1518,6 +1534,12 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   background-color: #3a3bd8;
   border-color: #2f30b8;
   filter: brightness(0.98);
+}
+
+.worker-dark .worker-mobile-layout .worker-home-quick-action:active,
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-mint:active,
+.worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:active {
+  border: none;
 }
 
 .worker-dark .worker-mobile-layout .worker-home-quick-action.worker-quick-action-indigo:active .worker-home-icon-well {
@@ -1707,32 +1729,34 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   border-color: var(--worker-border);
 }
 
-/* Bottom nav — same stronger baby-blue gradient (light). */
+/* Bottom nav — no hard border lines; soft shadow separates from content. */
 html:not(.worker-dark) .worker-mobile-layout .worker-bottom-nav-shell {
   background-color: #bfe3f5;
   background-image: var(--worker-home-blue-gradient);
-  border-top-width: 2px;
-  border-color: #5aa3d8;
+  border: none;
+  box-shadow: 0 -8px 16px -6px rgba(90, 163, 216, 0.22);
 }
 
 html:not(.worker-dark) .worker-mobile-layout .worker-bottom-nav-inner {
   background-color: #bfe3f5;
   background-image: var(--worker-home-blue-gradient);
-  border-width: 2px;
-  border-color: #5aa3d8;
+  border: none;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 /* Bottom nav dark container emphasis */
 .worker-dark .worker-mobile-layout .worker-bottom-nav-shell {
   background-color: color-mix(in srgb, var(--worker-card) 95%, transparent);
   background-image: none;
-  border-color: var(--worker-border);
+  border: none;
+  box-shadow: 0 -8px 16px -6px rgba(0, 0, 0, 0.35);
 }
 
 .worker-dark .worker-mobile-layout .worker-bottom-nav-inner {
   background-color: var(--worker-card);
   background-image: none;
-  border-color: var(--worker-border);
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
 }
 
 /* -----------------------------------------------------------------------------

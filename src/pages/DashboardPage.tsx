@@ -41,20 +41,18 @@ import timesheetsIcon from '@/assets/worker-dashboard/timesheets.png'
 import holidayIcon from '@/assets/worker-dashboard/holiday.png'
 import vehiclesIcon from '@/assets/worker-dashboard/vehicles.png'
 import documentsIcon from '@/assets/worker-dashboard/documents.png'
-import {
-  ChevronRight,
-  MoonStar,
-  ShieldCheck,
-  Sun,
-  type LucideIcon,
-} from 'lucide-react'
+import morningGreetingIcon from '@/assets/worker-greetings/morning.png'
+import afternoonGreetingIcon from '@/assets/worker-greetings/afternoon.png'
+import eveningGreetingIcon from '@/assets/worker-greetings/evening.png'
+import nightGreetingIcon from '@/assets/worker-greetings/night.png'
+import { ChevronRight, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /** Default Vehicle card icon size. */
-const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-11 shrink-0 object-contain'
+const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-[53px] shrink-0 object-contain'
 
-/** Quick Actions — one shared 56px slot for all four cards. */
-const WORKER_HOME_QUICK_ACTION_ICON_CLASS = 'size-14 shrink-0 object-contain'
+/** Quick Actions — one shared 68px slot for all four cards. */
+const WORKER_HOME_QUICK_ACTION_ICON_CLASS = 'size-[68px] shrink-0 object-contain'
 
 const WORKER_HOME_QUICK_ACTION_ICONS: Record<string, string> = {
   timesheets: timesheetsIcon,
@@ -75,8 +73,8 @@ function WorkerHomeDefaultVehicleIcon({ src }: { src: string }) {
     <img
       src={src}
       alt=""
-      width={44}
-      height={44}
+      width={53}
+      height={53}
       draggable={false}
       className={WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS}
     />
@@ -88,8 +86,8 @@ function WorkerHomeQuickActionIcon({ src }: { src: string }) {
     <img
       src={src}
       alt=""
-      width={56}
-      height={56}
+      width={68}
+      height={68}
       draggable={false}
       className={WORKER_HOME_QUICK_ACTION_ICON_CLASS}
     />
@@ -101,11 +99,16 @@ const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-only.webp'
 const WORKER_ROBOT_WIDTH = 1264
 const WORKER_ROBOT_HEIGHT = 975
 
-function getGreetingPeriodIcon(date = new Date()): LucideIcon {
+/**
+ * Same hour thresholds as getSentenceTimeGreeting / getTimeGreeting.
+ * Morning 05–11, Afternoon 12–16, Evening 17–21, Night 22–04.
+ */
+function getGreetingPeriodIconSrc(date = new Date()): string {
   const hour = date.getHours()
-  // Morning + afternoon: sun. Evening + night: moon.
-  if (hour >= 5 && hour < 17) return Sun
-  return MoonStar
+  if (hour >= 5 && hour < 12) return morningGreetingIcon
+  if (hour >= 12 && hour < 17) return afternoonGreetingIcon
+  if (hour >= 17 && hour < 22) return eveningGreetingIcon
+  return nightGreetingIcon
 }
 
 function resetHorizontalScrollOffset() {
@@ -127,7 +130,7 @@ function statusDotClass(tone: WorkerHomeStatusTone): string {
 
 function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
   const headerRef = useRef<HTMLElement>(null)
-  const GreetingIcon = getGreetingPeriodIcon()
+  const greetingIconSrc = getGreetingPeriodIconSrc()
   const greeting = getSentenceTimeGreeting()
 
   useLayoutEffect(() => {
@@ -170,7 +173,14 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
       className="worker-home-header flex w-full min-w-0 max-w-full items-center gap-3.5"
     >
       <div className="worker-home-greeting-icon" aria-hidden>
-        <GreetingIcon className="size-8" strokeWidth={2} />
+        <img
+          src={greetingIconSrc}
+          alt=""
+          width={72}
+          height={72}
+          draggable={false}
+          className="size-[72px] shrink-0 object-contain"
+        />
       </div>
       <div className="worker-home-greeting-text min-w-0 flex-1">
         <h1 className="worker-home-greeting-script max-w-full break-words">
@@ -591,12 +601,18 @@ function DashboardPage() {
     <Link
       to="/worker/vehicle-checks"
       className={cn(
-        'worker-home-cta',
+        'worker-home-cta overflow-visible',
         isDark ? 'worker-cta-gradient text-white' : 'worker-btn-primary',
       )}
     >
-      <span className="flex min-w-0 items-center gap-2.5">
-        <ShieldCheck className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+      <span className="flex min-w-0 items-center gap-2.5 overflow-visible">
+        <span className="flex size-12 shrink-0 items-center justify-center overflow-visible">
+          <ShieldCheck
+            className="size-12 shrink-0 opacity-95 overflow-visible"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+        </span>
         <span className="truncate">Start Vehicle Check</span>
       </span>
       <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
