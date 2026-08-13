@@ -622,17 +622,30 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   box-shadow: none;
 }
 
-/* Worker Home brand graphic — full-width cut-out, no card fill. */
+/* Worker Home hero — photo fills the rounded card; no white pad/fill. */
+.worker-mobile-layout .worker-home-hero__frame {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  aspect-ratio: 1983 / 793;
+}
+
 .worker-mobile-layout .worker-home-hero__art {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: auto;
-  max-width: 100%;
-  object-fit: contain;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  object-fit: cover;
   object-position: center;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+  background-color: transparent;
+  filter: brightness(0.82) saturate(0.78);
 }
 
 .worker-mobile-layout .worker-quick-action-mint {

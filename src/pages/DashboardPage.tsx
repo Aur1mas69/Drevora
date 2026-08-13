@@ -200,10 +200,10 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
   )
 }
 
-function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
+function WorkerHomeRobotHero() {
   return (
     <section className="worker-home-hero relative isolate pt-5 sm:pt-6">
-      <div className="relative">
+      <div className="worker-home-hero__frame relative overflow-hidden rounded-[1.75rem]">
         <img
           src={WORKER_HOME_HERO_SRC}
           alt=""
@@ -214,23 +214,10 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
           draggable={false}
           className="worker-home-hero__art"
         />
-        <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start space-y-1 px-4 pt-3.5 pb-3 min-[380px]:max-w-[55%] min-[380px]:pt-4 sm:max-w-[52%] sm:space-y-1.5 sm:px-5 sm:pt-5 sm:pb-4 lg:max-w-[50%] lg:pt-6">
-          <h2
-            className={cn(
-              'break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:700]',
-              isDark ? 'text-white' : 'text-[#0B1F3A]',
-            )}
-          >
+        <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start px-4 pt-3.5 pb-3 min-[380px]:pt-4 sm:px-5 sm:pt-5 sm:pb-4 lg:pt-6">
+          <h2 className="break-words text-lg font-bold leading-[1.2] tracking-tight text-black min-[380px]:text-xl sm:text-2xl [font-weight:800]">
             Ready for the road?
           </h2>
-          <p
-            className={cn(
-              'max-w-[14rem] break-words text-xs leading-snug min-[380px]:max-w-[16rem] min-[380px]:text-sm sm:max-w-[18rem]',
-              isDark ? 'text-white/70' : 'text-[#3D5A80]',
-            )}
-          >
-            Check your vehicle and start with confidence.
-          </p>
         </div>
       </div>
     </section>
@@ -617,7 +604,7 @@ function DashboardPage() {
         />
       ) : (
         <>
-          <WorkerHomeRobotHero isDark={isDark} />
+          <WorkerHomeRobotHero />
 
           <div className="worker-home-status-vehicle-row grid grid-cols-2 items-stretch gap-2.5">
             <button
