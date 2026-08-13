@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { WorkerHomeDefaultVehicleSheet } from '@/components/worker/WorkerHomeDefaultVehicleSheet'
-import { WorkerHomeRoadBackground } from '@/components/worker/WorkerHomeRoadBackground'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { getSentenceTimeGreeting, resolveGreetingFullName } from '@/lib/greeting'
@@ -94,10 +93,10 @@ function WorkerHomeQuickActionIcon({ src }: { src: string }) {
   )
 }
 
-/** Tight crop of the Worker robot only (transparent WebP, no banner/road). */
-const WORKER_ROBOT_SRC = '/assets/worker/drevora-worker-robot-only.webp'
-const WORKER_ROBOT_WIDTH = 1264
-const WORKER_ROBOT_HEIGHT = 975
+/** Worker Home brand graphic — use as-is from public/worker. */
+const WORKER_HOME_HERO_SRC = '/worker/worker-road-truck.png'
+const WORKER_HOME_HERO_WIDTH = 1983
+const WORKER_HOME_HERO_HEIGHT = 793
 
 /**
  * Same hour thresholds as getSentenceTimeGreeting / getTimeGreeting.
@@ -201,44 +200,21 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
   )
 }
 
-/**
- * Premium hero on Worker Home (Light + Dark).
- *
- * Layer model (do not merge):
- * 1) Banner shell — fixed min-height, overflow hidden, rounded corners; road/dark fill only.
- * 2) Left copy — in-flow over the banner; never sized by the robot.
- * 3) Robot — absolute bottom-right sibling of the shell (not inside overflow:hidden),
- *    so only the head may peek above the rounded box.
- */
 function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
   return (
     <section className="worker-home-hero relative isolate pt-5 sm:pt-6">
-      {/* Height comes only from the banner shell — not from the robot. */}
-      <div className="relative min-h-[5.75rem] min-[380px]:min-h-[7.75rem] sm:min-h-[9.75rem] lg:min-h-[12.25rem]">
-        {/* Clipped banner surface (road / dark). Robot is NOT a child here. */}
-        <div
-          aria-hidden="true"
-          className={cn(
-            'absolute inset-0 z-0 overflow-hidden rounded-[1.75rem]',
-            isDark ? 'worker-robot-hero' : null,
-          )}
-        >
-          {!isDark ? (
-            <>
-              <WorkerHomeRoadBackground className="pointer-events-none absolute inset-0 z-0 h-full w-full max-w-none" />
-              <div
-                className="pointer-events-none absolute inset-0 z-[1]"
-                style={{
-                  background:
-                    'linear-gradient(90deg, rgba(247, 251, 255, 0.38) 0%, rgba(235, 246, 255, 0.18) 28%, rgba(235, 246, 255, 0.04) 52%, transparent 72%)',
-                }}
-              />
-            </>
-          ) : null}
-        </div>
-
-        {/* Left text — top-aligned so copy clears the road/truck detail at the bottom. */}
-        <div className="relative z-[2] flex h-full min-h-[5.75rem] max-w-[58%] flex-col justify-start space-y-1 px-4 pt-3.5 pb-3 min-[380px]:min-h-[7.75rem] min-[380px]:max-w-[55%] min-[380px]:pt-4 sm:min-h-[9.75rem] sm:max-w-[52%] sm:space-y-1.5 sm:px-5 sm:pt-5 sm:pb-4 lg:min-h-[12.25rem] lg:max-w-[50%] lg:pt-6">
+      <div className="relative">
+        <img
+          src={WORKER_HOME_HERO_SRC}
+          alt=""
+          width={WORKER_HOME_HERO_WIDTH}
+          height={WORKER_HOME_HERO_HEIGHT}
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          className="worker-home-hero__art"
+        />
+        <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start space-y-1 px-4 pt-3.5 pb-3 min-[380px]:max-w-[55%] min-[380px]:pt-4 sm:max-w-[52%] sm:space-y-1.5 sm:px-5 sm:pt-5 sm:pb-4 lg:max-w-[50%] lg:pt-6">
           <h2
             className={cn(
               'break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:700]',
@@ -255,23 +231,6 @@ function WorkerHomeRobotHero({ isDark }: { isDark: boolean }) {
           >
             Check your vehicle and start with confidence.
           </p>
-        </div>
-
-        {/* Absolute robot: feet on banner bottom; head may overflow above the rounded shell. */}
-        <div
-          className="worker-robot-hero__figure pointer-events-none absolute bottom-0 right-0 z-[3] w-[9.5rem] select-none min-[380px]:w-[12rem] sm:w-[14.5rem] lg:w-[17.5rem]"
-          aria-hidden="true"
-        >
-          <img
-            src={WORKER_ROBOT_SRC}
-            alt=""
-            width={WORKER_ROBOT_WIDTH}
-            height={WORKER_ROBOT_HEIGHT}
-            loading="eager"
-            decoding="async"
-            draggable={false}
-            className="worker-robot-hero__body"
-          />
         </div>
       </div>
     </section>

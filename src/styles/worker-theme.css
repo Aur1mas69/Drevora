@@ -622,75 +622,15 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   box-shadow: none;
 }
 
-/* -----------------------------------------------------------------------------
- * Worker Home Dashboard — robot hero card (Home page only). Rendered in both
- * Light and Dark; the surface colour/glow below is theme-scoped so Light
- * keeps the existing card surface token (no new colours) and Dark keeps its
- * unchanged navy + indigo/mint glow.
- * ----------------------------------------------------------------------------- */
-
-.worker-mobile-layout .worker-robot-hero {
-  /* Light mode: transparent so the road <img> is visible; dark sets its own fill. */
-  background-color: transparent;
-  background-image: none;
-}
-
-.worker-mobile-layout .worker-robot-hero::before,
-.worker-mobile-layout .worker-robot-hero::after {
-  content: none;
-}
-
-.worker-dark .worker-mobile-layout .worker-robot-hero {
-  background-color: #10141c;
-  background-image:
-    radial-gradient(95% 110% at 100% 30%, rgba(67, 68, 246, 0.38) 0%, transparent 58%),
-    radial-gradient(80% 95% at 8% 100%, rgba(163, 241, 171, 0.12) 0%, transparent 62%),
-    linear-gradient(125deg, #0b0d12 0%, #10141c 45%, #151922 100%);
-}
-
-.worker-dark .worker-mobile-layout .worker-robot-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: 0;
-  width: auto;
-  height: auto;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 0;
-  background:
-    radial-gradient(120% 140% at 100% 0%, rgba(67, 68, 246, 0.32), transparent 60%),
-    radial-gradient(90% 120% at 0% 100%, rgba(163, 241, 171, 0.1), transparent 65%);
-}
-
-.worker-dark .worker-mobile-layout .worker-robot-hero::after {
-  content: none;
-}
-
-/*
- * Robot figure: single full WebP (no separate waving-arm layer).
- * Absolutely positioned; aspect matches the cropped asset (1264×975).
- * overflow:visible so the head can peek above the banner shell without clipping.
- */
-.worker-mobile-layout .worker-robot-hero__figure {
-  position: absolute;
-  overflow: visible;
-  pointer-events: none;
-  aspect-ratio: 1264 / 975;
-}
-
-.worker-mobile-layout .worker-robot-hero__body {
-  position: absolute;
-  inset: 0;
+/* Worker Home brand graphic — full-width cut-out, no card fill. */
+.worker-mobile-layout .worker-home-hero__art {
   display: block;
   width: 100%;
-  height: 100%;
-  max-width: none;
+  height: auto;
+  max-width: 100%;
   object-fit: contain;
-  object-position: right bottom;
+  object-position: center;
+  pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
 }
