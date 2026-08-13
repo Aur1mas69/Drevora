@@ -62,10 +62,10 @@ export function OfficeMfaChallengeScreen({
       description="Enter the 6-digit code from your authenticator app to continue to DREVORA Admin."
     >
       {verifiedFactors.length > 1 ? (
-        <div className="mb-4">
+        <div className="mb-5">
           <label
             htmlFor="office-mfa-factor"
-            className="text-sm font-medium text-slate-800"
+            className="text-sm font-semibold text-[#2A376F]"
           >
             Authenticator
           </label>
@@ -73,7 +73,7 @@ export function OfficeMfaChallengeScreen({
             id="office-mfa-factor"
             value={activeFactorId}
             onChange={(event) => setFactorId(event.target.value)}
-            className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+            className="mt-2 h-11 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-sm font-medium text-[#2A376F] shadow-sm ring-1 ring-[rgba(75,120,220,0.16)] outline-none focus:ring-3 focus:ring-[#2563EB]/25"
           >
             {verifiedFactors.map((factor, index) => (
               <option key={factor.id} value={factor.id}>

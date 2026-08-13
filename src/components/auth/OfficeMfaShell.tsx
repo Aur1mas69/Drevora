@@ -29,30 +29,37 @@ export function OfficeMfaShell({
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#F6F9FF] px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="relative flex min-h-dvh items-center justify-center bg-[#F6F9FF] px-4 py-8">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(191,219,254,0.55),_transparent_58%),radial-gradient(ellipse_at_bottom,_rgba(224,242,254,0.7),_transparent_52%)]"
+        aria-hidden
+      />
+
+      <section className="relative w-full max-w-lg rounded-[20px] border border-[rgba(75,120,220,0.14)] bg-white/95 p-6 shadow-[0_24px_60px_rgba(37,99,235,0.10)] sm:p-8">
         <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#EFF6FF] text-[#2563EB] ring-1 ring-[#BFDBFE]">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EFF6FF] text-[#2563EB] ring-1 ring-[#BFDBFE]">
             <ShieldCheck className="size-5" strokeWidth={1.9} aria-hidden />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-slate-950">{title}</h1>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">{description}</p>
+            <h1 className="text-lg font-semibold tracking-[-0.03em] text-[#2A376F]">
+              {title}
+            </h1>
+            <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
           </div>
         </div>
 
-        <div className="mt-6">{children}</div>
+        <div className="mt-7">{children}</div>
 
         <Button
           type="button"
-          variant="outline"
-          className="mt-6 w-full"
+          variant="ghost"
+          className="mt-5 h-11 w-full rounded-[14px] text-sm font-medium text-slate-500 hover:bg-[#F8FBFF] hover:text-[#2563EB]"
           disabled={isSigningOut}
           onClick={() => void handleSignOut()}
         >
           {isSigningOut ? 'Signing out…' : 'Sign out'}
         </Button>
-      </div>
+      </section>
     </div>
   )
 }
@@ -77,12 +84,14 @@ export function OfficeMfaCodeForm({
     await onSubmit()
   }
 
+  const errorId = 'office-mfa-code-error'
+
   return (
-    <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+    <form className="space-y-5" onSubmit={(event) => void handleSubmit(event)}>
       <div>
         <label
           htmlFor="office-mfa-code"
-          className="text-sm font-medium text-slate-800"
+          className="text-sm font-semibold text-[#2A376F]"
         >
           Authenticator code
         </label>
@@ -97,21 +106,26 @@ export function OfficeMfaCodeForm({
           onChange={(event) =>
             onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))
           }
-          className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-center text-lg font-semibold tracking-[0.35em] text-slate-950 outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+          className="mt-2 h-14 w-full rounded-[16px] border-0 bg-[#F8FBFF] px-3 text-center text-[1.35rem] font-semibold tracking-[0.42em] text-[#2A376F] shadow-sm ring-1 ring-[rgba(75,120,220,0.16)] outline-none placeholder:tracking-[0.42em] placeholder:text-slate-300 focus:ring-3 focus:ring-[#2563EB]/25"
           placeholder="000000"
           aria-invalid={errorMessage ? true : undefined}
+          aria-describedby={errorMessage ? errorId : undefined}
         />
       </div>
 
       {errorMessage ? (
-        <p className="text-sm font-medium text-rose-700" role="alert">
+        <p
+          id={errorId}
+          className="text-sm font-medium text-rose-700"
+          role="alert"
+        >
           {errorMessage}
         </p>
       ) : null}
 
       <Button
         type="submit"
-        className="w-full"
+        className="h-11 w-full rounded-[14px] bg-[#2563EB] text-sm font-semibold text-white shadow-[0_12px_32px_rgba(37,99,235,0.35)] hover:bg-[#1d4ed8]"
         disabled={isSubmitting || code.length !== 6}
       >
         {isSubmitting ? 'Verifying…' : submitLabel}
