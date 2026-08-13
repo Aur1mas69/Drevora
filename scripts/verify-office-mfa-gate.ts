@@ -1,9 +1,8 @@
 /**
- * Focused verification for Office mandatory TOTP MFA gate helpers.
+ * Focused verification for Office Pause/Resume TOTP MFA gate helpers.
  * Run: npm run verify:office-mfa-gate
  *
- * Does not call Supabase — proves pure gate decisions that protect Office AAL1
- * sessions and leave Drivers unaffected.
+ * Does not call Supabase — proves pure gate decisions and static wiring.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -34,6 +33,10 @@ function run(name: string, fn: () => void) {
   console.log(`PASS  ${name}`)
 }
 
+function read(relative: string): string {
+  return readFileSync(resolve(relative), 'utf8')
+}
+
 const verifiedFactor: OfficeMfaTotpFactor = {
   id: 'factor-verified',
   friendlyName: 'Authenticator app',
@@ -48,67 +51,66 @@ const unverifiedFactor: OfficeMfaTotpFactor = {
   factorType: 'totp',
 }
 
-run('1. Office role + aal1 without verified factor is forced to enrollment', () => {
-  const decision = resolveOfficeMfaGate({
-    isOfficeRole: true,
-    aal: 'aal1',
-    factors: [],
-  })
-  assertEqual(decision.action, 'enroll', 'enroll action')
-  assertTrue(decision.mfaRequired, 'mfa required')
-})
-
-run('2. Office role + unverified-only factor is treated as enroll (not valid MFA)', () => {
-  const decision = resolveOfficeMfaGate({
-    isOfficeRole: true,
-    aal: 'aal1',
-    factors: [unverifiedFactor],
-  })
-  assertEqual(decision.action, 'enroll', 'unverified is not enough')
-  assertTrue(!hasVerifiedTotpFactor([unverifiedFactor]), 'no verified totp')
-})
-
-run('3. Office role + verified factor + aal1 is forced to challenge', () => {
+run('1. mfa_enabled=false + verified factor + AAL1 => allow (Pause)', () => {
   const decision = resolveOfficeMfaGate({
     isOfficeRole: true,
     aal: 'aal1',
     factors: [verifiedFactor],
+    mfaEnabled: false,
   })
-  assertEqual(decision.action, 'challenge', 'challenge action')
-  assertTrue(decision.hasVerifiedTotp, 'has verified totp')
+  assertEqual(decision.action, 'allow', 'allow action')
+  assertTrue(!decision.mfaRequired, 'mfa not required while paused')
+  assertTrue(decision.hasVerifiedTotp, 'authenticator still saved')
 })
 
-run('4. Office role + aal2 is allowed', () => {
+run('2. mfa_enabled=true + verified factor + AAL1 => challenge', () => {
+  const decision = resolveOfficeMfaGate({
+    isOfficeRole: true,
+    aal: 'aal1',
+    factors: [verifiedFactor],
+    mfaEnabled: true,
+  })
+  assertEqual(decision.action, 'challenge', 'challenge action')
+  assertTrue(decision.mfaRequired, 'mfa required')
+})
+
+run('3. mfa_enabled=true + verified factor + AAL2 => allow', () => {
   const decision = resolveOfficeMfaGate({
     isOfficeRole: true,
     aal: 'aal2',
     factors: [verifiedFactor],
+    mfaEnabled: true,
   })
   assertEqual(decision.action, 'allow', 'allow action')
 })
 
-run('4b. Office role + aal2 with no verified factor must enroll (no bypass)', () => {
-  const decision = resolveOfficeMfaGate({
-    isOfficeRole: true,
-    aal: 'aal2',
-    factors: [],
-  })
-  assertEqual(decision.action, 'enroll', 'last-factor removal cannot leave Admin open')
-})
-
-run('5. Successful verification path requires aal2 before allow', () => {
-  const afterPassword = resolveOfficeMfaGate({
+run('4. mfa_enabled=true + no verified factor => enroll/repair', () => {
+  const empty = resolveOfficeMfaGate({
     isOfficeRole: true,
     aal: 'aal1',
-    factors: [verifiedFactor],
+    factors: [],
+    mfaEnabled: true,
   })
-  const afterVerify = resolveOfficeMfaGate({
+  const unverifiedOnly = resolveOfficeMfaGate({
     isOfficeRole: true,
-    aal: 'aal2',
-    factors: [verifiedFactor],
+    aal: 'aal1',
+    factors: [unverifiedFactor],
+    mfaEnabled: true,
   })
-  assertEqual(afterPassword.action, 'challenge', 'still blocked at aal1')
-  assertEqual(afterVerify.action, 'allow', 'allowed only at aal2')
+  assertEqual(empty.action, 'enroll', 'no factor is repair enroll')
+  assertEqual(unverifiedOnly.action, 'enroll', 'unverified is not enough')
+  assertTrue(!hasVerifiedTotpFactor([unverifiedFactor]), 'no verified totp')
+})
+
+run('5. mfa_enabled=false + no factor + AAL1 => allow', () => {
+  const decision = resolveOfficeMfaGate({
+    isOfficeRole: true,
+    aal: 'aal1',
+    factors: [],
+    mfaEnabled: false,
+  })
+  assertEqual(decision.action, 'allow', 'allow without MFA')
+  assertTrue(!decision.mfaRequired, 'mfa not required')
 })
 
 run('6. Driver remains unaffected (MFA not required by Office gate)', () => {
@@ -118,30 +120,40 @@ run('6. Driver remains unaffected (MFA not required by Office gate)', () => {
   const decision = resolveOfficeMfaGate({
     isOfficeRole: false,
     aal: 'aal1',
-    factors: [],
+    factors: [verifiedFactor],
+    mfaEnabled: true,
   })
   assertEqual(decision.action, 'allow', 'driver allowed without MFA')
   assertTrue(!decision.mfaRequired, 'mfa not required for driver')
 })
 
-run('7. Loading factors/AAL keeps Office blocked (no bypass)', () => {
+run('7. Loading factors/AAL/mfaEnabled keeps Office blocked (no bypass)', () => {
   const waitingFactors = resolveOfficeMfaGate({
     isOfficeRole: true,
     aal: 'aal1',
     factors: null,
+    mfaEnabled: false,
   })
   const waitingAal = resolveOfficeMfaGate({
     isOfficeRole: true,
     aal: null,
     factors: [verifiedFactor],
+    mfaEnabled: true,
+  })
+  const waitingFlag = resolveOfficeMfaGate({
+    isOfficeRole: true,
+    aal: 'aal1',
+    factors: [verifiedFactor],
+    mfaEnabled: null,
   })
   assertEqual(waitingFactors.action, 'loading', 'factors loading')
   assertEqual(waitingAal.action, 'loading', 'aal loading')
+  assertEqual(waitingFlag.action, 'loading', 'mfaEnabled loading')
 })
 
 run('8. Status label and verified factor listing are safe', () => {
-  assertEqual(formatOfficeMfaStatusLabel(false), 'Not configured', 'not configured')
-  assertEqual(formatOfficeMfaStatusLabel(true), 'Enabled', 'enabled')
+  assertEqual(formatOfficeMfaStatusLabel(false), 'Off', 'off')
+  assertEqual(formatOfficeMfaStatusLabel(true), 'On', 'on')
   assertEqual(
     listVerifiedTotpFactors([verifiedFactor, unverifiedFactor]).length,
     1,
@@ -150,7 +162,7 @@ run('8. Status label and verified factor listing are safe', () => {
 })
 
 run('9. Router wires RequireOfficeMfa inside RequireOfficeAccess', () => {
-  const routerSource = readFileSync(resolve('src/router/AppRouter.tsx'), 'utf8')
+  const routerSource = read('src/router/AppRouter.tsx')
   assertTrue(
     routerSource.includes("import { RequireOfficeMfa } from '@/components/auth/RequireOfficeMfa'"),
     'RequireOfficeMfa imported',
@@ -165,8 +177,19 @@ run('9. Router wires RequireOfficeMfa inside RequireOfficeAccess', () => {
   )
 })
 
-run('10. Settings Security uses Office MFA card (not Coming later)', () => {
-  const settingsSource = readFileSync(resolve('src/pages/SettingsPage.tsx'), 'utf8')
+run('10. Gate challenges existing factor and enrolls only as repair', () => {
+  const gateSource = read('src/components/auth/RequireOfficeMfa.tsx')
+  assertTrue(gateSource.includes('OfficeMfaChallengeScreen'), 'challenge remains')
+  assertTrue(gateSource.includes('OfficeMfaEnrollScreen'), 'repair enroll screen')
+  assertTrue(gateSource.includes("decision.action === 'enroll'"), 'enroll is repair-only branch')
+  assertTrue(
+    gateSource.includes('onCompleted={refresh}'),
+    'login challenge only refreshes; does not set mfa_enabled',
+  )
+})
+
+run('11. Settings Security uses Office MFA card (not Coming later)', () => {
+  const settingsSource = read('src/pages/SettingsPage.tsx')
   assertTrue(
     settingsSource.includes('OfficeMfaSettingsCard'),
     'Office MFA settings card used',
@@ -177,8 +200,8 @@ run('10. Settings Security uses Office MFA card (not Coming later)', () => {
   )
 })
 
-run('11. MFA service uses TOTP enroll + challengeAndVerify only', () => {
-  const serviceSource = readFileSync(resolve('src/services/mfaService.ts'), 'utf8')
+run('12. MFA service uses TOTP enroll + challengeAndVerify only', () => {
+  const serviceSource = read('src/services/mfaService.ts')
   assertTrue(serviceSource.includes("factorType: 'totp'"), 'totp enroll')
   assertTrue(serviceSource.includes('challengeAndVerify'), 'challengeAndVerify')
   assertTrue(serviceSource.includes('getAuthenticatorAssuranceLevel'), 'aal helper')
@@ -186,8 +209,33 @@ run('11. MFA service uses TOTP enroll + challengeAndVerify only', () => {
   assertTrue(serviceSource.includes('isMfaFactorNotFoundError'), 'stale factor safe')
   assertTrue(!serviceSource.includes("factorType: 'sms'"), 'no sms mfa')
   assertTrue(!serviceSource.includes('webauthn'), 'no webauthn')
-  // Avoid matching "Recovery codes are not provided" copy — ban SMS/recovery factor APIs.
   assertTrue(!serviceSource.includes('enroll({ factorType: \'phone\''), 'no phone enroll')
+})
+
+run('13. No localStorage / IP / user_metadata authority for MFA', () => {
+  const files = [
+    'src/lib/officeMfa.ts',
+    'src/services/mfaService.ts',
+    'src/hooks/useOfficeMfaGate.ts',
+    'src/components/auth/RequireOfficeMfa.tsx',
+    'src/components/settings/OfficeMfaSettingsCard.tsx',
+  ]
+  for (const file of files) {
+    const source = read(file)
+    assertTrue(!source.includes('localStorage.getItem'), `${file}: no localStorage.getItem`)
+    assertTrue(!source.includes('localStorage.setItem'), `${file}: no localStorage.setItem`)
+    assertTrue(!source.includes('sessionStorage.getItem'), `${file}: no sessionStorage.getItem`)
+    assertTrue(!source.includes('sessionStorage.setItem'), `${file}: no sessionStorage.setItem`)
+    assertTrue(!source.includes('user_metadata'), `${file}: no user_metadata`)
+    assertTrue(!/\buserIp\b|\bclientIp\b|\btrustedDevice\b/.test(source), `${file}: no IP/device trust`)
+  }
+})
+
+run('14. Gate hook loads server mfa_enabled RPC', () => {
+  const gateHook = read('src/hooks/useOfficeMfaGate.ts')
+  assertTrue(gateHook.includes('getOfficeMfaEnabled'), 'loads server flag')
+  assertTrue(gateHook.includes('drevora_auth_office_mfa_is_enabled') || gateHook.includes('getOfficeMfaEnabled'), 'RPC helper')
+  assertTrue(gateHook.includes('mfaEnabled'), 'passes mfaEnabled into gate')
 })
 
 console.log(`\nAll ${passed} checks passed.`)

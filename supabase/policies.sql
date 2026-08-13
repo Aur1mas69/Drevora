@@ -1287,6 +1287,35 @@ grant execute on function public.drevora_office_soft_delete_tyre_check(uuid, tex
 
 -- Office WRITE AAL2 helpers (end-user JWT sessions only).
 -- Canonical: migrations/20260808190000_office_write_require_aal2.sql
+-- Optional MFA: migrations/20260812200000_office_mfa_optional_aal2.sql
+-- Pause/Resume: migrations/20260813200000_office_mfa_pause_resume_settings.sql
+revoke all on table public.office_user_mfa_settings from public;
+revoke all on table public.office_user_mfa_settings from anon;
+revoke all on table public.office_user_mfa_settings from authenticated;
+
+alter table public.office_user_mfa_settings enable row level security;
+
+drop policy if exists office_user_mfa_settings_deny_client_access
+  on public.office_user_mfa_settings;
+create policy office_user_mfa_settings_deny_client_access
+  on public.office_user_mfa_settings
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+revoke all on function public.drevora_auth_user_has_verified_mfa_factor() from public;
+revoke all on function public.drevora_auth_user_has_verified_mfa_factor() from anon;
+revoke all on function public.drevora_auth_user_has_verified_mfa_factor() from authenticated;
+
+revoke all on function public.drevora_auth_office_mfa_is_enabled() from public;
+revoke all on function public.drevora_auth_office_mfa_is_enabled() from anon;
+grant execute on function public.drevora_auth_office_mfa_is_enabled() to authenticated;
+
+revoke all on function public.drevora_auth_set_own_office_mfa_enabled(boolean) from public;
+revoke all on function public.drevora_auth_set_own_office_mfa_enabled(boolean) from anon;
+grant execute on function public.drevora_auth_set_own_office_mfa_enabled(boolean) to authenticated;
+
 revoke all on function public.drevora_auth_session_is_aal2() from public;
 revoke all on function public.drevora_auth_session_is_aal2() from anon;
 grant execute on function public.drevora_auth_session_is_aal2() to authenticated;

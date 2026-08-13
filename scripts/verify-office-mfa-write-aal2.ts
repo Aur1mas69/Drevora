@@ -57,6 +57,10 @@ const deleteAccount = read('supabase/functions/delete-account/index.ts')
 const migration = read(
   'supabase/migrations/20260808190000_office_write_require_aal2.sql',
 )
+const optionalMfa = read(
+  'supabase/migrations/20260812200000_office_mfa_optional_aal2.sql',
+)
+const schemaSql = read('supabase/schema.sql')
 const officeMfa = read('src/lib/officeMfa.ts')
 const appRouter = read('src/router/AppRouter.tsx')
 
@@ -78,19 +82,27 @@ const OFFICE_ONLY_DIRECT_WRITES = [
   'drevora_restore_worker_document_submission',
 ] as const
 
-run('1. Shared helper rejects non-aal2 and never reads body.aal', () => {
+run('1. Shared helper never trusts body.aal and uses server mfa_enabled RPC', () => {
   assertTrue(shared.includes('MFA_REQUIRED'), 'MFA_REQUIRED code')
   assertTrue(shared.includes('getAuthenticatorAssuranceLevel'), 'uses MFA assurance API')
+  assertTrue(shared.includes('listFactors'), 'lists factors')
   assertTrue(shared.includes('readAalClaimFromAccessToken'), 'reads JWT claim')
   assertTrue(shared.includes('httpStatus: 403'), 'HTTP 403')
   assertTrue(!shared.includes('body.aal'), 'no body.aal')
   assertTrue(!shared.includes('body?.aal'), 'no body?.aal')
+  assertTrue(!shared.includes('body.mfa_enabled'), 'no body.mfa_enabled')
+  assertTrue(
+    shared.includes("userClient.rpc('drevora_auth_office_mfa_is_enabled')"),
+    'reads server-side mfa_enabled via user JWT RPC',
+  )
   assertTrue(
     shared.includes('Never trust an `aal` value from the request body') ||
       shared.includes('Never trust an aal value from the request body') ||
-      shared.includes('never from request body'),
+      shared.includes('never from request body') ||
+      shared.includes('never trusts request body'),
     'documents no body trust',
   )
+  assertTrue(shared.includes('hasVerifiedFactor'), 'still considers verified-factor presence')
 })
 
 run('2. invite-worker requires AAL2 after Office role (Edge boundary)', () => {
@@ -163,19 +175,117 @@ run('8. Every Office-only direct WRITE has AAL2 before office-role check', () =>
   }
 })
 
-run('9. Office AAL1 is rejected conceptually (require raises MFA_REQUIRED unless aal2)', () => {
+run('9. Optional MFA historical helper (20260812200000) still exists unchanged', () => {
   const helper = functionBody(
-    migration,
+    optionalMfa,
     'create or replace function public.drevora_auth_require_aal2()',
   )
   assertTrue(helper.includes('MFA_REQUIRED'), 'safe MFA_REQUIRED error')
   assertTrue(helper.includes('drevora_auth_session_is_aal2()'), 'delegates to session helper')
   const session = functionBody(
-    migration,
+    optionalMfa,
     'create or replace function public.drevora_auth_session_is_aal2()',
   )
-  assertTrue(session.includes("= 'aal2'"), 'aal1/empty fails equality')
-  assertTrue(!session.includes('service_role'), 'session helper is JWT-only')
+  assertTrue(session.includes("= 'aal2'"), 'aal2 still required when enrolled')
+  assertTrue(
+    session.includes('drevora_auth_user_has_verified_mfa_factor()'),
+    'AAL1 allowed when no verified factor',
+  )
+  const factor = functionBody(
+    optionalMfa,
+    'create or replace function public.drevora_auth_user_has_verified_mfa_factor()',
+  )
+  assertTrue(factor.includes('security definer'), 'DEFINER to read auth.mfa_factors')
+  assertTrue(factor.includes("set search_path = ''"), 'pinned empty search_path')
+  assertTrue(factor.includes('auth.mfa_factors'), 'reads factor table')
+  assertTrue(factor.includes('auth.uid()'), 'own user only')
+  assertTrue(session.includes('security definer'), 'session helper DEFINER to call factor helper')
+  assertTrue(
+    optionalMfa.includes(
+      'revoke all on function public.drevora_auth_user_has_verified_mfa_factor() from authenticated',
+    ),
+    'factor helper not granted to authenticated',
+  )
+  assertTrue(!optionalMfa.includes('p_user_id'), 'no client user id argument')
+  assertTrue(!optionalMfa.includes('mfa_enabled'), 'historical file has no pause flag')
+  assertTrue(
+    schemaSql.includes('drevora_auth_user_has_verified_mfa_factor()'),
+    'schema.sql synced',
+  )
+})
+
+run('9b. Pause/Resume: mfa_enabled is server-side; AAL2 only when enforcement is on', () => {
+  const pauseResume = read(
+    'supabase/migrations/20260813200000_office_mfa_pause_resume_settings.sql',
+  )
+  assertTrue(
+    pauseResume.includes('create table if not exists public.office_user_mfa_settings'),
+    'settings table',
+  )
+  assertTrue(!pauseResume.includes('company_id uuid'), 'not membership-scoped')
+  assertTrue(
+    !pauseResume.includes('alter table public.companies'),
+    'does not alter companies',
+  )
+  assertTrue(
+    pauseResume.includes("f.status::text = 'verified'"),
+    'backfill verified factors',
+  )
+  assertTrue(
+    pauseResume.includes("f.factor_type::text = 'totp'"),
+    'backfill TOTP only',
+  )
+  assertTrue(pauseResume.includes('on conflict (user_id) do nothing'), 'idempotent backfill')
+  assertTrue(
+    pauseResume.includes('office_user_mfa_settings_deny_client_access'),
+    'deny client table access',
+  )
+
+  const isEnabled = functionBody(
+    pauseResume,
+    'create or replace function public.drevora_auth_office_mfa_is_enabled()',
+  )
+  assertTrue(isEnabled.includes('security definer'), 'read helper DEFINER')
+  assertTrue(isEnabled.includes("set search_path = ''"), 'read helper search_path')
+  assertTrue(isEnabled.includes('auth.uid()'), 'own user only')
+  assertTrue(!pauseResume.includes('p_user_id'), 'no client user id argument')
+
+  const setOwn = functionBody(
+    pauseResume,
+    'create or replace function public.drevora_auth_set_own_office_mfa_enabled(',
+  )
+  assertTrue(setOwn.includes('security definer'), 'set-own DEFINER')
+  assertTrue(setOwn.includes("->> 'aal'"), 'Pause checks JWT aal')
+  assertTrue(setOwn.includes("<> 'aal2'"), 'Pause requires aal2')
+  assertTrue(!setOwn.includes('unenroll'), 'Pause does not unenroll')
+  assertTrue(setOwn.includes('auth.uid()'), 'set-own bound to caller')
+
+  const session = functionBody(
+    pauseResume,
+    'create or replace function public.drevora_auth_session_is_aal2()',
+  )
+  assertTrue(
+    session.includes('drevora_auth_office_mfa_is_enabled()'),
+    'session helper uses enforcement flag',
+  )
+  assertTrue(
+    session.includes('drevora_auth_user_has_verified_mfa_factor()'),
+    'enabled path still requires verified factor',
+  )
+  assertTrue(session.includes("= 'aal2'"), 'enabled path requires JWT aal2')
+
+  const schemaSession = functionBody(
+    schemaSql,
+    'create or replace function public.drevora_auth_session_is_aal2()',
+  )
+  assertTrue(
+    schemaSession.includes('drevora_auth_office_mfa_is_enabled()'),
+    'schema.sql session helper synced',
+  )
+  assertTrue(
+    schemaSql.includes('drevora_auth_set_own_office_mfa_enabled'),
+    'schema.sql set-own synced',
+  )
 })
 
 run('10. drevora_set_vehicle_tyre_layout: Worker AAL1-compatible; Office requires AAL2', () => {
@@ -233,18 +343,37 @@ run('12. No browser-controlled aal field in hardened Edge Function request bodie
   }
 })
 
-run('13. JWT claim reader treats aal1 as blocked (shared helper contract)', () => {
-  assertTrue(shared.includes("!== 'aal2'"), 'rejects non-aal2')
+run('13. JWT claim reader still rejects aal1 when MFA enforcement is on', () => {
+  const policy = read('supabase/functions/_shared/officeMfaEdgePolicy.ts')
+  assertTrue(
+    policy.includes("effectiveAal !== 'aal2'") || policy.includes("input.effectiveAal !== 'aal2'"),
+    'rejects non-aal2 when enforced',
+  )
   assertEqual(shared.includes('requireCallerAal2'), true, 'exports requireCallerAal2')
+  assertTrue(
+    shared.includes('drevora_auth_office_mfa_is_enabled'),
+    'enforcement flag comes from server RPC',
+  )
+  assertTrue(
+    shared.includes('resolveOfficeMfaEnabledLookup'),
+    'missing-RPC compatibility path is explicit',
+  )
 })
 
 run('14. Office read / MFA routing remains AAL1-compatible (client gate)', () => {
-  assertTrue(officeMfa.includes("'enroll'") || officeMfa.includes('"enroll"'), 'enroll state')
   assertTrue(
     officeMfa.includes("'challenge'") || officeMfa.includes('"challenge"'),
     'challenge state',
   )
   assertTrue(officeMfa.includes("'allow'") || officeMfa.includes('"allow"'), 'allow state')
+  assertTrue(
+    officeMfa.includes("action: 'enroll'") || officeMfa.includes('action: "enroll"'),
+    'enroll is repair-only when enforcement is on without a verified factor',
+  )
+  assertTrue(
+    officeMfa.includes('mfaEnabled') && officeMfa.includes('if (!mfaEnabled)'),
+    'paused flag allows AAL1',
+  )
   assertTrue(
     appRouter.includes('RequireOfficeMfa') || appRouter.includes('useOfficeMfaGate'),
     'router wires MFA gate',

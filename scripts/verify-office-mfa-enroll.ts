@@ -116,9 +116,11 @@ run('6. QR/secret come from enroll response fields only', () => {
 })
 
 run('7. No secret/QR/token logging in MFA enrollment path', () => {
+  const settingsCard = read('src/components/settings/OfficeMfaSettingsCard.tsx')
   for (const [name, source] of [
     ['mfaService', service],
     ['OfficeMfaEnrollScreen', enrollScreen],
+    ['OfficeMfaSettingsCard', settingsCard],
   ] as const) {
     assertTrue(!source.includes('console.log'), `${name}: no console.log`)
     assertTrue(!source.includes('console.info'), `${name}: no console.info`)
@@ -139,6 +141,35 @@ run('8. Verified factors are never unenrolled by clearUnverified', () => {
   assertTrue(
     !/unenroll\(\{\s*factorId:\s*[^}]*verified/.test(clearBody),
     'no verified unenroll path',
+  )
+})
+
+run('9. New enrollment sets mfa_enabled only after verify', () => {
+  const settingsCard = read('src/components/settings/OfficeMfaSettingsCard.tsx')
+  const verifyIdx = settingsCard.indexOf('async function handleVerifyEnrollment')
+  assertTrue(verifyIdx >= 0, 'settings verify handler')
+  const verifyBody = settingsCard.slice(
+    verifyIdx,
+    settingsCard.indexOf('async function handleEnableMfa'),
+  )
+  const totpIdx = verifyBody.indexOf('verifyTotpEnrollment')
+  const resumeIdx = verifyBody.indexOf('resumeOwnOfficeMfa')
+  assertTrue(totpIdx >= 0, 'verifies TOTP first')
+  assertTrue(resumeIdx > totpIdx, 'resume only after verify')
+  assertTrue(verifyBody.includes('shouldResume'), 'resume only when MFA was Off')
+
+  const cancelIdx = settingsCard.indexOf('async function handleCancelEnrollment')
+  const cancelBody = settingsCard.slice(
+    cancelIdx,
+    settingsCard.indexOf('async function handleVerifyEnrollment'),
+  )
+  assertTrue(cancelBody.includes('clearUnverifiedTotpFactors'), 'cancel cleans unverified')
+  assertTrue(!cancelBody.includes('resumeOwnOfficeMfa'), 'cancel does not enable MFA')
+
+  const requireGate = read('src/components/auth/RequireOfficeMfa.tsx')
+  assertTrue(
+    requireGate.includes('OfficeMfaEnrollScreen'),
+    'repair enroll screen wired',
   )
 })
 

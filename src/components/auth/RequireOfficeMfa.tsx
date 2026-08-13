@@ -4,10 +4,12 @@ import { OfficeMfaChallengeScreen } from '@/components/auth/OfficeMfaChallengeSc
 import { OfficeMfaEnrollScreen } from '@/components/auth/OfficeMfaEnrollScreen'
 import { useOfficeMfaGate } from '@/hooks/useOfficeMfaGate'
 import type { ReactNode } from 'react'
+import { resumeOwnOfficeMfa } from '@/services/mfaService'
 
 /**
- * Blocks usable Office/Admin UI until the session reaches AAL2 with a verified
- * TOTP factor. Must only wrap routes after Office membership is confirmed.
+ * Office MFA gate. Pause (mfa_enabled false) allows AAL1 even with a saved
+ * authenticator. Challenge only when enforcement is on and the session is AAL1.
+ * Enroll is repair-only: enforcement on with no verified factor.
  * Drivers never enter this gate.
  */
 export function RequireOfficeMfa({ children }: { children: ReactNode }) {
@@ -26,13 +28,24 @@ export function RequireOfficeMfa({ children }: { children: ReactNode }) {
     return <AuthSplashScreen />
   }
 
-  if (decision.action === 'enroll') {
-    return <OfficeMfaEnrollScreen onCompleted={refresh} />
-  }
-
   if (decision.action === 'challenge') {
     return (
       <OfficeMfaChallengeScreen factors={factors} onCompleted={refresh} />
+    )
+  }
+
+  if (decision.action === 'enroll') {
+    return (
+      <OfficeMfaEnrollScreen
+        onCompleted={async () => {
+          try {
+            await resumeOwnOfficeMfa()
+          } catch {
+            // Repair path: mfa_enabled is already true. Refresh either way.
+          }
+          await refresh()
+        }}
+      />
     )
   }
 

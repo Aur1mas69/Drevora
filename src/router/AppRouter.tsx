@@ -143,9 +143,12 @@ function RootToLoginRedirect() {
 }
 
 /**
- * Office shell: verified company_members office role + AAL2 MFA.
- * Never uses sessionStorage portal. Does not render Office pages while loading.
- * Drivers never enter this gate.
+ * Office shell: verified company_members office role.
+ * MFA Pause/Resume: RequireOfficeMfa allows AAL1 when mfa_enabled is false,
+ * even if a verified authenticator is still enrolled. Challenges only when
+ * enforcement is on and the session is still AAL1. Enroll is repair-only
+ * (enabled with no verified factor). Never uses sessionStorage portal.
+ * Does not render Office pages while loading. Drivers never enter this gate.
  */
 function RequireOfficeAccess({ children }: { children: ReactNode }) {
   const access = useMembershipAccessState()

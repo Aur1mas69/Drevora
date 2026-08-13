@@ -3,18 +3,28 @@ import {
   canRemoveOwnVerifiedTotpFactor,
   isAuthenticatorAssuranceLevel,
   isMfaFactorNotFoundError,
+  isOfficeMfaSettingsRpcUnavailable,
   listVerifiedTotpFactors,
+  mustPauseBeforeRemovingLastFactor,
   type AuthenticatorAssuranceLevel,
   type OfficeMfaTotpFactor,
 } from '@/lib/officeMfa'
 import { AuthServiceError } from '@/services/authService'
 
-export { isMfaFactorNotFoundError }
+export { isMfaFactorNotFoundError, isOfficeMfaSettingsRpcUnavailable }
 
 export class MfaServiceError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'MfaServiceError'
+  }
+}
+
+/** STEP 1 Pause/Resume RPCs are not in the live database yet. */
+export class MfaSettingsUnavailableError extends MfaServiceError {
+  constructor() {
+    super('Office MFA settings are not available in this environment.')
+    this.name = 'MfaSettingsUnavailableError'
   }
 }
 
@@ -290,6 +300,170 @@ export async function unenrollOwnVerifiedTotpFactor(factorId: string): Promise<{
   }
 }
 
+/**
+ * Pause MFA enforcement. Requires AAL2. Does not unenroll the TOTP factor.
+ */
+export async function pauseOwnOfficeMfa(): Promise<{ mfaEnabled: false }> {
+  if (!isSupabaseConfigured) {
+    throw new MfaServiceError(
+      'MFA is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const aal = await getAuthenticatorAssuranceLevel()
+  if (aal !== 'aal2') {
+    throw new MfaServiceError(
+      'Confirm two-factor authentication again before disabling MFA.',
+    )
+  }
+
+  await setOwnOfficeMfaEnabled(false)
+  return { mfaEnabled: false }
+}
+
+/**
+ * Resume MFA enforcement. Requires AAL2 and a verified TOTP factor.
+ * Call only AFTER a successful challenge/enrollment verify. Does not enroll.
+ */
+export async function resumeOwnOfficeMfa(): Promise<{ mfaEnabled: true }> {
+  if (!isSupabaseConfigured) {
+    throw new MfaServiceError(
+      'MFA is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const aal = await getAuthenticatorAssuranceLevel()
+  if (aal !== 'aal2') {
+    throw new MfaServiceError(
+      'Confirm two-factor authentication before enabling MFA.',
+    )
+  }
+
+  const verified = listVerifiedTotpFactors(await listTotpFactors())
+  if (verified.length === 0) {
+    throw new MfaServiceError('Set up an authenticator before enabling MFA.')
+  }
+
+  await setOwnOfficeMfaEnabled(true)
+  return { mfaEnabled: true }
+}
+
+/**
+ * Remove one of the signed-in user's own verified authenticators.
+ * Last verified factor: Pause while still AAL2, then unenroll.
+ * One of multiple: unenroll only; mfa_enabled unchanged.
+ */
+export async function removeOwnAuthenticator(factorId: string): Promise<{
+  remainingVerified: OfficeMfaTotpFactor[]
+  aal: AuthenticatorAssuranceLevel
+  mfaEnabled: boolean
+  pausedBeforeUnenroll: boolean
+}> {
+  if (!isSupabaseConfigured) {
+    throw new MfaServiceError(
+      'MFA is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const aal = await getAuthenticatorAssuranceLevel()
+  const factors = await listTotpFactors()
+  const verified = listVerifiedTotpFactors(factors)
+  const safeId = factorId.trim()
+
+  if (
+    !canRemoveOwnVerifiedTotpFactor({
+      aal,
+      factorId: safeId,
+      verifiedFactors: verified,
+    })
+  ) {
+    throw new MfaServiceError(
+      aal === 'aal2'
+        ? 'That authenticator is not available to remove.'
+        : 'Confirm two-factor authentication again before removing an authenticator.',
+    )
+  }
+
+  const pauseFirst = mustPauseBeforeRemovingLastFactor(verified.length)
+  if (pauseFirst) {
+    await pauseOwnOfficeMfa()
+  }
+
+  const { error } = await requireSupabase().auth.mfa.unenroll({
+    factorId: safeId,
+  })
+
+  if (error && !isMfaFactorNotFoundError(error)) {
+    mapFactorError(error, 'Unable to remove authenticator. Try again.')
+  }
+
+  const [nextAal, nextFactors] = await Promise.all([
+    getAuthenticatorAssuranceLevel(),
+    listTotpFactors(),
+  ])
+
+  let nextEnabled = !pauseFirst
+  try {
+    nextEnabled = await getOfficeMfaEnabled()
+  } catch (caught) {
+    if (!(caught instanceof MfaSettingsUnavailableError)) throw caught
+  }
+
+  return {
+    remainingVerified: listVerifiedTotpFactors(nextFactors),
+    aal: nextAal,
+    mfaEnabled: nextEnabled,
+    pausedBeforeUnenroll: pauseFirst,
+  }
+}
+
+async function setOwnOfficeMfaEnabled(enabled: boolean): Promise<boolean> {
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_auth_set_own_office_mfa_enabled',
+    { p_enabled: enabled },
+  )
+
+  if (error) {
+    if (isOfficeMfaSettingsRpcUnavailable(error)) {
+      throw new MfaSettingsUnavailableError()
+    }
+    const message = error.message?.trim() || ''
+    if (message.includes('MFA_REQUIRED')) {
+      throw new MfaServiceError(
+        'Confirm two-factor authentication again before changing MFA.',
+      )
+    }
+    mapFactorError(error, 'Unable to update MFA settings.')
+  }
+
+  return data === true
+}
+
+/**
+ * Server-side Office MFA enforcement flag for the signed-in user.
+ * Missing row / Pause = false. Does not trust localStorage or request body.
+ */
+export async function getOfficeMfaEnabled(): Promise<boolean> {
+  if (!isSupabaseConfigured) {
+    throw new MfaServiceError(
+      'MFA is unavailable because Supabase environment variables are not configured.',
+    )
+  }
+
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_auth_office_mfa_is_enabled',
+  )
+
+  if (error) {
+    if (isOfficeMfaSettingsRpcUnavailable(error)) {
+      throw new MfaSettingsUnavailableError()
+    }
+    mapFactorError(error, 'Unable to load MFA settings.')
+  }
+
+  return data === true
+}
+
 export function toAuthServiceCompatibleError(error: unknown): Error {
   if (error instanceof MfaServiceError || error instanceof AuthServiceError) {
     return error
@@ -303,11 +477,15 @@ export function toAuthServiceCompatibleError(error: unknown): Error {
 export const mfaService = {
   getAuthenticatorAssuranceLevel,
   listTotpFactors,
+  getOfficeMfaEnabled,
+  pauseOwnOfficeMfa,
+  resumeOwnOfficeMfa,
   clearUnverifiedTotpFactors,
   enrollTotpFactor,
   discardActiveTotpEnrollmentAttempt,
   challengeAndVerifyTotp,
   verifyTotpEnrollment,
   unenrollOwnVerifiedTotpFactor,
+  removeOwnAuthenticator,
   isMfaFactorNotFoundError,
 }

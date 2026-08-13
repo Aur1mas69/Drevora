@@ -5599,6 +5599,10 @@ create policy office_user_invitation_events_deny_client_access
 -- Office WRITE AAL2 helpers + high-impact Office WRITE RPC aal2 gates +
 -- Office WRITE RLS (direct table INSERT/UPDATE/DELETE) aal2 gates:
 --   20260808190000_office_write_require_aal2.sql
+-- Optional Office MFA (AAL2 only when a verified factor exists):
+--   20260812200000_office_mfa_optional_aal2.sql
+-- Office MFA Pause/Resume (per-user mfa_enabled; factor may remain enrolled):
+--   20260813200000_office_mfa_pause_resume_settings.sql
 --   (tyre correction/delete; driver/vehicle archive/restore; timesheet approve/reject/
 --    clean/clear overrides; tyre layout Office branch; worker core + submission docs;
 --    Office RLS on documents/companies/drivers/vehicles/timesheets/holidays/contacts/
@@ -5607,17 +5611,134 @@ create policy office_user_invitation_events_deny_client_access
 -- -----------------------------------------------------------------------------
 
 -- -----------------------------------------------------------------------------
--- Office WRITE AAL2 helpers (canonical: 20260808190000_office_write_require_aal2.sql)
+-- Office MFA Pause/Resume settings + WRITE AAL2 helpers
+-- Canonical helpers: 20260808190000_office_write_require_aal2.sql
+-- Optional MFA: 20260812200000_office_mfa_optional_aal2.sql
+-- Pause/Resume: 20260813200000_office_mfa_pause_resume_settings.sql
 -- End-user JWT sessions only — not for service_role Edge Function callers.
+-- Enforcement uses office_user_mfa_settings.mfa_enabled, not factor presence alone.
 -- -----------------------------------------------------------------------------
+create table if not exists public.office_user_mfa_settings (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  mfa_enabled boolean not null default false,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+comment on table public.office_user_mfa_settings is
+  'Per Auth user Office MFA enforcement flag (Pause/Resume). Identity-scoped; not tenant-scoped. Does not store TOTP secrets or IP.';
+
+drop trigger if exists office_user_mfa_settings_set_updated_at
+  on public.office_user_mfa_settings;
+create trigger office_user_mfa_settings_set_updated_at
+  before update on public.office_user_mfa_settings
+  for each row
+  execute function public.drevora_set_updated_at();
+
+alter table public.office_user_mfa_settings enable row level security;
+
+revoke all on table public.office_user_mfa_settings from public;
+revoke all on table public.office_user_mfa_settings from anon;
+revoke all on table public.office_user_mfa_settings from authenticated;
+
+drop policy if exists office_user_mfa_settings_deny_client_access
+  on public.office_user_mfa_settings;
+create policy office_user_mfa_settings_deny_client_access
+  on public.office_user_mfa_settings
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+create or replace function public.drevora_auth_user_has_verified_mfa_factor()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from auth.mfa_factors as f
+    where f.user_id = (select auth.uid())
+      and f.status = 'verified'
+  );
+$$;
+
+create or replace function public.drevora_auth_office_mfa_is_enabled()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (
+      select s.mfa_enabled
+      from public.office_user_mfa_settings as s
+      where s.user_id = (select auth.uid())
+    ),
+    false
+  );
+$$;
+
+create or replace function public.drevora_auth_set_own_office_mfa_enabled(
+  p_enabled boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid;
+  v_enabled boolean;
+begin
+  v_uid := (select auth.uid());
+  if v_uid is null then
+    raise exception 'UNAUTHENTICATED'
+      using errcode = '42501',
+            hint = 'Authentication required.';
+  end if;
+
+  v_enabled := coalesce(p_enabled, false);
+
+  if v_enabled is not true then
+    if coalesce((select auth.jwt() ->> 'aal'), '') <> 'aal2' then
+      raise exception 'DREVORA: MFA_REQUIRED Two-factor authentication is required.';
+    end if;
+  end if;
+
+  insert into public.office_user_mfa_settings as s (
+    user_id,
+    mfa_enabled,
+    updated_at
+  )
+  values (
+    v_uid,
+    v_enabled,
+    timezone('utc', now())
+  )
+  on conflict (user_id) do update
+    set mfa_enabled = excluded.mfa_enabled,
+        updated_at = timezone('utc', now());
+
+  return v_enabled;
+end;
+$$;
+
 create or replace function public.drevora_auth_session_is_aal2()
 returns boolean
 language sql
 stable
-security invoker
-set search_path = public
+security definer
+set search_path = ''
 as $$
-  select coalesce(auth.jwt() ->> 'aal', '') = 'aal2';
+  select
+    not public.drevora_auth_office_mfa_is_enabled()
+    or (
+      public.drevora_auth_user_has_verified_mfa_factor()
+      and coalesce((select auth.jwt() ->> 'aal'), '') = 'aal2'
+    );
 $$;
 
 create or replace function public.drevora_auth_require_aal2()
@@ -5625,7 +5746,7 @@ returns void
 language plpgsql
 stable
 security invoker
-set search_path = public
+set search_path = ''
 as $$
 begin
   if not public.drevora_auth_session_is_aal2() then
