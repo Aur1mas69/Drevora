@@ -121,10 +121,26 @@ function resetHorizontalScrollOffset() {
 }
 
 
-function statusDotClass(tone: WorkerHomeStatusTone): string {
-  if (tone === 'green') return 'worker-home-status-dot--green'
-  if (tone === 'amber') return 'worker-home-status-dot--amber'
-  return 'worker-home-status-dot--red'
+const WORKER_HOME_STATUS_ICON_SRC: Record<WorkerHomeStatusTone, string> = {
+  green: '/worker/status/status-green.png',
+  amber: '/worker/status/status-yellow.png',
+  red: '/worker/status/status-red.png',
+}
+
+const WORKER_HOME_STATUS_ICON_SIZE = 16
+
+function WorkerHomeStatusIcon({ tone }: { tone: WorkerHomeStatusTone }) {
+  return (
+    <img
+      src={WORKER_HOME_STATUS_ICON_SRC[tone]}
+      alt=""
+      width={WORKER_HOME_STATUS_ICON_SIZE}
+      height={WORKER_HOME_STATUS_ICON_SIZE}
+      draggable={false}
+      className="worker-home-status-dot mt-1 shrink-0"
+      aria-hidden
+    />
+  )
 }
 
 function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
@@ -215,7 +231,7 @@ function WorkerHomeRobotHero() {
           className="worker-home-hero__art"
         />
         <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start px-4 pt-3.5 pb-3 min-[380px]:pt-4 sm:px-5 sm:pt-5 sm:pb-4 lg:pt-6">
-          <h2 className="break-words text-lg font-bold leading-[1.2] tracking-tight text-black min-[380px]:text-xl sm:text-2xl [font-weight:800]">
+          <h2 className="worker-home-hero__title break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:800]">
             Ready for the road?
           </h2>
         </div>
@@ -657,13 +673,7 @@ function DashboardPage() {
                 to="/worker/vehicle-checks"
                 className="worker-home-status-row flex min-w-0 items-start gap-2 rounded-xl text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
               >
-                <span
-                  className={cn(
-                    'worker-home-status-dot mt-1 shrink-0',
-                    statusDotClass(vehicleCheckStatus.tone),
-                  )}
-                  aria-hidden
-                />
+                <WorkerHomeStatusIcon tone={vehicleCheckStatus.tone} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                     Vehicle Check
@@ -680,13 +690,7 @@ function DashboardPage() {
               </Link>
 
               <div className="worker-home-status-row flex min-w-0 items-start gap-2">
-                <span
-                  className={cn(
-                    'worker-home-status-dot mt-1 shrink-0',
-                    statusDotClass(timesheetStatus.tone),
-                  )}
-                  aria-hidden
-                />
+                <WorkerHomeStatusIcon tone={timesheetStatus.tone} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
                     Timesheet
