@@ -698,24 +698,14 @@ export function OfficeMfaSettingsCard() {
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
           {mfaEnabled ? (
-            <>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isLoading || isStartingEnroll || isBusy}
-                onClick={requestDisableMfa}
-              >
-                Disable MFA
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading || isStartingEnroll || isBusy}
-                onClick={() => void handleStartAddFactor()}
-              >
-                {isStartingEnroll ? 'Preparing…' : 'Add another authenticator'}
-              </Button>
-            </>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isLoading || isStartingEnroll || isBusy}
+              onClick={requestDisableMfa}
+            >
+              Disable MFA
+            </Button>
           ) : (
             <Button
               type="button"

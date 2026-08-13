@@ -213,7 +213,10 @@ run('7. Settings card: Disable=Pause, Enable=Resume, Remove is separate', () => 
   assertTrue(settingsCard.includes('removeOwnAuthenticator'), 'per-factor remove')
   assertTrue(!settingsCard.includes('disableOwnOfficeMfa'), 'does not call old disable-unenroll')
   assertTrue(settingsCard.includes('notifyOfficeMfaFactorsChanged'), 'notifies gate')
-  assertTrue(settingsCard.includes('Add another authenticator'), 'keep add another')
+  assertTrue(
+    !settingsCard.includes('Add another authenticator'),
+    'Add another authenticator is not offered in Settings',
+  )
   assertTrue(settingsCard.includes('handleEnableMfa'), 'enable entrypoint')
   assertTrue(
     settingsCard.includes('Your authenticator stays saved') ||
@@ -243,8 +246,8 @@ run('7. Settings card: Disable=Pause, Enable=Resume, Remove is separate', () => 
     addIdx,
     settingsCard.indexOf('async function handleCancelEnrollment'),
   )
-  assertTrue(addBody.includes('enrollTotpFactor'), 'Add enrolls a new factor')
-  assertTrue(!addBody.includes('pauseOwnOfficeMfa'), 'Add does not pause MFA')
+  assertTrue(addBody.includes('enrollTotpFactor'), 'no-factor Enable still enrolls')
+  assertTrue(!addBody.includes('pauseOwnOfficeMfa'), 'enrollment does not pause MFA')
 })
 
 run('8. Gate hook refreshes when MFA factors change event fires', () => {
