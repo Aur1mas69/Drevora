@@ -57,6 +57,7 @@
     "verify:worker-private-notes": "npx tsx scripts/verify-worker-private-notes.ts",
     "verify:timesheet-management-helper-private": "npx tsx scripts/verify-timesheet-management-helper-private.ts",
     "verify:security-definer-search-paths": "npx tsx scripts/verify-security-definer-search-paths.ts",
+    "verify:function-security": "npx tsx scripts/verify-function-security.ts",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "remove:demo": "node scripts/remove-demo-data.mjs"
   },

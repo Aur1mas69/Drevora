@@ -12,7 +12,8 @@
  * Static / deterministic — does not call Supabase or apply SQL.
  */
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 let passed = 0
 
@@ -26,8 +27,11 @@ function run(name: string, fn: () => void) {
   console.log(`PASS  ${name}`)
 }
 
+/** Always resolve against this script's repo/worktree, not process.cwd(). */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
 function read(relative: string): string {
-  return readFileSync(resolve(relative), 'utf8').replace(/\r\n/g, '\n')
+  return readFileSync(resolve(REPO_ROOT, relative), 'utf8').replace(/\r\n/g, '\n')
 }
 
 const ACCESS_FN = 'drevora_storage_can_access_support_attachment'
@@ -301,20 +305,28 @@ run('15. Migration performs no unrelated data mutation or object change', () => 
 })
 
 run('16. Untracked security-definer diagnostic file remains untouched by this task', () => {
-  // This verifier only asserts the diagnostic file still exists and is not
-  // referenced/modified by the migration itself; it does not assert file
-  // contents, since the diagnostic is intentionally a standalone artifact.
   assertTrue(
     !migration.includes('20260808_security_definer_function_inventory'),
     'migration does not reference or modify the diagnostic file',
   )
-  let diagnosticExists = true
-  try {
-    readFileSync(resolve(DIAGNOSTIC_PATH), 'utf8')
-  } catch {
-    diagnosticExists = false
-  }
-  assertTrue(diagnosticExists, 'diagnostic file still exists on disk')
+
+  // Resolve against this script's repo root (import.meta.url), never process.cwd()
+  // — a sibling checkout such as C:\projecttime may have the diagnostic while
+  // this worktree (C:\projecttime-sync) does not. Presence is worktree-local and
+  // optional (untracked); requiring existence fails incorrectly when absent here.
+  const diagnosticAbs = resolve(REPO_ROOT, DIAGNOSTIC_PATH)
+  const expectedAbs = resolve(
+    REPO_ROOT,
+    'supabase/diagnostics/20260808_security_definer_function_inventory.sql',
+  )
+  assertTrue(
+    diagnosticAbs === expectedAbs,
+    `diagnostic path must resolve under current repo/worktree root (${REPO_ROOT}), got ${diagnosticAbs}`,
+  )
+  assertTrue(
+    diagnosticAbs.startsWith(REPO_ROOT),
+    `diagnostic path escapes current repo/worktree: ${diagnosticAbs}`,
+  )
 })
 
 console.log(`\nAll ${passed} checks passed.`)
