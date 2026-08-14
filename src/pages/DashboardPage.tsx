@@ -36,10 +36,6 @@ import { fetchTimesheetForDriverWeek } from '@/services/timesheetsService'
 import { fetchVehicleChecks } from '@/services/vehicleChecksService'
 import { fetchVehicles, isTrailerFleetAsset, type Vehicle } from '@/services/vehiclesService'
 import defaultVehicleIcon from '@/assets/worker-dashboard/default-vehicle.png'
-import timesheetsIcon from '@/assets/worker-dashboard/timesheets.png'
-import holidayIcon from '@/assets/worker-dashboard/holiday.png'
-import vehiclesIcon from '@/assets/worker-dashboard/vehicles.png'
-import documentsIcon from '@/assets/worker-dashboard/documents.png'
 import morningGreetingIcon from '@/assets/worker-greetings/morning.png'
 import afternoonGreetingIcon from '@/assets/worker-greetings/afternoon.png'
 import eveningGreetingIcon from '@/assets/worker-greetings/evening.png'
@@ -53,11 +49,15 @@ const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-[53px] shrink-0 object-cont
 /** Quick Actions — one shared 68px slot for all four cards. */
 const WORKER_HOME_QUICK_ACTION_ICON_CLASS = 'size-[68px] shrink-0 object-contain'
 
+/** Quick Actions icons from landing/public/icons/sliced, served at /icons/sliced. */
+const SLICED_ICON = (file: string) =>
+  `${import.meta.env.BASE_URL}icons/sliced/${file}?v=sliced`
+
 const WORKER_HOME_QUICK_ACTION_ICONS: Record<string, string> = {
-  timesheets: timesheetsIcon,
-  holidays: holidayIcon,
-  vehicles: vehiclesIcon,
-  documents: documentsIcon,
+  timesheets: SLICED_ICON('timesheets.png'),
+  holidays: SLICED_ICON('holidays.png'),
+  vehicles: SLICED_ICON('vehicles.png'),
+  documents: SLICED_ICON('documents.png'),
 }
 
 const WORKER_HOME_QUICK_ACTION_LABELS: Record<string, string> = {
@@ -83,6 +83,7 @@ function WorkerHomeDefaultVehicleIcon({ src }: { src: string }) {
 function WorkerHomeQuickActionIcon({ src }: { src: string }) {
   return (
     <img
+      key={src}
       src={src}
       alt=""
       width={68}

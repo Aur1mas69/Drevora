@@ -21,13 +21,8 @@ import {
 } from '@/services/vehiclesService'
 import {
   ChevronRight,
-  Disc3,
-  FileExclamationPoint,
-  Fuel,
-  ListChecks,
   Loader2,
   X,
-  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -37,13 +32,16 @@ const VEHICLES_LOAD_FALLBACK = 'Unable to load vehicles.'
 const VEHICLES_RECONNECT_RETRY_MS = 2500
 const VEHICLES_RECONNECT_MAX_ATTEMPTS = 4
 
-/** Prominent Lucide size in the Dashboard Quick Action icon well (PNG slot is 68px). */
-const VEHICLE_QUICK_ACTION_ICON_CLASS = 'size-[52px] shrink-0'
+/** Same 68px well as Worker Home Quick Actions. */
+const VEHICLE_QUICK_ACTION_ICON_CLASS = 'size-[68px] shrink-0 object-contain'
+
+const SLICED_ICON = (file: string) =>
+  `${import.meta.env.BASE_URL}icons/sliced/${file}?v=sliced`
 
 function VehicleActionCard({
   title,
   description,
-  icon: Icon,
+  iconSrc,
   to,
   disabled,
   accentIndex = 0,
@@ -52,7 +50,7 @@ function VehicleActionCard({
 }: {
   title: string
   description: string
-  icon: LucideIcon
+  iconSrc: string
   to?: string
   disabled?: boolean
   accentIndex?: number
@@ -73,10 +71,13 @@ function VehicleActionCard({
   const body = (
     <>
       <div className="worker-home-icon-well shrink-0">
-        <Icon
+        <img
+          src={iconSrc}
+          alt=""
+          width={68}
+          height={68}
+          draggable={false}
           className={VEHICLE_QUICK_ACTION_ICON_CLASS}
-          strokeWidth={1.6}
-          aria-hidden
         />
       </div>
       <div className="min-w-0 flex-1 pr-5">
@@ -650,39 +651,53 @@ export default function WorkerVehiclesPage() {
           <Link
             to={vehicleHref('/worker/vehicle-checks', selectedVehicleId)}
             className={cn(
-              'worker-home-cta w-full text-white',
+              'worker-home-cta w-full !items-stretch overflow-hidden py-0 text-white',
               isDark ? 'worker-cta-gradient' : 'worker-btn-primary',
             )}
           >
-            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <ListChecks className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
-                <span className="truncate">Start Vehicle Check</span>
-              </span>
-              <span className="pl-7 text-left text-xs font-normal text-white/85">
+            <span className="-ml-4 flex w-[5.25rem] shrink-0 self-stretch" aria-hidden>
+              <img
+                src={SLICED_ICON('vehicle-checks.png')}
+                alt=""
+                width={76}
+                height={76}
+                draggable={false}
+                className="h-full w-full object-contain"
+              />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 py-2.5">
+              <span className="truncate">Start Vehicle Check</span>
+              <span className="text-left text-xs font-normal text-white/85">
                 Walkaround check for the selected vehicle.
               </span>
             </span>
-            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
+            <ChevronRight className="size-5 shrink-0 self-center opacity-90" aria-hidden />
           </Link>
         ) : (
           <div
             className={cn(
-              'worker-home-cta w-full cursor-not-allowed text-white opacity-60',
+              'worker-home-cta w-full cursor-not-allowed !items-stretch overflow-hidden py-0 text-white opacity-60',
               isDark ? 'worker-cta-gradient' : 'worker-btn-primary',
             )}
             aria-disabled="true"
           >
-            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <ListChecks className="size-5 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
-                <span className="truncate">Start Vehicle Check</span>
-              </span>
-              <span className="pl-7 text-left text-xs font-normal text-white/85">
+            <span className="-ml-4 flex w-[5.25rem] shrink-0 self-stretch" aria-hidden>
+              <img
+                src={SLICED_ICON('vehicle-checks.png')}
+                alt=""
+                width={76}
+                height={76}
+                draggable={false}
+                className="h-full w-full object-contain"
+              />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 py-2.5">
+              <span className="truncate">Start Vehicle Check</span>
+              <span className="text-left text-xs font-normal text-white/85">
                 Walkaround check for the selected vehicle.
               </span>
             </span>
-            <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
+            <ChevronRight className="size-5 shrink-0 self-center opacity-90" aria-hidden />
           </div>
         )}
 
@@ -690,7 +705,7 @@ export default function WorkerVehiclesPage() {
           <VehicleActionCard
             title="Start Tyre Check"
             description="Tyre inspection workflow."
-            icon={Disc3}
+            iconSrc={SLICED_ICON('tyre-checks.png')}
             accentIndex={0}
             isDark={isDark}
             disabled={!selectedVehicle}
@@ -699,7 +714,7 @@ export default function WorkerVehiclesPage() {
           <VehicleActionCard
             title="Add Consumable"
             description="Record fuel, AdBlue or other consumables."
-            icon={Fuel}
+            iconSrc={SLICED_ICON('consumables.png')}
             accentIndex={1}
             isDark={isDark}
             disabled={!selectedVehicle}
@@ -708,7 +723,7 @@ export default function WorkerVehiclesPage() {
           <VehicleActionCard
             title="Create Driver Report"
             description="Report a defect or operational issue."
-            icon={FileExclamationPoint}
+            iconSrc={SLICED_ICON('driver-reports.png')}
             accentIndex={2}
             isDark={isDark}
             disabled={!selectedVehicle}
