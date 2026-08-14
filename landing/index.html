@@ -517,74 +517,159 @@
             </div>
         </section>
 
-        <!-- Benefits Section -->
+        <!-- Connected Workflow (Benefits) -->
 
         <section
             class="benefits-section w-full px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-lowest border-t border-outline-variant/30"
             id="benefits">
-            <div class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                <div class="lg:col-span-5 flex flex-col items-start space-y-6 lg:sticky lg:top-28">
-                    <span class="font-label-caps text-label-caps text-primary tracking-widest uppercase block">Why
-                        Choose Drevora (Benefits)</span>
+            <div class="workflow-section max-w-container-max mx-auto">
+                <div class="workflow-copy">
+                    <span class="font-label-caps text-label-caps text-primary tracking-widest uppercase block">Built for real operations</span>
                     <h2 class="benefits-section__heading font-headline-md text-headline-md text-on-surface leading-tight">
-                        Everything your transport business needs.
+                        From the road to the office.<br>Everything connected.
                     </h2>
-                    <p class="benefits-section__description font-body-lg text-body-md text-on-surface-variant max-w-md">
-                        DREVORA replaces paperwork, spreadsheets and disconnected tools with one secure platform for managing Workers, vehicles and daily operations.
+                    <p class="benefits-section__description font-body-lg text-body-md text-on-surface-variant">
+                        Workers capture daily operations on mobile. DREVORA brings that information into one connected workspace, giving your office a clear view of what is happening across the operation.
                     </p>
-                    <div class="pt-2">
-                        <a href="#pricing"
-                            class="inline-flex items-center justify-center font-label-bold text-label-bold px-6 py-3 bg-primary text-on-primary rounded-xl shadow-level-1 hover:bg-primary-container transition-all">
-                            Start Your Free Trial
-                        </a>
-                    </div>
+                    <a href="#pricing"
+                        class="inline-flex items-center justify-center font-label-bold text-label-bold px-6 py-3 bg-primary text-on-primary rounded-xl shadow-level-1 hover:bg-primary-container transition-all">
+                        Start Your Free Trial
+                    </a>
+                    <p class="workflow-copy__note">One platform for your workforce, fleet and daily operations.</p>
                 </div>
-                <div class="benefits-cards lg:col-span-7 space-y-4">
-                    <article class="benefit-card">
-                        <div class="benefit-card__icon" aria-hidden="true">
-                            <span class="material-symbols-outlined">schedule</span>
-                        </div>
-                        <div>
-                            <h3 class="benefit-card__title">Digital Timesheets</h3>
-                            <p class="benefit-card__body">Workers submit timesheets from their phone. Managers approve them in seconds.</p>
-                        </div>
-                    </article>
-                    <article class="benefit-card">
-                        <div class="benefit-card__icon" aria-hidden="true">
-                            <span class="material-symbols-outlined">fact_check</span>
-                        </div>
-                        <div>
-                            <h3 class="benefit-card__title">Vehicle Checks</h3>
-                            <p class="benefit-card__body">Daily inspections with photos, signatures and instant defect reporting.</p>
-                        </div>
-                    </article>
-                    <article class="benefit-card">
-                        <div class="benefit-card__icon" aria-hidden="true">
-                            <span class="material-symbols-outlined">badge</span>
-                        </div>
-                        <div>
-                            <h3 class="benefit-card__title">Driver Documents</h3>
-                            <p class="benefit-card__body">Track Driving Licence, CPC, Tachograph and Medical expiry dates automatically.</p>
-                        </div>
-                    </article>
-                    <article class="benefit-card">
-                        <div class="benefit-card__icon" aria-hidden="true">
-                            <span class="material-symbols-outlined">beach_access</span>
-                        </div>
-                        <div>
-                            <h3 class="benefit-card__title">Holidays &amp; Leave</h3>
-                            <p class="benefit-card__body">Workers request leave while managers approve requests in one click.</p>
-                        </div>
-                    </article>
-                    <article class="benefit-card">
-                        <div class="benefit-card__icon" aria-hidden="true">
-                            <span class="material-symbols-outlined">dashboard</span>
-                        </div>
-                        <div>
-                            <h3 class="benefit-card__title">Fleet Overview</h3>
-                            <p class="benefit-card__body">See vehicles, Workers, reports and compliance from one live dashboard.</p>
-                        </div>
-                    </article>
+
+                <div class="workflow-visual" aria-label="How DREVORA connects workers, office and fleet">
+                    <div class="workflow-diagram">
+                        <svg class="workflow-connectors" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                            <path class="workflow-connectors__line workflow-connectors__line--worker" d="M50 24 C 34 28, 20 38, 17 48" fill="none"></path>
+                            <path class="workflow-connectors__line workflow-connectors__line--office" d="M50 24 C 50 32, 50 40, 50 48" fill="none"></path>
+                            <path class="workflow-connectors__line workflow-connectors__line--fleet" d="M50 24 C 66 28, 80 38, 83 48" fill="none"></path>
+                            <path class="workflow-connectors__line workflow-connectors__line--out" d="M50 74 C 50 80, 50 84, 50 88" fill="none"></path>
+                            <circle class="workflow-connectors__dot" cx="50" cy="24" r="1.35"></circle>
+                            <circle class="workflow-connectors__dot" cx="17" cy="48" r="1.15"></circle>
+                            <circle class="workflow-connectors__dot" cx="50" cy="48" r="1.15"></circle>
+                            <circle class="workflow-connectors__dot" cx="83" cy="48" r="1.15"></circle>
+                            <circle class="workflow-connectors__dot" cx="50" cy="88" r="1.15"></circle>
+                            <circle class="workflow-connectors__pulse workflow-connectors__pulse--worker" r="0.85"></circle>
+                            <circle class="workflow-connectors__pulse workflow-connectors__pulse--office" r="0.85"></circle>
+                            <circle class="workflow-connectors__pulse workflow-connectors__pulse--fleet" r="0.85"></circle>
+                        </svg>
+
+                        <article class="workflow-node workflow-node--worker">
+                            <div class="workflow-node__head">
+                                <span class="workflow-node__icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">smartphone</span>
+                                </span>
+                                <h3 class="workflow-node__title">Worker App</h3>
+                            </div>
+                            <ul class="workflow-node__list">
+                                <li>Vehicle Checks</li>
+                                <li>Timesheets</li>
+                                <li>Documents</li>
+                                <li>Reports</li>
+                            </ul>
+                        </article>
+
+                        <article class="workflow-node workflow-node--office">
+                            <div class="workflow-node__head">
+                                <span class="workflow-node__icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">desktop_windows</span>
+                                </span>
+                                <h3 class="workflow-node__title">Office</h3>
+                            </div>
+                            <ul class="workflow-node__list">
+                                <li>Review</li>
+                                <li>Approve</li>
+                                <li>Resolve</li>
+                                <li>Monitor</li>
+                            </ul>
+                        </article>
+
+                        <article class="workflow-node workflow-node--core">
+                            <img class="workflow-node__mark" src="./assets/drevora-d-mark.png" alt="" width="72" height="72">
+                            <p class="workflow-node__brand">DREVORA</p>
+                            <p class="workflow-node__role">Operations Core</p>
+                        </article>
+
+                        <article class="workflow-node workflow-node--fleet">
+                            <div class="workflow-node__head">
+                                <span class="workflow-node__icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">local_shipping</span>
+                                </span>
+                                <h3 class="workflow-node__title">Fleet</h3>
+                            </div>
+                            <ul class="workflow-node__list">
+                                <li>Vehicles</li>
+                                <li>Trailers</li>
+                                <li>Compliance</li>
+                                <li>Maintenance</li>
+                            </ul>
+                        </article>
+
+                        <article class="workflow-node workflow-node--output">
+                            <p class="workflow-node__output-title">One connected operation</p>
+                            <p class="workflow-node__output-path">Road → Office → Action → Record</p>
+                        </article>
+                    </div>
+
+                    <ol class="workflow-stack">
+                        <li class="workflow-node workflow-node--worker">
+                            <div class="workflow-node__head">
+                                <span class="workflow-node__icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">smartphone</span>
+                                </span>
+                                <h3 class="workflow-node__title">Worker App</h3>
+                            </div>
+                            <ul class="workflow-node__list">
+                                <li>Vehicle Checks</li>
+                                <li>Timesheets</li>
+                                <li>Documents</li>
+                                <li>Reports</li>
+                            </ul>
+                        </li>
+                        <li class="workflow-stack__link" aria-hidden="true"></li>
+                        <li class="workflow-node workflow-node--core">
+                            <img class="workflow-node__mark" src="./assets/drevora-d-mark.png" alt="" width="64" height="64">
+                            <p class="workflow-node__brand">DREVORA</p>
+                            <p class="workflow-node__role">Operations Core</p>
+                        </li>
+                        <li class="workflow-stack__link" aria-hidden="true"></li>
+                        <li class="workflow-stack__pair">
+                            <article class="workflow-node workflow-node--office">
+                                <div class="workflow-node__head">
+                                    <span class="workflow-node__icon" aria-hidden="true">
+                                        <span class="material-symbols-outlined">desktop_windows</span>
+                                    </span>
+                                    <h3 class="workflow-node__title">Office</h3>
+                                </div>
+                                <ul class="workflow-node__list">
+                                    <li>Review</li>
+                                    <li>Approve</li>
+                                    <li>Resolve</li>
+                                    <li>Monitor</li>
+                                </ul>
+                            </article>
+                            <article class="workflow-node workflow-node--fleet">
+                                <div class="workflow-node__head">
+                                    <span class="workflow-node__icon" aria-hidden="true">
+                                        <span class="material-symbols-outlined">local_shipping</span>
+                                    </span>
+                                    <h3 class="workflow-node__title">Fleet</h3>
+                                </div>
+                                <ul class="workflow-node__list">
+                                    <li>Vehicles</li>
+                                    <li>Trailers</li>
+                                    <li>Compliance</li>
+                                    <li>Maintenance</li>
+                                </ul>
+                            </article>
+                        </li>
+                        <li class="workflow-stack__link" aria-hidden="true"></li>
+                        <li class="workflow-node workflow-node--output">
+                            <p class="workflow-node__output-title">One connected operation</p>
+                            <p class="workflow-node__output-path">Road → Office → Action → Record</p>
+                        </li>
+                    </ol>
                 </div>
             </div>
         </section>
