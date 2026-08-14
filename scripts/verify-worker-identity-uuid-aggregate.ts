@@ -3,17 +3,20 @@
  * Run: npm run verify:worker-identity-uuid-aggregate
  *
  * Proves:
- * - hotfix + schema do not pass UUID to min()/max()
+ * - foundation historically used min(d.id) on UUID driver IDs
+ * - hotfix replaces drevora_auth_user_driver_id with UUID-safe array_agg
+ * - hotfix does not pass UUID to min()/max()
  * - exact-one Auth match returns that UUID
  * - zero or multiple matches return null (no silent pick)
  * - Auth match remains preferred over email fallback
+ *
+ * Canonical SQL sources: foundation + hotfix migrations only.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const HOTFIX =
   'supabase/migrations/20260806210000_hotfix_auth_user_driver_id_uuid_aggregate.sql'
-const SCHEMA = 'supabase/schema.sql'
 const FOUNDATION =
   'supabase/migrations/20260806200000_worker_identity_foundation.sql'
 
@@ -79,12 +82,9 @@ function extractAuthUserDriverIdBody(sql: string): string {
 }
 
 const hotfix = read(HOTFIX)
-const schema = read(SCHEMA)
 const foundation = read(FOUNDATION)
 const hotfixBody = extractAuthUserDriverIdBody(hotfix)
-const schemaBody = extractAuthUserDriverIdBody(schema)
 const hotfixSql = stripSqlComments(hotfixBody)
-const schemaSql = stripSqlComments(schemaBody)
 
 run('1. Hotfix migration exists and replaces drevora_auth_user_driver_id', () => {
   assertTrue(
@@ -94,15 +94,11 @@ run('1. Hotfix migration exists and replaces drevora_auth_user_driver_id', () =>
   assertTrue(hotfix.includes('array_agg'), 'documents UUID-safe aggregate')
 })
 
-run('2. Hotfix and schema do not pass UUID to min()/max()', () => {
+run('2. Hotfix does not pass UUID to min()/max()', () => {
   assertTrue(!/\bmin\s*\(\s*d\.id\s*\)/.test(hotfixSql), 'hotfix no min(d.id)')
   assertTrue(!/\bmax\s*\(\s*d\.id\s*\)/.test(hotfixSql), 'hotfix no max(d.id)')
   assertTrue(!/\bmin\s*\(/.test(hotfixSql), 'hotfix has no min(…)')
   assertTrue(!/\bmax\s*\(/.test(hotfixSql), 'hotfix has no max(…)')
-  assertTrue(!/\bmin\s*\(\s*d\.id\s*\)/.test(schemaSql), 'schema no min(d.id)')
-  assertTrue(!/\bmax\s*\(\s*d\.id\s*\)/.test(schemaSql), 'schema no max(d.id)')
-  assertTrue(!/\bmin\s*\(/.test(schemaSql), 'schema body has no min(…)')
-  assertTrue(!/\bmax\s*\(/.test(schemaSql), 'schema body has no max(…)')
 })
 
 run('3. Hotfix uses count + array_agg UUID-safe exact-one pattern', () => {
@@ -111,10 +107,6 @@ run('3. Hotfix uses count + array_agg UUID-safe exact-one pattern', () => {
     'array_agg ordered pick',
   )
   assertTrue(hotfixSql.includes('count(*)::integer'), 'count present')
-  assertTrue(
-    schemaSql.includes('(array_agg(d.id order by d.id))[1]'),
-    'schema synced array_agg',
-  )
 })
 
 run('4. Exact-one Auth match returns that UUID', () => {

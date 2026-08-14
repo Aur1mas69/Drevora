@@ -18,8 +18,8 @@ import {
 } from '../src/lib/workerAccessEmail.ts'
 
 const MIGRATION = 'supabase/migrations/20260806240000_worker_access_email.sql'
-const SCHEMA = 'supabase/schema.sql'
-const POLICIES = 'supabase/policies.sql'
+const HARDENING =
+  'supabase/migrations/20260808200000_harden_server_only_audit_tables.sql'
 const EDGE = 'supabase/functions/send-worker-access-email/index.ts'
 const README = 'supabase/functions/send-worker-access-email/README.md'
 
@@ -46,8 +46,7 @@ function read(path: string): string {
 }
 
 const migration = read(MIGRATION)
-const schema = read(SCHEMA)
-const policies = read(POLICIES)
+const hardening = read(HARDENING)
 const edge = read(EDGE)
 const readme = read(README)
 
@@ -103,27 +102,59 @@ run('4. Private dispatch table + no browser access', () => {
     'statuses',
   )
   assertTrue(
-    migration.includes('revoke all on table public.worker_access_email_dispatches from authenticated'),
-    'revoke authenticated',
-  )
-  assertTrue(
-    migration.includes('grant all on table public.worker_access_email_dispatches to service_role'),
-    'service_role only',
-  )
-  assertTrue(
-    !migration.includes(
-      'grant select on table public.worker_access_email_dispatches to authenticated',
+    hardening.includes(
+      'alter table public.worker_access_email_dispatches enable row level security',
     ),
+    'final RLS enabled',
+  )
+  assertTrue(
+    hardening.includes(
+      'revoke all on table public.worker_access_email_dispatches from public',
+    ),
+    'final revoke public',
+  )
+  assertTrue(
+    hardening.includes(
+      'revoke all on table public.worker_access_email_dispatches from anon',
+    ),
+    'final revoke anon',
+  )
+  assertTrue(
+    hardening.includes(
+      'revoke all on table public.worker_access_email_dispatches from authenticated',
+    ),
+    'final revoke authenticated',
+  )
+  assertTrue(
+    hardening.includes(
+      'grant all on table public.worker_access_email_dispatches to service_role',
+    ),
+    'final service_role table access',
+  )
+  assertTrue(
+    !hardening.includes(
+      'grant select on table public.worker_access_email_dispatches to authenticated',
+    ) &&
+      !migration.includes(
+        'grant select on table public.worker_access_email_dispatches to authenticated',
+      ),
     'no authenticated select',
   )
-  assertTrue(
-    policies.includes('revoke all on table public.worker_access_email_dispatches from authenticated'),
-    'policies revoke',
+  const denyStart = hardening.indexOf(
+    'create policy worker_access_email_dispatches_deny_client_access',
   )
+  assertTrue(denyStart >= 0, 'deny-client policy created')
+  const denySlice = hardening.slice(denyStart, denyStart + 450)
   assertTrue(
-    schema.includes('worker_access_email_dispatches'),
-    'schema synced table',
+    denySlice.includes('on public.worker_access_email_dispatches'),
+    'deny policy on dispatch table',
   )
+  assertTrue(denySlice.includes('for all'), 'deny for all')
+  assertTrue(denySlice.includes('to anon, authenticated'), 'deny client roles')
+  assertTrue(denySlice.includes('using (false)'), 'using false')
+  assertTrue(denySlice.includes('with check (false)'), 'with check false')
+  assertTrue(!denySlice.includes('using (true)'), 'not permissive true')
+  assertTrue(!denySlice.includes('with check (true)'), 'not permissive check true')
 })
 
 run('5. Begin uses advisory lock; concurrent pending blocked; stale pending expires', () => {
@@ -224,7 +255,7 @@ run('8. Edge order begin → send → finalize/fail; Auth email target preserved
   assertTrue(edge.includes('resetPasswordForEmail'), 'resetPasswordForEmail')
 })
 
-run('9. Structured errors + schema/policies grants', () => {
+run('9. Structured errors + service_role-only RPC grants', () => {
   for (const code of [
     'WORKER_NOT_FOUND',
     'WORKER_ARCHIVED',
@@ -243,22 +274,52 @@ run('9. Structured errors + schema/policies grants', () => {
     assertTrue(edge.includes(code), `edge ${code}`)
   }
   assertTrue(
-    schema.includes('drevora_begin_worker_access_email_send') &&
-      schema.includes('drevora_finalize_worker_access_email_send') &&
-      schema.includes('drevora_fail_worker_access_email_send'),
-    'schema rpcs',
+    migration.includes(
+      'create or replace function public.drevora_begin_worker_access_email_send(',
+    ) &&
+      migration.includes(
+        'create or replace function public.drevora_finalize_worker_access_email_send(',
+      ) &&
+      migration.includes(
+        'create or replace function public.drevora_fail_worker_access_email_send(',
+      ),
+    'begin/finalize/fail RPCs defined',
+  )
+  const beginGrant =
+    'grant execute on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) to service_role'
+  const beginAuthGrant =
+    'grant execute on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) to authenticated'
+  assertTrue(hardening.includes(beginGrant), 'final begin service_role execute')
+  assertTrue(!hardening.includes(beginAuthGrant), 'final no authenticated begin')
+  assertTrue(
+    hardening.includes(
+      'revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from public',
+    ) &&
+      hardening.includes(
+        'revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from anon',
+      ) &&
+      hardening.includes(
+        'revoke all on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) from authenticated',
+      ),
+    'final begin revoke public/anon/authenticated',
   )
   assertTrue(
-    policies.includes(
-      'grant execute on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) to service_role',
-    ),
-    'begin grant',
+    hardening.includes(
+      'revoke all on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) from public',
+    ) &&
+      hardening.includes(
+        'grant execute on function public.drevora_finalize_worker_access_email_send(uuid, uuid, uuid, text, text) to service_role',
+      ),
+    'final finalize service_role only',
   )
   assertTrue(
-    !policies.includes(
-      'grant execute on function public.drevora_begin_worker_access_email_send(uuid, uuid, uuid, integer, integer) to authenticated',
-    ),
-    'no authenticated begin',
+    hardening.includes(
+      'revoke all on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) from public',
+    ) &&
+      hardening.includes(
+        'grant execute on function public.drevora_fail_worker_access_email_send(uuid, uuid, text) to service_role',
+      ),
+    'final fail service_role only',
   )
 })
 

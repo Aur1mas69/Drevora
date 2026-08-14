@@ -16,8 +16,6 @@ import {
 
 const MIGRATION =
   'supabase/migrations/20260806230000_worker_identity_events_list_rpc.sql'
-const SCHEMA = 'supabase/schema.sql'
-const POLICIES = 'supabase/policies.sql'
 const SERVICE = 'src/services/workerIdentityEventsService.ts'
 const COMPONENT = 'src/components/workers/WorkerIdentityAccessHistory.tsx'
 const DETAILS = 'src/pages/DriverDetailsPage.tsx'
@@ -45,16 +43,16 @@ function read(path: string): string {
 }
 
 const migration = read(MIGRATION)
-const schema = read(SCHEMA)
-const policies = read(POLICIES)
 const service = read(SERVICE)
 const component = read(COMPONENT)
 const details = read(DETAILS)
 
 run('1. Migration RPC scopes by Office + company membership', () => {
   assertTrue(
-    migration.includes('create or replace function public.drevora_list_worker_identity_events'),
-    'rpc exists',
+    migration.includes(
+      'create or replace function public.drevora_list_worker_identity_events(\n  p_driver_id uuid\n)',
+    ),
+    'rpc exists with p_driver_id uuid signature',
   )
   assertTrue(
     migration.includes('from public.company_members cm'),
@@ -105,11 +103,22 @@ run('2. RPC returns only safe fields and never raw JSON/auth IDs', () => {
     'extracts emails server-side only',
   )
   assertTrue(
-    schema.includes('drevora_list_worker_identity_events') &&
-      policies.includes(
-        'grant execute on function public.drevora_list_worker_identity_events(uuid) to authenticated',
-      ),
-    'schema + policies synced',
+    migration.includes(
+      'grant execute on function public.drevora_list_worker_identity_events(uuid) to authenticated',
+    ),
+    'authenticated execute granted',
+  )
+  assertTrue(
+    migration.includes(
+      'revoke all on function public.drevora_list_worker_identity_events(uuid) from public',
+    ),
+    'public execute revoked',
+  )
+  assertTrue(
+    migration.includes(
+      'revoke all on function public.drevora_list_worker_identity_events(uuid) from anon',
+    ),
+    'anon execute revoked',
   )
 })
 

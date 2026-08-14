@@ -17,8 +17,6 @@ import {
 
 const MIGRATION =
   'supabase/migrations/20260806220000_worker_login_email_change.sql'
-const SCHEMA = 'supabase/schema.sql'
-const POLICIES = 'supabase/policies.sql'
 const EDGE = 'supabase/functions/change-worker-login-email/index.ts'
 const README = 'supabase/functions/change-worker-login-email/README.md'
 
@@ -45,8 +43,6 @@ function read(path: string): string {
 }
 
 const migration = read(MIGRATION)
-const schema = read(SCHEMA)
-const policies = read(POLICIES)
 const edge = read(EDGE)
 const readme = read(README)
 
@@ -128,23 +124,20 @@ run('5. Migration blocks direct linked email edits', () => {
     'error code',
   )
   assertTrue(
-    migration.includes('drevora_drivers_login_email_guard') &&
-      migration.includes('before update of email'),
-    'email guard trigger',
+    migration.includes(
+      'create or replace function public.drevora_drivers_login_email_guard()',
+    ),
+    'guard function defined',
+  )
+  assertTrue(
+    migration.includes('create trigger drivers_login_email_guard') &&
+      migration.includes('before update of email') &&
+      migration.includes('execute function public.drevora_drivers_login_email_guard()'),
+    'email guard trigger attached to drivers.email',
   )
   assertTrue(
     migration.includes("set_config('drevora.allow_worker_login_email_change', 'on', true)"),
     'privileged allow flag',
-  )
-  assertTrue(
-    schema.includes('drevora_drivers_login_email_guard'),
-    'schema synced guard',
-  )
-  assertTrue(
-    policies.includes('WORKER_LOGIN_EMAIL') ||
-      policies.includes('drivers_login_email_guard') ||
-      policies.includes('allow_worker_login_email_change'),
-    'policies document protection',
   )
 })
 
@@ -159,8 +152,9 @@ run('6. Unchanged email must not fail (guard compares normalised emails)', () =>
 
 run('7. Finalize RPC keeps same auth_user_id and writes login_email_changed', () => {
   assertTrue(
-    migration.includes('login_email_changed') &&
-      migration.includes('drevora_finalize_worker_login_email_change'),
+    migration.includes(
+      'create or replace function public.drevora_finalize_worker_login_email_change(',
+    ) && migration.includes('login_email_changed'),
     'rpc + event type',
   )
   assertTrue(
@@ -169,8 +163,34 @@ run('7. Finalize RPC keeps same auth_user_id and writes login_email_changed', ()
     'rejects rebind',
   )
   assertTrue(
-    schema.includes("'login_email_changed'"),
-    'schema event type',
+    migration.includes("'Admin'") &&
+      migration.includes("'Transport Manager'") &&
+      migration.includes("raise exception 'FORBIDDEN'"),
+    'office-role authorization required',
+  )
+  assertTrue(
+    migration.includes(
+      'revoke all on function public.drevora_finalize_worker_login_email_change(uuid, uuid, uuid, text, text, text) from public',
+    ),
+    'public execute revoked',
+  )
+  assertTrue(
+    migration.includes(
+      'revoke all on function public.drevora_finalize_worker_login_email_change(uuid, uuid, uuid, text, text, text) from anon',
+    ),
+    'anon execute revoked',
+  )
+  assertTrue(
+    migration.includes(
+      'revoke all on function public.drevora_finalize_worker_login_email_change(uuid, uuid, uuid, text, text, text) from authenticated',
+    ),
+    'authenticated execute revoked',
+  )
+  assertTrue(
+    migration.includes(
+      'grant execute on function public.drevora_finalize_worker_login_email_change(uuid, uuid, uuid, text, text, text) to service_role',
+    ),
+    'service_role execute only',
   )
 })
 
