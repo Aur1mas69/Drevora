@@ -423,6 +423,16 @@ footer .footer-logo {
   object-fit: contain !important;
 }
 
+.footer-ico-badge {
+  display: block;
+  width: 164px;
+  max-width: 100%;
+  height: auto;
+  margin-top: 0.25rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .site-footer {
   background-color: #f5f6f8;
   border-top: 1px solid #e2e8f0;
@@ -511,6 +521,10 @@ footer .footer-logo {
   footer .footer-logo {
     width: 192px !important;
     max-width: 100% !important;
+  }
+
+  .footer-ico-badge {
+    width: 136px;
   }
 }
 
