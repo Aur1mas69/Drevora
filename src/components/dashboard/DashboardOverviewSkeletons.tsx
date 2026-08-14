@@ -68,7 +68,8 @@ export function DashboardOverviewSkeleton() {
         {Array.from({ length: 3 }).map((_, index) => (
           <DashboardOverviewCardSkeleton key={`mid-${index}`} />
         ))}
-        <div className="min-w-0 xl:col-span-2 [&_>_*]:h-full">
+        <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:col-span-2 sm:grid-cols-2 sm:gap-4 xl:col-span-2">
+          <DashboardOverviewCardSkeleton />
           <DashboardOverviewCardSkeleton />
         </div>
         <div className="min-w-0 [&_>_*]:h-full">

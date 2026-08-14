@@ -5,6 +5,7 @@ import {
 import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader'
 import { DashboardQuickSearch } from '@/components/dashboard/DashboardQuickSearch'
 import { FleetOperationsHeader } from '@/components/dashboard/FleetOperationsHeader'
+import { useAdminDashboardLayout } from '@/hooks/useAdminDashboardLayout'
 import { useDashboardStats } from '@/hooks/useDashboardStats'
 import { useFleetOperationsHeader } from '@/hooks/useFleetOperationsHeader'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -12,6 +13,7 @@ import AdminLayout from '@/layouts/AdminLayout'
 function AdminDashboardPage() {
   const fleetHeader = useFleetOperationsHeader()
   const { stats, loading, loadError, companyReady } = useDashboardStats()
+  const layoutControls = useAdminDashboardLayout()
 
   const isEmptyWorkspace =
     companyReady &&
@@ -41,10 +43,18 @@ function AdminDashboardPage() {
       {isEmptyWorkspace ? (
         <div className="space-y-6">
           <DashboardOnboardingCard />
-          <DashboardOverview stats={stats} loading={loading} />
+          <DashboardOverview
+            stats={stats}
+            loading={loading}
+            layoutControls={layoutControls}
+          />
         </div>
       ) : (
-        <DashboardOverview stats={stats} loading={loading} />
+        <DashboardOverview
+          stats={stats}
+          loading={loading}
+          layoutControls={layoutControls}
+        />
       )}
     </AdminLayout>
   )

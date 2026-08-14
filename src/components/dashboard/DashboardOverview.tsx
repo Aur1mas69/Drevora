@@ -1,5 +1,7 @@
 import { ConsumablesOverviewCard } from '@/components/dashboard/ConsumablesOverviewCard'
 import { DailyVehicleChecksStatsCard } from '@/components/dashboard/DailyVehicleChecksStatsCard'
+import { DashboardCustomizeBar } from '@/components/dashboard/DashboardCustomizeBar'
+import { DashboardCustomizeCardShell } from '@/components/dashboard/DashboardCustomizeCardShell'
 import { DashboardKpiCard } from '@/components/dashboard/DashboardKpiCard'
 import {
   DashboardKpiSkeleton,
@@ -12,11 +14,17 @@ import { FleetStatusOverviewCard } from '@/components/dashboard/FleetStatusOverv
 import { HolidayRequestsOverviewCard } from '@/components/dashboard/HolidayRequestsOverviewCard'
 import { NotesPlansCard } from '@/components/dashboard/NotesPlansCard'
 import { TimesheetOverviewCard } from '@/components/dashboard/TimesheetOverviewCard'
+import { TrailersOverviewCard } from '@/components/dashboard/TrailersOverviewCard'
 import { TyreChecksOverviewCard } from '@/components/dashboard/TyreChecksOverviewCard'
 import { dashboardOverviewCardStaticClass } from '@/components/dashboard/dashboardOverviewCardStyles'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
+import type { AdminDashboardLayoutControls } from '@/hooks/useAdminDashboardLayout'
 import type { DashboardLoadingState } from '@/hooks/useDashboardStats'
+import {
+  ADMIN_DASHBOARD_CARD_LABELS,
+  type AdminDashboardSortableCardId,
+} from '@/lib/adminDashboardLayout'
 import {
   markVehicleCheckWarningSeen,
   shouldShowVehicleCheckWarningBadge,
@@ -30,10 +38,11 @@ import {
 import {
   ClipboardCheck,
   FileBarChart,
+  SlidersHorizontal,
   Truck,
   Users,
 } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 /** Shared Recent Activity item chrome — identical for every activity type. */
@@ -314,9 +323,11 @@ function getVehicleChecksKpiProps(
 export function DashboardOverview({
   stats,
   loading,
+  layoutControls,
 }: {
   stats: DashboardStats
   loading: DashboardLoadingState
+  layoutControls: AdminDashboardLayoutControls
 }) {
   const { settings, timezone } = useCompanySettings()
   const { session } = useAuth()
@@ -375,8 +386,141 @@ export function DashboardOverview({
     [stats.vehicleChecksToday, showVehicleCheckWarningBadge],
   )
 
+  const { customizing, visibleSortableIds, isHidden, reorder, setCustomizing } =
+    layoutControls
+  const showNotes = !isHidden('notesPlans')
+  const showActivity = !isHidden('recentActivity')
+  const showPinnedRail = showNotes || showActivity
+
+  function renderSortableCard(id: AdminDashboardSortableCardId) {
+    let body: ReactNode
+
+    switch (id) {
+      case 'timesheet':
+        body = loading.timesheet ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <TimesheetOverviewCard overview={stats.timesheetOverview} />
+        )
+        break
+      case 'holidays':
+        body = loading.holidays ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
+        )
+        break
+      case 'driverReports':
+        body = loading.driverReports ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <DriverReportsOverviewCard summary={stats.driverReports} />
+        )
+        break
+      case 'fleetStatus':
+        body = loading.fleetStatus ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
+        )
+        break
+      case 'fleetCompliance':
+        body = loading.fleetStatus ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <FleetComplianceAlertsCard summary={stats.fleetComplianceAlerts} />
+        )
+        break
+      case 'dailyVehicleChecks':
+        body = loading.vehicleChecks ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
+        )
+        break
+      case 'consumables':
+        body = loading.consumables ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <ConsumablesOverviewCard overview={stats.consumablesOverview} />
+        )
+        break
+      case 'trailers':
+        body = loading.fleetStatus ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <TrailersOverviewCard trailerStatus={stats.trailerStatus} />
+        )
+        break
+      case 'tyreChecks':
+        body = loading.tyreChecks ? (
+          <DashboardOverviewCardSkeleton />
+        ) : (
+          <TyreChecksOverviewCard stats={stats.dailyTyreChecksStats} />
+        )
+        break
+    }
+
+    return (
+      <DashboardCustomizeCardShell
+        key={id}
+        id={id}
+        label={ADMIN_DASHBOARD_CARD_LABELS[id]}
+        customizing={customizing}
+        onReorder={reorder}
+      >
+        {body}
+      </DashboardCustomizeCardShell>
+    )
+  }
+
+  const railInsertIndex = Math.min(3, visibleSortableIds.length)
+  const headCards = visibleSortableIds.slice(0, railInsertIndex)
+  const tailCards = visibleSortableIds.slice(railInsertIndex)
+
+  const pinnedRail = showPinnedRail ? (
+    <div
+      className={`flex min-w-0 flex-col gap-3 sm:col-span-2 xl:col-span-1 xl:col-start-4 xl:row-span-3 xl:row-start-1 ${
+        customizing ? 'rounded-[22px] ring-1 ring-[#BFDBFE]/80 dark:ring-sky-800/50' : ''
+      }`}
+    >
+      {customizing ? (
+        <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B8AAB] dark:text-slate-400">
+          Pinned column
+        </p>
+      ) : null}
+      {showNotes ? (
+        <div className={customizing ? 'pointer-events-none' : undefined}>
+          <NotesPlansCard />
+        </div>
+      ) : null}
+      {showActivity ? (
+        <div className={`min-h-0 min-w-0 flex-1 [&_>_*]:h-full ${customizing ? 'pointer-events-none' : ''}`}>
+          <RecentActivityPanel
+            activity={stats.recentActivity}
+            isLoading={loading.recentActivity}
+          />
+        </div>
+      ) : null}
+    </div>
+  ) : null
+
   return (
     <div className="space-y-4 sm:space-y-6">
+      {customizing ? <DashboardCustomizeBar layoutControls={layoutControls} /> : null}
+      {!customizing ? (
+        <div className="-mb-2 flex min-w-0 justify-end sm:-mb-3">
+          <button
+            type="button"
+            title="Customize dashboard"
+            aria-label="Customize dashboard"
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-[#D0E4F6] bg-white/80 text-[#6B8AAB] shadow-[0_1px_3px_rgba(30,64,175,0.06)] transition-colors hover:border-[#B7D7F2] hover:bg-[#F8FBFF] hover:text-[#3B82F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]/40 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-blue-300"
+            onClick={() => setCustomizing(true)}
+          >
+            <SlidersHorizontal className="size-3.5" strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
       <div className="dashboard-kpi-grid grid min-w-0 grid-cols-2 gap-x-4 gap-y-7 overflow-visible pt-3 pb-2 sm:gap-x-8 sm:gap-y-8 sm:pt-4 sm:pb-0 xl:grid-cols-4 xl:gap-x-10 xl:gap-y-8">
         {loading.kpis ? (
           Array.from({ length: 4 }).map((_, index) => <DashboardKpiSkeleton key={index} />)
@@ -426,62 +570,12 @@ export function DashboardOverview({
 
       {/*
         Desktop right column: Notes on top, Recent Activity immediately below
-        (spans the full height of fleet + consumables/tyre rows).
+        (spans the full height of fleet + consumables/trailers/tyre rows).
       */}
       <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        {loading.timesheet ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <TimesheetOverviewCard overview={stats.timesheetOverview} />
-        )}
-        {loading.holidays ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <HolidayRequestsOverviewCard summary={stats.holidayRequests} />
-        )}
-        {loading.driverReports ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <DriverReportsOverviewCard summary={stats.driverReports} />
-        )}
-        <div className="flex min-w-0 flex-col gap-3 sm:col-span-2 xl:col-span-1 xl:row-span-3">
-          <NotesPlansCard />
-          <div className="min-h-0 min-w-0 flex-1 [&_>_*]:h-full">
-            <RecentActivityPanel
-              activity={stats.recentActivity}
-              isLoading={loading.recentActivity}
-            />
-          </div>
-        </div>
-        {loading.fleetStatus ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <FleetStatusOverviewCard fleetStatus={stats.fleetStatus} />
-        )}
-        {loading.fleetStatus ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <FleetComplianceAlertsCard summary={stats.fleetComplianceAlerts} />
-        )}
-        {loading.vehicleChecks ? (
-          <DashboardOverviewCardSkeleton />
-        ) : (
-          <DailyVehicleChecksStatsCard stats={stats.dailyVehicleChecksStats} />
-        )}
-        <div className="min-w-0 xl:col-span-2 [&_>_*]:h-full">
-          {loading.consumables ? (
-            <DashboardOverviewCardSkeleton />
-          ) : (
-            <ConsumablesOverviewCard overview={stats.consumablesOverview} />
-          )}
-        </div>
-        <div className="min-w-0 [&_>_*]:h-full">
-          {loading.tyreChecks ? (
-            <DashboardOverviewCardSkeleton />
-          ) : (
-            <TyreChecksOverviewCard stats={stats.dailyTyreChecksStats} />
-          )}
-        </div>
+        {headCards.map((id) => renderSortableCard(id))}
+        {pinnedRail}
+        {tailCards.map((id) => renderSortableCard(id))}
       </div>
     </div>
   )

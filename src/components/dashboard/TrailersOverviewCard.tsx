@@ -1,4 +1,4 @@
-import type { DashboardFleetStatus } from '@/services/dashboardService'
+import type { DashboardTrailerStatus } from '@/services/dashboardService'
 import {
   dashboardOverviewCardClass,
   dashboardOverviewInnerRowClass,
@@ -8,9 +8,9 @@ import {
 } from '@/components/dashboard/dashboardOverviewCardStyles'
 import { DashboardOverviewCardHeader } from '@/components/dashboard/DashboardOverviewCardHeader'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, Layers, Truck, Wrench } from 'lucide-react'
+import { AlertTriangle, Container, Layers, Wrench } from 'lucide-react'
 
-type FleetStatusRow = {
+type TrailerStatusRow = {
   key: string
   label: string
   helper: string
@@ -20,13 +20,13 @@ type FleetStatusRow = {
   iconClass: string
 }
 
-function buildFleetStatusRows(fleetStatus: DashboardFleetStatus): FleetStatusRow[] {
+function buildTrailerStatusRows(trailerStatus: DashboardTrailerStatus): TrailerStatusRow[] {
   return [
     {
       key: 'total',
       label: 'Total',
-      helper: 'Active vehicles',
-      value: fleetStatus.total,
+      helper: 'Active trailers',
+      value: trailerStatus.total,
       icon: Layers,
       iconWrapClass: 'bg-sky-50 ring-sky-100 dark:bg-sky-950/40 dark:ring-sky-800/50',
       iconClass: 'text-sky-600 dark:text-sky-400',
@@ -35,16 +35,16 @@ function buildFleetStatusRows(fleetStatus: DashboardFleetStatus): FleetStatusRow
       key: 'available',
       label: 'Available',
       helper: 'Ready for work',
-      value: fleetStatus.available,
-      icon: Truck,
+      value: trailerStatus.available,
+      icon: Container,
       iconWrapClass: 'bg-emerald-50 ring-emerald-100 dark:bg-emerald-950/40 dark:ring-emerald-800/50',
       iconClass: 'text-emerald-600 dark:text-emerald-400',
     },
     {
       key: 'off-road',
       label: 'Off road',
-      helper: fleetStatus.offRoadHelper || 'Needs attention',
-      value: fleetStatus.offRoad,
+      helper: 'Needs attention',
+      value: trailerStatus.offRoad,
       icon: AlertTriangle,
       iconWrapClass: 'bg-red-50 ring-red-100 dark:bg-red-950/40 dark:ring-red-800/50',
       iconClass: 'text-red-600 dark:text-red-400',
@@ -53,7 +53,7 @@ function buildFleetStatusRows(fleetStatus: DashboardFleetStatus): FleetStatusRow
       key: 'maintenance-due',
       label: 'Maintenance due',
       helper: 'Scheduled / due soon',
-      value: fleetStatus.maintenanceDue,
+      value: trailerStatus.maintenanceDue,
       icon: Wrench,
       iconWrapClass: 'bg-amber-50 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-800/50',
       iconClass: 'text-amber-600 dark:text-amber-400',
@@ -61,7 +61,7 @@ function buildFleetStatusRows(fleetStatus: DashboardFleetStatus): FleetStatusRow
   ]
 }
 
-function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
+function TrailerStatusRowItem({ row }: { row: TrailerStatusRow }) {
   const Icon = row.icon
 
   return (
@@ -82,24 +82,29 @@ function FleetStatusRowItem({ row }: { row: FleetStatusRow }) {
   )
 }
 
-export function FleetStatusOverviewCard({
-  fleetStatus,
+export function TrailersOverviewCard({
+  trailerStatus,
 }: {
-  fleetStatus: DashboardFleetStatus
+  trailerStatus: DashboardTrailerStatus
 }) {
-  const rows = buildFleetStatusRows(fleetStatus)
+  const rows = buildTrailerStatusRows(trailerStatus)
 
   return (
     <section className={`${dashboardOverviewCardClass} flex h-full flex-col`}>
       <DashboardOverviewCardHeader
-        title="Fleet Status"
-        subtitle="Current fleet availability"
+        title="Trailers"
+        subtitle="Current trailer availability"
         actionTo="/vehicles"
+        leading={
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#D0E4F6] bg-[#E8F3FE] text-[#3B82F6] dark:border-white/10 dark:bg-slate-800/60 dark:text-blue-300">
+            <Container className="size-4" strokeWidth={1.9} aria-hidden="true" />
+          </div>
+        }
       />
 
       <ul className="mt-auto space-y-2">
         {rows.map((row) => (
-          <FleetStatusRowItem key={row.key} row={row} />
+          <TrailerStatusRowItem key={row.key} row={row} />
         ))}
       </ul>
     </section>
