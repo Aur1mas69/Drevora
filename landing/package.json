@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "slice-icons": "node scripts/slice-icon-sheet.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -17,5 +18,8 @@
     "resend": "^4.5.1",
     "tailwindcss": "^4.3.2",
     "vite": "^8.1.3"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
   }
 }

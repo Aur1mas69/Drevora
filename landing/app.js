@@ -1,3 +1,20 @@
+import drevoraDMarkUrl from './assets/drevora-d-mark.png'
+
+const FEATURE_ART = {
+    workers: '/icons/sliced/workers.png',
+    vehicles: '/icons/sliced/vehicles.png',
+    timesheets: '/icons/sliced/timesheets.png',
+    holidays: '/icons/sliced/holidays.png',
+    checks: '/icons/sliced/vehicle-checks.png',
+    tyres: '/icons/sliced/tyre-checks.png',
+    reports: '/icons/sliced/driver-reports.png',
+    documents: '/icons/sliced/documents.png',
+    consumables: '/icons/sliced/consumables.png',
+    mobile: '/icons/sliced/offline-mobile.png',
+    dashboard: '/icons/sliced/fleet-office-dashboard.png',
+    security: '/icons/sliced/security-compliance.png',
+}
+
 function restoreMobileScroll() {
     document.documentElement.style.removeProperty('overflow')
     document.documentElement.style.removeProperty('overflow-y')
@@ -107,9 +124,24 @@ function initCookieNotice() {
     createCookieNotice()
 }
 
+function initChallengeNoteLift() {
+    const notes = document.querySelectorAll('#problems .challenges-notes > .challenges-note')
+    if (!notes.length) return
+
+    notes.forEach((note) => {
+        note.addEventListener('pointerenter', () => {
+            note.classList.add('is-lifted')
+        })
+        note.addEventListener('pointerleave', () => {
+            note.classList.remove('is-lifted')
+        })
+    })
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     restoreMobileScroll()
     initCookieNotice()
+    initChallengeNoteLift()
 
     const footerYear = document.getElementById('footer-year')
     if (footerYear) {
@@ -460,146 +492,139 @@ function initFeaturesCoverflow() {
     const features = [
         {
             title: 'Workers',
-            icon: 'groups',
             preview: 'workers',
+            art: FEATURE_ART.workers,
             body: 'Manage Worker profiles, employment information and compliance records from one organised workspace.',
-            bullets: [
-                'Driving Licence, CPC and Tachograph records',
-                'Medical certificates and expiry tracking',
-                'Worker contact and employment details',
-                'Clear compliance status at a glance',
+            caps: [
+                { icon: 'badge', label: 'Licence, CPC & Tachograph' },
+                { icon: 'medical_services', label: 'Medical & expiry tracking' },
+                { icon: 'person', label: 'Worker profiles' },
+                { icon: 'verified', label: 'Compliance status' },
             ],
         },
         {
             title: 'Vehicles',
-            icon: 'local_shipping',
             preview: 'vehicles',
+            art: FEATURE_ART.vehicles,
             body: 'Keep vehicles and trailers organised with fleet information, compliance records and operational history.',
-            bullets: [
-                'Vehicle and trailer profiles',
-                'Fleet and registration information',
-                'MOT, tax, service and compliance visibility',
-                'Vehicle status and history',
+            caps: [
+                { icon: 'local_shipping', label: 'Vehicles & trailers' },
+                { icon: 'info', label: 'Fleet information' },
+                { icon: 'build', label: 'MOT, tax & service' },
+                { icon: 'history', label: 'Vehicle history' },
             ],
         },
         {
             title: 'Timesheets',
-            icon: 'schedule',
             preview: 'timesheets',
-            body: 'Give Workers a simple digital timesheet while the Office gets accurate hours ready for review and payroll.',
-            bullets: [
-                'Automatic or manual hour entry',
-                'Daily or weekly overtime rules',
-                'Break and weekend settings',
-                'Approval and payroll-ready export',
-            ],
+            body: 'Digital Worker timesheets with automatic or manual hours, overtime rules, approvals and payroll-ready exports.',
         },
         {
             title: 'Holidays',
-            icon: 'beach_access',
             preview: 'holidays',
+            art: FEATURE_ART.holidays,
             body: 'Manage leave requests, individual entitlements and approvals without relying on paper or messages.',
-            bullets: [
-                'Paid and unpaid holiday requests',
-                'Individual Worker entitlements',
-                'Approve or decline requests',
-                'Live balances and calendar overview',
+            caps: [
+                { icon: 'event_available', label: 'Paid & unpaid leave' },
+                { icon: 'account_balance_wallet', label: 'Individual entitlements' },
+                { icon: 'thumb_up', label: 'Approve or decline' },
+                { icon: 'pie_chart', label: 'Live balances' },
             ],
         },
         {
             title: 'Vehicle Checks',
-            icon: 'fact_check',
             preview: 'checks',
+            art: FEATURE_ART.checks,
             body: 'Workers complete structured daily walkaround checks with evidence and clear defect reporting.',
-            bullets: [
-                'Configurable Vehicle Check templates',
-                'OK / Defect / N/A workflow',
-                'Photos, notes and signatures',
-                'Completed inspection and defect history',
+            caps: [
+                { icon: 'edit_note', label: 'Configurable templates' },
+                { icon: 'rule', label: 'OK / Defect / N/A' },
+                { icon: 'photo_camera', label: 'Photos & signatures' },
+                { icon: 'report', label: 'Defect history' },
             ],
         },
         {
             title: 'Tyre Checks',
-            icon: 'tire_repair',
             preview: 'tyres',
+            art: FEATURE_ART.tyres,
             body: 'Record truck and trailer tyre condition using axle-based inspections and tread-depth measurements.',
-            bullets: [
-                'Truck and trailer axle layouts',
-                'Tread-depth recording',
-                'Dirty, Defect and Critical indicators',
-                'Tyre inspection history',
+            caps: [
+                { icon: 'view_module', label: 'Truck & trailer layouts' },
+                { icon: 'straighten', label: 'Tread-depth recording' },
+                { icon: 'traffic', label: 'Condition indicators' },
+                { icon: 'history', label: 'Inspection history' },
             ],
         },
         {
             title: 'Driver Reports',
-            icon: 'warning',
             preview: 'reports',
+            art: FEATURE_ART.reports,
             body: 'Workers can report operational issues directly from mobile so the Office can review and act quickly.',
-            bullets: [
-                'Vehicle defects and damage',
-                'Load and site issues',
-                'Notes and supporting evidence',
-                'Office review and status tracking',
+            caps: [
+                { icon: 'car_crash', label: 'Vehicle damage' },
+                { icon: 'inventory_2', label: 'Load & site issues' },
+                { icon: 'attach_file', label: 'Supporting evidence' },
+                { icon: 'rate_review', label: 'Office review' },
             ],
         },
         {
             title: 'Documents',
-            icon: 'folder_open',
             preview: 'documents',
+            art: FEATURE_ART.documents,
             body: 'Keep company, Worker and vehicle documents organised with expiry visibility and mobile submissions.',
-            bullets: [
-                'Driving Licence, CPC, Tachograph and Medical',
-                'Company and vehicle documents',
-                'POD, CMR, Delivery Notes and receipts',
-                'Expiry and document status tracking',
+            caps: [
+                { icon: 'badge', label: 'Worker documents' },
+                { icon: 'directions_car', label: 'Vehicle documents' },
+                { icon: 'description', label: 'CMR, POD & receipts' },
+                { icon: 'event', label: 'Expiry tracking' },
             ],
         },
         {
             title: 'Consumables',
-            icon: 'receipt_long',
             preview: 'consumables',
+            art: FEATURE_ART.consumables,
             body: 'Record fuel and other consumables against vehicles to maintain a clear usage and cost history.',
-            bullets: [
-                'Diesel and AdBlue records',
-                'Oils and other consumables',
-                'Quantity and optional cost entry',
-                'Vehicle-linked usage history',
+            caps: [
+                { icon: 'local_gas_station', label: 'Diesel & AdBlue' },
+                { icon: 'water_drop', label: 'Oils & consumables' },
+                { icon: 'payments', label: 'Quantity & cost' },
+                { icon: 'history', label: 'Vehicle usage history' },
             ],
         },
         {
             title: 'Offline & Mobile',
-            icon: 'smartphone',
             preview: 'mobile',
+            art: FEATURE_ART.mobile,
             body: 'Give Workers mobile-first tools designed for real transport work, including limited-connectivity environments.',
-            bullets: [
-                'Worker-focused mobile experience',
-                'Offline-capable operational workflows',
-                'Local data handling',
-                'Synchronisation when connection returns',
+            caps: [
+                { icon: 'smartphone', label: 'Mobile-first Worker UI' },
+                { icon: 'cloud_off', label: 'Offline-capable workflows' },
+                { icon: 'storage', label: 'Local data handling' },
+                { icon: 'sync', label: 'Sync when reconnected' },
             ],
         },
         {
             title: 'Fleet & Office Dashboard',
-            icon: 'dashboard',
             preview: 'dashboard',
+            art: FEATURE_ART.dashboard,
             body: 'Give the Office a central operational view of fleet activity, staff workflows and items requiring attention.',
-            bullets: [
-                'Workers and fleet overview',
-                'Timesheets, holidays and reports',
-                'Vehicle and compliance alerts',
-                'Daily actions requiring attention',
+            caps: [
+                { icon: 'groups', label: 'Workers & fleet' },
+                { icon: 'calendar_month', label: 'Timesheets & holidays' },
+                { icon: 'notification_important', label: 'Compliance alerts' },
+                { icon: 'checklist', label: 'Daily actions' },
             ],
         },
         {
             title: 'Security & Compliance',
-            icon: 'security',
             preview: 'security',
+            art: FEATURE_ART.security,
             body: 'Keep company data separated and controlled with structured permissions and secure record handling.',
-            bullets: [
-                'Company-isolated data access',
-                'Role-based permissions',
-                'Audit-friendly records',
-                'GDPR-focused data handling',
+            caps: [
+                { icon: 'domain', label: 'Company-isolated data' },
+                { icon: 'admin_panel_settings', label: 'Role-based access' },
+                { icon: 'policy', label: 'Audit-friendly records' },
+                { icon: 'privacy_tip', label: 'GDPR-focused handling' },
             ],
         },
     ]
@@ -619,124 +644,264 @@ function initFeaturesCoverflow() {
     let dragX = 0
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
-    function chip(label, tone = 'info') {
-        return `<span class="fp-chip fp-chip--${tone}">${label}</span>`
+    function illustrationClass(preview) {
+        const modifiers = {
+            vehicles: ' feature-illustration--vehicles',
+            tyres: ' feature-illustration--tyres',
+            dashboard: ' feature-illustration--dashboard',
+        }
+        return `ts-card__art feature-illustration${modifiers[preview] || ''}`
     }
 
-    function previewHtml(kind) {
+    function statusChip(label, tone = 'ok') {
+        return `<span class="ts-status ts-status--${tone}">${label}</span>`
+    }
+
+    function listRow({ avatar, title, detail, chip, extra = false }) {
+        return `<div class="ts-list__row${avatar ? ' ts-list__row--person' : ''}${extra ? ' ts-preview__extra' : ''}">
+            ${avatar ? `<span class="ts-avatar">${avatar}</span>` : ''}
+            <div class="ts-list__meta">
+                <strong>${title}</strong>
+                ${detail ? `<span>${detail}</span>` : ''}
+            </div>
+            ${chip || ''}
+        </div>`
+    }
+
+    function showcasePreviewHtml(kind) {
         switch (kind) {
             case 'workers':
-                return `<div class="fp fp--workers">
-                    <div class="fp-row"><span class="fp-avatar">JP</span><span class="fp-name">J. Patel</span><span class="fp-chips">${chip('Licence', 'ok')}${chip('CPC', 'ok')}</span></div>
-                    <div class="fp-row"><span class="fp-avatar">AK</span><span class="fp-name">A. Khan</span><span class="fp-chips">${chip('CPC', 'ok')}${chip('Medical', 'warn')}</span></div>
-                    <div class="fp-row"><span class="fp-avatar">MB</span><span class="fp-name">M. Brown</span><span class="fp-chips">${chip('Licence', 'ok')}${chip('Medical', 'ok')}</span></div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Workers</span></div>
+                    ${listRow({ avatar: 'OW', title: 'Oliver Whitmore', detail: 'Driver · Licence Valid', chip: statusChip('Compliant', 'ok') })}
+                    ${listRow({ avatar: 'DT', title: 'Daniel Telford', detail: 'Driver · CPC 14 days', chip: statusChip('Expiring soon', 'ot') })}
+                    ${listRow({ avatar: 'GG', title: 'Grace Gresham', detail: 'Office', chip: statusChip('Compliant', 'ok') })}`
             case 'vehicles':
-                return `<div class="fp fp--vehicles">
-                    <div class="fp-plate">YS21 DVR</div>
-                    <div class="fp-row"><span class="fp-name">Tractor unit · Fleet A</span>${chip('Active', 'ok')}</div>
-                    <div class="fp-chips">${chip('MOT', 'ok')}${chip('Tax', 'ok')}${chip('Service due', 'warn')}</div>
-                </div>`
-            case 'timesheets':
-                return `<div class="fp fp--timesheets">
-                    <div class="fp-row"><span class="fp-day">Mon</span><span class="fp-name">08:00–17:00</span>${chip('Approved', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-day">Tue</span><span class="fp-name">08:00–18:30</span>${chip('OT', 'warn')}</div>
-                    <div class="fp-row"><span class="fp-day">Wed</span><span class="fp-name">Total 24h</span>${chip('Total', 'info')}</div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Fleet</span></div>
+                    ${listRow({ title: 'YN24 DVR', detail: 'Rigid HGV · MOT Valid', chip: statusChip('Available', 'ok') })}
+                    ${listRow({ title: 'VB18 LKB', detail: 'Articulated · Service due in 12 days', chip: statusChip('In service', 'ot') })}
+                    ${listRow({ title: 'TR14 002', detail: 'Trailer', chip: statusChip('Available', 'ok') })}`
             case 'holidays':
-                return `<div class="fp fp--holidays">
-                    <div class="fp-week"><span>M</span><span>T</span><span class="is-on">W</span><span class="is-on">T</span><span class="is-on">F</span><span>S</span><span>S</span></div>
-                    <div class="fp-row"><span class="fp-name">12–16 Aug</span>${chip('Approved', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-name">Balance 18 days</span>${chip('Pending', 'warn')}</div>
-                </div>`
+                return `<div class="ts-sheet__head">
+                        <span>August</span>
+                        <span class="ts-balance">18.5 days remaining</span>
+                    </div>
+                    <div class="ts-cal" aria-hidden="true">
+                        <span>M</span><span>T</span><span>W</span><span>T</span><span class="is-on">F</span><span>S</span><span>S</span>
+                    </div>
+                    ${listRow({ title: '12–16 Aug', detail: 'Annual Leave', chip: statusChip('Approved', 'ok') })}
+                    ${listRow({ title: '27 Aug', detail: 'Unpaid Leave', chip: statusChip('Pending', 'ot') })}
+                    ${listRow({ title: '02 Sep', detail: 'Annual Leave', chip: statusChip('Approved', 'ok') })}`
             case 'checks':
-                return `<div class="fp fp--checks">
-                    <div class="fp-row"><span class="fp-name">Lights</span>${chip('OK', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-name">Brakes</span>${chip('Defect', 'defect')}</div>
-                    <div class="fp-row"><span class="fp-name">Mirrors</span>${chip('OK', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-name">Bodywork</span>${chip('N/A', 'muted')}</div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Daily Walkaround</span></div>
+                    ${listRow({ title: 'Lights', chip: statusChip('OK', 'ok') })}
+                    ${listRow({ title: 'Mirrors', chip: statusChip('OK', 'ok'), extra: true })}
+                    ${listRow({ title: 'Brakes', chip: statusChip('Defect', 'defect') })}
+                    ${listRow({ title: 'Bodywork', chip: statusChip('N/A', 'muted') })}
+                    <div class="ts-sheet__foot ts-sheet__foot--preview">
+                        <span>12 / 14 completed</span>
+                        <span class="ts-progress"><i class="ts-progress__fill"></i></span>
+                    </div>`
             case 'tyres':
-                return `<div class="fp fp--tyres">
-                    <div class="fp-tyre-grid">
-                        <div class="fp-tyre"><span>FL</span><i class="fp-dot fp-dot--ok"></i><b>8.2 mm</b><span class="fp-meter"><span class="fp-meter__fill is-high"></span></span></div>
-                        <div class="fp-tyre"><span>FR</span><i class="fp-dot fp-dot--ok"></i><b>7.9 mm</b><span class="fp-meter"><span class="fp-meter__fill is-high"></span></span></div>
-                        <div class="fp-tyre"><span>RL</span><i class="fp-dot fp-dot--warn"></i><b>6.4 mm</b><span class="fp-meter"><span class="fp-meter__fill is-mid"></span></span></div>
-                        <div class="fp-tyre"><span>RR</span><i class="fp-dot fp-dot--defect"></i><b>5.1 mm</b><span class="fp-meter"><span class="fp-meter__fill is-low"></span></span></div>
+                return `<div class="ts-axle">
+                        <div class="ts-axle__label">Steer axle</div>
+                        <div class="ts-axle__tyres ts-axle__tyres--2">
+                            <div class="ts-tyre"><span>Left</span><b>7.2 mm</b>${statusChip('Good', 'ok')}</div>
+                            <div class="ts-tyre"><span>Right</span><b>6.8 mm</b>${statusChip('Good', 'ok')}</div>
+                        </div>
                     </div>
-                </div>`
+                    <div class="ts-axle">
+                        <div class="ts-axle__label">Drive axle</div>
+                        <div class="ts-axle__tyres ts-axle__tyres--4">
+                            <div class="ts-tyre"><span>Outer Left</span><b>4.1 mm</b>${statusChip('Attention', 'ot')}</div>
+                            <div class="ts-tyre ts-preview__extra"><span>Inner Left</span><b>5.7 mm</b>${statusChip('Good', 'ok')}</div>
+                            <div class="ts-tyre ts-preview__extra"><span>Inner Right</span><b>5.5 mm</b>${statusChip('Good', 'ok')}</div>
+                            <div class="ts-tyre"><span>Outer Right</span><b>2.0 mm</b>${statusChip('Critical', 'defect')}</div>
+                        </div>
+                    </div>`
             case 'reports':
-                return `<div class="fp fp--reports">
-                    <div class="fp-row"><span class="fp-name">Vehicle damage</span>${chip('Open', 'defect')}</div>
-                    <div class="fp-row"><span class="fp-name">Load issue</span>${chip('Review', 'warn')}</div>
-                    <div class="fp-row"><span class="fp-name">Site issue</span>${chip('Closed', 'ok')}</div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Driver Reports</span></div>
+                    ${listRow({ title: 'Vehicle Damage', detail: 'Mirror damaged', chip: statusChip('New', 'info') })}
+                    ${listRow({ title: 'Load Issue', detail: 'Load discrepancy', chip: statusChip('In Progress', 'ot') })}
+                    ${listRow({ title: 'Site Issue', detail: 'Access restricted', chip: statusChip('Closed', 'ok') })}`
             case 'documents':
-                return `<div class="fp fp--documents">
-                    <div class="fp-row"><span class="fp-name">CPC</span>${chip('Valid', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-name">Tachograph</span>${chip('Expiring', 'warn')}</div>
-                    <div class="fp-row"><span class="fp-name">POD</span>${chip('Received', 'info')}</div>
-                    <div class="fp-row"><span class="fp-name">Receipt</span>${chip('Filed', 'muted')}</div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Documents</span></div>
+                    ${listRow({ title: 'Driving Licence', detail: 'Oliver Whitmore', chip: statusChip('Valid', 'ok') })}
+                    ${listRow({ title: 'CPC', detail: 'Daniel Telford', chip: statusChip('Expires in 14 days', 'ot') })}
+                    ${listRow({ title: 'POD #4582', chip: statusChip('Submitted', 'info') })}
+                    ${listRow({ title: 'CMR #4582', chip: statusChip('Submitted', 'info'), extra: true })}`
             case 'consumables':
-                return `<div class="fp fp--consumables">
-                    <div class="fp-usage"><span>Diesel</span><span class="fp-meter"><span class="fp-meter__fill is-high"></span></span><b>72%</b></div>
-                    <div class="fp-usage"><span>AdBlue</span><span class="fp-meter"><span class="fp-meter__fill is-mid"></span></span><b>48%</b></div>
-                    <div class="fp-usage"><span>Oils</span><span class="fp-meter"><span class="fp-meter__fill is-low"></span></span><b>31%</b></div>
-                </div>`
+                return `<div class="ts-sheet__head">
+                        <span>This month</span>
+                    </div>
+                    <div class="ts-usage">
+                        <div class="ts-usage__top"><span>Diesel</span><b>426 L</b><em>£612.40</em></div>
+                        <span class="ts-bar"><i class="ts-bar__fill ts-bar__fill--high"></i></span>
+                    </div>
+                    <div class="ts-usage">
+                        <div class="ts-usage__top"><span>AdBlue</span><b>38 L</b><em>£31.20</em></div>
+                        <span class="ts-bar"><i class="ts-bar__fill ts-bar__fill--mid"></i></span>
+                    </div>
+                    <div class="ts-usage">
+                        <div class="ts-usage__top"><span>Oils</span><b>12 L</b><em>£74.00</em></div>
+                        <span class="ts-bar"><i class="ts-bar__fill ts-bar__fill--low"></i></span>
+                    </div>`
             case 'mobile':
-                return `<div class="fp fp--mobile">
-                    <div class="fp-phone">
-                        <span class="fp-phone__notch"></span>
-                        <div class="fp-row">${chip('Offline saved', 'warn')}</div>
-                        <div class="fp-row"><span class="fp-name">Pending upload</span><b>3</b></div>
-                        <div class="fp-row">${chip('Sync ready', 'ok')}</div>
+                return `<div class="ts-sheet__head">
+                        <span>Sync queue</span>
+                        <span class="ts-balance">Connection restored</span>
                     </div>
-                </div>`
+                    ${listRow({ title: 'Vehicle Check', chip: statusChip('Synced', 'ok') })}
+                    ${listRow({ title: 'Tyre Check', chip: statusChip('Pending sync', 'ot') })}
+                    ${listRow({ title: 'Photo evidence', chip: statusChip('Uploading', 'info') })}`
             case 'dashboard':
-                return `<div class="fp fp--dashboard">
-                    <div class="fp-kpis">
-                        <div class="fp-kpi"><b>24</b><span>Workers</span></div>
-                        <div class="fp-kpi"><b>18</b><span>Vehicles</span></div>
-                        <div class="fp-kpi fp-kpi--alert"><b>3</b><span>Alerts</span></div>
-                        <div class="fp-kpi"><b>6</b><span>Reports</span></div>
+                return `<div class="ts-kpis">
+                        <div class="ts-kpi"><b>25</b><span>Active Vehicles</span></div>
+                        <div class="ts-kpi"><b>21</b><span>Workers</span></div>
+                        <div class="ts-kpi"><b>3</b><span>Compliance Alerts</span></div>
+                        <div class="ts-kpi"><b>5</b><span>Open Reports</span></div>
                     </div>
-                </div>`
+                    <div class="ts-action">Timesheets awaiting review — 4</div>
+                    <div class="ts-action">Vehicle checks missing — 2</div>
+                    <div class="ts-action ts-preview__extra">Documents expiring — 3</div>`
             case 'security':
-                return `<div class="fp fp--security">
-                    <div class="fp-row"><span class="fp-shield material-symbols-outlined">verified_user</span><span class="fp-name">Access control</span>${chip('Secure', 'ok')}</div>
-                    <div class="fp-row"><span class="fp-name">Office</span>${chip('Role', 'info')}</div>
-                    <div class="fp-row"><span class="fp-name">Worker</span>${chip('Limited', 'muted')}</div>
-                    <div class="fp-row"><span class="fp-name">Audit log</span>${chip('2 new', 'warn')}</div>
-                </div>`
+                return `<div class="ts-sheet__head"><span>Access</span></div>
+                    ${listRow({ title: 'Director', detail: 'Full company access', chip: statusChip('Active', 'ok') })}
+                    ${listRow({ title: 'Office', detail: 'Operational access', chip: statusChip('Active', 'ok') })}
+                    ${listRow({ title: 'Worker', detail: 'Own records &amp; workflows', chip: statusChip('Active', 'ok') })}
+                    <div class="ts-secure">
+                        <span>Tenant isolation &#10003;</span>
+                        <span>Audit records &#10003;</span>
+                        <span class="ts-preview__extra">Secure authentication &#10003;</span>
+                    </div>`
             default:
                 return ''
         }
     }
 
+    function featureShowcaseHtml(feature, number) {
+        return `
+            <div class="ts-card">
+                <span class="ts-card__watermark" aria-hidden="true">
+                    <img src="${drevoraDMarkUrl}" alt="" width="512" height="512">
+                </span>
+                <span class="ts-card__number">${number}</span>
+                <div class="ts-card__hero">
+                    <div class="ts-card__visual">
+                        <img class="${illustrationClass(feature.preview)}" src="${feature.art}" alt="" width="150" height="150" aria-hidden="true">
+                    </div>
+                    <div class="ts-card__intro">
+                        <h3 class="ts-card__title">${feature.title}</h3>
+                        <p class="ts-card__body">${feature.body}</p>
+                    </div>
+                </div>
+                <div class="ts-card__lower">
+                    <div class="ts-card__caps">
+                        ${feature.caps.map((cap) => `
+                            <div class="ts-cap">
+                                <span class="ts-cap__icon material-symbols-outlined" aria-hidden="true">${cap.icon}</span>
+                                <span class="ts-cap__label">${cap.label}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="ts-sheet ts-sheet--preview" aria-hidden="true">
+                        ${showcasePreviewHtml(feature.preview)}
+                    </div>
+                </div>
+            </div>
+        `
+    }
+
+    function timesheetsShowcaseHtml(number) {
+        const caps = [
+            { icon: 'date_range', label: 'Daily & weekly hours' },
+            { icon: 'more_time', label: 'Automatic overtime' },
+            { icon: 'task_alt', label: 'Manager approval' },
+            { icon: 'file_download', label: 'Payroll export' },
+        ]
+
+        return `
+            <div class="ts-card">
+                <span class="ts-card__watermark" aria-hidden="true">
+                    <img src="${drevoraDMarkUrl}" alt="" width="512" height="512">
+                </span>
+                <span class="ts-card__number">${number}</span>
+                <div class="ts-card__hero">
+                    <div class="ts-card__visual">
+                        <img class="${illustrationClass('timesheets')}" src="${FEATURE_ART.timesheets}" alt="" width="150" height="150" aria-hidden="true">
+                    </div>
+                    <div class="ts-card__intro">
+                        <h3 class="ts-card__title">Timesheets</h3>
+                        <p class="ts-card__body">Digital Worker timesheets with automatic or manual hours, overtime rules, approvals and payroll-ready exports.</p>
+                    </div>
+                </div>
+                <div class="ts-card__lower">
+                    <div class="ts-card__caps">
+                        ${caps.map((cap) => `
+                            <div class="ts-cap">
+                                <span class="ts-cap__icon material-symbols-outlined" aria-hidden="true">${cap.icon}</span>
+                                <span class="ts-cap__label">${cap.label}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="ts-sheet" aria-hidden="true">
+                    <div class="ts-sheet__head">
+                        <span>This Week</span>
+                        <span class="ts-sheet__saved">&#10003; All changes saved</span>
+                    </div>
+                    <div class="ts-sheet__cols">
+                        <span>Day</span>
+                        <span class="ts-sheet__time">Start</span>
+                        <span class="ts-sheet__time">Finish</span>
+                        <span class="ts-sheet__optional">Break</span>
+                        <span>Total</span>
+                        <span>Status</span>
+                    </div>
+                    <div class="ts-sheet__row">
+                        <span class="ts-sheet__day">Monday</span>
+                        <span class="ts-sheet__time">08:00</span>
+                        <span class="ts-sheet__time">17:00</span>
+                        <span class="ts-sheet__optional">01:00</span>
+                        <span class="ts-sheet__total">8h 00m</span>
+                        <span class="ts-status ts-status--ok">Approved</span>
+                    </div>
+                    <div class="ts-sheet__row">
+                        <span class="ts-sheet__day">Tuesday</span>
+                        <span class="ts-sheet__time">08:00</span>
+                        <span class="ts-sheet__time">19:00</span>
+                        <span class="ts-sheet__optional">01:00</span>
+                        <span class="ts-sheet__total">10h 00m</span>
+                        <span class="ts-status ts-status--ot">OT</span>
+                    </div>
+                    <div class="ts-sheet__row">
+                        <span class="ts-sheet__day">Wednesday</span>
+                        <span class="ts-sheet__time">08:00</span>
+                        <span class="ts-sheet__time">17:00</span>
+                        <span class="ts-sheet__optional">01:00</span>
+                        <span class="ts-sheet__total">8h 00m</span>
+                        <span class="ts-status ts-status--ok">Approved</span>
+                    </div>
+                    <div class="ts-sheet__foot">
+                        <span>Week Total</span>
+                        <strong>26h 00m</strong>
+                        <span class="ts-status ts-status--ok">Ready for payroll</span>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        `
+    }
+
     features.forEach((feature, i) => {
         const number = String(i + 1).padStart(2, '0')
         const slide = document.createElement('article')
-        slide.className = 'feature-coverflow__slide'
+        slide.className = 'feature-coverflow__slide is-showcase'
         if (i === 0) slide.classList.add('is-active')
+        if (feature.preview === 'timesheets') slide.classList.add('is-timesheets')
         slide.setAttribute('data-title', feature.title)
         slide.setAttribute('aria-label', `Feature ${i + 1} of ${features.length}: ${feature.title}`)
-        slide.innerHTML = `
-            <div class="feature-coverflow__copy">
-                <div class="feature-coverflow__copy-top">
-                    <span class="feature-coverflow__number">${number}</span>
-                    <span class="feature-coverflow__icon material-symbols-outlined" aria-hidden="true">${feature.icon}</span>
-                </div>
-                <h3 class="feature-coverflow__title font-headline-sm">${feature.title}</h3>
-                <p class="feature-coverflow__body font-body-sm">${feature.body}</p>
-                <ul class="feature-coverflow__bullets">
-                    ${feature.bullets.map((item) => `<li>${item}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="feature-coverflow__preview" aria-hidden="true">
-                ${previewHtml(feature.preview)}
-            </div>
-        `
+        slide.innerHTML = feature.preview === 'timesheets'
+            ? timesheetsShowcaseHtml(number)
+            : featureShowcaseHtml(feature, number)
         slide.addEventListener('click', () => {
             if (ignoreClick || i === current) return
             current = i
