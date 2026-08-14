@@ -45,11 +45,11 @@ const DOCUMENTS = [
   {
     type: 'privacy_policy',
     title: 'DREVORA Privacy Policy',
-    version: '0.3',
-    effectiveDate: '2026-08-03',
+    version: '0.4',
+    effectiveDate: '2026-08-14',
     audience: 'both',
     acceptanceRequirement: 'acknowledge',
-    sourceFile: 'privacy-policy-v0.3.md',
+    sourceFile: 'privacy-policy-v0.4.md',
     isCurrent: true,
   },
   {

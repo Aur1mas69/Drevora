@@ -64,13 +64,13 @@ export const LEGAL_DOCUMENT_MANIFEST = [
   {
     type: 'privacy_policy',
     title: 'DREVORA Privacy Policy',
-    version: '0.3',
-    effectiveDate: '2026-08-03',
+    version: '0.4',
+    effectiveDate: '2026-08-14',
     audience: 'both',
     acceptanceRequirement: 'acknowledge',
-    sourceFile: 'privacy-policy-v0.3.md',
+    sourceFile: 'privacy-policy-v0.4.md',
     isCurrent: true,
-    contentHash: 'd8f01460b51372cb76f7e075e3fa3895ad84d8abab2bef7d793af375ccf2d04e',
+    contentHash: '34d658d5796236291ccb874451979a439b7dff4a97b41fcc38a2a56d3e3a3373',
   },
   {
     type: 'worker_terms',
