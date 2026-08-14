@@ -48,18 +48,15 @@
             <header class="legal-document__header">
                 <p class="legal-document__eyebrow">Legal</p>
                 <h1 class="legal-document__title">DREVORA Privacy Policy</h1>
-                <p class="legal-document__updated">v0.3 · Effective 3 Aug 2026</p>
+                <p class="legal-document__updated">v0.4 · Effective 14 Aug 2026</p>
                 <p class="legal-document__meta">
-                    <strong>Version:</strong> v0.3 Draft<br>
-                    <strong>Effective date:</strong> 3 August 2026<br>
+                    <strong>Version:</strong> v0.4<br>
+                    <strong>Effective date:</strong> 14 August 2026<br>
                     <strong>Operator:</strong> Aurimas Jokubaitis, trading as DREVORA, sole trader<br>
                     <strong>Business address:</strong> 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom<br>
                     <strong>Email:</strong> <a href="mailto:admin@drevora.uk">admin@drevora.uk</a><br>
                     <strong>Website:</strong> drevora.app
                 </p>
-                <aside class="legal-callout" role="note">
-                    <p><strong>DRAFT - LEGAL REVIEW REQUIRED.</strong> This Policy describes DREVORA's intended UK data-protection position and current product design. It must be checked against the live system, provider configuration and final retention controls before accepting live customers or publishing in an app store.</p>
-                </aside>
 
             </header>
 
@@ -67,7 +64,7 @@
                 <section class="legal-section" id="1-who-we-are">
                     <h2>1. Who we are</h2>
                     <p>DREVORA is a fleet, workforce and operations management platform operated by Aurimas Jokubaitis, trading as DREVORA, a sole trader based in England, United Kingdom.</p>
-                    <p>This Policy explains how personal information is collected, used, stored and protected when people visit DREVORA websites, create or use accounts, use the web/PWA or Android applications, contact support or use DREVORA features.</p>
+                    <p>This Policy explains how personal information is collected, used, stored and protected when people visit DREVORA websites, create or use accounts, use the web/PWA, Android or iOS applications, contact support or use DREVORA features.</p>
                 </section>
 
                 <section class="legal-section" id="2-our-data-protection-roles">
@@ -126,6 +123,7 @@
                     <p>This may include requested dates, duration, entitlement, balances, status, comments, approval, rejection and audit records.</p>
                     <h3>3.5 Vehicle and Tyre Checks</h3>
                     <p>This may include Worker, vehicle, checklist answers, OK/Defect/N/A selections, tyre readings, odometer, start and completion times, duration, defect notes, photographs, signatures, correction records and follow-up actions.</p>
+                    <p>When device permission is granted, Vehicle and Tyre Check data may also include start location, completion location, latitude, longitude, device-reported accuracy and the location capture timestamp. This is a one-time capture at start and completion, not continuous tracking.</p>
                     <h3>3.6 Driver Reports</h3>
                     <p>This may include vehicle, load, cargo, damage, site or customer incident information, photographs, attachments, comments, status and Office actions.</p>
                     <h3>3.7 Consumables</h3>
@@ -140,7 +138,7 @@
                         <li>app version and platform;</li>
                         <li>current route or screen;</li>
                         <li>online or offline state;</li>
-                        <li>browser or Android WebView user agent;</li>
+                        <li>browser, mobile app/WebView or device environment information;</li>
                         <li>screen dimensions;</li>
                         <li>locale and timezone;</li>
                         <li>submission timestamp.</li>
@@ -152,12 +150,14 @@
 
                 <section class="legal-section" id="4-mobile-pwa-offline-storage-and-device-permissions">
                     <h2>4. Mobile, PWA, offline storage and device permissions</h2>
-                    <p>4.1 The Android application and supported web/PWA environments may store limited information locally so that authentication, preferences and supported workflows can function reliably.</p>
+                    <p>4.1 The Android app, iOS app and supported web/PWA environments may use secure platform storage for authentication, session information and preferences, so that authentication, preferences and supported workflows can function reliably.</p>
                     <p>4.2 Offline Vehicle Checks and related media may be stored temporarily on the device or in browser storage until synchronisation completes.</p>
                     <p>4.3 Device-side information can be removed by app deletion, browser clearing, operating-system cleanup, device loss or storage failure.</p>
-                    <p>4.4 Camera, photo or file permissions are used only where the user chooses a feature requiring an image or attachment.</p>
-                    <p>4.5 Biometric app lock is processed by the device operating system. DREVORA does not receive or store a fingerprint, face image or biometric template.</p>
-                    <p>4.6 DREVORA does not collect precise location by default. If a future feature collects location, this Policy and the relevant user notice must be updated before use.</p>
+                    <p>4.4 Camera and photo-library or file access are used only when the Worker uses a feature requiring a photograph or attachment.</p>
+                    <p>4.5 Biometric app lock is handled by the device operating system. DREVORA does not receive or store fingerprint templates, Face ID face images or biometric templates.</p>
+                    <p>4.6 Vehicle Check location is requested only when relevant to the Vehicle Check workflow and only when device permission is granted. The app attempts a one-time location capture when a Vehicle Check starts and another one-time capture immediately before completion.</p>
+                    <p>4.7 This is not continuous, background or live location tracking. Location is supporting evidence attached to the Vehicle Check record.</p>
+                    <p>4.8 Denying location permission, or a failed or timed-out location lookup, does not prevent the Worker from completing the Vehicle Check.</p>
                 </section>
 
                 <section class="legal-section" id="5-how-information-is-collected">
@@ -263,6 +263,7 @@
                         </table>
                     </div>
                     <p>These providers process only the information required for their service. DREVORA does not share information with advertisers or data brokers.</p>
+                    <p>Third-party service providers that receive user personal data are required to apply appropriate data-protection safeguards and to provide protection equivalent to that required by this Privacy Policy and applicable data-protection law.</p>
                     <p>A current Sub-processor schedule should be maintained before live customer use.</p>
                 </section>
 
@@ -281,7 +282,7 @@
                         <li>authentication, session and role controls;</li>
                         <li>organisation-level isolation and Row Level Security where implemented;</li>
                         <li>private storage and temporary signed access links;</li>
-                        <li>secure Android session storage using platform security where implemented;</li>
+                        <li>secure session storage on supported mobile apps using platform security where implemented, including Apple platform security and Keychain on iOS;</li>
                         <li>access restrictions, deployment controls and dependency monitoring;</li>
                         <li>provider backups, incident response and security logging where available.</li>
                     </ul>
@@ -429,7 +430,7 @@
                         Business address: 11 Buckenham Way, Thetford, Norfolk, IP24 1ES, United Kingdom<br>
                         Email: <a href="mailto:admin@drevora.uk">admin@drevora.uk</a><br>
                         Website: drevora.app<br>
-                        Effective date: 3 August 2026
+                        Effective date: 14 August 2026
                     </p>
                 </section>
 
