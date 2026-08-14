@@ -90,31 +90,33 @@ Use mock data only when explicitly requested.
 
 ## Database (Supabase)
 
-**`supabase/schema.sql` is the single source of truth** for all database structure.
+**`supabase/migrations/` is the canonical database history.** It is the only path for production database, RLS, Storage, grant, and function changes.
+
+Never apply these legacy files to production, and never suggest them as a fix:
+
+- `supabase/policies.sql`
+- `supabase/schema.sql` as a full executable setup script
+- `supabase/scripts/apply_*.sql`
+
+`supabase/diagnostics/` is read-only unless a file is explicitly proven to mutate. Do not confuse diagnostics with migrations.
 
 ### Migration-first workflow
 
-If a new feature requires **new tables or columns**, always generate the SQL migration **before** implementing React UI, services, or types. **Never assume tables already exist** in the user's Supabase project.
+If a new feature requires **new tables, columns, RLS, Storage, or functions**, create a SQL migration **before** implementing React UI, services, or types. **Never assume objects already exist** in the user's Supabase project. **Never assume `schema.sql` or `policies.sql` match live production.**
 
 Required order:
 
-1. `supabase/migrations/` — new timestamped migration file
-2. `supabase/schema.sql` — keep in sync
-3. `supabase/policies.sql` — when RLS or grants change
-4. TypeScript service layer
-5. React UI
-
-Every database change must also update when applicable:
-
-- `supabase/seed.sql` — when demo seed data changes
-- `supabase/README.md` — when setup steps change
+1. Inspect live schema and existing `supabase/migrations/`
+2. Add a new timestamped migration under `supabase/migrations/`
+3. TypeScript service layer
+4. React UI
 
 Rules:
 
 - Do not create ad-hoc SQL Editor queries or ask the user to run “Untitled query” scripts.
-- Do not duplicate schema definitions outside `supabase/schema.sql`.
-- Prefer idempotent SQL (`IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`).
-- Never drop tables or delete data in schema updates unless explicitly requested.
+- Do not tell anyone to paste `policies.sql`, `schema.sql`, or `apply_*.sql` into the SQL Editor.
+- Prefer idempotent SQL in **migrations** (`IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`).
+- Never drop tables or delete data unless explicitly requested.
 
 ---
 

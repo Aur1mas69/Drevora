@@ -2,73 +2,42 @@
 
 ```
 supabase/
-  schema.sql       Single source of truth (tables, indexes)
-  migrations/      Incremental migration history
-  policies.sql     Row Level Security configuration
-  seed.sql         Optional demo/development data
+  migrations/      Canonical production database history (ONLY apply these)
+  diagnostics/     Read-only operator checks (do not confuse with migrations)
+  schema.sql       Legacy snapshot — do not apply to production
+  policies.sql     Legacy MVP RLS dump — do not apply to production
+  scripts/         Legacy one-off apply_*.sql — do not apply to production
+  seed.sql         Optional local/demo data only
 ```
 
-## Single source of truth
+## Canonical database source
 
-**`schema.sql` is the canonical database definition.** All schema changes start here.
+**`supabase/migrations/` is the only canonical source for production database changes.**
 
-When making a database change, update in this order:
+All table, RLS, grant, Storage, function, and trigger changes for live DREVORA must go through a reviewed migration in that folder. Do not paste SQL into the Supabase SQL Editor as a substitute for a migration.
 
-1. **`schema.sql`** — always (required)
-2. **`migrations/`** — add a new migration file when the change must apply to existing databases
-3. **`policies.sql`** — when RLS or policies change
-4. **`seed.sql`** — when demo seed data changes
-5. **`README.md`** — when setup or workflow changes
+## Legacy SQL — do not apply to production
 
-Do not create ad-hoc SQL Editor queries or one-off “Untitled query” scripts. Keep every structural change in the repo.
+These files are historical. They must **not** be run against production (or any live DREVORA project):
 
-## Setup (new project)
+- `supabase/policies.sql`
+- `supabase/schema.sql` used as a full executable production setup script
+- `supabase/scripts/apply_*.sql` (including `apply_vehicle_check_storage_bucket.sql` and `apply_vehicle_check_template_rls.sql`)
 
-Run these files **in order** in the Supabase **SQL Editor**:
+They can remain in the repo for history. Do not treat “Safe to re-run” or “Paste into SQL Editor” comments inside them as current instructions.
 
-| Step | File | Purpose |
-| --- | --- | --- |
-| 1 | `schema.sql` | Create or sync tables and indexes |
-| 2 | `policies.sql` | Apply RLS settings (disabled for MVP) |
-| 3 | `seed.sql` | *(Optional)* Insert demo company profile |
+## Production changes
 
-All scripts are safe to re-run. They use `IF NOT EXISTS` patterns and will not drop tables or delete existing data.
+1. Inspect the live schema and existing migrations.
+2. Add a new timestamped file under `supabase/migrations/`.
+3. Review and apply **only that migration** through the normal approved process.
 
-## Syncing an existing project
+Do not run `schema.sql` + `policies.sql` to “sync” an existing project. Do not use legacy SQL to fix empty query results, missing buckets, or RLS blocks.
 
-When `schema.sql` has been updated, run the full **`schema.sql`** in the SQL Editor to sync. If a migration file was also added, run that migration on databases that were created before the change.
+## Diagnostics
 
-Then run **`policies.sql`** so RLS is disabled and API roles can read/write tables during MVP.
-
-### App shows 0 workers/vehicles but data exists
-
-If Supabase queries return **0 rows with no error**, RLS or missing table grants is usually blocking the anon API role. Run **`policies.sql`** against the same project referenced in `.env.local` (`VITE_SUPABASE_URL`).
-
-## Schema overview
-
-| Table | Purpose |
-| --- | --- |
-| `drivers` | Workers (table name kept for app compatibility) |
-| `vehicles` | Fleet vehicles, documents, and off-road fields |
-| `vehicle_availability` | Date-based vehicle status records |
-| `companies` | Company profile for dashboard header and settings |
-
-See `schema.sql` for the full column list, indexes, and comments.
-
-## Migrations folder
-
-The `migrations/` folder contains incremental SQL files used during development. For new project setup, running `schema.sql` is sufficient. Migration files are kept for history and reference.
-
-## Row Level Security
-
-During MVP development, **RLS is disabled** on all DREVORA tables. This is configured in `policies.sql`.
-
-Before production:
-
-1. Enable RLS on each table
-2. Add tenant-scoped policies (see commented examples in `policies.sql`)
-3. Do not deploy with RLS disabled
+`supabase/diagnostics/` may contain **read-only** diagnostic SQL for operators. It is not a migration set. Do not apply diagnostic files as schema or policy changes.
 
 ## Seed data
 
-`seed.sql` inserts a sample company (`Jagstrans Ltd`) only when the `companies` table is empty. Skip this file in production unless you want initial demo data.
+`seed.sql` inserts a sample company only when `companies` is empty. Do not run it on production.

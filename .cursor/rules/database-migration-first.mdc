@@ -1,30 +1,61 @@
 ---
-description: Create Supabase SQL migrations before React UI when new tables are needed
+description: Canonical DB changes go through supabase/migrations only; never apply legacy SQL or weaken RLS
 alwaysApply: true
 ---
 
 # Database migration first
 
-When a new feature needs **new database tables or columns**, create the SQL migration **before** any React UI, services, or types that depend on it.
+`supabase/migrations/` is the **only** canonical production database-change history.
+
+When a feature needs new tables, columns, RLS, Storage, grants, or functions, create a timestamped SQL migration **before** any React UI, services, or types that depend on it.
+
+## Never apply legacy SQL
+
+These files are historical. Never apply them to production, and never suggest them as a fix:
+
+- `supabase/policies.sql`
+- `supabase/schema.sql` as a complete executable setup
+- `supabase/scripts/apply_*.sql`
+
+Do not keep `schema.sql` or `policies.sql` synchronized. Do not treat them as current contracts. They may remain in the repo for history only.
+
+`supabase/diagnostics/` is read-only unless a file is explicitly proven to mutate. Diagnostics are not migration replacements.
 
 ## Required order
 
-1. **Migration** — add `supabase/migrations/YYYYMMDDHHMMSS_descriptive_name.sql`
-2. **Schema sync** — update `supabase/schema.sql` (and `supabase/policies.sql` if grants/RLS change)
-3. **Service layer** — TypeScript service that reads/writes the new table
-4. **UI** — pages and components
+1. Inspect existing `supabase/migrations/` and current schema assumptions.
+2. Determine the smallest required change.
+3. Add `supabase/migrations/YYYYMMDDHHMMSS_descriptive_name.sql`.
+4. Review the migration before application.
+5. Apply **only that migration** after approval / appropriate task scope.
+6. Verify production state afterward when production access is part of the task.
+7. TypeScript service layer, then React UI.
 
 ## Rules
 
-- **Never assume tables already exist** in the user's Supabase project.
+- **Never assume** tables, policies, buckets, or functions already exist in the user's Supabase project.
 - **Never** wire UI to `supabase.from('…')` until the migration file exists in the repo.
-- Tell the user to run the migration on their Supabase project before testing.
-- Use idempotent SQL where possible (`IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`).
-- For MVP, follow existing pattern: disable RLS + grant `anon`/`authenticated` in migration and `policies.sql`.
+- Tell the user to apply the new migration before testing.
+- Use idempotent SQL in **migrations** (`IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`).
+- Never drop tables or delete data unless explicitly requested.
+
+## Security defaults
+
+DREVORA is multi-tenant. Database security must be enforced by PostgreSQL RLS / RPC authorization, not only frontend filters.
+
+Never introduce as a shortcut:
+
+- `DISABLE ROW LEVEL SECURITY`
+- broad `GRANT … TO anon` or `GRANT ALL` to anon
+- permissive `USING (true)` / `WITH CHECK (true)` for tenant business data
+- unsafe tenant fallback helpers
+
+Unless the user explicitly requests a security design change and it has been reviewed.
 
 ## Example
 
 ```
 ❌ BAD: CompliancePage.tsx + workerComplianceService.ts, no migration file
-✅ GOOD: 20260628220000_create_worker_compliance_records_table.sql → schema.sql → service → UI
+❌ BAD: paste policies.sql / schema.sql / apply_*.sql into SQL Editor
+✅ GOOD: 20260628220000_create_worker_compliance_records_table.sql → service → UI
 ```

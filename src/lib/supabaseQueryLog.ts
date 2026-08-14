@@ -46,7 +46,7 @@ export function logSupabaseQuery({
 
   if (rowCount === 0 && warnOnEmpty) {
     console.warn(
-      `[${service}] Query returned 0 rows for public.${table}. If data exists in the Supabase dashboard, RLS or table grants may be blocking reads. Run supabase/policies.sql against this project.`,
+      `[${service}] Query returned 0 rows for public.${table}. If data exists in the Supabase dashboard, confirm this app is connected to the intended project and that required migrations are applied. Inspect current RLS/policies with read-only diagnostics. Do not apply legacy SQL files (policies.sql, schema.sql, or scripts/apply_*.sql).`,
     )
   }
 }

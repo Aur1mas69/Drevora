@@ -73,7 +73,7 @@ export async function uploadVehicleCheckDefectPhoto(
   if (error) {
     throw new VehicleCheckPhotoStorageError(
       error.message === 'Bucket not found'
-        ? 'Vehicle check storage is not configured. Ask an admin to run supabase/scripts/apply_vehicle_check_storage_bucket.sql in Supabase.'
+        ? 'Vehicle check storage is not configured. The vehicle-check-photos bucket and policies are managed by canonical Supabase migrations. Confirm required migrations are applied; do not run legacy apply_*.sql files.'
         : error.message,
     )
   }
@@ -111,7 +111,7 @@ export async function uploadVehicleCheckSignature(
   if (error) {
     throw new VehicleCheckPhotoStorageError(
       error.message === 'Bucket not found'
-        ? 'Vehicle check storage is not configured. Ask an admin to run supabase/scripts/apply_vehicle_check_storage_bucket.sql in Supabase.'
+        ? 'Vehicle check storage is not configured. The vehicle-check-photos bucket and policies are managed by canonical Supabase migrations. Confirm required migrations are applied; do not run legacy apply_*.sql files.'
         : error.message,
     )
   }
