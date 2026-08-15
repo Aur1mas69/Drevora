@@ -32,7 +32,6 @@ import { resolveExportMeta } from '@/lib/export/exportMeta'
 import {
   downloadFilteredVehicleCheckFilesZip,
   downloadVehicleCheckAttachments,
-  downloadVehicleCheckAttachmentsById,
   downloadVehicleCheckPdf,
   exportVehicleChecksCsv,
   exportVehicleChecksFilteredPdfs,
@@ -748,7 +747,6 @@ export default function VehicleChecksPage() {
           <div>
             <VehicleChecksDataTable
               checks={items}
-              downloadingCheckId={downloadingCheckId}
               onView={(check) => void openCheckDetail(check.id, 'view')}
               onEdit={(check) => void openCheckDetail(check.id, 'edit')}
               onReviewDefects={(check) => void openReviewDefects(check.id)}
@@ -764,14 +762,6 @@ export default function VehicleChecksPage() {
               }}
               onOpenCorrectionHistory={(check) => {
                 void openCheckDetail(check.id, 'view')
-              }}
-              onDownloadFiles={(check) => {
-                if (downloadingCheckId) return
-                setDownloadingCheckId(check.id)
-                void downloadVehicleCheckAttachmentsById(check.id)
-                  .then(() => showToast('Downloaded vehicle check files'))
-                  .catch((error) => showToast(toExportUserMessage(error)))
-                  .finally(() => setDownloadingCheckId(null))
               }}
               onDelete={(check) => {
                 setDeleteError(null)

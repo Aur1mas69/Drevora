@@ -19,6 +19,7 @@
     "verify:worker-timesheet-settings": "npx tsx scripts/verify-worker-timesheet-settings.ts",
     "verify:vehicle-check-location": "npx tsx scripts/verify-vehicle-check-location.ts",
     "verify:vehicle-check-report-grouping": "npx tsx scripts/verify-vehicle-check-report-grouping.ts",
+    "verify:vehicle-check-pdf-report": "npx tsx scripts/verify-vehicle-check-pdf-report.ts",
     "verify:tyre-check-status": "npx tsx scripts/verify-tyre-check-status.ts",
     "verify:tyre-check-pressure-correction": "npx tsx scripts/verify-tyre-check-pressure-correction.ts",
     "verify:weekend-rules-ownership": "npx tsx scripts/verify-weekend-rules-ownership.ts",

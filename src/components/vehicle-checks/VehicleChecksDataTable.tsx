@@ -29,12 +29,10 @@ import {
   adminText,
   adminTextStrong,
 } from '@/lib/adminUiStyles'
-import { vehicleCheckMayHaveDownloadableFiles } from '@/lib/export/modules/vehicleChecksExport'
-import { ClipboardCheck, Download, Eye, FilePlus2, Pencil, Trash2 } from 'lucide-react'
+import { ClipboardCheck, Eye, FilePlus2, Pencil, Trash2 } from 'lucide-react'
 
 type VehicleChecksDataTableProps = {
   checks: VehicleCheckListItem[]
-  downloadingCheckId?: string | null
   onView: (check: VehicleCheckListItem) => void
   onEdit: (check: VehicleCheckListItem) => void
   onDelete: (check: VehicleCheckListItem) => void
@@ -43,7 +41,6 @@ type VehicleChecksDataTableProps = {
   onOpenOriginal: (originalCheckId: string) => void
   onOpenLatestCorrection: (correctionId: string) => void
   onOpenCorrectionHistory: (check: VehicleCheckListItem) => void
-  onDownloadFiles?: (check: VehicleCheckListItem) => void
 }
 
 function VehicleCheckRowActions({
@@ -51,43 +48,25 @@ function VehicleCheckRowActions({
   canEdit,
   canDelete,
   canCreateCorrection,
-  canDownload,
-  isDownloading,
-  downloadLabel,
   onView,
   onEdit,
   onDelete,
   onReviewDefects,
   onCreateCorrection,
-  onDownloadFiles,
 }: {
   canReview: boolean
   canEdit: boolean
   canDelete: boolean
   canCreateCorrection: boolean
-  canDownload: boolean
-  isDownloading: boolean
-  downloadLabel: string
   onView: () => void
   onEdit: () => void
   onDelete: () => void
   onReviewDefects: () => void
   onCreateCorrection: () => void
-  onDownloadFiles?: () => void
 }) {
   const actions: RowAction[] = [
     { id: 'view', label: 'View', icon: Eye, onClick: onView },
   ]
-
-  if (canDownload && onDownloadFiles) {
-    actions.push({
-      id: 'download',
-      label: isDownloading ? 'Downloading…' : downloadLabel,
-      icon: Download,
-      disabled: isDownloading,
-      onClick: onDownloadFiles,
-    })
-  }
 
   if (canReview) {
     actions.push({
@@ -126,7 +105,6 @@ function VehicleCheckRowActions({
 
 export function VehicleChecksDataTable({
   checks,
-  downloadingCheckId = null,
   onView,
   onEdit,
   onDelete,
@@ -135,7 +113,6 @@ export function VehicleChecksDataTable({
   onOpenOriginal,
   onOpenLatestCorrection,
   onOpenCorrectionHistory,
-  onDownloadFiles,
 }: VehicleChecksDataTableProps) {
   const { formatDate, compactTables } = useCompanySettings()
   const rowPadding = compactTables ? 'py-3' : 'py-4'
@@ -295,21 +272,11 @@ export function VehicleChecksDataTable({
                     canEdit={isVehicleCheckEditable(check)}
                     canDelete={isVehicleCheckEditable(check)}
                     canCreateCorrection={isVehicleCheckFinal(check)}
-                    canDownload={vehicleCheckMayHaveDownloadableFiles(check)}
-                    isDownloading={downloadingCheckId === check.id}
-                    downloadLabel={
-                      check.defectCount > 0
-                        ? 'Download files (.zip)'
-                        : 'Download file'
-                    }
                     onView={() => onView(check)}
                     onEdit={() => onEdit(check)}
                     onDelete={() => onDelete(check)}
                     onReviewDefects={() => onReviewDefects(check)}
                     onCreateCorrection={() => onCreateCorrection(check)}
-                    onDownloadFiles={
-                      onDownloadFiles ? () => onDownloadFiles(check) : undefined
-                    }
                   />
                 </TableActionsCell>
               </tr>
