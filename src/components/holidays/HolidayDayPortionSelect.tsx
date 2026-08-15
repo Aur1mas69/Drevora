@@ -8,6 +8,8 @@ type HolidayDayPortionSelectProps = {
   className?: string
   id?: string
   disabled?: boolean
+  /** Worker-provided labels. Admin keeps English option copy when omitted. */
+  optionLabels?: Partial<Record<HolidayDayPortion, string>>
 }
 
 export function HolidayDayPortionSelect({
@@ -17,6 +19,7 @@ export function HolidayDayPortionSelect({
   className,
   id,
   disabled = false,
+  optionLabels,
 }: HolidayDayPortionSelectProps) {
   return (
     <label className={`block text-sm font-medium text-slate-700 dark:text-slate-300 ${className ?? ''}`}>
@@ -31,7 +34,7 @@ export function HolidayDayPortionSelect({
       >
         {HOLIDAY_DAY_PORTION_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {optionLabels?.[option.value] ?? option.label}
           </option>
         ))}
       </select>

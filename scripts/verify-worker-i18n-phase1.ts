@@ -220,4 +220,71 @@ assert(
   'English timesheets.title after reset',
 )
 
+const holidaysKeys = englishKeys.filter((key) => key.startsWith('holidays.'))
+assert(holidaysKeys.length >= 30, 'Phase 3B holidays keys exist')
+assert(holidaysKeys.includes('holidays.title'), 'holidays.title exists')
+assert(holidaysKeys.includes('holidays.submitRequest'), 'holidays.submitRequest exists')
+assert(holidaysKeys.includes('holidays.statusApproved'), 'holidays.statusApproved exists')
+assert(String(ltWorker.holidays.title) !== String(enWorker.holidays.title), 'LT holidays.title is translated')
+assert(String(plWorker.holidays.title) !== String(enWorker.holidays.title), 'PL holidays.title is translated')
+assert(String(roWorker.holidays.title) !== String(enWorker.holidays.title), 'RO holidays.title is translated')
+assert(String(ruWorker.holidays.title) !== String(enWorker.holidays.title), 'RU holidays.title is translated')
+
+const vehiclesKeys = englishKeys.filter((key) => key.startsWith('vehicles.'))
+assert(vehiclesKeys.length >= 20, 'Phase 3B vehicles keys exist')
+assert(vehiclesKeys.includes('vehicles.title'), 'vehicles.title exists')
+assert(vehiclesKeys.includes('vehicles.setDefault'), 'vehicles.setDefault exists')
+assert(String(ltWorker.vehicles.title) !== String(enWorker.vehicles.title), 'LT vehicles.title is translated')
+
+const reportsKeys = englishKeys.filter((key) => key.startsWith('reports.'))
+assert(reportsKeys.length >= 20, 'Phase 3B reports keys exist')
+assert(reportsKeys.includes('reports.title'), 'reports.title exists')
+assert(reportsKeys.includes('reports.createReport'), 'reports.createReport exists')
+assert(String(ltWorker.reports.title) !== String(enWorker.reports.title), 'LT reports.title is translated')
+
+const documentsKeys = englishKeys.filter((key) => key.startsWith('documents.'))
+assert(documentsKeys.length >= 20, 'Phase 3B documents keys exist')
+assert(documentsKeys.includes('documents.title'), 'documents.title exists')
+assert(documentsKeys.includes('documents.statusPending'), 'documents.statusPending exists')
+assert(String(ltWorker.documents.title) !== String(enWorker.documents.title), 'LT documents.title is translated')
+
+const contactsKeys = englishKeys.filter((key) => key.startsWith('contacts.'))
+assert(contactsKeys.length >= 10, 'Phase 3B contacts keys exist')
+assert(contactsKeys.includes('contacts.title'), 'contacts.title exists')
+assert(String(ltWorker.contacts.title) !== String(enWorker.contacts.title), 'LT contacts.title is translated')
+
+const notesKeys = englishKeys.filter((key) => key.startsWith('notes.'))
+assert(notesKeys.length >= 20, 'Phase 3B notes keys exist')
+assert(notesKeys.includes('notes.title'), 'notes.title exists')
+assert(notesKeys.includes('notes.addNote'), 'notes.addNote exists')
+assert(String(ltWorker.notes.title) !== String(enWorker.notes.title), 'LT notes.title is translated')
+assert(String(plWorker.notes.title) !== String(enWorker.notes.title), 'PL notes.title is translated')
+assert(String(roWorker.notes.title) !== String(enWorker.notes.title), 'RO notes.title is translated')
+assert(String(ruWorker.notes.title) !== String(enWorker.notes.title), 'RU notes.title is translated')
+
+const myHolidaysPage = read('src/pages/MyHolidaysPage.tsx')
+const workerVehiclesPage = read('src/pages/worker/WorkerVehiclesPage.tsx')
+const workerReportsPage = read('src/pages/worker/WorkerDriverReportsPage.tsx')
+const workerDocumentsPage = read('src/pages/worker/WorkerDocumentsPage.tsx')
+const workerContactsPage = read('src/pages/worker/WorkerContactsPage.tsx')
+const workerNotesPage = read('src/pages/worker/WorkerNotesPage.tsx')
+assert(myHolidaysPage.includes("t('holidays.title'"), 'My Holidays page translates title')
+assert(workerVehiclesPage.includes("t('vehicles.title'"), 'Worker Vehicles page translates title')
+assert(workerReportsPage.includes("t('reports.title'"), 'Worker Driver Reports page translates title')
+assert(workerDocumentsPage.includes("t('documents.title'"), 'Worker Documents page translates title')
+assert(workerContactsPage.includes("t('contacts.title'"), 'Worker Contacts page translates title')
+assert(workerNotesPage.includes("t('notes.title'"), 'Worker Notes page translates title')
+assert(!workerDocumentsPage.includes('getWorkerSubmissionReviewLabel('), 'Worker Documents does not show canonical review via getWorkerSubmissionReviewLabel')
+
+void workerI18n.changeLanguage('lt')
+assert(
+  workerI18n.t('holidays.title') === ltWorker.holidays.title,
+  'Lithuanian holidays.title is used when language is lt',
+)
+void workerI18n.changeLanguage('en')
+assert(
+  workerI18n.t('holidays.title') === enWorker.holidays.title,
+  'English holidays.title after reset',
+)
+
 console.log('verify-worker-i18n-phase1: PASS')

@@ -5,6 +5,7 @@ import {
   type WorkerHolidayBalanceView,
 } from '@/lib/workerHolidaySelfService'
 import type { HolidayBalanceSummary } from '@/lib/holidayRequestTypes'
+import { useTranslation } from 'react-i18next'
 import {
   myHolidayCardClass,
   myHolidaySectionEyebrowClass,
@@ -20,10 +21,12 @@ function DonutRing({
   used,
   remaining,
   total,
+  daysLeftLabel,
 }: {
   used: number
   remaining: number | null
   total: number | null
+  daysLeftLabel: string
 }) {
   const size = 168
   const stroke = 15
@@ -107,7 +110,7 @@ function DonutRing({
           className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
           style={{ color: 'var(--worker-holiday-donut-label)' }}
         >
-          Days left
+          {daysLeftLabel}
         </p>
       </div>
     </div>
@@ -190,6 +193,7 @@ export function MyHolidayBalanceHero({
   balance,
   showManagedMessage,
 }: MyHolidayBalanceHeroProps) {
+  const { t } = useTranslation('worker')
   const view: WorkerHolidayBalanceView = buildWorkerHolidayBalanceView(balance)
 
   return (
@@ -197,11 +201,11 @@ export function MyHolidayBalanceHero({
       <HolidayBalanceDecor />
 
       <div className="relative z-10">
-        <p className={myHolidaySectionEyebrowClass}>Holiday balance</p>
+        <p className={myHolidaySectionEyebrowClass}>{t('holidays.balanceEyebrow')}</p>
 
         {showManagedMessage ? (
           <p className="my-holiday-notice mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
-            Your holiday balance is managed by your company.
+            {t('holidays.managed')}
           </p>
         ) : null}
 
@@ -210,22 +214,23 @@ export function MyHolidayBalanceHero({
             used={view.usedDays}
             remaining={view.remainingDays}
             total={view.totalEntitlement}
+            daysLeftLabel={t('holidays.daysLeft')}
           />
         </div>
 
         <div className="mt-5 flex gap-2.5">
           <StatChip
-            label="Used"
+            label={t('holidays.used')}
             value={formatWorkerHolidayDayCount(view.usedDays)}
             accent="green"
           />
           <StatChip
-            label="Pending"
+            label={t('holidays.pending')}
             value={formatWorkerHolidayDayCount(view.pendingDays)}
             accent="amber"
           />
           <StatChip
-            label="Total"
+            label={t('holidays.total')}
             value={formatWorkerHolidayDayCount(view.totalEntitlement)}
             accent="blue"
           />

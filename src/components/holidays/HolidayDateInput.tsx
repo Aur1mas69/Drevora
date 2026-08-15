@@ -10,6 +10,18 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 /** Holiday date pickers always use Monday-first weeks. */
 const HOLIDAY_WEEK_STARTS = 'monday' as const
 
+export type HolidayDateInputChrome = {
+  locale?: string
+  weekdayLabels?: readonly string[]
+  previousMonth?: string
+  nextMonth?: string
+  selectDate?: string
+  clearDate?: string
+  openCalendar?: string
+  namedCalendar?: (label: string) => string
+  clearNamedDate?: (label: string) => string
+}
+
 type HolidayDateInputProps = {
   value: string
   onChange: (value: string) => void
@@ -28,6 +40,8 @@ type HolidayDateInputProps = {
   layout?: 'default' | 'modal'
   /** Horizontal alignment of the calendar popover relative to the input. */
   popoverAlign?: 'start' | 'end'
+  /** Worker-only labels/locale. Admin keeps English defaults when omitted. */
+  chrome?: HolidayDateInputChrome
 }
 
 type CalendarDay = {
@@ -69,6 +83,7 @@ type DatePickerPanelProps = {
   layout: 'default' | 'modal'
   onSelect: (iso: string) => void
   onViewDateChange: (date: Date) => void
+  chrome?: HolidayDateInputChrome
 }
 
 function DatePickerPanel({
@@ -78,9 +93,10 @@ function DatePickerPanel({
   layout,
   onSelect,
   onViewDateChange,
+  chrome,
 }: DatePickerPanelProps) {
-  const weekdayLabels = getWeekdayLabels(HOLIDAY_WEEK_STARTS)
-  const monthLabel = new Intl.DateTimeFormat('en-GB', {
+  const weekdayLabels = chrome?.weekdayLabels ?? getWeekdayLabels(HOLIDAY_WEEK_STARTS)
+  const monthLabel = new Intl.DateTimeFormat(chrome?.locale ?? 'en-GB', {
     month: 'long',
     year: 'numeric',
   }).format(viewDate)
@@ -103,7 +119,7 @@ function DatePickerPanel({
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => moveMonth(-1)}
           className="my-holiday-nav inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
-          aria-label="Previous month"
+          aria-label={chrome?.previousMonth ?? 'Previous month'}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -113,7 +129,7 @@ function DatePickerPanel({
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => moveMonth(1)}
           className="my-holiday-nav inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#0B68BE] transition-colors hover:bg-[#EEF6FF]"
-          aria-label="Next month"
+          aria-label={chrome?.nextMonth ?? 'Next month'}
         >
           <ChevronRight className="size-4" />
         </button>
@@ -175,6 +191,7 @@ export function HolidayDateInput({
   popoverAlign = 'start',
   requestOpen = false,
   onRequestOpenHandled,
+  chrome,
 }: HolidayDateInputProps) {
   const { dateFormat } = useCompanySettings()
   const group = useHolidayDatePickerGroup()
@@ -320,10 +337,12 @@ export function HolidayDateInput({
 
   const displayValue = value ? formatDateFromIso(value, { dateFormat }) : ''
   const showClear = clearable && value.length > 0
-  const clearLabel = ariaLabel ? `Clear ${ariaLabel}` : 'Clear date'
+  const clearLabel = ariaLabel
+    ? (chrome?.clearNamedDate?.(ariaLabel) ?? `Clear ${ariaLabel}`)
+    : (chrome?.clearDate ?? 'Clear date')
 
   return (
-    <div ref={rootRef} className="relative min-w-0 w-full max-w-full" lang="en-GB">
+    <div ref={rootRef} className="relative min-w-0 w-full max-w-full" lang={chrome?.locale ?? 'en-GB'}>
       <div className="relative min-w-0">
         <Input
           ref={inputRef}
@@ -331,7 +350,7 @@ export function HolidayDateInput({
           type="text"
           readOnly
           value={displayValue}
-          placeholder="Select date"
+          placeholder={chrome?.selectDate ?? 'Select date'}
           onFocus={openFromUser}
           onClick={openFromUser}
           required={required}
@@ -379,7 +398,11 @@ export function HolidayDateInput({
             inputRef.current?.focus()
           }}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-[#5499BF]"
-          aria-label={ariaLabel ? `${ariaLabel} calendar` : 'Open calendar'}
+          aria-label={
+            ariaLabel
+              ? (chrome?.namedCalendar?.(ariaLabel) ?? `${ariaLabel} calendar`)
+              : (chrome?.openCalendar ?? 'Open calendar')
+          }
         >
           <Calendar className="size-4" />
         </button>
@@ -416,6 +439,7 @@ export function HolidayDateInput({
             layout={layout}
             onSelect={handleSelect}
             onViewDateChange={setViewDate}
+            chrome={chrome}
           />
         </div>
       ) : null}

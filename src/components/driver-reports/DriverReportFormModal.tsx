@@ -22,6 +22,11 @@ import { createPortal } from 'react-dom'
 import { DriverReportFileField } from './DriverReportFileField'
 import { driverReportFieldClass, driverReportTextareaClass } from './driverReportUiStyles'
 import { WorkerVehicleCombobox } from '@/components/worker/WorkerVehicleCombobox'
+import {
+  driverReportPriorityI18nKey,
+  driverReportTypeI18nKey,
+} from '@/i18n/workerPhase3bDisplay'
+import { useTranslation } from 'react-i18next'
 
 export type DriverReportFormContext = 'admin' | 'worker'
 
@@ -60,6 +65,7 @@ export function DriverReportFormModal({
   onClose,
   onSubmit,
 }: DriverReportFormModalProps) {
+  const { t } = useTranslation('worker')
   useBodyScrollLock(isOpen)
   const [values, setValues] = useState(buildEmptyDriverReportFormValues())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -117,6 +123,11 @@ export function DriverReportFormModal({
     const nextErrors = validateDriverReportForm(submissionValues, {
       requireWorkerSelection: isAdminForm,
     })
+    if (!isAdminForm) {
+      if (nextErrors.title) nextErrors.title = t('reports.errorsTitle')
+      if (nextErrors.reportType) nextErrors.reportType = t('reports.errorsType')
+      if (nextErrors.description) nextErrors.description = t('reports.errorsDescription')
+    }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -129,7 +140,13 @@ export function DriverReportFormModal({
       })
       onClose()
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unable to save report.')
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : isAdminForm
+            ? 'Unable to save report.'
+            : t('reports.unableToSave'),
+      )
     }
   }
 
@@ -164,12 +181,18 @@ export function DriverReportFormModal({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 id="driver-report-form-title" className="text-lg font-semibold text-[#113C69] dark:text-slate-100">
-                {mode === 'create' ? 'New Report' : 'Edit Report'}
+                {mode === 'create'
+                  ? isAdminForm
+                    ? 'New Report'
+                    : t('reports.createTitle')
+                  : isAdminForm
+                    ? 'Edit Report'
+                    : t('reports.editTitle')}
               </h2>
               <p className="mt-0.5 text-sm text-[#5499BF]">
                 {isAdminForm
                   ? 'Log operational issues for office review.'
-                  : 'Report an issue directly to the office.'}
+                  : t('reports.workerHint')}
               </p>
             </div>
             <button
@@ -177,7 +200,7 @@ export function DriverReportFormModal({
               onClick={onClose}
               disabled={isSaving}
               className="shrink-0 rounded-lg p-2 text-[#5499BF] hover:bg-[#F5FAFF] hover:text-[#113C69] dark:hover:bg-slate-800/50 dark:hover:text-slate-100"
-              aria-label="Close"
+              aria-label={isAdminForm ? 'Close' : t('reports.close')}
             >
               <X className="size-5" />
             </button>
@@ -187,19 +210,19 @@ export function DriverReportFormModal({
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4">
             <label className="block text-sm font-semibold text-[#113C69]">
-              Report title
+              {isAdminForm ? 'Report title' : t('reports.reportTitle')}
               <input
                 value={values.title}
                 onChange={(event) => updateField('title', event.target.value)}
                 className={driverReportFieldClass}
-                placeholder="Short summary of the issue"
+                placeholder={isAdminForm ? 'Short summary of the issue' : t('reports.titlePlaceholder')}
               />
               <FieldError message={errors.title} />
             </label>
 
             <div className={`grid gap-4 ${showWorkerField ? 'sm:grid-cols-2' : ''}`}>
               <label className="block text-sm font-semibold text-[#113C69]">
-                Report type
+                {isAdminForm ? 'Report type' : t('reports.reportType')}
                 <select
                   value={values.reportType}
                   onChange={(event) => updateField('reportType', event.target.value)}
@@ -207,7 +230,7 @@ export function DriverReportFormModal({
                 >
                   {DRIVER_REPORT_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {type}
+                      {isAdminForm ? type : t(driverReportTypeI18nKey(type))}
                     </option>
                   ))}
                 </select>
@@ -244,7 +267,7 @@ export function DriverReportFormModal({
 
             {!isAdminForm && currentWorkerName ? (
               <p className="rounded-[12px] border border-[#C5DFFB] bg-[#F5FAFF] px-3 py-2 text-sm text-[#113C69]">
-                Reporting as <span className="font-semibold">{currentWorkerName}</span>
+                {t('reports.reportingAs', { name: currentWorkerName })}
               </p>
             ) : null}
 
@@ -273,15 +296,15 @@ export function DriverReportFormModal({
                   selectedVehicleId={values.vehicleId || null}
                   onSelect={(vehicle) => updateField('vehicleId', vehicle.id)}
                   onClear={() => updateField('vehicleId', '')}
-                  label="Search registration"
-                  placeholder="Enter registration number"
-                  inputAriaLabel="Search company vehicles by registration number"
+                  label={t('vehicles.searchLabel')}
+                  placeholder={t('vehicles.searchPlaceholder')}
+                  inputAriaLabel={t('vehicles.searchAria')}
                   showAllWhenEmpty
                 />
               )}
 
               <label className="block text-sm font-semibold text-[#113C69]">
-                Priority
+                {isAdminForm ? 'Priority' : t('reports.priority')}
                 <select
                   value={values.priority}
                   onChange={(event) =>
@@ -291,7 +314,7 @@ export function DriverReportFormModal({
                 >
                   {DRIVER_REPORT_PRIORITIES.map((priority) => (
                     <option key={priority} value={priority}>
-                      {priority}
+                      {isAdminForm ? priority : t(driverReportPriorityI18nKey(priority))}
                     </option>
                   ))}
                 </select>
@@ -318,7 +341,7 @@ export function DriverReportFormModal({
             ) : null}
 
             <label className="block text-sm font-semibold text-[#113C69]">
-              Date/time of issue
+              {isAdminForm ? 'Date/time of issue' : t('reports.issueDatetime')}
               <input
                 type="datetime-local"
                 value={values.issueDatetime}
@@ -328,22 +351,28 @@ export function DriverReportFormModal({
             </label>
 
             <label className="block text-sm font-semibold text-[#113C69]">
-              Location / site <span className="font-normal text-[#5499BF]">(optional)</span>
+              {isAdminForm ? (
+                <>
+                  Location / site <span className="font-normal text-[#5499BF]">(optional)</span>
+                </>
+              ) : (
+                t('reports.locationOptional')
+              )}
               <input
                 value={values.location}
                 onChange={(event) => updateField('location', event.target.value)}
                 className={driverReportFieldClass}
-                placeholder="Site or address"
+                placeholder={isAdminForm ? 'Site or address' : t('reports.locationPlaceholder')}
               />
             </label>
 
             <label className="block text-sm font-semibold text-[#113C69]">
-              Description
+              {isAdminForm ? 'Description' : t('reports.description')}
               <textarea
                 value={values.description}
                 onChange={(event) => updateField('description', event.target.value)}
                 className={driverReportTextareaClass}
-                placeholder="What happened?"
+                placeholder={isAdminForm ? 'What happened?' : t('reports.descriptionPlaceholder')}
                 rows={4}
               />
               <FieldError message={errors.description} />
@@ -351,7 +380,13 @@ export function DriverReportFormModal({
 
             <div>
               <p className="text-sm font-semibold text-[#113C69]">
-                Attachments / photos <span className="font-normal text-[#5499BF]">(optional)</span>
+                {isAdminForm ? (
+                  <>
+                    Attachments / photos <span className="font-normal text-[#5499BF]">(optional)</span>
+                  </>
+                ) : (
+                  t('reports.attachmentsOptional')
+                )}
               </p>
               <div className="mt-1.5">
                 <DriverReportFileField
@@ -361,6 +396,18 @@ export function DriverReportFormModal({
                   onSelectFile={setSelectedFile}
                   onRemoveExisting={() => setRemoveFile(true)}
                   onClearSelection={() => setSelectedFile(null)}
+                  labels={
+                    isAdminForm
+                      ? undefined
+                      : {
+                          uploadCta: t('reports.uploadCta'),
+                          chooseFile: t('reports.chooseFile'),
+                          remove: t('reports.remove'),
+                          removeFileAria: t('reports.removeFileAria'),
+                          fileTooLarge: t('reports.fileTooLarge'),
+                          fileType: t('reports.fileType'),
+                        }
+                  }
                 />
               </div>
             </div>
@@ -385,14 +432,24 @@ export function DriverReportFormModal({
 
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#D3E9FC] bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-900/95 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
+              {isAdminForm ? 'Cancel' : t('reports.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={isSaving || (!isAdminForm && !currentWorkerId)}
               className="bg-gradient-to-br from-[#218EE7] to-[#0B68BE] text-white"
             >
-              {isSaving ? 'Saving…' : mode === 'create' ? 'Create report' : 'Save changes'}
+              {isSaving
+                ? isAdminForm
+                  ? 'Saving…'
+                  : t('reports.saving')
+                : mode === 'create'
+                  ? isAdminForm
+                    ? 'Create report'
+                    : t('reports.createReport')
+                  : isAdminForm
+                    ? 'Save changes'
+                    : t('reports.saveChanges')}
             </Button>
           </div>
         </form>

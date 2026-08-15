@@ -1,14 +1,15 @@
 import { cn } from '@/lib/utils'
 import type { Vehicle } from '@/services/vehiclesService'
 import { Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
-export function vehicleSecondaryLabel(vehicle: Vehicle): string {
+export function vehicleSecondaryLabel(vehicle: Vehicle, fleetLabel?: string | null): string {
   const makeModel = [vehicle.make?.trim(), vehicle.model?.trim()].filter(Boolean).join(' ')
   const fleet = vehicle.fleetNumber?.trim()
   const type = vehicle.vehicleType?.trim()
   const parts = [
     makeModel || null,
-    fleet ? `Fleet ${fleet}` : null,
+    fleetLabel || (fleet ? `Fleet ${fleet}` : null),
     type || null,
   ].filter(Boolean)
   return parts.join(' · ')
@@ -32,8 +33,14 @@ export function WorkerVehicleOptionRow({
   disabled = false,
   compact = false,
 }: WorkerVehicleOptionRowProps) {
-  const registration = vehicle.registration?.trim() || 'No registration'
-  const secondary = vehicleSecondaryLabel(vehicle)
+  const { t } = useTranslation('worker')
+  const registration = vehicle.registration?.trim() || t('vehicles.noRegistration')
+  const fleet = vehicle.fleetNumber?.trim()
+  const secondary = vehicleSecondaryLabel(
+    vehicle,
+    fleet ? t('vehicles.fleetLabel', { number: fleet }) : null,
+  )
+  const details = secondary ? `, ${secondary}` : ''
 
   return (
     <button
@@ -41,7 +48,11 @@ export function WorkerVehicleOptionRow({
       role="option"
       aria-selected={selected}
       disabled={disabled}
-      aria-label={`${selected ? 'Selected' : 'Select'} vehicle ${registration}${secondary ? `, ${secondary}` : ''}`}
+      aria-label={
+        selected
+          ? t('vehicles.selectedVehicleAria', { registration, details })
+          : t('vehicles.selectVehicleAria', { registration, details })
+      }
       onClick={() => onSelect(vehicle)}
       className={cn(
         'flex w-full min-w-0 items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors',

@@ -23,6 +23,8 @@ import {
 import { NotebookPen, Pin, Plus, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import { translateWorkerNoteValidation } from '@/i18n/workerPhase3bDisplay'
 
 type EditorMode = 'create' | 'edit'
 
@@ -43,6 +45,7 @@ function NoteEditorSheet({
   onClose: () => void
   onSave: (title: string, content: string) => void
 }) {
+  const { t } = useTranslation('worker')
   const titleId = useId()
   const contentId = useId()
   const [title, setTitle] = useState(initialTitle)
@@ -93,12 +96,15 @@ function NoteEditorSheet({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const titleError = validateWorkerPrivateNoteTitle(title)
+    const titleError = translateWorkerNoteValidation(validateWorkerPrivateNoteTitle(title), t)
     if (titleError) {
       setFormError(titleError)
       return
     }
-    const contentError = validateWorkerPrivateNoteContent(content)
+    const contentError = translateWorkerNoteValidation(
+      validateWorkerPrivateNoteContent(content),
+      t,
+    )
     if (contentError) {
       setFormError(contentError)
       return
@@ -112,7 +118,7 @@ function NoteEditorSheet({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-[1px]"
-        aria-label="Cancel"
+        aria-label={t('notes.cancel')}
         disabled={isSaving}
         onClick={() => {
           if (!isSaving) onClose()
@@ -129,13 +135,13 @@ function NoteEditorSheet({
             id={titleId}
             className="min-w-0 flex-1 text-base font-semibold tracking-[-0.02em] text-[color:var(--worker-text)]"
           >
-            {mode === 'create' ? 'Add note' : 'Edit note'}
+            {mode === 'create' ? t('notes.addNote') : t('notes.editNote')}
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Close"
+            aria-label={t('notes.close')}
             className="flex size-10 shrink-0 items-center justify-center rounded-xl text-[color:var(--worker-text-secondary)] hover:bg-[color:var(--worker-row-hover)] disabled:opacity-50"
           >
             <X className="size-5" aria-hidden />
@@ -151,7 +157,7 @@ function NoteEditorSheet({
               htmlFor={`${contentId}-title`}
               className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]"
             >
-              Title
+              {t('notes.titleLabel')}
             </label>
             <Input
               id={`${contentId}-title`}
@@ -159,7 +165,7 @@ function NoteEditorSheet({
               onChange={(event) => setTitle(event.target.value)}
               maxLength={120}
               autoComplete="off"
-              placeholder="e.g. Site gate code"
+              placeholder={t('notes.titlePlaceholder')}
               className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-[color:var(--worker-text)]"
               disabled={isSaving}
             />
@@ -169,7 +175,7 @@ function NoteEditorSheet({
               htmlFor={`${contentId}-body`}
               className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]"
             >
-              Note
+              {t('notes.noteLabel')}
             </label>
             <textarea
               id={`${contentId}-body`}
@@ -177,7 +183,7 @@ function NoteEditorSheet({
               onChange={(event) => setContent(event.target.value)}
               maxLength={4000}
               rows={7}
-              placeholder="Gate codes, site instructions, depot details…"
+              placeholder={t('notes.contentPlaceholder')}
               disabled={isSaving}
               className="w-full resize-none rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-3 py-3 text-sm leading-relaxed text-[color:var(--worker-text)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
             />
@@ -195,14 +201,14 @@ function NoteEditorSheet({
               onClick={onClose}
               className="h-12 rounded-2xl"
             >
-              Cancel
+              {t('notes.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={isSaving}
               className="worker-btn-primary h-12 rounded-2xl font-semibold"
             >
-              {isSaving ? 'Saving…' : 'Save'}
+              {isSaving ? t('notes.saving') : t('notes.save')}
             </Button>
           </div>
         </form>
@@ -225,6 +231,7 @@ function DeleteNoteDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const { t } = useTranslation('worker')
   if (!open) return null
 
   return createPortal(
@@ -232,7 +239,7 @@ function DeleteNoteDialog({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
-        aria-label="Cancel delete"
+        aria-label={t('notes.cancelDelete')}
         disabled={isDeleting}
         onClick={() => {
           if (!isDeleting) onCancel()
@@ -249,10 +256,10 @@ function DeleteNoteDialog({
             id="worker-note-delete-title"
             className="text-lg font-semibold tracking-[-0.03em] text-[color:var(--worker-text)]"
           >
-            Delete note?
+            {t('notes.deleteTitle')}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-            “{noteTitle}” will be permanently removed from your Notes.
+            {t('notes.deleteBody', { title: noteTitle })}
           </p>
         </div>
         <div className="flex flex-col-reverse gap-3 px-5 py-4 sm:flex-row sm:justify-end">
@@ -263,7 +270,7 @@ function DeleteNoteDialog({
             onClick={onCancel}
             className="h-12 rounded-2xl"
           >
-            Cancel
+            {t('notes.cancel')}
           </Button>
           <Button
             type="button"
@@ -271,7 +278,7 @@ function DeleteNoteDialog({
             onClick={onConfirm}
             className="h-12 rounded-2xl bg-rose-600 font-semibold text-white hover:bg-rose-700"
           >
-            {isDeleting ? 'Deleting…' : 'Delete'}
+            {isDeleting ? t('notes.deleting') : t('notes.delete')}
           </Button>
         </div>
       </section>
@@ -281,6 +288,7 @@ function DeleteNoteDialog({
 }
 
 export default function WorkerNotesPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const { worker, isLoading: workerLoading, error: workerError } =
     useCurrentWorker()
@@ -316,7 +324,7 @@ export default function WorkerNotesPage() {
           ? error.message
           : error instanceof Error
             ? error.message
-            : 'Unable to load notes.',
+            : t('notes.loadFailed'),
       )
     } finally {
       setIsLoading(false)
@@ -355,7 +363,7 @@ export default function WorkerNotesPage() {
           content,
         })
         setNotes((current) => sortWorkerPrivateNotes([created, ...current]))
-        showToast('Note saved')
+        showToast(t('notes.saved'))
       } else if (editingNote) {
         const updated = await updateWorkerPrivateNote({
           id: editingNote.id,
@@ -367,7 +375,7 @@ export default function WorkerNotesPage() {
             current.map((note) => (note.id === updated.id ? updated : note)),
           ),
         )
-        showToast('Note updated')
+        showToast(t('notes.updatedToast'))
       }
       setEditorOpen(false)
       setEditingNote(null)
@@ -375,7 +383,7 @@ export default function WorkerNotesPage() {
       showToast(
         error instanceof WorkerPrivateNotesServiceError
           ? error.message
-          : 'Unable to save note.',
+          : t('notes.saveFailed'),
       )
     } finally {
       setIsSaving(false)
@@ -390,12 +398,12 @@ export default function WorkerNotesPage() {
           current.map((row) => (row.id === updated.id ? updated : row)),
         ),
       )
-      showToast(updated.isPinned ? 'Note pinned' : 'Note unpinned')
+      showToast(updated.isPinned ? t('notes.pinnedToast') : t('notes.unpinnedToast'))
     } catch (error) {
       showToast(
         error instanceof WorkerPrivateNotesServiceError
           ? error.message
-          : 'Unable to update pin.',
+          : t('notes.pinFailed'),
       )
     }
   }
@@ -409,12 +417,12 @@ export default function WorkerNotesPage() {
         current.filter((note) => note.id !== deleteTarget.id),
       )
       setDeleteTarget(null)
-      showToast('Note deleted')
+      showToast(t('notes.deletedToast'))
     } catch (error) {
       showToast(
         error instanceof WorkerPrivateNotesServiceError
           ? error.message
-          : 'Unable to delete note.',
+          : t('notes.deleteFailed'),
       )
     } finally {
       setIsDeleting(false)
@@ -425,11 +433,11 @@ export default function WorkerNotesPage() {
     return (
       <div className="worker-card rounded-[1.75rem] p-5">
         <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">
-          My Notes
+          {t('notes.title')}
         </h1>
         <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {workerError ??
-            'We could not find a worker profile linked to your account.'}
+            t('notes.profileMissing')}
         </p>
       </div>
     )
@@ -439,11 +447,10 @@ export default function WorkerNotesPage() {
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          My Notes
+          {t('notes.title')}
         </h1>
         <p className="text-sm leading-relaxed text-[color:var(--worker-text-secondary)]">
-          Use Notes for work information such as gate codes and site
-          instructions. Do not store account passwords or payment information.
+          {t('notes.subtitle')}
         </p>
       </header>
 
@@ -453,19 +460,19 @@ export default function WorkerNotesPage() {
         className="worker-btn-primary h-12 w-full gap-2 rounded-2xl font-semibold"
       >
         <Plus className="size-5" aria-hidden />
-        Add note
+        {t('notes.addNote')}
       </Button>
 
       {workerLoading || isLoading ? (
         <div
           className="min-h-[12rem] rounded-[1.5rem] bg-[color:var(--worker-card)]"
           role="status"
-          aria-label="Loading notes"
+          aria-label={t('notes.loading')}
         />
       ) : loadError ? (
         <div className="worker-card rounded-[1.5rem] px-4 py-5">
           <p className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Unable to load notes
+            {t('notes.loadFailedTitle')}
           </p>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
             {loadError}
@@ -476,7 +483,7 @@ export default function WorkerNotesPage() {
             className="mt-3 h-11 rounded-2xl"
             onClick={() => void reloadNotes()}
           >
-            Try again
+            {t('notes.tryAgain')}
           </Button>
         </div>
       ) : notes.length === 0 ? (
@@ -487,11 +494,10 @@ export default function WorkerNotesPage() {
             aria-hidden
           />
           <p className="mt-3 text-base font-semibold text-[color:var(--worker-text)]">
-            No notes yet
+            {t('notes.emptyTitle')}
           </p>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
-            Save gate codes, site instructions and other useful work information
-            here.
+            {t('notes.emptyBody')}
           </p>
         </div>
       ) : (
@@ -515,10 +521,10 @@ export default function WorkerNotesPage() {
                   {note.isPinned ? (
                     <span
                       className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E8F3FE] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0B68BE]"
-                      aria-label="Pinned"
+                      aria-label={t('notes.pinned')}
                     >
                       <Pin className="size-3" aria-hidden />
-                      Pinned
+                      {t('notes.pinned')}
                     </span>
                   ) : null}
                 </div>
@@ -536,8 +542,9 @@ export default function WorkerNotesPage() {
                     !isDark && 'text-[color:var(--worker-text-muted)]',
                   )}
                 >
-                  Updated{' '}
-                  {formatTimesheetSubmittedAt(note.updatedAt) ?? note.updatedAt}
+                  {t('notes.updated', {
+                    when: formatTimesheetSubmittedAt(note.updatedAt) ?? note.updatedAt,
+                  })}
                 </p>
               </button>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -551,7 +558,7 @@ export default function WorkerNotesPage() {
                   )}
                 >
                   <Pin className="size-3.5" aria-hidden />
-                  {note.isPinned ? 'Unpin' : 'Pin'}
+                  {note.isPinned ? t('notes.unpin') : t('notes.pin')}
                 </button>
                 <button
                   type="button"
@@ -562,7 +569,7 @@ export default function WorkerNotesPage() {
                       'border-[color:var(--worker-border)] bg-[color:var(--worker-card)] text-[color:var(--worker-text)]',
                   )}
                 >
-                  Edit
+                  {t('notes.edit')}
                 </button>
                 <button
                   type="button"
@@ -570,7 +577,7 @@ export default function WorkerNotesPage() {
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700"
                 >
                   <Trash2 className="size-3.5" aria-hidden />
-                  Delete
+                  {t('notes.delete')}
                 </button>
               </div>
             </li>

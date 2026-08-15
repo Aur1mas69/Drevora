@@ -1,5 +1,5 @@
 import { type Contact } from '@/lib/contactTypes'
-import { getCategoryLabel } from '@/lib/contactUtils'
+import { contactCategoryI18nKey } from '@/i18n/workerPhase3bDisplay'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
@@ -9,9 +9,10 @@ import {
 } from '@/services/contactsService'
 import { Mail, Phone } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-function displayName(contact: Contact): string {
-  return contact.name?.trim() || contact.organisation?.trim() || 'Unnamed contact'
+function displayName(contact: Contact, unnamed: string): string {
+  return contact.name?.trim() || contact.organisation?.trim() || unnamed
 }
 
 function telHref(phone: string): string {
@@ -19,6 +20,7 @@ function telHref(phone: string): string {
 }
 
 export default function WorkerContactsPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -41,7 +43,7 @@ export default function WorkerContactsPage() {
             ? loadError.message
             : loadError instanceof Error
               ? loadError.message
-              : 'Unable to load contacts.',
+              : t('contacts.loadFailed'),
         )
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -58,10 +60,10 @@ export default function WorkerContactsPage() {
     <div className="mx-auto box-border w-full min-w-0 max-w-md space-y-4 overflow-x-clip lg:max-w-2xl">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Contacts
+          {t('contacts.title')}
         </h1>
         <p className="text-sm text-[color:var(--worker-text-secondary)]">
-          Emergency and operational numbers shared by your office.
+          {t('contacts.subtitle')}
         </p>
       </header>
 
@@ -69,22 +71,22 @@ export default function WorkerContactsPage() {
         <div
           className="min-h-[12rem] rounded-[1rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)]"
           role="status"
-          aria-label="Loading contacts"
+          aria-label={t('contacts.loading')}
         />
       ) : error ? (
         <div className="worker-list-card px-3 py-4">
           <p className="text-sm font-medium text-[color:var(--worker-text)]">
-            Unable to load contacts
+            {t('contacts.loadFailedTitle')}
           </p>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">{error}</p>
         </div>
       ) : contacts.length === 0 ? (
         <div className="rounded-[1rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-6 text-center">
           <p className="text-base font-semibold text-[color:var(--worker-text)]">
-            No contacts have been shared with Workers yet.
+            {t('contacts.emptyTitle')}
           </p>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
-            Contact your office if you need an emergency or operational number.
+            {t('contacts.emptyBody')}
           </p>
         </div>
       ) : (
@@ -106,7 +108,7 @@ export default function WorkerContactsPage() {
                         !isDark && 'text-[color:var(--worker-text)]',
                       )}
                     >
-                      {displayName(contact)}
+                      {displayName(contact, t('contacts.unnamed'))}
                     </p>
                     {roleOrOrg ? (
                       <p
@@ -126,7 +128,7 @@ export default function WorkerContactsPage() {
                         'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
                     )}
                   >
-                    {getCategoryLabel(contact.category)}
+                    {t(contactCategoryI18nKey(contact.category))}
                   </span>
                 </div>
 
@@ -182,7 +184,7 @@ export default function WorkerContactsPage() {
                         !isDark && 'text-[color:var(--worker-text-muted)]',
                       )}
                     >
-                      No phone or email on this contact.
+                      {t('contacts.noPhoneEmail')}
                     </p>
                   ) : null}
                 </div>

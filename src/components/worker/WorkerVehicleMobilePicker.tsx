@@ -5,6 +5,7 @@ import type { Vehicle } from '@/services/vehiclesService'
 import { ArrowLeft, Search, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 export { vehicleSecondaryLabel } from '@/components/worker/WorkerVehicleOptionRow'
 
@@ -33,6 +34,7 @@ export function WorkerVehicleMobilePicker({
   showAllWhenEmpty = true,
   id,
 }: WorkerVehicleMobilePickerProps) {
+  const { t } = useTranslation('worker')
   const titleId = useId()
   const listId = useId()
   const searchInputId = useId()
@@ -171,7 +173,7 @@ export function WorkerVehicleMobilePicker({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close vehicle picker"
+          aria-label={t('vehicles.closePicker')}
           className="flex size-11 shrink-0 items-center justify-center rounded-xl text-[color:var(--worker-text)] transition-colors hover:bg-[color:var(--worker-row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
         >
           <ArrowLeft className="size-5" aria-hidden="true" />
@@ -180,7 +182,7 @@ export function WorkerVehicleMobilePicker({
           id={titleId}
           className="min-w-0 flex-1 truncate text-base font-semibold text-[color:var(--worker-text)]"
         >
-          Select vehicle
+          {t('vehicles.pickerTitle')}
         </h2>
       </header>
 
@@ -196,8 +198,8 @@ export function WorkerVehicleMobilePicker({
             value={searchQuery}
             autoComplete="off"
             spellCheck={false}
-            placeholder="Search registration"
-            aria-label="Search registration"
+            placeholder={t('vehicles.searchLabel')}
+            aria-label={t('vehicles.searchLabel')}
             aria-controls={listId}
             aria-autocomplete="list"
             onChange={(event) => setSearchQuery(event.target.value.toUpperCase())}
@@ -207,7 +209,7 @@ export function WorkerVehicleMobilePicker({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
+              aria-label={t('vehicles.clearSearch')}
               className="absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-xl text-[color:var(--worker-text-secondary)] transition-colors hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)]"
             >
               <X className="size-4" aria-hidden="true" />
@@ -219,7 +221,7 @@ export function WorkerVehicleMobilePicker({
       <div
         id={listId}
         role="listbox"
-        aria-label="Company vehicles"
+        aria-label={t('vehicles.companyVehiclesAria')}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1"
         style={{
           overflowY: 'auto',
@@ -230,7 +232,7 @@ export function WorkerVehicleMobilePicker({
       >
         {filteredVehicles.length === 0 ? (
           <p className="px-3 py-4 text-sm text-[color:var(--worker-text-secondary)]">
-            No active company vehicles match that registration.
+            {t('vehicles.noMatch')}
           </p>
         ) : (
           filteredVehicles.map((vehicle) => (

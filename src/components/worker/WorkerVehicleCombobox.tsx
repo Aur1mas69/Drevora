@@ -10,6 +10,7 @@ import type { Vehicle } from '@/services/vehiclesService'
 import { Search, X } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 export type WorkerVehicleComboboxProps = {
   vehicles: Vehicle[]
@@ -84,9 +85,9 @@ export function WorkerVehicleCombobox({
   selectedVehicleId,
   onSelect,
   onClear,
-  label = 'Search registration',
-  placeholder = 'Enter registration number',
-  inputAriaLabel = 'Search company vehicles by registration number',
+  label,
+  placeholder,
+  inputAriaLabel,
   required = false,
   disabled = false,
   id: idProp,
@@ -95,6 +96,10 @@ export function WorkerVehicleCombobox({
   className,
   error = null,
 }: WorkerVehicleComboboxProps) {
+  const { t } = useTranslation('worker')
+  const resolvedLabel = label ?? t('vehicles.searchLabel')
+  const resolvedPlaceholder = placeholder ?? t('vehicles.searchPlaceholder')
+  const resolvedAria = inputAriaLabel ?? t('vehicles.searchAria')
   const isMobile = useIsMobileVehiclePickerViewport()
   const autoId = useId()
   const inputId = idProp ?? `worker-vehicle-combobox-${autoId}`
@@ -269,7 +274,7 @@ export function WorkerVehicleCombobox({
           >
             {filteredVehicles.length === 0 ? (
               <p className="px-3 py-2.5 text-sm text-[color:var(--worker-text-secondary)]">
-                No active company vehicles match that registration.
+                {t('vehicles.noMatch')}
               </p>
             ) : (
               filteredVehicles.map((vehicle) => (
@@ -297,22 +302,31 @@ export function WorkerVehicleCombobox({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]">
-                Selected vehicle
+                {t('vehicles.selectedVehicle')}
               </p>
               <p className="mt-0.5 truncate text-sm font-semibold text-[color:var(--worker-text)]">
-                {selectedVehicle.registration || 'No registration'}
+                {selectedVehicle.registration || t('vehicles.noRegistration')}
               </p>
-              {vehicleSecondaryLabel(selectedVehicle) ? (
+              {(() => {
+                const fleet = selectedVehicle.fleetNumber?.trim()
+                const secondary = vehicleSecondaryLabel(
+                  selectedVehicle,
+                  fleet ? t('vehicles.fleetLabel', { number: fleet }) : null,
+                )
+                return secondary ? (
                 <p className="truncate text-xs text-[color:var(--worker-text-secondary)]">
-                  {vehicleSecondaryLabel(selectedVehicle)}
+                  {secondary}
                 </p>
-              ) : null}
+                ) : null
+              })()}
             </div>
             {onClear ? (
               <button
                 type="button"
                 onClick={handleClearSelection}
-                aria-label={`Remove selected vehicle ${selectedVehicle.registration || ''}`}
+                aria-label={t('vehicles.removeSelectedAria', {
+                  registration: selectedVehicle.registration || t('vehicles.noRegistration'),
+                })}
                 className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] text-[color:var(--worker-text-secondary)] transition-colors hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)]"
               >
                 <X className="size-4" aria-hidden="true" />
@@ -324,7 +338,7 @@ export function WorkerVehicleCombobox({
 
       <label className="block space-y-1.5" htmlFor={inputId}>
         <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-          {label}
+          {resolvedLabel}
           {required ? <span className="text-rose-500"> *</span> : null}
         </span>
         <div ref={inputWrapRef} className="relative">
@@ -340,7 +354,7 @@ export function WorkerVehicleCombobox({
               aria-haspopup="dialog"
               aria-expanded={open}
               aria-controls={mobilePickerId}
-              aria-label={inputAriaLabel}
+              aria-label={resolvedAria}
               aria-invalid={Boolean(error)}
               aria-required={required && !selectedVehicleId}
               disabled={disabled}
@@ -350,14 +364,14 @@ export function WorkerVehicleCombobox({
                 'text-[color:var(--worker-text-muted)]',
               )}
             >
-              <span className="truncate">{placeholder}</span>
+              <span className="truncate">{resolvedPlaceholder}</span>
             </button>
           ) : (
             <Input
               id={inputId}
               type="text"
               role="combobox"
-              aria-label={inputAriaLabel}
+              aria-label={resolvedAria}
               aria-expanded={showDesktopResults}
               aria-controls={listId}
               aria-autocomplete="list"
@@ -367,7 +381,7 @@ export function WorkerVehicleCombobox({
               value={searchQuery}
               autoComplete="off"
               spellCheck={false}
-              placeholder={placeholder}
+              placeholder={resolvedPlaceholder}
               onChange={(event) => handleSearchChange(event.target.value)}
               onFocus={() => setOpen(true)}
               className="h-12 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] pr-3 pl-10 text-base font-semibold tracking-[0.04em] text-[color:var(--worker-text)] uppercase sm:text-sm focus-visible:border-[color:var(--worker-primary)] focus-visible:ring-[color:var(--worker-primary)]"

@@ -25,10 +25,9 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-const VEHICLES_RECONNECTING_MESSAGE = 'Reconnecting…'
-const VEHICLES_LOAD_FALLBACK = 'Unable to load vehicles.'
 const VEHICLES_RECONNECT_RETRY_MS = 2500
 const VEHICLES_RECONNECT_MAX_ATTEMPTS = 4
 
@@ -123,11 +122,12 @@ function vehicleMakeModelLabel(vehicle: Vehicle): string | null {
   return label || null
 }
 
-function vehicleRegistrationLabel(vehicle: Vehicle): string {
-  return vehicle.registration?.trim() || 'No registration'
+function vehicleRegistrationLabel(vehicle: Vehicle, fallback: string): string {
+  return vehicle.registration?.trim() || fallback
 }
 
 export default function WorkerVehiclesPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const { session } = useAuth()
   const {
@@ -336,7 +336,7 @@ export default function WorkerVehiclesPage() {
             error.message.trim() &&
             !/^TypeError:/i.test(error.message)
             ? error.message
-            : VEHICLES_LOAD_FALLBACK,
+            : t('vehicles.loadFailed'),
         )
       } finally {
         if (!cancelled) setIsLoadingVehicles(false)
@@ -380,7 +380,7 @@ export default function WorkerVehiclesPage() {
 
   async function handleSaveDefault() {
     if (!selectedVehicle) {
-      setDefaultError('Select an active company vehicle first.')
+      setDefaultError(t('vehicles.selectFirst'))
       return
     }
 
@@ -391,19 +391,21 @@ export default function WorkerVehiclesPage() {
       await setWorkerDefaultVehicle(selectedVehicle.id)
       reloadWorker()
       setDefaultMessage(
-        `${vehicleRegistrationLabel(selectedVehicle)} saved as your default.`,
+        t('vehicles.savedDefault', {
+          registration: vehicleRegistrationLabel(selectedVehicle, t('vehicles.noRegistration')),
+        }),
       )
     } catch (error) {
       setDefaultError(
         isRetryableNetworkError(error)
-          ? 'Connection interrupted. Try again in a moment.'
+          ? t('vehicles.connectionInterrupted')
           : error instanceof DriversServiceError
             ? error.message
             : error instanceof Error &&
                 error.message.trim() &&
                 !/^TypeError:/i.test(error.message)
               ? error.message
-              : 'Unable to save your default vehicle.',
+              : t('vehicles.saveDefaultFailed'),
       )
     } finally {
       setIsSavingDefault(false)
@@ -419,18 +421,18 @@ export default function WorkerVehiclesPage() {
     try {
       await setWorkerDefaultVehicle(null)
       reloadWorker()
-      setDefaultMessage('Default vehicle removed.')
+      setDefaultMessage(t('vehicles.removedDefault'))
     } catch (error) {
       setDefaultError(
         isRetryableNetworkError(error)
-          ? 'Connection interrupted. Try again in a moment.'
+          ? t('vehicles.connectionInterrupted')
           : error instanceof DriversServiceError
             ? error.message
             : error instanceof Error &&
                 error.message.trim() &&
                 !/^TypeError:/i.test(error.message)
               ? error.message
-              : 'Unable to remove your default vehicle.',
+              : t('vehicles.removeDefaultFailed'),
       )
     } finally {
       setIsSavingDefault(false)
@@ -446,7 +448,7 @@ export default function WorkerVehiclesPage() {
     return (
       <div
         className="min-h-[40vh] rounded-[1.75rem] bg-white/60"
-        aria-label="Loading vehicles"
+        aria-label={t('vehicles.loading')}
         role="status"
       />
     )
@@ -455,34 +457,33 @@ export default function WorkerVehiclesPage() {
   if (workerError || !worker) {
     return (
       <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-950">Vehicles</h1>
+        <h1 className="text-lg font-semibold text-slate-950">{t('vehicles.title')}</h1>
         <p className="mt-2 text-sm text-slate-600">
-          {workerError ??
-            'We could not find a worker profile linked to your account.'}
+          {workerError ?? t('vehicles.profileMissing')}
         </p>
       </div>
     )
   }
 
   const selectedRegistration = selectedVehicle
-    ? vehicleRegistrationLabel(selectedVehicle)
+    ? vehicleRegistrationLabel(selectedVehicle, t('vehicles.noRegistration'))
     : ''
   const selectedMakeModel = selectedVehicle
     ? vehicleMakeModelLabel(selectedVehicle)
     : null
   const selectedType = selectedVehicle?.vehicleType?.trim() || null
   const selectedFleet = selectedVehicle?.fleetNumber?.trim()
-    ? `Fleet ${selectedVehicle.fleetNumber.trim()}`
+    ? t('vehicles.fleetLabel', { number: selectedVehicle.fleetNumber.trim() })
     : null
 
   return (
     <div className="mx-auto max-w-md space-y-5 lg:max-w-2xl">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-          Vehicles
+          {t('vehicles.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Choose an active company vehicle, then start a check or related action.
+          {t('vehicles.subtitle')}
         </p>
       </header>
 
@@ -492,7 +493,7 @@ export default function WorkerVehiclesPage() {
           className="flex items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800"
         >
           <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-          {VEHICLES_RECONNECTING_MESSAGE}
+          {t('vehicles.reconnecting')}
         </p>
       ) : null}
 
@@ -513,9 +514,9 @@ export default function WorkerVehiclesPage() {
           setDefaultMessage(null)
         }}
         onClear={clearSelection}
-        label="Search registration"
-        placeholder="Enter registration number"
-        inputAriaLabel="Search company vehicles by registration number"
+        label={t('vehicles.searchLabel')}
+        placeholder={t('vehicles.searchPlaceholder')}
+        inputAriaLabel={t('vehicles.searchAria')}
         showAllWhenEmpty
         showSelectedSummary={false}
       />
@@ -548,7 +549,7 @@ export default function WorkerVehiclesPage() {
                     !isDark && 'text-[#0B68BE]',
                   )}
                 >
-                  Selected vehicle
+                  {t('vehicles.selectedVehicle')}
                 </p>
                 {isSelectedDefault ? (
                   <span
@@ -558,7 +559,7 @@ export default function WorkerVehiclesPage() {
                     )}
                     role="status"
                   >
-                    Default vehicle
+                    {t('vehicles.defaultVehicle')}
                   </span>
                 ) : null}
               </div>
@@ -574,7 +575,7 @@ export default function WorkerVehiclesPage() {
             <button
               type="button"
               onClick={clearSelection}
-              aria-label={`Remove selected vehicle ${selectedRegistration}`}
+              aria-label={t('vehicles.removeSelectedAria', { registration: selectedRegistration })}
               className={cn(
                 'worker-accent-icon-well flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors',
                 !isDark &&
@@ -592,7 +593,7 @@ export default function WorkerVehiclesPage() {
             )}
           >
             {selectedMakeModel ? <p>{selectedMakeModel}</p> : null}
-            {selectedType ? <p>Type: {selectedType}</p> : null}
+            {selectedType ? <p>{t('vehicles.typeLabel', { type: selectedType })}</p> : null}
             {selectedFleet ? <p>{selectedFleet}</p> : null}
           </div>
 
@@ -602,14 +603,14 @@ export default function WorkerVehiclesPage() {
                 type="button"
                 disabled={isSavingDefault}
                 onClick={() => void handleRemoveDefault()}
-                aria-label={`Remove ${selectedRegistration} as default vehicle`}
+                aria-label={t('vehicles.removeDefaultAria', { registration: selectedRegistration })}
                 className={cn(
                   'worker-accent-link inline-flex items-center gap-1.5 text-[13px] font-semibold underline-offset-2 transition-colors hover:underline disabled:opacity-60',
                   !isDark && 'text-[#0B477F] hover:text-[#083A66]',
                 )}
               >
                 {isSavingDefault ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
-                Remove default
+                {t('vehicles.removeDefault')}
               </button>
             </div>
           ) : (
@@ -617,11 +618,11 @@ export default function WorkerVehiclesPage() {
               type="button"
               disabled={isSavingDefault}
               onClick={() => void handleSaveDefault()}
-              aria-label={`Set ${selectedRegistration} as default vehicle`}
+              aria-label={t('vehicles.setDefaultAria', { registration: selectedRegistration })}
               className="mt-2.5 inline-flex h-8 items-center justify-center gap-2 rounded-xl bg-[#2F80ED] px-3 text-[13px] font-semibold text-white transition-colors hover:bg-[#2563EB] disabled:opacity-60"
             >
               {isSavingDefault ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
-              Set as default
+              {t('vehicles.setDefault')}
             </button>
           )}
 
@@ -641,8 +642,7 @@ export default function WorkerVehiclesPage() {
         </section>
       ) : (
         <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-          Select a vehicle from the search results to continue. Typed registrations that
-          are not in your company fleet cannot be used.
+          {t('vehicles.emptyHint')}
         </p>
       )}
 
@@ -666,9 +666,9 @@ export default function WorkerVehiclesPage() {
               />
             </span>
             <span className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 py-2.5">
-              <span className="truncate">Start Vehicle Check</span>
+              <span className="truncate">{t('vehicles.startVehicleCheck')}</span>
               <span className="text-left text-xs font-normal text-white/85">
-                Walkaround check for the selected vehicle.
+                {t('vehicles.startVehicleCheckHint')}
               </span>
             </span>
             <ChevronRight className="size-5 shrink-0 self-center opacity-90" aria-hidden />
@@ -692,9 +692,9 @@ export default function WorkerVehiclesPage() {
               />
             </span>
             <span className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 py-2.5">
-              <span className="truncate">Start Vehicle Check</span>
+              <span className="truncate">{t('vehicles.startVehicleCheck')}</span>
               <span className="text-left text-xs font-normal text-white/85">
-                Walkaround check for the selected vehicle.
+                {t('vehicles.startVehicleCheckHint')}
               </span>
             </span>
             <ChevronRight className="size-5 shrink-0 self-center opacity-90" aria-hidden />
@@ -703,8 +703,8 @@ export default function WorkerVehiclesPage() {
 
         <section className="worker-home-quick-actions-grid grid grid-cols-2 gap-3 overflow-visible">
           <VehicleActionCard
-            title="Start Tyre Check"
-            description="Tyre inspection workflow."
+            title={t('vehicles.startTyreCheck')}
+            description={t('vehicles.startTyreCheckHint')}
             iconSrc={SLICED_ICON('tyre-checks.png')}
             accentIndex={0}
             isDark={isDark}
@@ -712,8 +712,8 @@ export default function WorkerVehiclesPage() {
             to={vehicleHref('/worker/tyre-checks/new', selectedVehicleId)}
           />
           <VehicleActionCard
-            title="Add Consumable"
-            description="Record fuel, AdBlue or other consumables."
+            title={t('vehicles.addConsumable')}
+            description={t('vehicles.addConsumableHint')}
             iconSrc={SLICED_ICON('consumables.png')}
             accentIndex={1}
             isDark={isDark}
@@ -721,8 +721,8 @@ export default function WorkerVehiclesPage() {
             to={vehicleHref('/worker/consumables', selectedVehicleId)}
           />
           <VehicleActionCard
-            title="Create Driver Report"
-            description="Report a defect or operational issue."
+            title={t('vehicles.createDriverReport')}
+            description={t('vehicles.createDriverReportHint')}
             iconSrc={SLICED_ICON('driver-reports.png')}
             accentIndex={2}
             isDark={isDark}

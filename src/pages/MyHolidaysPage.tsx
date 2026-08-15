@@ -21,11 +21,14 @@ import {
   fetchWorkerHolidayBalanceSummary,
   HolidayRequestsServiceError,
 } from '@/services/holidayRequestsService'
+import { translateHolidayServiceError } from '@/i18n/workerPhase3bDisplay'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const MY_REQUESTS_PAGE_SIZE = 50
 
 export default function MyHolidaysPage() {
+  const { t } = useTranslation('worker')
   const { worker, isLoading: isWorkerLoading, error: workerError } = useCurrentWorker()
   const [balance, setBalance] = useState<HolidayBalanceSummary | null>(null)
   const [requests, setRequests] = useState<HolidayRequest[]>([])
@@ -99,7 +102,7 @@ export default function MyHolidaysPage() {
             ? error.message
             : error instanceof Error
               ? error.message
-              : 'Unable to load your holidays.',
+              : t('holidays.loadFailed'),
         )
       })
       .finally(() => {
@@ -109,7 +112,7 @@ export default function MyHolidaysPage() {
     return () => {
       cancelled = true
     }
-  }, [loadWorkerData, worker])
+  }, [loadWorkerData, t, worker])
 
   const isLoading = isWorkerLoading || isDataLoading
   const loadError = workerError ?? dataError
@@ -173,13 +176,13 @@ export default function MyHolidaysPage() {
       setStartDayPortion('full')
       setReason('')
       setPreview(null)
-      showToast('Holiday request submitted')
+      showToast(t('holidays.submitted'))
       await loadWorkerData(worker.id)
     } catch (error) {
       setSubmitError(
         error instanceof HolidayRequestsServiceError
-          ? error.message
-          : 'Unable to submit your holiday request.',
+          ? translateHolidayServiceError(error.message, t)
+          : t('holidays.submitFailed'),
       )
     } finally {
       setIsSubmitting(false)
@@ -190,13 +193,13 @@ export default function MyHolidaysPage() {
     <div className={myHolidayPageClass}>
       <header className="space-y-1">
         <p className="my-holiday-eyebrow text-xs font-bold uppercase tracking-[0.14em] text-[#218EE7]">
-          Time off
+          {t('holidays.eyebrow')}
         </p>
         <h1 className="my-holiday-title text-2xl font-semibold tracking-[-0.03em] text-[#113C69]">
-          My Holidays
+          {t('holidays.title')}
         </h1>
         <p className="my-holiday-muted text-sm text-[#5499BF]">
-          View your balance, book time off, and track your requests.
+          {t('holidays.subtitle')}
         </p>
       </header>
 
@@ -208,7 +211,7 @@ export default function MyHolidaysPage() {
 
       {isLoading ? (
         <div className="my-holiday-card my-holiday-muted rounded-[1.75rem] border border-[#D3E9FC] bg-white px-4 py-10 text-center text-sm text-[#5499BF]">
-          Loading your holidays…
+          {t('holidays.loading')}
         </div>
       ) : worker ? (
         <>

@@ -9,6 +9,11 @@ import {
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
+import {
+  documentReviewI18nKey,
+  documentTypeI18nKey,
+  translateWorkerSubmissionFileError,
+} from '@/i18n/workerPhase3bDisplay'
 import { cn } from '@/lib/utils'
 import { workerListCardClass } from '@/lib/workerDarkAccent'
 import {
@@ -19,8 +24,6 @@ import {
   validateWorkerSubmissionFiles,
 } from '@/lib/workerDocumentSubmissionStorage'
 import {
-  getWorkerSubmissionDisplayName,
-  getWorkerSubmissionReviewLabel,
   WORKER_SUBMISSION_DOCUMENT_TYPES,
   WORKER_SUBMISSION_MAX_FILES,
   type WorkerDocumentSubmission,
@@ -38,6 +41,7 @@ import {
 } from '@/services/workerDocumentSubmissionsService'
 import { FileText, Loader2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 
 function reviewBadgeClass(status: WorkerDocumentSubmission['reviewStatus']): string {
   switch (status) {
@@ -53,6 +57,7 @@ function reviewBadgeClass(status: WorkerDocumentSubmission['reviewStatus']): str
 }
 
 export default function WorkerDocumentsPage() {
+  const { t } = useTranslation('worker')
   const { formatDateTime } = useCompanySettings()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const isDark = useIsWorkerDarkMode()
@@ -83,12 +88,12 @@ export default function WorkerDocumentsPage() {
       setHistoryError(
         error instanceof WorkerDocumentSubmissionsServiceError
           ? error.message
-          : 'Unable to load your sent documents.',
+          : t('documents.loadFailed'),
       )
     } finally {
       setHistoryLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     let cancelled = false
@@ -107,7 +112,7 @@ export default function WorkerDocumentsPage() {
         setHistoryError(
           error instanceof WorkerDocumentSubmissionsServiceError
             ? error.message
-            : 'Unable to load your sent documents.',
+            : t('documents.loadFailed'),
         )
       } finally {
         if (!cancelled) setHistoryLoading(false)
@@ -138,7 +143,7 @@ export default function WorkerDocumentsPage() {
       Array.from(fileList),
     )
     setFiles(next)
-    if (error) setFormError(error)
+    if (error) setFormError(translateWorkerSubmissionFileError(error, t))
   }
 
   function removeFile(index: number) {
@@ -152,16 +157,19 @@ export default function WorkerDocumentsPage() {
     setFormError(null)
 
     if (!worker?.id) {
-      setFormError('Worker profile is required.')
+      setFormError(t('documents.workerRequired'))
       return
     }
 
     if (documentType === 'Other' && !customDocumentName.trim()) {
-      setFormError('Enter a document name when type is Other.')
+      setFormError(t('documents.otherNameRequired'))
       return
     }
 
-    const validationError = validateWorkerSubmissionFiles(files)
+    const validationError = translateWorkerSubmissionFileError(
+      validateWorkerSubmissionFiles(files),
+      t,
+    )
     if (validationError) {
       setFormError(validationError)
       return
@@ -177,13 +185,13 @@ export default function WorkerDocumentsPage() {
         files,
       })
       clearForm()
-      setSuccessMessage('Document sent successfully.')
+      setSuccessMessage(t('documents.sentSuccess'))
       await loadHistory()
     } catch (error) {
       setFormError(
         error instanceof WorkerDocumentSubmissionsServiceError
           ? error.message
-          : 'Unable to send document. Please try again.',
+          : t('documents.sendFailed'),
       )
     } finally {
       setIsSubmitting(false)
@@ -196,7 +204,7 @@ export default function WorkerDocumentsPage() {
       const url = await getWorkerSubmissionFileSignedUrl(filePath)
       if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
-      setHistoryError('Unable to open that file. Please try again.')
+      setHistoryError(t('documents.openFailed'))
     } finally {
       setOpeningFileId(null)
     }
@@ -215,7 +223,7 @@ export default function WorkerDocumentsPage() {
       setHistoryError(
         error instanceof WorkerDocumentSubmissionStorageError
           ? error.message
-          : 'Unable to download that file. Please try again.',
+          : t('documents.downloadFailed'),
       )
     } finally {
       setOpeningFileId(null)
@@ -226,7 +234,7 @@ export default function WorkerDocumentsPage() {
     return (
       <div className="mx-auto flex max-w-md items-center gap-2 py-16 text-sm text-slate-500 lg:max-w-2xl">
         <Loader2 className="size-4 animate-spin" />
-        Loading documents…
+        {t('documents.loading')}
       </div>
     )
   }
@@ -234,8 +242,8 @@ export default function WorkerDocumentsPage() {
   if (workerError || !worker) {
     return (
       <div className="mx-auto max-w-md space-y-2 lg:max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Documents</h1>
-        <p className="text-sm text-rose-600">{workerError ?? 'Worker profile unavailable.'}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">{t('documents.title')}</h1>
+        <p className="text-sm text-rose-600">{workerError ?? t('documents.profileUnavailable')}</p>
       </div>
     )
   }
@@ -243,24 +251,23 @@ export default function WorkerDocumentsPage() {
   return (
     <div className="mx-auto max-w-md space-y-5 overflow-x-hidden lg:max-w-2xl">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Documents</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">{t('documents.title')}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Send PDF or image files to your office and track review status.
+          {t('documents.subtitle')}
         </p>
       </header>
 
       <Card className="gap-0 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white py-0 shadow-lg shadow-slate-200/60">
         <CardHeader className="px-5 pt-5 pb-2">
-          <CardTitle className="text-lg font-semibold text-slate-950">Send Document</CardTitle>
+          <CardTitle className="text-lg font-semibold text-slate-950">{t('documents.sendTitle')}</CardTitle>
           <CardDescription className="text-slate-500">
-            Upload up to 5 PDF or image files. PDFs and photos can be combined.
-            Maximum 10 MB per file.
+            {t('documents.sendHint')}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-5 pb-5">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-slate-600">Document type</span>
+              <span className="text-xs font-semibold text-slate-600">{t('documents.documentType')}</span>
               <select
                 value={documentType}
                 onChange={(event) => {
@@ -272,7 +279,7 @@ export default function WorkerDocumentsPage() {
               >
                 {WORKER_SUBMISSION_DOCUMENT_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {t(documentTypeI18nKey(type))}
                   </option>
                 ))}
               </select>
@@ -280,13 +287,13 @@ export default function WorkerDocumentsPage() {
 
             {documentType === 'Other' ? (
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-slate-600">Document name</span>
+                <span className="text-xs font-semibold text-slate-600">{t('documents.documentName')}</span>
                 <input
                   type="text"
                   value={customDocumentName}
                   onChange={(event) => setCustomDocumentName(event.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"
-                  placeholder="Enter document name"
+                  placeholder={t('documents.documentNamePlaceholder')}
                   required
                 />
               </label>
@@ -294,7 +301,7 @@ export default function WorkerDocumentsPage() {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-slate-600">
-                Reference number <span className="font-normal text-slate-400">(optional)</span>
+                {t('documents.referenceOptional')}
               </span>
               <input
                 type="text"
@@ -306,7 +313,7 @@ export default function WorkerDocumentsPage() {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-slate-600">
-                Notes <span className="font-normal text-slate-400">(optional)</span>
+                {t('documents.notesOptional')}
               </span>
               <textarea
                 value={notes}
@@ -317,7 +324,7 @@ export default function WorkerDocumentsPage() {
             </label>
 
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-600">Attachments</span>
+              <span className="text-xs font-semibold text-slate-600">{t('documents.attachments')}</span>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <label
                   className={`inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-700 ${
@@ -326,7 +333,7 @@ export default function WorkerDocumentsPage() {
                       : 'cursor-pointer'
                   }`}
                 >
-                  Choose files
+                  {t('documents.chooseFiles')}
                   <input
                     type="file"
                     accept=".pdf,image/jpeg,image/png,image/webp,application/pdf"
@@ -346,7 +353,7 @@ export default function WorkerDocumentsPage() {
                       : 'cursor-pointer'
                   }`}
                 >
-                  Take photo
+                  {t('documents.takePhoto')}
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -361,8 +368,7 @@ export default function WorkerDocumentsPage() {
                 </label>
               </div>
               <p className="text-xs text-slate-500">
-                Up to {WORKER_SUBMISSION_MAX_FILES} PDF or image files. PDFs and
-                photos can be combined. Maximum 10 MB per file.
+                {t('documents.attachHint', { max: WORKER_SUBMISSION_MAX_FILES })}
               </p>
 
               {files.length > 0 ? (
@@ -371,9 +377,9 @@ export default function WorkerDocumentsPage() {
                     const mimeType = resolveWorkerSubmissionMimeType(file)
                     const kindLabel = mimeType
                       ? isWorkerSubmissionPdfMime(mimeType)
-                        ? 'PDF'
-                        : 'Image'
-                      : 'File'
+                        ? t('documents.kindPdf')
+                        : t('documents.kindImage')
+                      : t('documents.kindFile')
                     return (
                       <li
                         key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
@@ -391,7 +397,7 @@ export default function WorkerDocumentsPage() {
                           type="button"
                           onClick={() => removeFile(index)}
                           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50"
-                          aria-label={`Remove ${file.name}`}
+                          aria-label={t('documents.removeFileAria', { name: file.name })}
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -419,12 +425,12 @@ export default function WorkerDocumentsPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Sending…
+                  {t('documents.sending')}
                 </>
               ) : (
                 <>
                   <FileText className="mr-2 size-4" />
-                  Send document
+                  {t('documents.sendDocument')}
                 </>
               )}
             </Button>
@@ -434,14 +440,14 @@ export default function WorkerDocumentsPage() {
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-950">My Sent Documents</h2>
-          <p className="text-sm text-slate-500">Your submission history and review status.</p>
+          <h2 className="text-lg font-semibold text-slate-950">{t('documents.historyTitle')}</h2>
+          <p className="text-sm text-slate-500">{t('documents.historyHint')}</p>
         </div>
 
         {historyLoading ? (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="size-4 animate-spin" />
-            Loading history…
+            {t('documents.loadingHistory')}
           </div>
         ) : null}
 
@@ -451,7 +457,7 @@ export default function WorkerDocumentsPage() {
 
         {!historyLoading && !historyError && history.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            No documents sent yet.
+            {t('documents.empty')}
           </div>
         ) : null}
 
@@ -469,7 +475,9 @@ export default function WorkerDocumentsPage() {
                       !isDark && 'text-slate-950',
                     )}
                   >
-                    {getWorkerSubmissionDisplayName(submission)}
+                    {submission.documentType === 'Other'
+                      ? submission.customDocumentName?.trim() || t('documents.typeOther')
+                      : t(documentTypeI18nKey(submission.documentType))}
                   </p>
                   {submission.documentType === 'Other' ? null : (
                     <p
@@ -478,7 +486,7 @@ export default function WorkerDocumentsPage() {
                         !isDark && 'text-slate-500',
                       )}
                     >
-                      {submission.documentType}
+                      {t(documentTypeI18nKey(submission.documentType))}
                     </p>
                   )}
                   <p
@@ -489,8 +497,9 @@ export default function WorkerDocumentsPage() {
                   >
                     {formatDateTime(submission.submittedAt)}
                     {' · '}
-                    {submission.attachments.length}{' '}
-                    {submission.attachments.length === 1 ? 'file' : 'files'}
+                    {submission.attachments.length === 1
+                      ? t('documents.fileOne', { count: submission.attachments.length })
+                      : t('documents.fileOther', { count: submission.attachments.length })}
                   </p>
                 </div>
                 <span
@@ -499,7 +508,7 @@ export default function WorkerDocumentsPage() {
                     reviewBadgeClass(submission.reviewStatus),
                   )}
                 >
-                  {getWorkerSubmissionReviewLabel(submission.reviewStatus)}
+                  {t(documentReviewI18nKey(submission.reviewStatus))}
                 </span>
               </div>
 
@@ -526,7 +535,7 @@ export default function WorkerDocumentsPage() {
                         }
                         className="min-h-11 px-1 text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                       >
-                        View
+                        {t('documents.view')}
                       </button>
                       <button
                         type="button"
@@ -541,7 +550,7 @@ export default function WorkerDocumentsPage() {
                         }
                         className="min-h-11 px-1 text-xs font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
                       >
-                        Download
+                        {t('documents.download')}
                       </button>
                     </div>
                   </li>
@@ -550,7 +559,7 @@ export default function WorkerDocumentsPage() {
 
               {submission.reviewStatus === 'rejected' && submission.rejectionReason ? (
                 <p className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700">
-                  Reason: {submission.rejectionReason}
+                  {t('documents.rejectionReason', { reason: submission.rejectionReason })}
                 </p>
               ) : null}
             </li>

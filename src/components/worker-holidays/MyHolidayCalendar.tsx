@@ -1,5 +1,11 @@
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
-import { getGlobalWeekStarts, getWeekdayLabels } from '@/lib/dateTimeFormat'
+import {
+  formatWorkerHolidayDays,
+  formatWorkerMonthYear,
+  getWorkerWeekdayLabels,
+  holidayStatusI18nKey,
+} from '@/i18n/workerPhase3bDisplay'
+import { getGlobalWeekStarts } from '@/lib/dateTimeFormat'
 import type { HolidayRequest, HolidayRequestStatus } from '@/lib/holidayRequestTypes'
 import {
   buildHolidayRequestsByDay,
@@ -9,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   myHolidayCardClass,
   myHolidaySectionEyebrowClass,
@@ -65,21 +72,14 @@ function dayStatusClass(status: HolidayRequestStatus | null): string {
   }
 }
 
-function statusLabel(status: HolidayRequestStatus): string {
-  if (status === 'Rejected') return 'Declined'
-  return status
-}
-
 export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCalendarProps) {
+  const { t, i18n } = useTranslation('worker')
   const { weekStarts: contextWeekStarts, formatDate } = useCompanySettings()
   const weekStarts = contextWeekStarts ?? getGlobalWeekStarts()
   const [anchor, setAnchor] = useState(() => new Date())
   const [selectedIso, setSelectedIso] = useState<string | null>(null)
 
-  const monthLabel = new Intl.DateTimeFormat('en-GB', {
-    month: 'long',
-    year: 'numeric',
-  }).format(anchor)
+  const monthLabel = formatWorkerMonthYear(anchor, i18n.language)
 
   const monthStart = toLocalIsoDate(new Date(anchor.getFullYear(), anchor.getMonth(), 1))
   const monthEnd = toLocalIsoDate(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0))
@@ -91,7 +91,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
     () => buildMonthGrid(anchor.getFullYear(), anchor.getMonth(), weekStarts),
     [anchor, weekStarts],
   )
-  const weekdayLabels = getWeekdayLabels(weekStarts)
+  const weekdayLabels = getWorkerWeekdayLabels(weekStarts, i18n.language)
   const selectedRequests = selectedIso ? requestsByDay.get(selectedIso) ?? [] : []
 
   function moveMonth(delta: number) {
@@ -105,7 +105,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
 
   return (
     <section className={myHolidayCardClass}>
-      <p className={myHolidaySectionEyebrowClass}>My Holiday Calendar</p>
+      <p className={myHolidaySectionEyebrowClass}>{t('holidays.calendarEyebrow')}</p>
       <div className="mt-1 flex items-center justify-between gap-2">
         <h2 className={myHolidaySectionTitleClass}>{monthLabel}</h2>
         <div className="flex items-center gap-1">
@@ -113,7 +113,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
             type="button"
             onClick={() => moveMonth(-1)}
             className="my-holiday-nav inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
-            aria-label="Previous month"
+            aria-label={t('holidays.previousMonth')}
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -121,7 +121,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
             type="button"
             onClick={() => moveMonth(1)}
             className="my-holiday-nav inline-flex size-9 items-center justify-center rounded-[12px] border border-[#C5DFFB] bg-white text-[#0B68BE]"
-            aria-label="Next month"
+            aria-label={t('holidays.nextMonth')}
           >
             <ChevronRight className="size-4" />
           </button>
@@ -129,7 +129,7 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
       </div>
 
       {isLoading ? (
-        <p className="my-holiday-muted mt-4 text-sm text-[#5499BF]">Loading calendar…</p>
+        <p className="my-holiday-muted mt-4 text-sm text-[#5499BF]">{t('holidays.loadingCalendar')}</p>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-7 gap-1">
@@ -169,15 +169,15 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
           <div className="my-holiday-muted mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-[#5499BF]">
             <span className="inline-flex items-center gap-1">
               <span className="size-2.5 rounded-full bg-emerald-400" />
-              Approved
+              {t('holidays.statusApproved')}
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="size-2.5 rounded-full bg-amber-400" />
-              Pending
+              {t('holidays.statusPending')}
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="size-2.5 rounded-full bg-rose-400" />
-              Declined
+              {t('holidays.statusDeclined')}
             </span>
           </div>
 
@@ -188,13 +188,15 @@ export function MyHolidayCalendar({ requests, isLoading = false }: MyHolidayCale
               </p>
               {selectedRequests.map((request) => (
                 <div key={request.id} className="my-holiday-body mt-2 text-sm text-[#113C69]">
-                  <p className="font-semibold">{statusLabel(request.status)}</p>
+                  <p className="font-semibold">{t(holidayStatusI18nKey(request.status))}</p>
                   <p className="my-holiday-muted mt-0.5 text-xs text-[#5499BF]">
                     {formatDate(normalizeHolidayIsoDate(request.startDate))} –{' '}
                     {formatDate(normalizeHolidayIsoDate(request.endDate))}
                     {' · '}
-                    {request.holidayDaysDeducted || request.calendarDaysTotal} day
-                    {(request.holidayDaysDeducted || request.calendarDaysTotal) === 1 ? '' : 's'}
+                    {formatWorkerHolidayDays(
+                      request.holidayDaysDeducted || request.calendarDaysTotal,
+                      t,
+                    )}
                   </p>
                 </div>
               ))}

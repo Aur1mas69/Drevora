@@ -6,6 +6,15 @@ import type { DriverReport } from '@/lib/driverReportTypes'
 import { FileText, Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
+type DriverReportFileFieldLabels = {
+  uploadCta: string
+  chooseFile: string
+  remove: string
+  removeFileAria: string
+  fileTooLarge: string
+  fileType: string
+}
+
 type DriverReportFileFieldProps = {
   existingPath: string | null
   selectedFile: File | null
@@ -13,6 +22,7 @@ type DriverReportFileFieldProps = {
   onSelectFile: (file: File | null) => void
   onRemoveExisting: () => void
   onClearSelection: () => void
+  labels?: DriverReportFileFieldLabels
 }
 
 export function DriverReportFileField({
@@ -22,6 +32,7 @@ export function DriverReportFileField({
   onSelectFile,
   onRemoveExisting,
   onClearSelection,
+  labels,
 }: DriverReportFileFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +44,13 @@ export function DriverReportFileField({
 
     const validationError = validateDriverReportFile(file)
     if (validationError) {
-      setError(validationError)
+      const mapped =
+        labels && validationError === 'File must be 10 MB or smaller.'
+          ? labels.fileTooLarge
+          : labels && validationError === 'Only PDF, JPG, PNG and WEBP files are allowed.'
+            ? labels.fileType
+            : validationError
+      setError(mapped)
       return
     }
 
@@ -64,7 +81,7 @@ export function DriverReportFileField({
             type="button"
             onClick={onClearSelection}
             className="rounded-lg p-1 text-[#5499BF] hover:bg-white hover:text-[#113C69] dark:hover:bg-slate-800/50 dark:hover:text-slate-100"
-            aria-label="Remove selected file"
+            aria-label={labels?.removeFileAria ?? 'Remove selected file'}
           >
             <X className="size-4" />
           </button>
@@ -80,7 +97,7 @@ export function DriverReportFileField({
             onClick={onRemoveExisting}
             className="text-xs font-semibold text-rose-600 hover:underline"
           >
-            Remove
+            {labels?.remove ?? 'Remove'}
           </button>
         </div>
       ) : (
@@ -90,7 +107,7 @@ export function DriverReportFileField({
           className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-[#C5DFFB] bg-white px-4 py-6 text-sm font-semibold text-[#0B68BE] transition-colors hover:border-[#89CFF0] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-900/70 dark:text-blue-300 dark:hover:border-slate-600 dark:hover:bg-slate-800/50"
         >
           <Upload className="size-4" />
-          Upload photo or PDF (max 10 MB)
+          {labels?.uploadCta ?? 'Upload photo or PDF (max 10 MB)'}
         </button>
       )}
 
@@ -100,7 +117,7 @@ export function DriverReportFileField({
           onClick={() => inputRef.current?.click()}
           className="mt-2 text-xs font-semibold text-[#0B68BE] hover:underline"
         >
-          Choose file
+          {labels?.chooseFile ?? 'Choose file'}
         </button>
       ) : null}
 

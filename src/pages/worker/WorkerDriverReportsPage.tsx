@@ -18,6 +18,7 @@ import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Launcher for the existing "Create Driver Report" Worker Vehicles action.
@@ -30,6 +31,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
  * matching the existing Start Tyre Check / Vehicle Check completion pattern.
  */
 export default function WorkerDriverReportsPage() {
+  const { t } = useTranslation('worker')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const preselectedVehicleId = searchParams.get('vehicleId')?.trim() || null
@@ -71,7 +73,7 @@ export default function WorkerDriverReportsPage() {
       } catch (error) {
         if (cancelled) return
         setVehicles([])
-        setLoadError(error instanceof Error ? error.message : 'Unable to load vehicles.')
+        setLoadError(error instanceof Error ? error.message : t('reports.loadVehiclesFailed'))
       } finally {
         if (!cancelled) setIsLoadingVehicles(false)
       }
@@ -93,7 +95,7 @@ export default function WorkerDriverReportsPage() {
 
   async function handleSubmit(payload: DriverReportFormSubmitPayload) {
     if (!worker?.id) {
-      throw new DriverReportsServiceError('Unable to identify your worker profile.')
+      throw new DriverReportsServiceError(t('reports.profileUnverified'))
     }
 
     setIsSaving(true)
@@ -125,7 +127,7 @@ export default function WorkerDriverReportsPage() {
       if (error instanceof DriverReportFileStorageError) throw error
       throw error instanceof DriverReportsServiceError
         ? error
-        : new DriverReportsServiceError('Failed to save report.')
+        : new DriverReportsServiceError(t('reports.saveFailed'))
     } finally {
       setIsSaving(false)
     }
@@ -139,7 +141,7 @@ export default function WorkerDriverReportsPage() {
       <div className="flex min-h-[40vh] items-center justify-center px-4">
         <Loader2
           className="size-6 animate-spin text-[color:var(--worker-accent)]"
-          aria-label="Loading"
+          aria-label={t('reports.loading')}
         />
       </div>
     )
@@ -149,7 +151,7 @@ export default function WorkerDriverReportsPage() {
     return (
       <div className="px-4 py-8">
         <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          {workerError || 'We could not find a worker profile linked to your account.'}
+          {workerError || t('reports.profileMissing')}
         </p>
       </div>
     )
@@ -171,17 +173,17 @@ export default function WorkerDriverReportsPage() {
         <div className="flex flex-col items-center gap-3 rounded-[1.75rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-5 py-8 text-center shadow-sm">
           <CheckCircle2 className="size-10 text-[color:var(--worker-success)]" aria-hidden="true" />
           <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">
-            Report submitted
+            {t('reports.submittedTitle')}
           </h1>
           <p className="text-sm text-[color:var(--worker-text-muted)]">
-            Sent to the office for review: <span className="font-semibold">{submittedReport.title}</span>
+            {t('reports.submittedBody', { title: submittedReport.title })}
           </p>
           <Button
             type="button"
             className="mt-2 h-12 w-full rounded-2xl bg-[color:var(--worker-accent)] font-semibold text-white"
             onClick={() => navigate('/worker/vehicles')}
           >
-            Back to Vehicles
+            {t('reports.backToVehicles')}
           </Button>
         </div>
       </div>
@@ -191,10 +193,10 @@ export default function WorkerDriverReportsPage() {
   return (
     <div className="mx-auto w-full max-w-lg px-4 pt-4">
       <h1 className="text-xl font-semibold tracking-[-0.03em] text-[color:var(--worker-text)]">
-        Driver Reports
+        {t('reports.title')}
       </h1>
       <p className="mt-1 text-sm text-[color:var(--worker-text-muted)]">
-        Report a defect or operational issue directly to the office.
+        {t('reports.subtitle')}
       </p>
 
       <DriverReportFormModal
