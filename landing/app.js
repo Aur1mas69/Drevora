@@ -1,18 +1,18 @@
 import drevoraDMarkUrl from './assets/drevora-d-mark.png'
 
 const FEATURE_ART = {
-    workers: '/icons/sliced/workers.png',
-    vehicles: '/icons/sliced/vehicles.png',
-    timesheets: '/icons/sliced/timesheets.png',
-    holidays: '/icons/sliced/holidays.png',
-    checks: '/icons/sliced/vehicle-checks.png',
-    tyres: '/icons/sliced/tyre-checks.png',
-    reports: '/icons/sliced/driver-reports.png',
-    documents: '/icons/sliced/documents.png',
-    consumables: '/icons/sliced/consumables.png',
-    mobile: '/icons/sliced/offline-mobile.png',
-    dashboard: '/icons/sliced/fleet-office-dashboard.png',
-    security: '/icons/sliced/security-compliance.png',
+    workers: '/icons/sliced/workers.webp',
+    vehicles: '/icons/sliced/vehicles.webp',
+    timesheets: '/icons/sliced/timesheets.webp',
+    holidays: '/icons/sliced/holidays.webp',
+    checks: '/icons/sliced/vehicle-checks.webp',
+    tyres: '/icons/sliced/tyre-checks.webp',
+    reports: '/icons/sliced/driver-reports.webp',
+    documents: '/icons/sliced/documents.webp',
+    consumables: '/icons/sliced/consumables.webp',
+    mobile: '/icons/sliced/offline-mobile.webp',
+    dashboard: '/icons/sliced/fleet-office-dashboard.webp',
+    security: '/icons/sliced/security-compliance.webp',
 }
 
 function restoreMobileScroll() {
