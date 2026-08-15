@@ -102,8 +102,7 @@ function WorkerHomeQuickActionIcon({ src }: { src: string }) {
 
 /** Worker Home brand graphic — use as-is from public/worker. */
 const WORKER_HOME_HERO_SRC = '/worker/worker-road-truck.png'
-const WORKER_HOME_HERO_WIDTH = 1983
-const WORKER_HOME_HERO_HEIGHT = 793
+const WORKER_HOME_HERO_TRUCK_SRC = '/worker/worker-hero-tipper.png'
 
 /**
  * Same hour thresholds as getGreetingPeriod / getSentenceTimeGreeting.
@@ -262,20 +261,22 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
 function WorkerHomeRobotHero() {
   const { t } = useTranslation('worker')
   return (
-    <section className="worker-home-hero relative isolate pt-5 sm:pt-6">
-      <div className="worker-home-hero__frame relative overflow-hidden rounded-[1.75rem]">
+    <section className="worker-home-hero relative isolate overflow-visible pt-5 sm:pt-6">
+      <div className="worker-home-hero__stage relative w-full overflow-visible">
+        <div
+          className="worker-home-hero__frame relative w-full overflow-hidden rounded-[1.75rem]"
+          style={{ backgroundImage: `url(${WORKER_HOME_HERO_SRC})` }}
+        >
+          <div className="worker-home-hero__wash" aria-hidden />
+        </div>
         <img
-          src={WORKER_HOME_HERO_SRC}
+          className="worker-home-hero__truck"
+          src={WORKER_HOME_HERO_TRUCK_SRC}
           alt=""
-          width={WORKER_HOME_HERO_WIDTH}
-          height={WORKER_HOME_HERO_HEIGHT}
-          loading="eager"
-          decoding="async"
-          draggable={false}
-          className="worker-home-hero__art"
+          aria-hidden
         />
-        <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start px-4 pt-3.5 pb-3 min-[380px]:pt-4 sm:px-5 sm:pt-5 sm:pb-4 lg:pt-6">
-          <h2 className="worker-home-hero__title break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:800]">
+        <div className="worker-home-hero__copy">
+          <h2 className="worker-home-hero__title break-words text-lg font-semibold leading-[1.25] tracking-tight min-[380px]:text-xl sm:text-2xl">
             {t('home.heroTitle', { defaultValue: 'Ready for the road?' })}
           </h2>
         </div>
@@ -655,7 +656,7 @@ function DashboardPage() {
   // and Quick Actions, and always expose the cached Vehicle Check entry point.
   if (!isOnline) {
     return (
-      <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-clip lg:max-w-3xl">
+      <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-visible lg:max-w-3xl">
         <WorkerHomeHeader workerName={greetingWorkerName} />
 
         {showOfflineNotPrepared ? (
@@ -675,7 +676,7 @@ function DashboardPage() {
   }
 
   return (
-    <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-clip lg:max-w-3xl">
+    <div className="worker-home-stack mx-auto box-border w-full min-w-0 max-w-md overflow-x-visible lg:max-w-3xl">
       <WorkerHomeHeader workerName={greetingWorkerName} />
 
       {isLoading || companyLoading ? (

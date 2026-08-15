@@ -622,38 +622,100 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   box-shadow: none;
 }
 
-/* Worker Home hero — photo fills the rounded card; no white pad/fill. */
+/* Worker Home hero — landscape stays clipped; truck may overflow the stage. */
+.worker-mobile-layout .worker-home-hero,
+.worker-mobile-layout .worker-home-hero__stage {
+  overflow: visible;
+}
+
+.worker-mobile-layout .worker-home-stack {
+  overflow-x: visible;
+}
+
+/* Worker Home hero — full-bleed banner, same width as the cards below.
+ * Cover crops the PNG transparent canvas so the photo fills the rounded card. */
 .worker-mobile-layout .worker-home-hero__frame {
   margin: 0;
   padding: 0;
-  background-color: transparent;
-  aspect-ratio: 1983 / 793;
+  width: 100%;
+  aspect-ratio: 2.53 / 1;
+  background-color: #dceeff;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: 62% 48%;
 }
 
-.worker-mobile-layout .worker-home-hero__art {
+.worker-dark .worker-mobile-layout .worker-home-hero__frame {
+  background-color: #000000;
+}
+
+.worker-mobile-layout .worker-home-hero__wash {
   position: absolute;
   inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  object-fit: cover;
-  object-position: center;
+  z-index: 1;
   pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
-  background-color: transparent;
-  filter: brightness(0.82) saturate(0.78);
+  background: linear-gradient(
+    90deg,
+    rgba(220, 238, 255, 0.52) 0%,
+    rgba(220, 238, 255, 0.2) 36%,
+    rgba(220, 238, 255, 0.04) 58%,
+    transparent 76%
+  );
+}
+
+.worker-dark .worker-mobile-layout .worker-home-hero__wash {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.16) 40%,
+    transparent 72%
+  );
+}
+
+.worker-mobile-layout .worker-home-hero__truck {
+  position: absolute;
+  right: -5%;
+  bottom: -6%;
+  z-index: 2;
+  width: 66%;
+  height: auto;
+  pointer-events: none;
+  object-fit: contain;
+  object-position: bottom right;
+  filter: saturate(0.78) contrast(0.94) brightness(1.03);
+}
+
+.worker-mobile-layout .worker-home-hero__copy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  display: block;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(46%, 13.5rem);
+  overflow: visible;
+  padding: 1.15rem 0.75rem 0.5rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .worker-mobile-layout .worker-home-hero__copy {
+    max-width: min(44%, 16rem);
+    padding: 1.3rem 1rem 0.5rem 1.4rem;
+  }
 }
 
 .worker-mobile-layout .worker-home-hero__title {
-  color: #000000;
+  position: relative;
+  z-index: 4;
+  margin: 0;
+  overflow: visible;
+  color: #0b3d66;
+  font-weight: 600;
 }
 
 .worker-dark .worker-mobile-layout .worker-home-hero__title {
-  color: #a3f1ab;
+  color: #c8f5ce;
 }
 
 .worker-mobile-layout .worker-quick-action-mint {
