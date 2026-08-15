@@ -172,4 +172,52 @@ assert(
 void workerI18n.changeLanguage('en')
 assert(workerI18n.t('home.heroTitle') === enWorker.home.heroTitle, 'English home.heroTitle after reset')
 
+const timesheetKeys = englishKeys.filter((key) => key.startsWith('timesheets.'))
+assert(timesheetKeys.length >= 40, 'Phase 3A timesheets keys exist')
+assert(timesheetKeys.includes('timesheets.title'), 'timesheets.title exists')
+assert(timesheetKeys.includes('timesheets.submitWeek'), 'timesheets.submitWeek exists')
+assert(timesheetKeys.includes('timesheets.status.draft'), 'timesheets.status.draft exists')
+assert(timesheetKeys.includes('timesheets.errors.timePair'), 'timesheets.errors.timePair exists')
+assert(
+  String(ltWorker.timesheets.title) !== String(enWorker.timesheets.title),
+  'LT timesheets.title is translated',
+)
+assert(
+  String(plWorker.timesheets.title) !== String(enWorker.timesheets.title),
+  'PL timesheets.title is translated',
+)
+assert(
+  String(roWorker.timesheets.title) !== String(enWorker.timesheets.title),
+  'RO timesheets.title is translated',
+)
+assert(
+  String(ruWorker.timesheets.title) !== String(enWorker.timesheets.title),
+  'RU timesheets.title is translated',
+)
+
+const workerTimesheetsPage = read('src/pages/worker/WorkerTimesheetsPage.tsx')
+assert(
+  workerTimesheetsPage.includes("t('timesheets.title'"),
+  'Worker Timesheets page translates title',
+)
+assert(
+  workerTimesheetsPage.includes("t('timesheets.submitWeek'"),
+  'Worker Timesheets page translates submit',
+)
+assert(
+  !workerTimesheetsPage.includes('getStatusLabel('),
+  'Worker Timesheets page does not show canonical status via getStatusLabel',
+)
+
+void workerI18n.changeLanguage('lt')
+assert(
+  workerI18n.t('timesheets.title') === ltWorker.timesheets.title,
+  'Lithuanian timesheets.title is used when language is lt',
+)
+void workerI18n.changeLanguage('en')
+assert(
+  workerI18n.t('timesheets.title') === enWorker.timesheets.title,
+  'English timesheets.title after reset',
+)
+
 console.log('verify-worker-i18n-phase1: PASS')

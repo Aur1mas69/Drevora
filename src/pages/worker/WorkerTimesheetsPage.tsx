@@ -33,17 +33,13 @@ import {
   buildWeekDates,
   decimalHoursToMinutes,
   entryHasStartAndFinish,
-  formatDayLabel,
   formatHours,
   formatLocalDateString,
-  formatSubmittedAtDisplay,
-  formatTimesheetSubmittedAt,
   formatTotalHours,
   getDefaultWeekStartMonday,
   getEntryPayableDisplayResult,
   getMissingTimePairField,
   getStatusBadgeClass,
-  getStatusLabel,
   isIncompleteTimePair,
   minutesToDecimalHours,
   normalizeWeekStartForCompany,
@@ -72,6 +68,32 @@ import {
   Download,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import {
+  formatWorkerTimesheetDateTime,
+  formatWorkerTimesheetDayLabel,
+  formatWorkerTimesheetWeekday,
+  formatWorkerTimesheetWeekRange,
+  holidayDayTypeI18nKey,
+  timesheetStatusI18nKey,
+} from '@/i18n/workerTimesheetDisplay'
+
+function workerCaughtTimesheetError(
+  error: unknown,
+  t: TFunction,
+  fallbackKey: string,
+  fallback: string,
+): string {
+  if (error instanceof TimesheetsServiceError) return error.message
+  if (error instanceof Error) {
+    if (error.message === 'Timesheet does not belong to the signed-in worker.') {
+      return t('timesheets.errors.notYours', { defaultValue: error.message })
+    }
+    return error.message
+  }
+  return t(fallbackKey, { defaultValue: fallback })
+}
 
 const BREAK_OPTIONS = [0, 15, 30, 45, 60] as const
 
@@ -218,36 +240,28 @@ function DayIndicatorDot({ state }: { state: DayIndicatorState }) {
   )
 }
 
-function dayIndicatorAriaLabel(state: DayIndicatorState): string {
+function dayIndicatorAriaLabel(
+  state: DayIndicatorState,
+  t: TFunction,
+): string {
   switch (state) {
     case 'valid':
-      return 'completed'
+      return t('timesheets.indicatorCompleted', { defaultValue: 'completed' })
     case 'partial':
-      return 'in progress'
+      return t('timesheets.indicatorInProgress', { defaultValue: 'in progress' })
     case 'error':
-      return 'needs attention'
+      return t('timesheets.indicatorNeedsAttention', {
+        defaultValue: 'needs attention',
+      })
     default:
-      return 'not started'
+      return t('timesheets.indicatorNotStarted', { defaultValue: 'not started' })
   }
 }
 
-/** Short weekday for compact mobile day boxes (Mon–Sun). Local helper — do not alter timesheetUtils. */
-function formatShortWeekday(dayDate: string): string {
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(
-    parseLocalDate(dayDate),
-  )
-}
-
-function formatWeekdayLong(dayDate: string): string {
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(
-    parseLocalDate(dayDate),
-  )
-}
-
-/** Collapsed-row preview text — only shows entered times/total for completed days. */
 function collapsedDaySummary(
   entry: TimesheetEntryInput,
   state: DayIndicatorState,
+  t: TFunction,
 ): string {
   if (state === 'valid') {
     const start = entry.startTime?.slice(0, 5) ?? '—'
@@ -256,12 +270,16 @@ function collapsedDaySummary(
   }
   if (state === 'partial') {
     const missing = getMissingTimePairField(entry)
-    return missing === 'finish' ? 'Finish time missing' : 'Start time missing'
+    return missing === 'finish'
+      ? t('timesheets.finishMissing', { defaultValue: 'Finish time missing' })
+      : t('timesheets.startMissing', { defaultValue: 'Start time missing' })
   }
   if (state === 'error') {
-    return 'Comment required for Additional Hours'
+    return t('timesheets.commentRequiredSummary', {
+      defaultValue: 'Comment required for Additional Hours',
+    })
   }
-  return 'No entry yet'
+  return t('timesheets.noEntryYet', { defaultValue: 'No entry yet' })
 }
 
 const workerFieldClass =
@@ -307,6 +325,8 @@ function WorkerDayFormFields({
   paidBreaks,
   onUpdate,
 }: DayFormProps) {
+  const { t, i18n } = useTranslation('worker')
+  const language = i18n.language
   const isHoliday = isHolidayDay(entry)
   const isFullHoliday = isFullHolidayDay(entry)
   const isHalfHoliday = isHalfHolidayDay(entry)
@@ -323,7 +343,7 @@ function WorkerDayFormFields({
     <div className="space-y-4">
       <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
-          Day type
+          {t('timesheets.dayType', { defaultValue: 'Day type' })}
         </p>
         {editable ? (
           <select
@@ -334,35 +354,57 @@ function WorkerDayFormFields({
               })
             }
             className={cn(workerFieldClass, 'mt-2.5')}
-            aria-label={`Day type for ${formatDayLabel(entry.dayDate)}`}
+            aria-label={t('timesheets.dayTypeAria', {
+              day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+              defaultValue: `Day type for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+            })}
           >
-            <option value="work">Work</option>
-            <option value="holiday">Full day holiday (H)</option>
-            <option value="holiday_am">First half (H-AM)</option>
-            <option value="holiday_pm">Second half (H-PM)</option>
+            <option value="work">
+              {t('timesheets.dayTypeWork', { defaultValue: 'Work' })}
+            </option>
+            <option value="holiday">
+              {t('timesheets.dayTypeFull', { defaultValue: 'Full day holiday (H)' })}
+            </option>
+            <option value="holiday_am">
+              {t('timesheets.dayTypeAm', { defaultValue: 'First half (H-AM)' })}
+            </option>
+            <option value="holiday_pm">
+              {t('timesheets.dayTypePm', { defaultValue: 'Second half (H-PM)' })}
+            </option>
           </select>
         ) : (
           <p className={cn(workerReadonlyFieldClass, 'mt-2.5')}>
             {isHoliday && holidayCode
-              ? `${holidayCode} — ${holidayDayLabel(entry.dayType ?? 'work')}`
-              : 'Work'}
+              ? t('timesheets.holidayCodeLabel', {
+                  code: holidayCode,
+                  label: t(holidayDayTypeI18nKey(entry.dayType ?? 'work'), {
+                    defaultValue: holidayDayLabel(entry.dayType ?? 'work'),
+                  }),
+                  defaultValue: `${holidayCode} — ${holidayDayLabel(entry.dayType ?? 'work')}`,
+                })
+              : t('timesheets.dayTypeWork', { defaultValue: 'Work' })}
           </p>
         )}
       </div>
 
       <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
-          Shift
+          {t('timesheets.shift', { defaultValue: 'Shift' })}
         </p>
         {isFullHoliday ? (
           <p className="mt-2.5 text-base font-bold uppercase tracking-[0.08em] text-sky-800">
-            H — Full day holiday
+            {t('timesheets.fullDayHolidayBanner', {
+              defaultValue: 'H — Full day holiday',
+            })}
           </p>
         ) : editable ? (
           <div className="mt-2.5 space-y-2">
             {isHalfHoliday && holidayCode ? (
               <p className="text-xs font-bold uppercase tracking-[0.08em] text-sky-800">
-                {holidayCode} — work hours allowed on the same day
+                {t('timesheets.halfHolidayWorkAllowed', {
+                  code: holidayCode,
+                  defaultValue: `${holidayCode} — work hours allowed on the same day`,
+                })}
               </p>
             ) : null}
             <WorkerTimesheetShiftTimes
@@ -384,7 +426,7 @@ function WorkerDayFormFields({
             ) : null}
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Start
+                {t('timesheets.start', { defaultValue: 'Start' })}
               </span>
               <p className={workerReadonlyFieldClass}>
                 {entry.startTime?.slice(0, 5) || '—'}
@@ -392,7 +434,7 @@ function WorkerDayFormFields({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Finish
+                {t('timesheets.finish', { defaultValue: 'Finish' })}
               </span>
               <p className={workerReadonlyFieldClass}>
                 {entry.finishTime?.slice(0, 5) || '—'}
@@ -402,13 +444,15 @@ function WorkerDayFormFields({
         )}
         {incompletePair ? (
           <p className="mt-2 text-xs font-medium text-rose-600">
-            {TIMESHEET_TIME_PAIR_MESSAGE}
+            {t('timesheets.errors.timePairShort', {
+              defaultValue: TIMESHEET_TIME_PAIR_MESSAGE,
+            })}
           </p>
         ) : null}
 
         <label className="mt-3.5 block space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Break
+            {t('timesheets.break', { defaultValue: 'Break' })}
           </span>
           {isFullHoliday ? (
             <p className={workerReadonlyFieldClass}>—</p>
@@ -424,31 +468,49 @@ function WorkerDayFormFields({
             >
               {BREAK_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
-                  {minutes === 0 ? '0m' : `${minutes}m`}
+                  {minutes === 0
+                    ? t('timesheets.breakMinutes', {
+                        minutes: 0,
+                        defaultValue: '0m',
+                      })
+                    : t('timesheets.breakMinutes', {
+                        minutes,
+                        defaultValue: `${minutes}m`,
+                      })}
                 </option>
               ))}
               {!BREAK_OPTIONS.includes(
                 entry.breakMinutes as (typeof BREAK_OPTIONS)[number],
               ) ? (
-                <option value={entry.breakMinutes}>{entry.breakMinutes}m</option>
+                <option value={entry.breakMinutes}>
+                  {t('timesheets.breakMinutes', {
+                    minutes: entry.breakMinutes,
+                    defaultValue: `${entry.breakMinutes}m`,
+                  })}
+                </option>
               ) : null}
             </select>
           ) : (
-            <p className={workerReadonlyFieldClass}>{entry.breakMinutes}m</p>
+            <p className={workerReadonlyFieldClass}>
+              {t('timesheets.breakMinutes', {
+                minutes: entry.breakMinutes,
+                defaultValue: `${entry.breakMinutes}m`,
+              })}
+            </p>
           )}
         </label>
       </div>
 
       <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#5499BF]">
-          Paid hours
+          {t('timesheets.paidHours', { defaultValue: 'Paid hours' })}
         </p>
 
         {isFullHoliday ? (
           <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Holiday
+                {t('timesheets.holiday', { defaultValue: 'Holiday' })}
               </p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(payable.holidayHours)}
@@ -456,7 +518,7 @@ function WorkerDayFormFields({
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Overtime
+                {t('timesheets.overtime', { defaultValue: 'Overtime' })}
               </p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(0)}
@@ -468,7 +530,10 @@ function WorkerDayFormFields({
             <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Holiday ({holidayCode})
+                  {t('timesheets.holidayWithCode', {
+                    code: holidayCode,
+                    defaultValue: `Holiday (${holidayCode})`,
+                  })}
                 </p>
                 <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                   {formatHours(payable.holidayHours)}
@@ -476,7 +541,7 @@ function WorkerDayFormFields({
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Work
+                  {t('timesheets.work', { defaultValue: 'Work' })}
                 </p>
                 <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                   {formatHours(payable.workBasicHours)}
@@ -487,7 +552,7 @@ function WorkerDayFormFields({
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Work Basic Hours
+                    {t('timesheets.workBasicHours', { defaultValue: 'Work Basic Hours' })}
                   </span>
                   {editable ? (
                     <TimesheetDecimalHoursInput
@@ -498,7 +563,10 @@ function WorkerDayFormFields({
                         })
                       }
                       className={workerFieldClass}
-                      aria-label={`Work Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+                      aria-label={t('timesheets.workBasicAria', {
+                        day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+                        defaultValue: `Work Basic Hours for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+                      })}
                     />
                   ) : (
                     <p className={workerReadonlyFieldClass}>
@@ -508,7 +576,9 @@ function WorkerDayFormFields({
                 </label>
                 <label className="space-y-1.5">
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Overtime (work only)
+                    {t('timesheets.overtimeWorkOnly', {
+                      defaultValue: 'Overtime (work only)',
+                    })}
                   </span>
                   {editable ? (
                     <TimesheetDecimalHoursInput
@@ -519,7 +589,10 @@ function WorkerDayFormFields({
                         })
                       }
                       className={workerFieldClass}
-                      aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
+                      aria-label={t('timesheets.overtimeAria', {
+                        day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+                        defaultValue: `Overtime for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+                      })}
                     />
                   ) : (
                     <p className={workerReadonlyFieldClass}>
@@ -532,7 +605,7 @@ function WorkerDayFormFields({
               <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Overtime
+                    {t('timesheets.overtime', { defaultValue: 'Overtime' })}
                   </p>
                   <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                     {formatHours(payable.overtimeDisplayHours)}
@@ -540,7 +613,7 @@ function WorkerDayFormFields({
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Total
+                    {t('timesheets.total', { defaultValue: 'Total' })}
                   </p>
                   <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                     {formatHours(payable.totalPaidHours)}
@@ -553,7 +626,7 @@ function WorkerDayFormFields({
           <div className="mt-2.5 grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Basic Hours
+                {t('timesheets.basicHours', { defaultValue: 'Basic Hours' })}
               </span>
               {editable ? (
                 <TimesheetDecimalHoursInput
@@ -564,7 +637,10 @@ function WorkerDayFormFields({
                     })
                   }
                   className={workerFieldClass}
-                  aria-label={`Basic Hours for ${formatDayLabel(entry.dayDate)}`}
+                  aria-label={t('timesheets.basicAria', {
+                    day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+                    defaultValue: `Basic Hours for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+                  })}
                 />
               ) : (
                 <p className={workerReadonlyFieldClass}>
@@ -575,7 +651,7 @@ function WorkerDayFormFields({
 
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Overtime
+                {t('timesheets.overtime', { defaultValue: 'Overtime' })}
               </span>
               {editable ? (
                 <TimesheetDecimalHoursInput
@@ -586,7 +662,10 @@ function WorkerDayFormFields({
                     })
                   }
                   className={workerFieldClass}
-                  aria-label={`Overtime for ${formatDayLabel(entry.dayDate)}`}
+                  aria-label={t('timesheets.overtimeAria', {
+                    day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+                    defaultValue: `Overtime for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+                  })}
                 />
               ) : (
                 <p className={workerReadonlyFieldClass}>
@@ -599,7 +678,7 @@ function WorkerDayFormFields({
           <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Basic
+                {t('timesheets.basic', { defaultValue: 'Basic' })}
               </p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(payable.basicHours)}
@@ -607,7 +686,7 @@ function WorkerDayFormFields({
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Overtime
+                {t('timesheets.overtime', { defaultValue: 'Overtime' })}
               </p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-950">
                 {formatHours(payable.overtimeDisplayHours)}
@@ -619,14 +698,17 @@ function WorkerDayFormFields({
         {!isFullHoliday ? (
           <label className="mt-3.5 block space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Additional Hours
+              {t('timesheets.additionalHours', { defaultValue: 'Additional Hours' })}
             </span>
             {editable ? (
               <TimesheetDecimalHoursInput
                 value={entry.additionalHours}
                 onChange={(hours) => onUpdate(entry.dayDate, { additionalHours: hours })}
                 className={workerFieldClass}
-                aria-label={`Additional Hours for ${formatDayLabel(entry.dayDate)}`}
+                aria-label={t('timesheets.additionalAria', {
+                  day: formatWorkerTimesheetDayLabel(entry.dayDate, language),
+                  defaultValue: `Additional Hours for ${formatWorkerTimesheetDayLabel(entry.dayDate, language)}`,
+                })}
               />
             ) : (
               <p className={workerReadonlyFieldClass}>
@@ -637,7 +719,9 @@ function WorkerDayFormFields({
             !payable.weekendGuaranteeDay &&
             payable.additionalHours > entry.additionalHours ? (
               <p className="text-xs font-medium text-slate-500">
-                Includes automatic paid break where enabled
+                {t('timesheets.includesPaidBreak', {
+                  defaultValue: 'Includes automatic paid break where enabled',
+                })}
               </p>
             ) : null}
           </label>
@@ -645,24 +729,34 @@ function WorkerDayFormFields({
 
         <div className="mt-3.5 rounded-2xl border border-[#DCEEFF] bg-[#F5FAFF] px-3 py-3 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Total Hours
+            {t('timesheets.totalHours', { defaultValue: 'Total Hours' })}
           </p>
           <p className="mt-1 text-base font-bold tabular-nums text-slate-950">
             {incompletePair ? '—' : formatTotalHours(payable.totalPaidHours)}
           </p>
           {incompletePair ? (
             <p className="mt-0.5 text-[11px] text-rose-600">
-              {TIMESHEET_TIME_PAIR_MESSAGE}
+              {t('timesheets.errors.timePairShort', {
+              defaultValue: TIMESHEET_TIME_PAIR_MESSAGE,
+            })}
             </p>
           ) : isFullHoliday ? (
-            <p className="mt-0.5 text-[11px] text-slate-500">Full day holiday · OT = 0</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {t('timesheets.fullHolidayOtZero', {
+                defaultValue: 'Full day holiday · OT = 0',
+              })}
+            </p>
           ) : isHalfHoliday ? (
             <p className="mt-0.5 text-[11px] text-slate-500">
-              Holiday + work · OT on work only
+              {t('timesheets.holidayPlusWorkOt', {
+                defaultValue: 'Holiday + work · OT on work only',
+              })}
             </p>
           ) : isManualMode ? (
             <p className="mt-0.5 text-[11px] text-slate-500">
-              Read-only · Basic + OT × multiplier + Additional
+              {t('timesheets.totalFormula', {
+                defaultValue: 'Read-only · Basic + OT × multiplier + Additional',
+              })}
             </p>
           ) : null}
         </div>
@@ -671,7 +765,7 @@ function WorkerDayFormFields({
       <div className="rounded-2xl border border-[#E8F3FE] bg-white/80 p-3.5">
         <label className="block space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Daily note
+            {t('timesheets.dailyNote', { defaultValue: 'Daily note' })}
           </span>
           {editable ? (
             <input
@@ -684,8 +778,12 @@ function WorkerDayFormFields({
               }
               placeholder={
                 entry.additionalHours > 0
-                  ? 'Required — e.g. Night-shift allowance'
-                  : 'Optional note'
+                  ? t('timesheets.noteRequiredPlaceholder', {
+                      defaultValue: 'Required — e.g. Night-shift allowance',
+                    })
+                  : t('timesheets.noteOptionalPlaceholder', {
+                      defaultValue: 'Optional note',
+                    })
               }
               className={workerFieldClass}
             />
@@ -718,10 +816,11 @@ function WorkerMobileDaySelector({
   todayDateString,
   onSelectDay,
 }: WorkerMobileDaySelectorProps) {
+  const { t, i18n } = useTranslation('worker')
   return (
     <div
       role="group"
-      aria-label="Days this week"
+      aria-label={t('timesheets.daysAria', { defaultValue: 'Days this week' })}
       className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div className="mx-auto grid min-w-[17.5rem] grid-cols-7 gap-1 sm:gap-1.5">
@@ -729,15 +828,39 @@ function WorkerMobileDaySelector({
           const state = getDayIndicatorState(entry)
           const selected = entry.dayDate === selectedDayDate
           const isToday = entry.dayDate === todayDateString
-          const shortLabel = formatShortWeekday(entry.dayDate)
-          const statusPhrase = dayIndicatorAriaLabel(state)
+          const shortLabel = formatWorkerTimesheetWeekday(
+            entry.dayDate,
+            i18n.language,
+            'short',
+          )
+          const statusPhrase = dayIndicatorAriaLabel(state, t)
 
           return (
             <button
               key={entry.dayDate}
               type="button"
               onClick={() => onSelectDay(entry.dayDate)}
-              aria-label={`${formatWeekdayLong(entry.dayDate)}, ${statusPhrase}${isToday ? ', today' : ''}`}
+              aria-label={
+                isToday
+                  ? t('timesheets.dayAriaToday', {
+                      day: formatWorkerTimesheetWeekday(
+                        entry.dayDate,
+                        i18n.language,
+                        'long',
+                      ),
+                      status: statusPhrase,
+                      defaultValue: `${formatWorkerTimesheetWeekday(entry.dayDate, i18n.language, 'long')}, ${statusPhrase}, today`,
+                    })
+                  : t('timesheets.dayAria', {
+                      day: formatWorkerTimesheetWeekday(
+                        entry.dayDate,
+                        i18n.language,
+                        'long',
+                      ),
+                      status: statusPhrase,
+                      defaultValue: `${formatWorkerTimesheetWeekday(entry.dayDate, i18n.language, 'long')}, ${statusPhrase}`,
+                    })
+              }
               aria-pressed={selected}
               className={cn(
                 'flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl border px-0.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED] focus-visible:ring-offset-2',
@@ -794,6 +917,7 @@ function WorkerMobileSelectedDayCard({
   editable,
   ...dayFormProps
 }: WorkerMobileSelectedDayCardProps) {
+  const { t, i18n } = useTranslation('worker')
   const state = getDayIndicatorState(entry)
 
   return (
@@ -809,16 +933,16 @@ function WorkerMobileSelectedDayCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-slate-950">
-              {formatDayLabel(entry.dayDate)}
+              {formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language)}
             </h2>
             {isToday ? (
               <span className="rounded-full bg-[#E8F3FE] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0B68BE]">
-                Today
+                {t('timesheets.today', { defaultValue: 'Today' })}
               </span>
             ) : null}
           </div>
           <p className="mt-0.5 text-xs text-slate-500">
-            {dayIndicatorAriaLabel(state)}
+            {dayIndicatorAriaLabel(state, t)}
           </p>
         </div>
       </div>
@@ -834,14 +958,16 @@ function WorkerMobileSelectedDayCard({
             onClick={onSaveDay}
           >
             {daySaveState === 'saving' || isSavingDay
-              ? 'Saving…'
+              ? t('timesheets.saving', { defaultValue: 'Saving…' })
               : daySaveState === 'saved'
-                ? 'Saved'
-                : 'Save Day'}
+                ? t('timesheets.saved', { defaultValue: 'Saved' })
+                : t('timesheets.saveDay', { defaultValue: 'Save Day' })}
           </Button>
           {daySaveState === 'error' ? (
             <p className="text-center text-xs font-medium text-rose-600">
-              Could not save day. Try again.
+              {t('timesheets.saveDayFailedRetry', {
+                defaultValue: 'Could not save day. Try again.',
+              })}
             </p>
           ) : null}
         </div>
@@ -876,6 +1002,7 @@ function WorkerDayAccordionRow({
   editable,
   ...dayFormProps
 }: WorkerDayAccordionRowProps) {
+  const { t, i18n } = useTranslation('worker')
   const state = getDayIndicatorState(entry)
   const payable = getEntryPayableDisplayResult(entry, {
     overtimeRules: dayFormProps.overtimeRules,
@@ -902,20 +1029,20 @@ function WorkerDayAccordionRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-slate-950">
-              {formatDayLabel(entry.dayDate)}
+              {formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language)}
             </h2>
             {isToday ? (
               <span className="rounded-full bg-[#F6F9FF] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2F80ED]">
-                Today
+                {t('timesheets.today', { defaultValue: 'Today' })}
               </span>
             ) : null}
           </div>
           {!isExpanded ? (
             <p className="mt-0.5 truncate text-xs text-slate-500">
-              {collapsedDaySummary(entry, state)}
+              {collapsedDaySummary(entry, state, t)}
             </p>
           ) : (
-            <span className="sr-only">{dayIndicatorAriaLabel(state)}</span>
+            <span className="sr-only">{dayIndicatorAriaLabel(state, t)}</span>
           )}
         </div>
         {!isExpanded && state === 'valid' ? (
@@ -945,14 +1072,16 @@ function WorkerDayAccordionRow({
                 onClick={onSaveDay}
               >
                 {daySaveState === 'saving' || isSavingDay
-                  ? 'Saving…'
+                  ? t('timesheets.saving', { defaultValue: 'Saving…' })
                   : daySaveState === 'saved'
-                    ? 'Saved'
-                    : 'Save Day'}
+                    ? t('timesheets.saved', { defaultValue: 'Saved' })
+                    : t('timesheets.saveDay', { defaultValue: 'Save Day' })}
               </Button>
               {daySaveState === 'error' ? (
                 <p className="text-center text-xs font-medium text-rose-600">
-                  Could not save day. Try again.
+                  {t('timesheets.saveDayFailedRetry', {
+                defaultValue: 'Could not save day. Try again.',
+              })}
                 </p>
               ) : null}
             </div>
@@ -964,6 +1093,7 @@ function WorkerDayAccordionRow({
 }
 
 export default function WorkerTimesheetsPage() {
+  const { t, i18n } = useTranslation('worker')
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
   const { companyReady, companyLoading, membershipError } = useCompanyTenantGate()
   const {
@@ -1054,7 +1184,10 @@ export default function WorkerTimesheetsPage() {
   function validateManualAdditional(nextEntries: TimesheetEntryInput[]): string | null {
     for (const entry of nextEntries) {
       if (entry.additionalHours > 0 && !entry.dailyComment.trim()) {
-        return `Add a daily comment for ${formatDayLabel(entry.dayDate)} explaining the Additional Hours (for example night-shift allowance).`
+        return t('timesheets.errors.additionalComment', {
+          day: formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language),
+          defaultValue: `Add a daily comment for ${formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language)} explaining the Additional Hours (for example night-shift allowance).`,
+        })
       }
     }
     return null
@@ -1063,10 +1196,33 @@ export default function WorkerTimesheetsPage() {
   function validateEntriesForSave(nextEntries: TimesheetEntryInput[]): string | null {
     for (const entry of nextEntries) {
       const overlapError = validateHolidayWorkOverlap(entry)
-      if (overlapError) return overlapError
+      if (overlapError) {
+        return t('timesheets.errors.fullHolidayWithWork', {
+          day: formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language),
+          defaultValue: overlapError,
+        })
+      }
     }
     return (
-      validateTimesheetTimePairs(nextEntries) ?? validateManualAdditional(nextEntries)
+      validateTimesheetTimePairs(nextEntries) != null
+        ? (() => {
+            const incomplete = nextEntries.find(
+              (entry) =>
+                entry.dayType !== 'holiday' && isIncompleteTimePair(entry),
+            )
+            return incomplete
+              ? t('timesheets.errors.timePair', {
+                  day: formatWorkerTimesheetDayLabel(
+                    incomplete.dayDate,
+                    i18n.language,
+                  ),
+                  defaultValue: TIMESHEET_TIME_PAIR_MESSAGE,
+                })
+              : t('timesheets.errors.timePairShort', {
+                  defaultValue: TIMESHEET_TIME_PAIR_MESSAGE,
+                })
+          })()
+        : validateManualAdditional(nextEntries)
     )
   }
 
@@ -1150,7 +1306,9 @@ export default function WorkerTimesheetsPage() {
         setLoadError(
           membershipError ??
             workerError ??
-            'Your worker profile could not be verified.',
+            t('timesheets.errors.profileUnverified', {
+              defaultValue: 'Your worker profile could not be verified.',
+            }),
         )
         return
       }
@@ -1208,11 +1366,12 @@ export default function WorkerTimesheetsPage() {
         setSavedSnapshot('')
         setSelectedDayDate('')
         setLoadError(
-          error instanceof TimesheetsServiceError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'Unable to load your timesheet.',
+          workerCaughtTimesheetError(
+            error,
+            t,
+            'timesheets.errors.loadFailed',
+            'Unable to load your timesheet.',
+          ),
         )
       } finally {
         if (generation === loadGenerationRef.current) {
@@ -1255,7 +1414,9 @@ export default function WorkerTimesheetsPage() {
         setLoadError(
           membershipError ??
             workerError ??
-            'Your worker profile could not be verified.',
+            t('timesheets.errors.profileUnverified', {
+              defaultValue: 'Your worker profile could not be verified.',
+            }),
         )
       }
       return
@@ -1291,7 +1452,10 @@ export default function WorkerTimesheetsPage() {
   function confirmDiscardIfDirty(): boolean {
     if (!isDirty) return true
     return window.confirm(
-      'You have unsaved timesheet changes. Leave this week without saving?',
+      t('timesheets.discardUnsaved', {
+        defaultValue:
+          'You have unsaved timesheet changes. Leave this week without saving?',
+      }),
     )
   }
 
@@ -1390,7 +1554,9 @@ export default function WorkerTimesheetsPage() {
     const currentDay = entries.find((entry) => entry.dayDate === dayDate)
     if (!dayDate || !currentDay) {
       setDaySaveState('error')
-      setActionError('Select a day to save.')
+      setActionError(
+        t('timesheets.errors.selectDay', { defaultValue: 'Select a day to save.' }),
+      )
       return
     }
 
@@ -1450,16 +1616,17 @@ export default function WorkerTimesheetsPage() {
           : previous,
       )
       setSelectedDayDate(dayDate)
-      setActionMessage('Day saved.')
+      setActionMessage(t('timesheets.daySaved', { defaultValue: 'Day saved.' }))
       setDaySaveState('saved')
     } catch (error) {
       setDaySaveState('error')
       setActionError(
-        error instanceof TimesheetsServiceError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to save day.',
+        workerCaughtTimesheetError(
+          error,
+          t,
+          'timesheets.errors.saveFailed',
+          'Failed to save day.',
+        ),
       )
     } finally {
       setIsSavingDay(false)
@@ -1533,14 +1700,19 @@ export default function WorkerTimesheetsPage() {
       }
       await applyLoadedTimesheet(refreshed, false)
       setSubmitConfirmOpen(false)
-      setActionMessage('Submitted for office review.')
+      setActionMessage(
+        t('timesheets.submittedReview', {
+          defaultValue: 'Submitted for office review.',
+        }),
+      )
     } catch (error) {
       setActionError(
-        error instanceof TimesheetsServiceError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to submit timesheet.',
+        workerCaughtTimesheetError(
+          error,
+          t,
+          'timesheets.errors.submitFailed',
+          'Failed to submit timesheet.',
+        ),
       )
     } finally {
       setIsSubmitting(false)
@@ -1560,14 +1732,15 @@ export default function WorkerTimesheetsPage() {
         throw new Error('Timesheet does not belong to the signed-in worker.')
       }
       await downloadTimesheetPdf(refreshed)
-      setActionMessage('PDF downloaded.')
+      setActionMessage(t('timesheets.pdfDownloaded', { defaultValue: 'PDF downloaded.' }))
     } catch (error) {
       setActionError(
-        error instanceof TimesheetsServiceError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to download PDF.',
+        workerCaughtTimesheetError(
+          error,
+          t,
+          'timesheets.errors.pdfFailed',
+          'Failed to download PDF.',
+        ),
       )
     } finally {
       setIsDownloadingPdf(false)
@@ -1591,7 +1764,7 @@ export default function WorkerTimesheetsPage() {
     return (
       <div
         className="min-h-[50vh] rounded-[1.75rem] bg-white/60"
-        aria-label="Loading timesheet"
+        aria-label={t('timesheets.loading', { defaultValue: 'Loading timesheet' })}
         role="status"
       />
     )
@@ -1600,10 +1773,15 @@ export default function WorkerTimesheetsPage() {
   if (workerError || !worker) {
     return (
       <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-950">My Timesheet</h1>
+        <h1 className="text-lg font-semibold text-slate-950">
+          {t('timesheets.title', { defaultValue: 'My Timesheet' })}
+        </h1>
         <p className="mt-2 text-sm text-slate-600">
           {workerError ??
-            'We could not find a worker profile linked to your account.'}
+            t('home.profileMissing', {
+              defaultValue:
+                'We could not find a worker profile linked to your account. Please contact your manager.',
+            })}
         </p>
       </div>
     )
@@ -1614,7 +1792,7 @@ export default function WorkerTimesheetsPage() {
       <div className="space-y-4">
         <header>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-            My Timesheet
+            {t('timesheets.title', { defaultValue: 'My Timesheet' })}
           </h1>
         </header>
         <div className="rounded-[1.75rem] border border-rose-100 bg-white p-5 shadow-sm">
@@ -1624,7 +1802,7 @@ export default function WorkerTimesheetsPage() {
             className="mt-4"
             onClick={() => void loadWeek(weekStart)}
           >
-            Try again
+            {t('timesheets.tryAgain', { defaultValue: 'Try again' })}
           </Button>
         </div>
       </div>
@@ -1649,11 +1827,15 @@ export default function WorkerTimesheetsPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-              My Timesheet
+              {t('timesheets.title', { defaultValue: 'My Timesheet' })}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {timesheet?.weekTitle ?? 'Timesheet'} ·{' '}
-              {timesheet?.weekRangeLabel ?? timesheet?.weekLabel}
+              {timesheet
+                ? `${t('timesheets.weekTitle', {
+                    weekNumber: timesheet.weekNumber,
+                    defaultValue: `Timesheet Week ${timesheet.weekNumber}`,
+                  })} · ${formatWorkerTimesheetWeekRange(timesheet.weekStart, i18n.language)}`
+                : t('nav.timesheets', { defaultValue: 'Timesheets' })}
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
@@ -1663,7 +1845,7 @@ export default function WorkerTimesheetsPage() {
                 getStatusBadgeClass(status),
               )}
             >
-              {getStatusLabel(status)}
+              {t(timesheetStatusI18nKey(status), { defaultValue: status })}
             </span>
             {timesheet ? (
               <button
@@ -1673,7 +1855,9 @@ export default function WorkerTimesheetsPage() {
                 className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
               >
                 <Download className="size-3.5" aria-hidden="true" />
-                {isDownloadingPdf ? 'PDF…' : 'PDF'}
+                {isDownloadingPdf
+                  ? t('timesheets.pdfBusy', { defaultValue: 'PDF…' })
+                  : t('timesheets.pdf', { defaultValue: 'PDF' })}
               </button>
             ) : null}
           </div>
@@ -1682,7 +1866,7 @@ export default function WorkerTimesheetsPage() {
         <div className="flex items-center gap-2 rounded-[1.5rem] border border-slate-100 bg-white p-1.5 shadow-sm">
           <button
             type="button"
-            aria-label="Previous week"
+            aria-label={t('timesheets.previousWeek', { defaultValue: 'Previous week' })}
             disabled={busy}
             onClick={() => handleWeekChange(-1)}
             className="inline-flex size-11 items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-50 disabled:opacity-50"
@@ -1691,15 +1875,20 @@ export default function WorkerTimesheetsPage() {
           </button>
           <div className="min-w-0 flex-1 text-center">
             <p className="truncate text-sm font-semibold text-slate-950">
-              Week {timesheet?.weekNumber ?? '—'}
+              {t('timesheets.weekNumber', {
+                weekNumber: timesheet?.weekNumber ?? '—',
+                defaultValue: `Week ${timesheet?.weekNumber ?? '—'}`,
+              })}
             </p>
             <p className="truncate text-xs text-slate-500">
-              {timesheet?.weekRangeLabel}
+              {timesheet
+                ? formatWorkerTimesheetWeekRange(timesheet.weekStart, i18n.language)
+                : '—'}
             </p>
           </div>
           <button
             type="button"
-            aria-label="Next week"
+            aria-label={t('timesheets.nextWeek', { defaultValue: 'Next week' })}
             disabled={busy}
             onClick={() => handleWeekChange(1)}
             className="inline-flex size-11 items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-50 disabled:opacity-50"
@@ -1723,45 +1912,63 @@ export default function WorkerTimesheetsPage() {
       {!officeManagesTimesheets ? null : (
         <div className="rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
           <p className="text-sm font-medium text-slate-700">
-            Your Office manages Timesheets. You can view yours here; only Office
-            can create or edit them.
+            {t('timesheets.officeManages', {
+              defaultValue:
+                'Your Office manages Timesheets. You can view yours here; only Office can create or edit them.',
+            })}
           </p>
         </div>
       )}
       {!officeManagesTimesheets && timesheet && !editable ? (
         <div className="space-y-2 rounded-2xl border border-[#BFE3F5] bg-[#F5FAFF] px-4 py-3">
           <p className="text-sm font-medium text-slate-700">
-            This timesheet is <span className="font-semibold">{getStatusLabel(status)}</span> and
-            is read-only. Editing historical Submitted or Approved records is not allowed.
+            {t('timesheets.readOnlyBanner', {
+              status: t(timesheetStatusI18nKey(status), { defaultValue: status }),
+              defaultValue: `This timesheet is ${status} and is read-only. Editing historical Submitted or Approved records is not allowed.`,
+            })}
           </p>
           <dl className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 sm:grid-cols-2">
             <div className="flex justify-between gap-2 sm:block">
               <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
-                Submitted
+                {t('timesheets.submitted', { defaultValue: 'Submitted' })}
               </dt>
               <dd className="font-medium text-slate-700">
-                {formatSubmittedAtDisplay(timesheet?.submittedAt, status)}
+                {status === 'Draft' || !timesheet?.submittedAt
+                  ? '—'
+                  : formatWorkerTimesheetDateTime(
+                      timesheet.submittedAt,
+                      i18n.language,
+                    ) ?? '—'}
               </dd>
             </div>
             <div className="flex justify-between gap-2 sm:block">
               <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
-                Approved
+                {t('timesheets.approved', { defaultValue: 'Approved' })}
               </dt>
               <dd className="font-medium text-slate-700">
                 {status === 'Approved'
-                  ? formatTimesheetSubmittedAt(timesheet?.approvedAt) ?? '—'
+                  ? formatWorkerTimesheetDateTime(
+                      timesheet?.approvedAt,
+                      i18n.language,
+                    ) ?? '—'
                   : '—'}
               </dd>
             </div>
             {timesheet?.workerConfirmed && timesheet.confirmedAt ? (
               <div className="flex justify-between gap-2 sm:col-span-2 sm:block">
                 <dt className="font-semibold uppercase tracking-[0.08em] text-slate-400">
-                  Confirmation
+                  {t('timesheets.confirmation', { defaultValue: 'Confirmation' })}
                 </dt>
                 <dd className="font-medium text-slate-700">
-                  Confirmed by {timesheet.driverName}
-                  {formatTimesheetSubmittedAt(timesheet.confirmedAt)
-                    ? ` · ${formatTimesheetSubmittedAt(timesheet.confirmedAt)}`
+                  {t('timesheets.confirmedBy', {
+                    name: timesheet.driverName,
+                    defaultValue: `Confirmed by ${timesheet.driverName}`,
+                  })}
+                  {formatWorkerTimesheetDateTime(
+                    timesheet.confirmedAt,
+                    i18n.language,
+                  )
+                    ? ` · ${formatWorkerTimesheetDateTime(timesheet.confirmedAt, i18n.language)}`
                     : ''}
                 </dd>
               </div>
@@ -1772,7 +1979,7 @@ export default function WorkerTimesheetsPage() {
 
       <div
         role="tablist"
-        aria-label="Timesheet view"
+        aria-label={t('timesheets.viewAria', { defaultValue: 'Timesheet view' })}
         className="grid grid-cols-2 gap-1 rounded-[1.25rem] border border-[#BFE3F5]/70 bg-white p-1.5 shadow-sm"
       >
         <button
@@ -1789,7 +1996,7 @@ export default function WorkerTimesheetsPage() {
               : 'text-slate-600 hover:bg-slate-50',
           )}
         >
-          Current Week
+          {t('timesheets.currentWeek', { defaultValue: 'Current Week' })}
         </button>
         <button
           type="button"
@@ -1806,7 +2013,7 @@ export default function WorkerTimesheetsPage() {
               : 'text-slate-600 hover:bg-slate-50',
           )}
         >
-          History
+          {t('timesheets.history', { defaultValue: 'History' })}
         </button>
       </div>
 
@@ -1815,19 +2022,35 @@ export default function WorkerTimesheetsPage() {
           <div className="rounded-[1.75rem] border border-[#BFE3F5] bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-600">
               {workersManageTimesheets
-                ? 'No Timesheet is available for this week yet.'
-                : 'No Timesheet has been created for this week yet. Your Office will create it when ready.'}
+                ? t('timesheets.noTimesheetSelf', {
+                    defaultValue: 'No Timesheet is available for this week yet.',
+                  })
+                : t('timesheets.noTimesheetOffice', {
+                    defaultValue:
+                      'No Timesheet has been created for this week yet. Your Office will create it when ready.',
+                  })}
             </p>
           </div>
         ) : (
         <>
           <section
-            aria-label="Week summary"
+            aria-label={t('timesheets.weekSummaryAria', {
+              defaultValue: 'Week summary',
+            })}
             className="grid grid-cols-3 gap-2.5"
           >
-            <SummaryStat label="Worked" value={formatHours(summary.workedHours)} />
-            <SummaryStat label="Overtime" value={formatHours(summary.overtimeHours)} />
-            <SummaryStat label="Total" value={formatTotalHours(summary.totalHours)} />
+            <SummaryStat
+              label={t('timesheets.worked', { defaultValue: 'Worked' })}
+              value={formatHours(summary.workedHours)}
+            />
+            <SummaryStat
+              label={t('timesheets.overtime', { defaultValue: 'Overtime' })}
+              value={formatHours(summary.overtimeHours)}
+            />
+            <SummaryStat
+              label={t('timesheets.total', { defaultValue: 'Total' })}
+              value={formatTotalHours(summary.totalHours)}
+            />
           </section>
 
           <div className="space-y-3 lg:hidden">
@@ -1852,7 +2075,7 @@ export default function WorkerTimesheetsPage() {
 
           <div
             role="list"
-            aria-label="Days this week"
+            aria-label={t('timesheets.daysAria', { defaultValue: 'Days this week' })}
             className="hidden space-y-2 lg:block"
           >
             {entries.map((entry) => {
@@ -1886,16 +2109,18 @@ export default function WorkerTimesheetsPage() {
                 onClick={handleSubmitClick}
               >
                 {isSubmitting
-                  ? 'Submitting…'
+                  ? t('timesheets.submitting', { defaultValue: 'Submitting…' })
                   : status === 'Rejected'
-                    ? 'Resubmit Week'
-                    : 'Submit Week'}
+                    ? t('timesheets.resubmitWeek', { defaultValue: 'Resubmit Week' })
+                    : t('timesheets.submitWeek', { defaultValue: 'Submit Week' })}
               </Button>
             </div>
           ) : null}
 
           <p className="px-1 pb-2 text-center text-xs text-slate-400">
-            Company Timesheet rules are shown in Worker Settings.
+            {t('timesheets.settingsHint', {
+              defaultValue: 'Company Timesheet rules are shown in Worker Settings.',
+            })}
           </p>
         </>
         )
@@ -1909,9 +2134,13 @@ export default function WorkerTimesheetsPage() {
       <WorkerSubmitTimesheetDialog
         open={submitConfirmOpen}
         weekNumber={timesheet?.weekNumber ?? '—'}
-        weekRangeLabel={timesheet?.weekRangeLabel ?? '—'}
+        weekRangeLabel={
+          timesheet
+            ? formatWorkerTimesheetWeekRange(timesheet.weekStart, i18n.language)
+            : '—'
+        }
         totalHoursLabel={formatTotalHours(summary.totalHours)}
-        statusLabel={getStatusLabel(status)}
+        statusLabel={t(timesheetStatusI18nKey(status), { defaultValue: status })}
         isSubmitting={isSubmitting}
         onCancel={handleSubmitDialogCancel}
         onConfirm={() => void handleSubmitConfirm()}

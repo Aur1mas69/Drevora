@@ -4,17 +4,20 @@ import { useBodyScrollLock } from '@/components/holidays/useBodyScrollLock'
 import type { OvertimeMode, TimesheetOvertimeRules } from '@/lib/companySettingsTypes'
 import type { Timesheet } from '@/lib/timesheetTypes'
 import {
-  formatDayLabel,
   formatHours,
-  formatSubmittedAtDisplay,
-  formatTimesheetSubmittedAt,
   formatTotalHours,
   getEntryPayableDisplayResult,
   getStatusBadgeClass,
-  getStatusLabel,
 } from '@/lib/timesheetUtils'
 import { cn } from '@/lib/utils'
 import { fetchTimesheetById, TimesheetsServiceError } from '@/services/timesheetsService'
+import {
+  formatWorkerTimesheetDateTime,
+  formatWorkerTimesheetDayLabel,
+  formatWorkerTimesheetWeekRange,
+  timesheetStatusI18nKey,
+} from '@/i18n/workerTimesheetDisplay'
+import { useTranslation } from 'react-i18next'
 
 const HISTORY_MODAL_STATE_KEY = '__drevoraTimesheetHistoryModal'
 
@@ -37,6 +40,7 @@ export function WorkerTimesheetHistoryDetailModal({
   paidBreaks,
   onClose,
 }: WorkerTimesheetHistoryDetailModalProps) {
+  const { t, i18n } = useTranslation('worker')
   const titleId = useId()
   const open = Boolean(timesheetId)
   const [timesheet, setTimesheet] = useState<Timesheet | null>(null)
@@ -68,7 +72,9 @@ export function WorkerTimesheetHistoryDetailModal({
         setErrorMessage(
           error instanceof TimesheetsServiceError
             ? error.message
-            : 'Unable to load this timesheet.',
+            : t('timesheets.errors.loadDetailFailed', {
+                defaultValue: 'Unable to load this timesheet.',
+              }),
         )
       })
       .finally(() => {
@@ -78,7 +84,7 @@ export function WorkerTimesheetHistoryDetailModal({
     return () => {
       cancelled = true
     }
-  }, [timesheetId])
+  }, [t, timesheetId])
 
   // Browser / Android Back closes the modal before leaving the page.
   useEffect(() => {
@@ -123,7 +129,9 @@ export function WorkerTimesheetHistoryDetailModal({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
-        aria-label="Dismiss timesheet history"
+        aria-label={t('timesheets.dismissHistory', {
+          defaultValue: 'Dismiss timesheet history',
+        })}
         onClick={onClose}
       />
 
@@ -143,17 +151,26 @@ export function WorkerTimesheetHistoryDetailModal({
               id={titleId}
               className="text-lg font-semibold tracking-[-0.03em] text-[color:var(--worker-text)] sm:text-xl"
             >
-              {timesheet ? `Week ${timesheet.weekNumber}` : 'Timesheet'}
+              {timesheet
+                ? t('timesheets.weekNumber', {
+                    weekNumber: timesheet.weekNumber,
+                    defaultValue: `Week ${timesheet.weekNumber}`,
+                  })
+                : t('timesheets.title', { defaultValue: 'My Timesheet' })}
             </h2>
             <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
-              {timesheet?.weekRangeLabel ?? (isLoading ? 'Loading…' : '—')}
+              {timesheet
+                ? formatWorkerTimesheetWeekRange(timesheet.weekStart, i18n.language)
+                : isLoading
+                  ? t('timesheets.loadingEllipsis', { defaultValue: 'Loading…' })
+                  : '—'}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F80ED]/40"
-            aria-label="Close"
+            aria-label={t('home.close', { defaultValue: 'Close' })}
           >
             <X className="size-5" strokeWidth={2} />
           </button>
@@ -163,7 +180,9 @@ export function WorkerTimesheetHistoryDetailModal({
           {isLoading ? (
             <div
               className="min-h-[30vh] rounded-[1.25rem] bg-slate-50/80"
-              aria-label="Loading timesheet detail"
+              aria-label={t('timesheets.loadingDetail', {
+                defaultValue: 'Loading timesheet detail',
+              })}
               role="status"
             />
           ) : null}
@@ -183,63 +202,93 @@ export function WorkerTimesheetHistoryDetailModal({
                     getStatusBadgeClass(timesheet.status),
                   )}
                 >
-                  {getStatusLabel(timesheet.status)}
+                  {t(timesheetStatusI18nKey(timesheet.status), {
+                    defaultValue: timesheet.status,
+                  })}
                 </span>
-                <span className="text-xs font-medium text-slate-500">Read-only</span>
+                <span className="text-xs font-medium text-slate-500">
+                  {t('timesheets.readOnly', { defaultValue: 'Read-only' })}
+                </span>
               </div>
 
               <section
-                aria-label="Week summary"
+                aria-label={t('timesheets.weekSummaryAria', {
+                  defaultValue: 'Week summary',
+                })}
                 className="grid grid-cols-3 gap-2.5"
               >
-                <SummaryStat label="Worked" value={formatHours(timesheet.workedHours)} />
                 <SummaryStat
-                  label="Overtime"
+                  label={t('timesheets.worked', { defaultValue: 'Worked' })}
+                  value={formatHours(timesheet.workedHours)}
+                />
+                <SummaryStat
+                  label={t('timesheets.overtime', { defaultValue: 'Overtime' })}
                   value={formatHours(timesheet.overtimeHours)}
                 />
                 <SummaryStat
-                  label="Total"
+                  label={t('timesheets.total', { defaultValue: 'Total' })}
                   value={formatTotalHours(timesheet.totalHours)}
                 />
               </section>
 
               <dl className="space-y-2 rounded-[14px] border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-4 py-3 text-sm">
                 <DetailRow
-                  label="Submitted"
-                  value={formatSubmittedAtDisplay(
-                    timesheet.submittedAt,
-                    timesheet.status,
-                  )}
+                  label={t('timesheets.submitted', { defaultValue: 'Submitted' })}
+                  value={
+                    timesheet.status === 'Draft' || !timesheet.submittedAt
+                      ? '—'
+                      : formatWorkerTimesheetDateTime(
+                          timesheet.submittedAt,
+                          i18n.language,
+                        ) ?? '—'
+                  }
                 />
                 {timesheet.status === 'Approved' ? (
                   <DetailRow
-                    label="Approved"
+                    label={t('timesheets.approved', { defaultValue: 'Approved' })}
                     value={
-                      formatTimesheetSubmittedAt(timesheet.approvedAt) ?? '—'
+                      formatWorkerTimesheetDateTime(
+                        timesheet.approvedAt,
+                        i18n.language,
+                      ) ?? '—'
                     }
                   />
                 ) : null}
                 {timesheet.status === 'Rejected' ? (
                   <DetailRow
-                    label="Rejected"
+                    label={t('timesheets.rejected', { defaultValue: 'Rejected' })}
                     value={
-                      formatTimesheetSubmittedAt(timesheet.rejectedAt) ?? '—'
+                      formatWorkerTimesheetDateTime(
+                        timesheet.rejectedAt,
+                        i18n.language,
+                      ) ?? '—'
                     }
                   />
                 ) : null}
                 {timesheet.workerConfirmed && timesheet.confirmedAt ? (
                   <DetailRow
-                    label="Confirmation"
-                    value={`Confirmed by ${timesheet.driverName}${
-                      formatTimesheetSubmittedAt(timesheet.confirmedAt)
-                        ? ` · ${formatTimesheetSubmittedAt(timesheet.confirmedAt)}`
+                    label={t('timesheets.confirmation', {
+                      defaultValue: 'Confirmation',
+                    })}
+                    value={`${t('timesheets.confirmedBy', {
+                      name: timesheet.driverName,
+                      defaultValue: `Confirmed by ${timesheet.driverName}`,
+                    })}${
+                      formatWorkerTimesheetDateTime(
+                        timesheet.confirmedAt,
+                        i18n.language,
+                      )
+                        ? ` · ${formatWorkerTimesheetDateTime(timesheet.confirmedAt, i18n.language)}`
                         : ''
                     }`}
                   />
                 ) : null}
               </dl>
 
-              <ul className="space-y-3" aria-label="Days this week">
+              <ul
+                className="space-y-3"
+                aria-label={t('timesheets.daysAria', { defaultValue: 'Days this week' })}
+              >
                 {timesheet.entries.map((entry) => {
                   const payable = getEntryPayableDisplayResult(entry, {
                     overtimeMode,
@@ -265,18 +314,20 @@ export function WorkerTimesheetHistoryDetailModal({
                       className="rounded-[14px] border border-[color:var(--worker-border)] bg-white px-3.5 py-3"
                     >
                       <p className="text-sm font-bold text-slate-950">
-                        {formatDayLabel(entry.dayDate)}
+                        {formatWorkerTimesheetDayLabel(entry.dayDate, i18n.language)}
                         {holidayCode ? (
                           <span className="ml-2 text-xs font-bold uppercase tracking-[0.08em] text-sky-800">
                             {holidayCode}
-                            {isHalfHoliday ? ' · Half day' : ' · Holiday'}
+                            {isHalfHoliday
+                              ? ` · ${t('timesheets.halfDay', { defaultValue: 'Half day' })}`
+                              : ` · ${t('timesheets.holiday', { defaultValue: 'Holiday' })}`}
                           </span>
                         ) : null}
                       </p>
 
                       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-4">
                         <DayField
-                          label="Start"
+                          label={t('timesheets.start', { defaultValue: 'Start' })}
                           value={
                             isFullHoliday
                               ? holidayCode ?? 'H'
@@ -284,48 +335,61 @@ export function WorkerTimesheetHistoryDetailModal({
                           }
                         />
                         <DayField
-                          label="Finish"
+                          label={t('timesheets.finish', { defaultValue: 'Finish' })}
                           value={
                             isFullHoliday
-                              ? 'Holiday'
+                              ? t('timesheets.holiday', { defaultValue: 'Holiday' })
                               : entry.finishTime?.slice(0, 5) || '—'
                           }
                         />
                         <DayField
-                          label="Break"
-                          value={isFullHoliday ? '—' : `${entry.breakMinutes}m`}
+                          label={t('timesheets.break', { defaultValue: 'Break' })}
+                          value={
+                            isFullHoliday
+                              ? '—'
+                              : t('timesheets.breakMinutes', {
+                                  minutes: entry.breakMinutes,
+                                  defaultValue: `${entry.breakMinutes}m`,
+                                })
+                          }
                         />
                         <DayField
-                          label="Basic"
+                          label={t('timesheets.basic', { defaultValue: 'Basic' })}
                           value={
                             isFullHoliday
                               ? formatHours(payable.holidayHours)
                               : isHalfHoliday
-                                ? `H ${formatHours(payable.holidayHours)}${
-                                    payable.workBasicHours > 0
-                                      ? ` + Work ${formatHours(payable.workBasicHours)}`
-                                      : ''
-                                  }`
+                                ? t('timesheets.holidayPlusWork', {
+                                    holiday: formatHours(payable.holidayHours),
+                                    work: formatHours(payable.workBasicHours),
+                                    defaultValue: `H ${formatHours(payable.holidayHours)}${
+                                      payable.workBasicHours > 0
+                                        ? ` + Work ${formatHours(payable.workBasicHours)}`
+                                        : ''
+                                    }`,
+                                  })
                                 : formatHours(payable.basicHours)
                           }
                         />
                         <DayField
-                          label="Overtime"
+                          label={t('timesheets.overtime', { defaultValue: 'Overtime' })}
                           value={formatHours(payable.overtimeDisplayHours)}
                         />
                         <DayField
-                          label="Additional"
+                          label={t('timesheets.additionalHours', {
+                            defaultValue: 'Additional Hours',
+                          })}
                           value={isFullHoliday ? '—' : formatHours(payable.additionalHours)}
                         />
                         <DayField
-                          label="Total"
+                          label={t('timesheets.total', { defaultValue: 'Total' })}
                           value={formatTotalHours(payable.totalPaidHours)}
                         />
                       </div>
 
                       <div className="mt-3 border-t border-slate-100 pt-2.5">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                          Notes
+                          {t('timesheets.notes', { defaultValue: 'Notes' })}
                         </p>
                         <p className="mt-0.5 text-sm leading-5 text-slate-700">
                           {note || '—'}

@@ -2,17 +2,20 @@ import { useEffect, useState } from 'react'
 import { ChevronRight, ClipboardList } from 'lucide-react'
 import type { TimesheetListItem } from '@/lib/timesheetTypes'
 import {
-  formatSubmittedAtDisplay,
-  formatTimesheetSubmittedAt,
   formatTotalHours,
   getStatusBadgeClass,
-  getStatusLabel,
 } from '@/lib/timesheetUtils'
 import { WORKER_PROFILE_HISTORY_LIMIT } from '@/lib/workerProfileUtils'
 import { cn } from '@/lib/utils'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { fetchTimesheetsByDriverId, TimesheetsServiceError } from '@/services/timesheetsService'
+import {
+  formatWorkerTimesheetDateTime,
+  formatWorkerTimesheetWeekRange,
+  timesheetStatusI18nKey,
+} from '@/i18n/workerTimesheetDisplay'
+import { useTranslation } from 'react-i18next'
 
 type WorkerTimesheetHistoryListProps = {
   workerId: string
@@ -27,6 +30,7 @@ export function WorkerTimesheetHistoryList({
   workerId,
   onOpenWeek,
 }: WorkerTimesheetHistoryListProps) {
+  const { t, i18n } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const [items, setItems] = useState<TimesheetListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,7 +53,9 @@ export function WorkerTimesheetHistoryList({
         setErrorMessage(
           error instanceof TimesheetsServiceError
             ? error.message
-            : 'Unable to load timesheet history.',
+            : t('timesheets.errors.loadHistoryFailed', {
+                defaultValue: 'Unable to load timesheet history.',
+              }),
         )
         setItems([])
       })
@@ -60,13 +66,15 @@ export function WorkerTimesheetHistoryList({
     return () => {
       cancelled = true
     }
-  }, [workerId])
+  }, [t, workerId])
 
   if (isLoading) {
     return (
       <div
         className="min-h-[30vh] rounded-[1rem] bg-white/60"
-        aria-label="Loading timesheet history"
+        aria-label={t('timesheets.loadingHistory', {
+          defaultValue: 'Loading timesheet history',
+        })}
         role="status"
       />
     )
@@ -85,7 +93,7 @@ export function WorkerTimesheetHistoryList({
       <div className="flex flex-col items-center gap-2 rounded-[1rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-6 text-center">
         <ClipboardList className="size-5 text-[color:var(--worker-text-muted)]" aria-hidden="true" />
         <p className="text-sm font-medium text-[color:var(--worker-text-secondary)]">
-          No previous timesheets yet.
+          {t('timesheets.noHistory', { defaultValue: 'No previous timesheets yet.' })}
         </p>
       </div>
     )
@@ -93,13 +101,29 @@ export function WorkerTimesheetHistoryList({
 
   return (
     <ul className="worker-list-stack">
-      {items.map((item, index) => (
+      {items.map((item, index) => {
+        const statusLabel = t(timesheetStatusI18nKey(item.status), {
+          defaultValue: item.status,
+        })
+        const submittedLabel =
+          item.status === 'Draft' || !item.submittedAt
+            ? '—'
+            : formatWorkerTimesheetDateTime(item.submittedAt, i18n.language) ?? '—'
+        const confirmedWhen = item.confirmedAt
+          ? formatWorkerTimesheetDateTime(item.confirmedAt, i18n.language)
+          : null
+
+        return (
         <li key={item.id}>
           <button
             type="button"
             onClick={() => onOpenWeek(item)}
             className={workerListCardClass(index, isDark, { interactive: true }, 'flex items-center gap-2')}
-            aria-label={`View week ${item.weekNumber} timesheet, ${getStatusLabel(item.status)}`}
+            aria-label={t('timesheets.historyAria', {
+              weekNumber: item.weekNumber,
+              status: statusLabel,
+              defaultValue: `View week ${item.weekNumber} timesheet, ${statusLabel}`,
+            })}
           >
             <div className="min-w-0 flex-1">
               <div className="worker-list-card__meta">
@@ -110,14 +134,17 @@ export function WorkerTimesheetHistoryList({
                       !isDark && 'text-slate-950',
                     )}
                   >
-                    Week {item.weekNumber}
+                    {t('timesheets.weekNumber', {
+                      weekNumber: item.weekNumber,
+                      defaultValue: `Week ${item.weekNumber}`,
+                    })}
                     <span
                       className={cn(
                         'worker-accent-secondary ml-1.5 text-xs font-medium',
                         !isDark && 'text-slate-500',
                       )}
                     >
-                      · {item.weekRangeLabel}
+                      · {formatWorkerTimesheetWeekRange(item.weekStart, i18n.language)}
                     </span>
                   </p>
                 </div>
@@ -127,7 +154,7 @@ export function WorkerTimesheetHistoryList({
                     getStatusBadgeClass(item.status),
                   )}
                 >
-                  {getStatusLabel(item.status)}
+                  {statusLabel}
                 </span>
               </div>
 
@@ -138,9 +165,12 @@ export function WorkerTimesheetHistoryList({
                     !isDark && 'text-slate-500',
                   )}
                 >
-                  {formatSubmittedAtDisplay(item.submittedAt, item.status)}
-                  {item.workerConfirmed && item.confirmedAt
-                    ? ` · Confirmed ${formatTimesheetSubmittedAt(item.confirmedAt) ?? '—'}`
+                  {submittedLabel}
+                  {item.workerConfirmed && confirmedWhen
+                    ? ` · ${t('timesheets.confirmedAt', {
+                        when: confirmedWhen,
+                        defaultValue: `Confirmed ${confirmedWhen}`,
+                      })}`
                     : null}
                 </p>
                 <p
@@ -164,7 +194,8 @@ export function WorkerTimesheetHistoryList({
             </span>
           </button>
         </li>
-      ))}
+        )
+      })}
     </ul>
   )
 }

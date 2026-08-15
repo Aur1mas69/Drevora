@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { parseClockTime } from '@/lib/dateTimeFormat'
 import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type PickerMode = 'start' | 'finish'
 
@@ -64,6 +65,7 @@ export function WorkerTimesheetShiftTimes({
   finishInvalid = false,
   className,
 }: WorkerTimesheetShiftTimesProps) {
+  const { t } = useTranslation('worker')
   const panelRef = useRef<HTMLDivElement>(null)
   const hourRef = useRef<HTMLInputElement>(null)
   const minuteRef = useRef<HTMLInputElement>(null)
@@ -166,7 +168,7 @@ export function WorkerTimesheetShiftTimes({
     if (digits.length === 2) {
       const parsed = parseHourDraft(digits)
       if (parsed === null) {
-        setLocalError('Hours must be 00–23.')
+        setLocalError(t('timesheets.hoursInvalid', { defaultValue: 'Hours must be 00–23.' }))
         setHourText(digits.slice(0, 1))
         return
       }
@@ -184,7 +186,7 @@ export function WorkerTimesheetShiftTimes({
     if (digits.length === 2) {
       const parsed = parseMinuteDraft(digits)
       if (parsed === null) {
-        setLocalError('Minutes must be 00–59.')
+        setLocalError(t('timesheets.minutesInvalid', { defaultValue: 'Minutes must be 00–59.' }))
         setMinuteText(digits.slice(0, 1))
         return
       }
@@ -200,7 +202,7 @@ export function WorkerTimesheetShiftTimes({
     const hour24 = parseHourDraft(hourText)
     const minute = parseMinuteDraft(minuteText)
     if (hour24 === null || minute === null) {
-      setLocalError('Enter both hours and minutes.')
+      setLocalError(t('timesheets.enterHoursMinutes', { defaultValue: 'Enter both hours and minutes.' }))
       return null
     }
     return formatClock(hour24, minute)
@@ -261,15 +263,21 @@ export function WorkerTimesheetShiftTimes({
 
   const startDisplay = formatDisplayValue(startValue)
   const finishDisplay = formatDisplayValue(finishValue)
-  const headerLabel = mode === 'start' ? 'START TIME' : 'FINISH TIME'
-  const primaryLabel = mode === 'start' ? 'Next' : 'Done'
+  const headerLabel =
+    mode === 'start'
+      ? t('timesheets.startTime', { defaultValue: 'Start time' }).toUpperCase()
+      : t('timesheets.finishTime', { defaultValue: 'Finish time' }).toUpperCase()
+  const primaryLabel =
+    mode === 'start'
+      ? t('timesheets.next', { defaultValue: 'Next' })
+      : t('timesheets.done', { defaultValue: 'Done' })
 
   return (
     <div className="min-w-0 w-full">
       <div className="grid grid-cols-2 gap-3">
         <label className="min-w-0 space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-            Start
+            {t('timesheets.start', { defaultValue: 'Start' })}
           </span>
           <button
             type="button"
@@ -283,13 +291,13 @@ export function WorkerTimesheetShiftTimes({
               mode === 'start' && 'border-[color:var(--worker-primary)] ring-2 ring-[color:var(--worker-primary-soft)]',
             )}
           >
-            {startDisplay || 'HH:MM'}
+            {startDisplay || t('timesheets.timePlaceholder', { defaultValue: 'HH:MM' })}
           </button>
         </label>
 
         <label className="min-w-0 space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-            Finish
+            {t('timesheets.finish', { defaultValue: 'Finish' })}
           </span>
           <button
             type="button"
@@ -303,7 +311,7 @@ export function WorkerTimesheetShiftTimes({
               mode === 'finish' && 'border-[color:var(--worker-primary)] ring-2 ring-[color:var(--worker-primary-soft)]',
             )}
           >
-            {finishDisplay || 'HH:MM'}
+            {finishDisplay || t('timesheets.timePlaceholder', { defaultValue: 'HH:MM' })}
           </button>
         </label>
       </div>
@@ -339,7 +347,7 @@ export function WorkerTimesheetShiftTimes({
           <div className="mt-2 flex w-full min-w-0 items-center gap-1.5">
             <label className="min-w-0 flex-1 basis-0">
               <span className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                HH
+                {t('timesheets.hh', { defaultValue: 'HH' })}
               </span>
               <input
                 ref={hourRef}
@@ -375,7 +383,7 @@ export function WorkerTimesheetShiftTimes({
 
             <label className="min-w-0 flex-1 basis-0">
               <span className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                MM
+                {t('timesheets.mm', { defaultValue: 'MM' })}
               </span>
               <input
                 ref={minuteRef}
@@ -407,7 +415,7 @@ export function WorkerTimesheetShiftTimes({
             <p className="mt-2 text-xs font-medium text-rose-600">{localError}</p>
           ) : (
             <p className="mt-2 text-[11px] text-slate-400">
-              Hours 00–23 · Minutes 00–59
+              {t('timesheets.hoursHint', { defaultValue: 'Hours 00–23 · Minutes 00–59' })}
             </p>
           )}
 
@@ -418,7 +426,7 @@ export function WorkerTimesheetShiftTimes({
               onClick={handleClear}
               className="h-10 min-w-0 rounded-[12px] border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50"
             >
-              Clear
+              {t('timesheets.clear', { defaultValue: 'Clear' })}
             </button>
             <button
               type="button"
