@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type WorkerExitVehicleCheckDialogProps = {
   open: boolean
@@ -22,9 +23,21 @@ export function WorkerExitVehicleCheckDialog({
   open,
   onContinue,
   onExit,
-  title = DEFAULT_TITLE,
-  message = DEFAULT_MESSAGE,
+  title,
+  message,
 }: WorkerExitVehicleCheckDialogProps) {
+  const { t } = useTranslation('worker')
+  const resolvedTitle =
+    title ?? t('vehicleChecks.exitTitle', { defaultValue: DEFAULT_TITLE })
+  const resolvedMessage =
+    message ?? t('vehicleChecks.exitBody', { defaultValue: DEFAULT_MESSAGE })
+  const exitCheck = t('vehicleChecks.exitCheck', { defaultValue: 'Exit Check' })
+  const continueCheck = t('vehicleChecks.continueCheck', {
+    defaultValue: 'Continue Check',
+  })
+  const continueCheckAria = t('vehicleChecks.continueCheckAria', {
+    defaultValue: 'Continue check',
+  })
   useEffect(() => {
     if (!open) return
 
@@ -46,7 +59,7 @@ export function WorkerExitVehicleCheckDialog({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
-        aria-label="Continue check"
+        aria-label={continueCheckAria}
         onClick={onContinue}
       />
 
@@ -61,10 +74,10 @@ export function WorkerExitVehicleCheckDialog({
             id="worker-exit-active-check-title"
             className="text-lg font-semibold tracking-[-0.03em] text-[color:var(--worker-text)] sm:text-xl"
           >
-            {title}
+            {resolvedTitle}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-            {message}
+            {resolvedMessage}
           </p>
         </div>
 
@@ -75,14 +88,14 @@ export function WorkerExitVehicleCheckDialog({
             onClick={onExit}
             className="h-12 rounded-2xl border-rose-200 bg-rose-50 px-5 font-semibold text-rose-800 hover:bg-rose-100"
           >
-            Exit Check
+            {exitCheck}
           </Button>
           <Button
             type="button"
             onClick={onContinue}
             className="worker-btn-primary h-12 rounded-2xl px-5 font-semibold"
           >
-            Continue Check
+            {continueCheck}
           </Button>
         </div>
       </section>

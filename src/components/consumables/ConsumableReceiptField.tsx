@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { hasReceiptAttached } from '@/lib/consumableUtils'
 import { getReceiptDisplayName } from '@/lib/consumableReceiptStorage'
 import { openConsumableReceipt } from '@/services/consumableReceiptStorageService'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { FileImage, Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
@@ -26,6 +27,43 @@ export function ConsumableReceiptField({
   onUndoRemoveExisting,
   onClearSelectedFile,
 }: ConsumableReceiptFieldProps) {
+  const receiptPhoto = useWorkerChromeText('consumables.receiptPhoto', 'Receipt / Photo')
+  const optionalRecommended = useWorkerChromeText(
+    'consumables.optionalRecommended',
+    '· Optional · Recommended',
+  )
+  const receiptAttached = useWorkerChromeText('consumables.receiptAttached', 'Receipt attached')
+  const openingLabel = useWorkerChromeText('consumables.opening', 'Opening…')
+  const viewReceipt = useWorkerChromeText('consumables.viewReceipt', 'View receipt')
+  const replaceReceipt = useWorkerChromeText('consumables.replaceReceipt', 'Replace receipt')
+  const removeReceipt = useWorkerChromeText('consumables.removeReceipt', 'Remove receipt')
+  const receiptWillRemove = useWorkerChromeText(
+    'consumables.receiptWillRemove',
+    'Receipt will be removed when you save.',
+  )
+  const undoLabel = useWorkerChromeText('consumables.undo', 'Undo')
+  const uploadReceipt = useWorkerChromeText(
+    'consumables.uploadReceipt',
+    'Upload receipt or photo',
+  )
+  const receiptOptionalHint = useWorkerChromeText(
+    'consumables.receiptOptionalHint',
+    'Receipt photo is optional but recommended',
+  )
+  const receiptFileHint = useWorkerChromeText(
+    'consumables.receiptFileHint',
+    'JPG, PNG, WEBP or PDF up to 10 MB',
+  )
+  const selectedFileLabel = useWorkerChromeText('consumables.selectedFile', 'Selected file')
+  const clearSelectedFile = useWorkerChromeText(
+    'consumables.clearSelectedFile',
+    'Clear selected file',
+  )
+  const openReceiptFailed = useWorkerChromeText(
+    'consumables.openReceiptFailed',
+    'Unable to open receipt. Please try again.',
+  )
+  const receiptFallback = useWorkerChromeText('consumables.receipt', 'Receipt')
   const inputRef = useRef<HTMLInputElement>(null)
   const [isOpening, setIsOpening] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
@@ -33,7 +71,7 @@ export function ConsumableReceiptField({
   const hasExistingReceipt = hasReceiptAttached(existingReceiptPath) && !removeExistingReceipt
   const existingLabel = existingReceiptPath
     ? getReceiptDisplayName(existingReceiptPath)
-    : 'Receipt'
+    : receiptFallback
 
   async function handleViewExisting() {
     if (!existingReceiptPath) return
@@ -45,7 +83,7 @@ export function ConsumableReceiptField({
       await openConsumableReceipt(existingReceiptPath)
     } catch (error) {
       setOpenError(
-        error instanceof Error ? error.message : 'Unable to open receipt. Please try again.',
+        error instanceof Error ? error.message : openReceiptFailed,
       )
     } finally {
       setIsOpening(false)
@@ -61,8 +99,8 @@ export function ConsumableReceiptField({
   return (
     <div className="sm:col-span-2">
       <p className="text-sm font-medium text-[#113C69]">
-        Receipt / Photo{' '}
-        <span className="font-normal text-[#3D7A9C]">· Optional · Recommended</span>
+        {receiptPhoto}{' '}
+        <span className="font-normal text-[#3D7A9C]">{optionalRecommended}</span>
       </p>
 
       {hasExistingReceipt ? (
@@ -71,7 +109,7 @@ export function ConsumableReceiptField({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-[#113C69]">
                 <FileImage className="size-4 shrink-0 text-[#218EE7]" />
-                Receipt attached
+                {receiptAttached}
               </div>
               <p className="mt-1 truncate text-sm text-[#3D7A9C]">{existingLabel}</p>
             </div>
@@ -84,7 +122,7 @@ export function ConsumableReceiptField({
                 onClick={() => void handleViewExisting()}
                 className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
               >
-                {isOpening ? 'Opening…' : 'View receipt'}
+                {isOpening ? openingLabel : viewReceipt}
               </Button>
               <Button
                 type="button"
@@ -94,7 +132,7 @@ export function ConsumableReceiptField({
                 onClick={() => inputRef.current?.click()}
                 className="h-9 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#113C69] hover:bg-[#E8F3FE] dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-800/50"
               >
-                Replace receipt
+                {replaceReceipt}
               </Button>
               <Button
                 type="button"
@@ -104,14 +142,14 @@ export function ConsumableReceiptField({
                 onClick={onRemoveExisting}
                 className="h-9 rounded-[10px] border-rose-200 bg-white px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-slate-800/70 dark:hover:bg-rose-950/40"
               >
-                Remove receipt
+                {removeReceipt}
               </Button>
             </div>
           </div>
         </div>
       ) : removeExistingReceipt ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-[#D3E9FC] bg-[#F5FAFF]/60 px-4 py-3">
-          <p className="text-sm font-medium text-[#3D7A9C]">Receipt will be removed when you save.</p>
+          <p className="text-sm font-medium text-[#3D7A9C]">{receiptWillRemove}</p>
           <Button
             type="button"
             variant="outline"
@@ -120,7 +158,7 @@ export function ConsumableReceiptField({
             onClick={onUndoRemoveExisting}
             className="h-8 rounded-[10px] border-[#D3E9FC] bg-white px-3 text-sm font-semibold text-[#218EE7] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300"
           >
-            Undo
+            {undoLabel}
           </Button>
         </div>
       ) : null}
@@ -133,11 +171,11 @@ export function ConsumableReceiptField({
           className="mt-1.5 flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D3E9FC] bg-[#F5FAFF]/80 px-4 py-8 text-center transition-colors hover:border-[#218EE7] hover:bg-[#E8F3FE]/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-slate-800/60 dark:hover:border-blue-400 dark:hover:bg-slate-800/50"
         >
           <Upload className="size-6 text-[#218EE7]" strokeWidth={1.8} />
-          <p className="mt-3 text-sm font-semibold text-[#113C69]">Upload receipt or photo</p>
+          <p className="mt-3 text-sm font-semibold text-[#113C69]">{uploadReceipt}</p>
           <p className="mt-1 text-sm text-[#3D7A9C]">
-            Receipt photo is optional but recommended
+            {receiptOptionalHint}
           </p>
-          <p className="mt-0.5 text-xs text-[#5499BF]">JPG, PNG, WEBP or PDF up to 10 MB</p>
+          <p className="mt-0.5 text-xs text-[#5499BF]">{receiptFileHint}</p>
         </button>
       ) : null}
 
@@ -145,7 +183,7 @@ export function ConsumableReceiptField({
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#D3E9FC] bg-white px-4 py-3 dark:border-white/10 dark:bg-slate-900/70">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[#3D7A9C]">
-              Selected file
+              {selectedFileLabel}
             </p>
             <p className="mt-1 truncate text-sm font-medium text-[#113C69]">
               {getReceiptDisplayName(selectedFile.name)}
@@ -158,7 +196,7 @@ export function ConsumableReceiptField({
             disabled={disabled}
             onClick={onClearSelectedFile}
             className="h-8 w-8 shrink-0 rounded-[10px] p-0 text-slate-500 hover:bg-[#F5FAFF] dark:hover:bg-slate-800/50"
-            aria-label="Clear selected file"
+            aria-label={clearSelectedFile}
           >
             <X className="size-4" />
           </Button>

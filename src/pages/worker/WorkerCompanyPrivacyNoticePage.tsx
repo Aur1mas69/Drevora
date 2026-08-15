@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { WorkerPrivacyNoticeCard } from '@/components/legal/WorkerPrivacyNoticeCard'
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
@@ -9,6 +10,7 @@ import {
 } from '@/services/legalAcceptanceService'
 
 export default function WorkerCompanyPrivacyNoticePage() {
+  const { t } = useTranslation('worker')
   const { companyId, companyReady } = useCompanySettings()
   const [status, setStatus] = useState<WorkerLegalStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +35,9 @@ export default function WorkerCompanyPrivacyNoticePage() {
         setError(
           err instanceof LegalAcceptanceServiceError
             ? err.message
-            : 'Unable to load your company privacy notice.',
+            : t('legal.loadNoticeFailed', {
+                defaultValue: 'Unable to load your company privacy notice.',
+              }),
         )
       } finally {
         if (!cancelled) setLoading(false)
@@ -50,17 +54,25 @@ export default function WorkerCompanyPrivacyNoticePage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <div className="space-y-2">
-        <WorkerSettingsBackLink to="/worker/settings" label="Settings" />
+        <WorkerSettingsBackLink
+          to="/worker/settings"
+          label={t('settings.title', { defaultValue: 'Settings' })}
+        />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Company Privacy Notice
+          {t('legal.companyPrivacyTitle', { defaultValue: 'Company Privacy Notice' })}
         </h1>
         <p className="text-sm leading-relaxed text-[color:var(--worker-text-secondary)]">
-          Your employer’s Worker Privacy Notice for information processed in DREVORA.
+          {t('legal.companyPrivacyIntro', {
+            defaultValue:
+              'Your employer’s Worker Privacy Notice for information processed in DREVORA.',
+          })}
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-[color:var(--worker-text-muted)]">Loading…</p>
+        <p className="text-sm text-[color:var(--worker-text-muted)]">
+          {t('settings.loadingShort', { defaultValue: 'Loading…' })}
+        </p>
       ) : error ? (
         <p className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
           {error}

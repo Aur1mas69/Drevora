@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { adminHeading, adminPanel, adminText, adminTextMuted } from '@/lib/adminUiStyles'
 import { CUSTOMER_LEGAL_ROUTES, WORKER_LEGAL_ROUTES } from '@/lib/legalContent'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { cn } from '@/lib/utils'
 
 type CustomerVersions = {
@@ -205,10 +206,29 @@ function WorkerAcceptancePanel({
   privacyHref = WORKER_LEGAL_ROUTES.privacy_policy,
   disabled = false,
   isSubmitting = false,
-  submitLabel = 'Continue',
+  submitLabel,
   onSubmit,
   className,
 }: LegalAcceptancePanelWorkerProps) {
+  const agreementsTitle = useWorkerChromeText('legal.agreementsTitle', 'Legal agreements')
+  const agreementsHint = useWorkerChromeText(
+    'legal.agreementsHint',
+    'Please review and accept these documents before using DREVORA.',
+  )
+  const iHaveRead = useWorkerChromeText('legal.iHaveRead', 'I have read and accept')
+  const workerTermsTitle = useWorkerChromeText(
+    'legal.workerTermsTitle',
+    'Worker Terms of Use',
+  )
+  const privacyTitle = useWorkerChromeText('legal.privacyTitle', 'Privacy Policy')
+  const continueLabel = useWorkerChromeText('legal.continue', 'Continue')
+  const savingLabel = useWorkerChromeText('legal.saving', 'Saving…')
+  const workerTermsVersion = useWorkerChromeText('legal.versionAbbrev', '(v{{version}})', {
+    version: versions.workerTerms,
+  })
+  const privacyVersion = useWorkerChromeText('legal.versionAbbrev', '(v{{version}})', {
+    version: versions.privacy,
+  })
   const [acceptWorkerTerms, setAcceptWorkerTerms] = useState(false)
   const [acknowledgePrivacy, setAcknowledgePrivacy] = useState(false)
 
@@ -231,10 +251,10 @@ function WorkerAcceptancePanel({
     >
       <div>
         <h2 className="text-lg font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Legal agreements
+          {agreementsTitle}
         </h2>
         <p className="mt-1 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-          Please review and accept these documents before using DREVORA.
+          {agreementsHint}
         </p>
       </div>
 
@@ -244,16 +264,16 @@ function WorkerAcceptancePanel({
           checked={acceptWorkerTerms}
           onCheckedChange={setAcceptWorkerTerms}
         >
-          I accept the <DocLink to={workerTermsHref}>Worker Terms of Use</DocLink> (v
-          {versions.workerTerms}).
+          {iHaveRead} <DocLink to={workerTermsHref}>{workerTermsTitle}</DocLink>{' '}
+          {workerTermsVersion}
         </CheckRow>
         <CheckRow
           id="worker-legal-privacy"
           checked={acknowledgePrivacy}
           onCheckedChange={setAcknowledgePrivacy}
         >
-          I acknowledge the <DocLink to={privacyHref}>Privacy Policy</DocLink> (v
-          {versions.privacy}).
+          {iHaveRead} <DocLink to={privacyHref}>{privacyTitle}</DocLink>{' '}
+          {privacyVersion}
         </CheckRow>
       </div>
 
@@ -262,7 +282,7 @@ function WorkerAcceptancePanel({
         disabled={!canContinue}
         className="h-11 w-full rounded-2xl bg-[#2F80ED] text-white hover:bg-[#2563EB]"
       >
-        {isSubmitting ? 'Saving…' : submitLabel}
+        {isSubmitting ? savingLabel : (submitLabel ?? continueLabel)}
       </Button>
     </form>
   )

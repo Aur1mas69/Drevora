@@ -2,9 +2,11 @@ import { Check, Circle } from 'lucide-react'
 import {
   PASSWORD_STRENGTH_LABELS,
   PASSWORD_STRENGTH_PROGRESS,
+  type PasswordCheckId,
   type PasswordStrengthLevel,
   type PasswordValidationResult,
 } from '@/lib/passwordValidation'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { cn } from '@/lib/utils'
 
 function strengthBarClass(strength: PasswordStrengthLevel): string {
@@ -42,6 +44,14 @@ type PasswordRequirementsChecklistProps = {
   tone?: 'settings' | 'public'
 }
 
+const CHECK_COPY: Record<PasswordCheckId, { key: string; fallback: string }> = {
+  length: { key: 'security.checkLength', fallback: 'At least 10 characters' },
+  uppercase: { key: 'security.checkUppercase', fallback: 'At least 1 uppercase letter' },
+  lowercase: { key: 'security.checkLowercase', fallback: 'At least 1 lowercase letter' },
+  number: { key: 'security.checkNumber', fallback: 'At least 1 number' },
+  symbol: { key: 'security.checkSymbol', fallback: 'At least 1 special character' },
+}
+
 export function PasswordRequirementsChecklist({
   id = 'password-requirements',
   validation,
@@ -49,6 +59,48 @@ export function PasswordRequirementsChecklist({
   className,
   tone = 'settings',
 }: PasswordRequirementsChecklistProps) {
+  const strengthTitle = useWorkerChromeText('security.strength', 'Password strength')
+  const strengthWeak = useWorkerChromeText('security.strengthWeak', 'Weak')
+  const strengthMedium = useWorkerChromeText('security.strengthMedium', 'Medium')
+  const strengthStrong = useWorkerChromeText('security.strengthStrong', 'Strong')
+  const strengthVeryStrong = useWorkerChromeText(
+    'security.strengthVeryStrong',
+    'Very Strong',
+  )
+  const checkLength = useWorkerChromeText(CHECK_COPY.length.key, CHECK_COPY.length.fallback)
+  const checkUppercase = useWorkerChromeText(
+    CHECK_COPY.uppercase.key,
+    CHECK_COPY.uppercase.fallback,
+  )
+  const checkLowercase = useWorkerChromeText(
+    CHECK_COPY.lowercase.key,
+    CHECK_COPY.lowercase.fallback,
+  )
+  const checkNumber = useWorkerChromeText(CHECK_COPY.number.key, CHECK_COPY.number.fallback)
+  const checkSymbol = useWorkerChromeText(CHECK_COPY.symbol.key, CHECK_COPY.symbol.fallback)
+  const checkCompleted = useWorkerChromeText('security.checkCompleted', 'Completed: ')
+  const checkIncomplete = useWorkerChromeText('security.checkIncomplete', 'Incomplete: ')
+  const strengthLabels: Record<PasswordStrengthLevel, string> = {
+    weak: strengthWeak,
+    medium: strengthMedium,
+    strong: strengthStrong,
+    'very-strong': strengthVeryStrong,
+  }
+  const checkLabels: Record<PasswordCheckId, string> = {
+    length: checkLength,
+    uppercase: checkUppercase,
+    lowercase: checkLowercase,
+    number: checkNumber,
+    symbol: checkSymbol,
+  }
+  const strengthLabel =
+    strengthLabels[validation.strength] || PASSWORD_STRENGTH_LABELS[validation.strength]
+  const strengthAria = useWorkerChromeText(
+    'security.strengthAria',
+    'Password strength: {{level}}',
+    { level: strengthLabel },
+  )
+
   if (!visible) return null
 
   const checksPanelClass =
@@ -83,7 +135,7 @@ export function PasswordRequirementsChecklist({
                 : 'text-slate-500 dark:text-slate-400',
             )}
           >
-            Password strength
+            {strengthTitle}
           </p>
           <p
             className={cn(
@@ -91,7 +143,7 @@ export function PasswordRequirementsChecklist({
               strengthLabelClass(validation.strength),
             )}
           >
-            {PASSWORD_STRENGTH_LABELS[validation.strength]}
+            {strengthLabel}
           </p>
         </div>
         <div
@@ -114,7 +166,7 @@ export function PasswordRequirementsChecklist({
             aria-valuenow={PASSWORD_STRENGTH_PROGRESS[validation.strength]}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Password strength: ${PASSWORD_STRENGTH_LABELS[validation.strength]}`}
+            aria-label={strengthAria}
           />
         </div>
       </div>
@@ -138,9 +190,9 @@ export function PasswordRequirementsChecklist({
               )}
             >
               <span className="sr-only">
-                {check.satisfied ? 'Completed: ' : 'Incomplete: '}
+                {check.satisfied ? checkCompleted : checkIncomplete}
               </span>
-              {check.label}
+              {checkLabels[check.id] ?? check.label}
             </span>
           </li>
         ))}
@@ -158,6 +210,11 @@ export function PasswordMatchStatusMessage({
   status,
   tone = 'settings',
 }: PasswordMatchStatusMessageProps) {
+  const matchLabel = useWorkerChromeText('security.passwordsMatch', 'Passwords match')
+  const mismatchLabel = useWorkerChromeText(
+    'security.passwordsMismatch',
+    'Passwords do not match',
+  )
   if (status === 'idle') return null
 
   return (
@@ -174,7 +231,7 @@ export function PasswordMatchStatusMessage({
             : 'text-rose-600 dark:text-rose-400',
       )}
     >
-      {status === 'match' ? 'Passwords match' : 'Passwords do not match'}
+      {status === 'match' ? matchLabel : mismatchLabel}
     </p>
   )
 }

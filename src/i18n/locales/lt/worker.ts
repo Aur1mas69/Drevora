@@ -1,4 +1,5 @@
 import type { WorkerPhase1Resources } from '../en/worker'
+import { ltWorkerFinalModules } from './workerFinalModules'
 
 export const ltWorker = {
   nav: {
@@ -24,6 +25,41 @@ export const ltWorker = {
     loading: 'Įkeliami nustatymai',
     languageSaving: 'Saugoma…',
     languageSaveError: 'Nepavyko išsaugoti kalbos.',
+    signOut: 'Atsijungti',
+    timesheetSettings: 'Tabelio nustatymai',
+    passwordSecurity: 'Slaptažodis ir saugumas',
+    helpSupport: 'Pagalba ir palaikymas',
+    notSet: 'Nenustatyta',
+    company: 'Įmonė',
+    profile: 'Profilis',
+    companyNotice: 'Įmonės pranešimas',
+    companyNoticeSubtitle: 'Darbdavio privatumo pranešimas',
+    noDefaultVehicle: 'Nėra numatytojo transporto',
+    removeDefault: 'Pašalinti numatytąjį',
+    removing: 'Šalinama…',
+    removeDefaultFailed: 'Nepavyko pašalinti numatytojo transporto.',
+    profileMissing: 'Nerastas su paskyra susietas darbuotojo profilis.',
+    loadingShort: 'Įkeliama…',
+    timesheetPersonal: 'Asmeniniai nustatymai',
+    timesheetCompany: 'Įmonės numatytieji',
+    timesheetManual: 'Rankinis · {{source}}',
+    timesheetDaily: 'Automatinis · kasdieniniai viršvalandžiai po {{hours}} val.',
+    timesheetWeekly: 'Automatinis · savaitiniai viršvalandžiai po {{hours}} val.',
+    timesheetAutomatic: 'Automatinis · {{source}}',
+    timesheetPageTitle: 'Tabelio nustatymai',
+    timesheetPersonalOverride: 'Asmeninis pakeitimas',
+    timesheetCompanyRules: 'Įmonės taisyklės',
+    timesheetDefaultRules: 'Numatytosios taisyklės',
+    yes: 'Taip',
+    no: 'Ne',
+    phone: 'Telefonas',
+    profileManagedByOffice: 'Profilio duomenis tvarko jūsų biuras.',
+    defaultVehicle: 'Numatytasis transportas',
+    changeDefaultVehicle: 'Keisti numatytąjį transportą',
+    security: 'Saugumas',
+    helpInformation: 'Pagalba ir informacija',
+    helpSupportSubtitle: 'Vadovai, klaidos, atsiliepimai ir teisinė informacija',
+    appVersion: 'Programos versija',
   },
   home: {
     greetingMorning: 'Labas rytas',
@@ -440,6 +476,14 @@ export const ltWorker = {
     categoryEmergency: 'Avarinis',
     categoryWorker: 'Darbuotojas',
     categoryOther: 'Kita',
+    call: 'Skambinti',
+    email: 'El. paštas',
+    officeIntro:
+      'Darbo valandoms, grafikui, atostogoms, priskirtam transportui, įmonės dokumentams ir eksploatacijos klausimams. Programėlės klaidos ir techninės problemos priklauso DREVORA palaikymui.',
+    officeEmptyTitle: 'Biuro kontaktų dar nesukonfigūruota.',
+    officeEmptyBody: 'Paprašykite biuro darbuotojams pateikti telefoną arba el. paštą.',
+    loadingOffice: 'Įkeliami biuro kontaktai',
+    noPhoneEmailShared: 'Šiam kontaktui telefonas ar el. paštas nepateiktas.',
   },
   notes: {
     title: 'Mano užrašai',
@@ -485,4 +529,5 @@ export const ltWorker = {
     titleTooLong: 'Pavadinimas turi būti ne ilgesnis kaip {{max}} simbolių.',
     noteTooLong: 'Užrašas turi būti ne ilgesnis kaip {{max}} simbolių.',
   },
+  ...ltWorkerFinalModules,
 } as const satisfies WorkerPhase1Resources

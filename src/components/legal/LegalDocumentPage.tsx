@@ -3,6 +3,7 @@ import { LegalDocumentHeader } from '@/components/legal/LegalDocumentHeader'
 import { LegalMarkdownBody } from '@/components/legal/LegalMarkdownBody'
 import { LegalTableOfContents } from '@/components/legal/LegalTableOfContents'
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LegalDocumentType } from '@/content/legal/legalManifest'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -63,6 +64,7 @@ function LegalDocumentBody({
   backLabel?: string
   showWorkerBack?: boolean
 }) {
+  const defaultBackLabel = useWorkerChromeText('legal.back', 'Back')
   const doc = getBundledLegalDocument(documentType)
   const markdown = stripLeadingH1(markdownOverride ?? doc.markdown)
 
@@ -72,7 +74,7 @@ function LegalDocumentBody({
 
       {showWorkerBack && backTo ? (
         <div className="legal-print-hide mx-auto w-full max-w-[860px]">
-          <WorkerSettingsBackLink to={backTo} label={backLabel ?? 'Back'} />
+          <WorkerSettingsBackLink to={backTo} label={backLabel ?? defaultBackLabel} />
         </div>
       ) : null}
 

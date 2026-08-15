@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import type { AxleWheelLayout } from '@/lib/tyreCheckTypes'
 
 type AxleLayoutEditorProps = {
@@ -24,6 +25,8 @@ export function AxleLayoutEditor({
   disabled = false,
   compact = false,
 }: AxleLayoutEditorProps) {
+  const singleLabel = useWorkerChromeText('tyreChecks.single', 'Single')
+  const dualLabel = useWorkerChromeText('tyreChecks.dual', 'Dual')
   function setAxle(index: number, layout: AxleWheelLayout) {
     const next = axleLayouts.slice()
     next[index] = layout
@@ -58,7 +61,7 @@ export function AxleLayoutEditor({
                     : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
                 )}
               >
-                {option === 'single' ? 'Single' : 'Dual'}
+                {option === 'single' ? singleLabel : dualLabel}
               </button>
             ))}
           </div>

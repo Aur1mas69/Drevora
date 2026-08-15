@@ -21,11 +21,13 @@ import {
   Star,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Worker Help & Support home — Office vs DREVORA support, guides, legal, version.
  */
 export default function WorkerSettingsHelpPage() {
+  const { t } = useTranslation('worker')
   const [buildNumber, setBuildNumber] = useState<string | null>(null)
   const platform = getAppPlatformDisplayName()
 
@@ -44,11 +46,13 @@ export default function WorkerSettingsHelpPage() {
       <div className="space-y-2">
         <WorkerSettingsBackLink />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Help & Support
+          {t('help.title', { defaultValue: 'Help & Support' })}
         </h1>
         <p className="text-sm leading-relaxed text-[color:var(--worker-text-secondary)]">
-          Work, rota, vehicle or company questions belong in Contacts. App errors,
-          technical problems and suggestions should be sent to DREVORA Support.
+          {t('help.intro', {
+            defaultValue:
+              'Work, rota, vehicle or company questions belong in Contacts. App errors, technical problems and suggestions should be sent to DREVORA Support.',
+          })}
         </p>
       </div>
 
@@ -57,14 +61,16 @@ export default function WorkerSettingsHelpPage() {
           id="help-drevora-heading"
           className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
         >
-          DREVORA Support
+          {t('help.drevoraSupport', { defaultValue: 'DREVORA Support' })}
         </h2>
         <ul className="worker-list-stack space-y-2">
           <li>
             <HelpNavCard
               to="/worker/settings/help/bug"
-              title="Report a Bug"
-              description="App errors, crashes and unexpected behaviour."
+              title={t('help.reportBug', { defaultValue: 'Report a Bug' })}
+              description={t('help.reportBugDesc', {
+                defaultValue: 'App errors, crashes and unexpected behaviour.',
+              })}
               icon={Bug}
               index={0}
             />
@@ -72,8 +78,10 @@ export default function WorkerSettingsHelpPage() {
           <li>
             <HelpNavCard
               to="/worker/settings/help/feedback"
-              title="Send Feedback"
-              description="Suggestions, ease of use and feature ideas."
+              title={t('help.sendFeedback', { defaultValue: 'Send Feedback' })}
+              description={t('help.sendFeedbackDesc', {
+                defaultValue: 'Suggestions, ease of use and feature ideas.',
+              })}
               icon={MessageSquarePlus}
               index={1}
             />
@@ -81,8 +89,10 @@ export default function WorkerSettingsHelpPage() {
           <li>
             <HelpNavCard
               to="/worker/settings/help/rate"
-              title="Rate DREVORA"
-              description="Share a quick star rating for the app."
+              title={t('help.rate', { defaultValue: 'Rate DREVORA' })}
+              description={t('help.rateDesc', {
+                defaultValue: 'Share a quick star rating for the app.',
+              })}
               icon={Star}
               index={2}
             />
@@ -90,8 +100,10 @@ export default function WorkerSettingsHelpPage() {
           <li>
             <HelpNavCard
               to="/worker/settings/help/requests"
-              title="My Support Requests"
-              description="Track bugs and feedback you have sent."
+              title={t('help.myRequests', { defaultValue: 'My Support Requests' })}
+              description={t('help.myRequestsDesc', {
+                defaultValue: 'Track bugs and feedback you have sent.',
+              })}
               icon={History}
               index={3}
             />
@@ -104,14 +116,16 @@ export default function WorkerSettingsHelpPage() {
           id="help-guides-heading"
           className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
         >
-          Guides
+          {t('help.guides', { defaultValue: 'Guides' })}
         </h2>
         <ul className="worker-list-stack space-y-2">
           <li>
             <HelpNavCard
               to="/worker/settings/help/guides"
-              title="User Guides"
-              description="Getting started, Timesheets, checks, offline and safety."
+              title={t('help.userGuides', { defaultValue: 'User Guides' })}
+              description={t('help.userGuidesDesc', {
+                defaultValue: 'How to use DREVORA on the road.',
+              })}
               icon={BookOpen}
               index={0}
             />
@@ -124,14 +138,18 @@ export default function WorkerSettingsHelpPage() {
           id="help-legal-heading"
           className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--worker-text-muted)]"
         >
-          Legal & App
+          {t('help.legal', { defaultValue: 'Legal' })}
         </h2>
         <ul className="worker-list-stack space-y-2">
           <li>
             <HelpNavCard
               to={LEGAL_DOCUMENTS.worker_terms.path ?? '#'}
-              title={LEGAL_DOCUMENTS.worker_terms.title}
-              description="Terms for using the DREVORA Worker app."
+              title={t('legal.workerTermsTitle', {
+                defaultValue: LEGAL_DOCUMENTS.worker_terms.title,
+              })}
+              description={t('support.termsDesc', {
+                defaultValue: 'Terms for using the DREVORA Worker app.',
+              })}
               icon={Scale}
               index={0}
               disabled={!isLegalDocumentAvailable('worker_terms')}
@@ -141,8 +159,12 @@ export default function WorkerSettingsHelpPage() {
           <li>
             <HelpNavCard
               to={LEGAL_DOCUMENTS.privacy.path ?? '#'}
-              title={LEGAL_DOCUMENTS.privacy.title}
-              description="How DREVORA handles personal information."
+              title={t('legal.privacyTitle', {
+                defaultValue: LEGAL_DOCUMENTS.privacy.title,
+              })}
+              description={t('support.privacyDesc', {
+                defaultValue: 'How DREVORA handles personal information.',
+              })}
               icon={Shield}
               index={1}
               disabled={!isLegalDocumentAvailable('privacy')}
@@ -156,14 +178,22 @@ export default function WorkerSettingsHelpPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold text-[color:var(--worker-text)]">
-                  App Version
+                  {t('settings.appVersion', { defaultValue: 'App Version' })}
                 </p>
                 <p className="mt-0.5 text-sm text-[color:var(--worker-text-secondary)]">
                   {getAppVersionLabel()}
                 </p>
                 <p className="mt-0.5 text-xs text-[color:var(--worker-text-muted)]">
-                  Platform: {platform}
-                  {buildNumber ? ` · Build ${buildNumber}` : ''}
+                  {buildNumber
+                    ? t('help.platformBuildLine', {
+                        platform,
+                        build: buildNumber,
+                        defaultValue: 'Platform: {{platform}} · Build {{build}}',
+                      })
+                    : t('help.platformLine', {
+                        platform,
+                        defaultValue: 'Platform: {{platform}}',
+                      })}
                 </p>
               </div>
             </div>

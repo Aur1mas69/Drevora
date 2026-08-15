@@ -1,3 +1,4 @@
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { useEffect, useRef } from 'react'
 
 type VehicleCheckSignaturePadProps = {
@@ -41,6 +42,12 @@ export function VehicleCheckSignaturePad({
   onChange,
   disabled = false,
 }: VehicleCheckSignaturePadProps) {
+  const signFinger = useWorkerChromeText('vehicleChecks.signFinger', 'Sign with your finger')
+  const clearSignature = useWorkerChromeText('vehicleChecks.clearSignature', 'Clear signature')
+  const signaturePadAria = useWorkerChromeText(
+    'vehicleChecks.signaturePadAria',
+    'Worker signature pad',
+  )
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const drawingRef = useRef(false)
@@ -163,18 +170,18 @@ export function VehicleCheckSignaturePad({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
-          aria-label="Worker signature pad"
+          aria-label={signaturePadAria}
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2 sm:mt-2">
-        <p className="worker-vc-muted text-[11px] text-[#5499BF]">Sign with your finger</p>
+        <p className="worker-vc-muted text-[11px] text-[#5499BF]">{signFinger}</p>
         <button
           type="button"
           onClick={handleClear}
           disabled={disabled}
           className="worker-vc-link inline-flex min-h-11 items-center px-1 text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60 sm:min-h-0"
         >
-          Clear signature
+          {clearSignature}
         </button>
       </div>
     </div>

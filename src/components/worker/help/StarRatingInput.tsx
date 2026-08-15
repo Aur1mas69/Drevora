@@ -1,5 +1,6 @@
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 type StarRatingInputProps = {
   value: number
@@ -13,14 +14,16 @@ export function StarRatingInput({
   value,
   onChange,
   disabled = false,
-  label = 'Rating',
+  label,
 }: StarRatingInputProps) {
+  const { t } = useTranslation('worker')
+  const resolvedLabel = label ?? t('support.rating', { defaultValue: 'Rating' })
   return (
     <fieldset className="space-y-2" disabled={disabled}>
       <legend className="text-sm font-semibold text-[color:var(--worker-text)]">
-        {label}
+        {resolvedLabel}
       </legend>
-      <div className="flex items-center gap-1" role="radiogroup" aria-label={label}>
+      <div className="flex items-center gap-1" role="radiogroup" aria-label={resolvedLabel}>
         {[1, 2, 3, 4, 5].map((star) => {
           const selected = star <= value
           return (
@@ -29,7 +32,11 @@ export function StarRatingInput({
               type="button"
               role="radio"
               aria-checked={value === star}
-              aria-label={`${star} star${star === 1 ? '' : 's'}`}
+              aria-label={
+                star === 1
+                  ? t('support.starAriaOne', { n: star, defaultValue: '{{n}} star' })
+                  : t('support.starAria', { n: star, defaultValue: '{{n}} stars' })
+              }
               disabled={disabled}
               onClick={() => onChange(star)}
               className={cn(

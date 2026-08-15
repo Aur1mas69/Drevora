@@ -1,12 +1,14 @@
 import type { SupportRequestStatus } from '@/lib/supportRequestTypes'
-import { SUPPORT_STATUS_LABELS } from '@/lib/supportRequestTypes'
+import { supportStatusDisplayLabel } from '@/i18n/workerFinalDisplay'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 export function SupportStatusBadge({
   status,
 }: {
   status: SupportRequestStatus
 }) {
+  const { t } = useTranslation('worker')
   return (
     <span
       className={cn(
@@ -20,7 +22,7 @@ export function SupportStatusBadge({
         status === 'closed' && 'bg-slate-100 text-slate-600 ring-slate-200/80',
       )}
     >
-      {SUPPORT_STATUS_LABELS[status]}
+      {supportStatusDisplayLabel(status, t)}
     </span>
   )
 }

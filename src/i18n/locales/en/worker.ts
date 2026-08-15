@@ -1,3 +1,5 @@
+import { enWorkerFinalModules } from './workerFinalModules'
+
 export const enWorker = {
   nav: {
     home: 'Home',
@@ -22,6 +24,41 @@ export const enWorker = {
     loading: 'Loading settings',
     languageSaving: 'Saving…',
     languageSaveError: 'Unable to save your language.',
+    signOut: 'Sign out',
+    timesheetSettings: 'Timesheet Settings',
+    passwordSecurity: 'Password & Security',
+    helpSupport: 'Help & Support',
+    notSet: 'Not set',
+    company: 'Company',
+    profile: 'Profile',
+    companyNotice: 'Company Notice',
+    companyNoticeSubtitle: 'Your employer’s privacy notice',
+    noDefaultVehicle: 'No default vehicle',
+    removeDefault: 'Remove default',
+    removing: 'Removing…',
+    removeDefaultFailed: 'Unable to remove your default vehicle.',
+    profileMissing: 'We could not find a worker profile linked to your account.',
+    loadingShort: 'Loading…',
+    timesheetPersonal: 'Personal settings',
+    timesheetCompany: 'Company defaults',
+    timesheetManual: 'Manual · {{source}}',
+    timesheetDaily: 'Automatic · Daily OT after {{hours}}h',
+    timesheetWeekly: 'Automatic · Weekly OT after {{hours}}h',
+    timesheetAutomatic: 'Automatic · {{source}}',
+    timesheetPageTitle: 'Timesheet Settings',
+    timesheetPersonalOverride: 'Personal override',
+    timesheetCompanyRules: 'Company rules',
+    timesheetDefaultRules: 'Default rules',
+    yes: 'Yes',
+    no: 'No',
+    phone: 'Phone',
+    profileManagedByOffice: 'Profile details are managed by your office.',
+    defaultVehicle: 'Default Vehicle',
+    changeDefaultVehicle: 'Change default vehicle',
+    security: 'Security',
+    helpInformation: 'Help & Information',
+    helpSupportSubtitle: 'Guides, bugs, feedback and legal',
+    appVersion: 'App Version',
   },
   home: {
     greetingMorning: 'Good morning',
@@ -438,6 +475,14 @@ export const enWorker = {
     categoryEmergency: 'Emergency',
     categoryWorker: 'Worker',
     categoryOther: 'Other',
+    call: 'Call',
+    email: 'Email',
+    officeIntro:
+      'For working hours, rota, holidays, assigned vehicles, company documents and operational issues. App bugs and technical problems belong in DREVORA Support.',
+    officeEmptyTitle: 'No Office contact details have been configured.',
+    officeEmptyBody: 'Ask your Office to share a phone or email contact for Workers.',
+    loadingOffice: 'Loading office contacts',
+    noPhoneEmailShared: 'No phone or email shared for this contact.',
   },
   notes: {
     title: 'My Notes',
@@ -483,6 +528,7 @@ export const enWorker = {
     titleTooLong: 'Title must be {{max}} characters or fewer.',
     noteTooLong: 'Note must be {{max}} characters or fewer.',
   },
+  ...enWorkerFinalModules,
 } as const
 
 type DeepStringRecord<T> = {

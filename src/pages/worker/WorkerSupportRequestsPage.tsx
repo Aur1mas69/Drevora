@@ -8,14 +8,19 @@ import {
   fetchOwnSupportRequests,
   SupportRequestsServiceError,
 } from '@/services/supportRequestsService'
+import {
+  supportStatusDisplayLabel,
+  supportStoredCategoryDisplayLabel,
+} from '@/i18n/workerFinalDisplay'
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-const FILTERS: { id: SupportRequestListFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'submitted', label: 'Submitted' },
-  { id: 'in_progress', label: 'In Progress' },
-  { id: 'resolved', label: 'Resolved' },
+const FILTER_IDS: SupportRequestListFilter[] = [
+  'all',
+  'submitted',
+  'in_progress',
+  'resolved',
 ]
 
 function formatDate(value: string): string {
@@ -31,6 +36,7 @@ function formatDate(value: string): string {
 }
 
 export default function WorkerSupportRequestsPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const [filter, setFilter] = useState<SupportRequestListFilter>('all')
   const [items, setItems] = useState<SupportRequest[]>([])
@@ -51,7 +57,9 @@ export default function WorkerSupportRequestsPage() {
         setError(
           loadError instanceof SupportRequestsServiceError
             ? loadError.message
-            : 'Unable to load your support requests.',
+            : t('support.loadRequestsFailed', {
+                defaultValue: 'Unable to load your support requests.',
+              }),
         )
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -66,41 +74,48 @@ export default function WorkerSupportRequestsPage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-2">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('support.backHelp', { defaultValue: 'Help & Support' })}
+        />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          My Support Requests
+          {t('support.requestsTitle', { defaultValue: 'My Support Requests' })}
         </h1>
         <p className="text-sm text-[color:var(--worker-text-secondary)]">
-          Only your own DREVORA support requests are shown here.
+          {t('support.requestsIntro', {
+            defaultValue: 'Only your own DREVORA support requests are shown here.',
+          })}
         </p>
       </header>
 
       <div
         role="tablist"
-        aria-label="Filter requests"
+        aria-label={t('support.filterAria', { defaultValue: 'Filter requests' })}
         className="grid grid-cols-4 gap-1 rounded-[1.25rem] border border-[#BFE3F5]/70 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900/40"
       >
-        {FILTERS.map((item) => (
+        {FILTER_IDS.map((id) => (
           <button
-            key={item.id}
+            key={id}
             type="button"
             role="tab"
-            aria-selected={filter === item.id}
-            onClick={() => setFilter(item.id)}
+            aria-selected={filter === id}
+            onClick={() => setFilter(id)}
             className={cn(
               'min-h-11 rounded-2xl px-1 text-[11px] font-semibold transition-colors sm:text-xs',
-              filter === item.id
+              filter === id
                 ? 'bg-[#2F80ED] text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300',
             )}
           >
-            {item.label}
+            {id === 'all'
+              ? t('support.filterAll', { defaultValue: 'All' })
+              : supportStatusDisplayLabel(id, t)}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="min-h-[10rem] rounded-[1.5rem] bg-[color:var(--worker-card)]" role="status" aria-label="Loading requests" />
+        <div className="min-h-[10rem] rounded-[1.5rem] bg-[color:var(--worker-card)]" role="status" aria-label={t('support.loadingRequests', { defaultValue: 'Loading requests' })} />
       ) : error ? (
         <div className="rounded-[1.5rem] border border-rose-100 bg-rose-50 px-4 py-4 text-sm text-rose-700">
           {error}
@@ -108,10 +123,12 @@ export default function WorkerSupportRequestsPage() {
       ) : items.length === 0 ? (
         <div className="rounded-[1.5rem] border border-dashed border-[color:var(--worker-border)] px-4 py-8 text-center">
           <p className="text-base font-semibold text-[color:var(--worker-text)]">
-            No support requests yet
+            {t('support.empty', { defaultValue: 'No support requests yet.' })}
           </p>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
-            Bug reports and feedback you send will appear here.
+            {t('support.emptyBody', {
+              defaultValue: 'Bug reports and feedback you send will appear here.',
+            })}
           </p>
         </div>
       ) : (
@@ -135,12 +152,21 @@ export default function WorkerSupportRequestsPage() {
                   {item.title}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--worker-text-secondary)]">
-                  {item.requestType === 'bug' ? 'Bug' : 'Feedback'} · {item.category}
+                  {item.requestType === 'bug'
+                    ? t('support.typeBug', { defaultValue: 'Bug' })
+                    : t('support.typeFeedback', { defaultValue: 'Feedback' })}{' '}
+                  · {supportStoredCategoryDisplayLabel(item.category, t)}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--worker-text-muted)]">
-                  Submitted {formatDate(item.createdAt)}
+                  {t('support.submittedOn', {
+                    date: formatDate(item.createdAt),
+                    defaultValue: 'Submitted {{date}}',
+                  })}
                   {item.updatedAt !== item.createdAt
-                    ? ` · Updated ${formatDate(item.updatedAt)}`
+                    ? ` · ${t('support.updatedOn', {
+                        date: formatDate(item.updatedAt),
+                        defaultValue: 'Updated {{date}}',
+                      })}`
                     : ''}
                 </p>
               </Link>

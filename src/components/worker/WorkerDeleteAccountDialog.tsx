@@ -5,6 +5,7 @@ import {
   requestAccountDeletion,
 } from '@/services/accountDeletionService'
 import { useEffect, useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type WorkerDeleteAccountDialogProps = {
   open: boolean
@@ -23,6 +24,7 @@ export function WorkerDeleteAccountDialog({
   onCancel,
   onScheduled,
 }: WorkerDeleteAccountDialogProps) {
+  const { t } = useTranslation('worker')
   const titleId = useId()
   const emailInputId = useId()
   const [confirmEmail, setConfirmEmail] = useState('')
@@ -70,7 +72,9 @@ export function WorkerDeleteAccountDialog({
       setErrorMessage(
         error instanceof AccountDeletionServiceError
           ? error.message
-          : 'Unable to schedule account deletion right now.',
+          : t('security.deleteScheduleFailed', {
+              defaultValue: 'Unable to schedule account deletion right now.',
+            }),
       )
       setIsSubmitting(false)
     }
@@ -81,7 +85,9 @@ export function WorkerDeleteAccountDialog({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
-        aria-label="Cancel account deletion"
+        aria-label={t('security.cancelDeleteAria', {
+          defaultValue: 'Cancel account deletion',
+        })}
         disabled={isSubmitting}
         onClick={() => {
           if (!isSubmitting) onCancel()
@@ -99,28 +105,37 @@ export function WorkerDeleteAccountDialog({
             id={titleId}
             className="text-lg font-semibold tracking-[-0.03em] text-rose-700 sm:text-xl"
           >
-            Delete account?
+            {t('security.deleteTitle', { defaultValue: 'Delete account?' })}
           </h2>
           <div className="mt-3 space-y-2 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-            <p>This action cannot be undone from inside the app.</p>
+            <p>
+              {t('security.deleteCannotUndo', {
+                defaultValue: 'This action cannot be undone from inside the app.',
+              })}
+            </p>
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>Access will be disabled immediately.</li>
               <li>
-                Final deletion and anonymisation of personal account data occurs
-                within 30 days.
+                {t('security.deleteAccessDisabled', {
+                  defaultValue: 'Access will be disabled immediately.',
+                })}
               </li>
               <li>
-                Retained operational and legal records (such as Vehicle Checks,
-                timesheets and compliance evidence) may remain according to
-                policy.
+                {t('security.deleteFinal', {
+                  defaultValue:
+                    'Final deletion and anonymisation of personal account data occurs within 30 days.',
+                })}
               </li>
               <li>
-                You can cancel before the scheduled date by contacting your
-                organisation administrator or DREVORA support at{' '}
-                <span className="font-medium text-[color:var(--worker-text)]">
-                  admin@drevora.uk
-                </span>
-                .
+                {t('security.deleteRetained', {
+                  defaultValue:
+                    'Retained operational and legal records (such as Vehicle Checks, timesheets and compliance evidence) may remain according to policy.',
+                })}
+              </li>
+              <li>
+                {t('security.deleteCancelHint', {
+                  defaultValue:
+                    'You can cancel before the scheduled date by contacting your organisation administrator or DREVORA support at admin@drevora.uk.',
+                })}
               </li>
             </ul>
           </div>
@@ -129,7 +144,9 @@ export function WorkerDeleteAccountDialog({
         <div className="space-y-3 px-5 py-4">
           <label className="block space-y-1.5" htmlFor={emailInputId}>
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-              Type your account email to confirm
+              {t('security.typeEmailConfirm', {
+                defaultValue: 'Type your account email to confirm',
+              })}
             </span>
             <Input
               id={emailInputId}
@@ -162,7 +179,7 @@ export function WorkerDeleteAccountDialog({
               onClick={onCancel}
               className="h-12 rounded-2xl px-5 font-semibold"
             >
-              Keep account
+              {t('security.keepAccount', { defaultValue: 'Keep account' })}
             </Button>
             <Button
               type="button"
@@ -172,7 +189,9 @@ export function WorkerDeleteAccountDialog({
               }}
               className="h-12 rounded-2xl bg-rose-600 px-5 font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
             >
-              {isSubmitting ? 'Scheduling…' : 'Delete account'}
+              {isSubmitting
+                ? t('security.scheduling', { defaultValue: 'Scheduling…' })
+                : t('security.deleteAccount', { defaultValue: 'Delete account' })}
             </Button>
           </div>
         </div>

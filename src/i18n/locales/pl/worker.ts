@@ -1,4 +1,5 @@
 import type { WorkerPhase1Resources } from '../en/worker'
+import { plWorkerFinalModules } from './workerFinalModules'
 
 export const plWorker = {
   nav: {
@@ -24,6 +25,41 @@ export const plWorker = {
     loading: 'Ładowanie ustawień',
     languageSaving: 'Zapisywanie…',
     languageSaveError: 'Nie udało się zapisać języka.',
+    signOut: 'Wyloguj się',
+    timesheetSettings: 'Ustawienia czasu pracy',
+    passwordSecurity: 'Hasło i bezpieczeństwo',
+    helpSupport: 'Pomoc i wsparcie',
+    notSet: 'Nie ustawiono',
+    company: 'Firma',
+    profile: 'Profil',
+    companyNotice: 'Informacja firmy',
+    companyNoticeSubtitle: 'Informacja o prywatności Twojego pracodawcy',
+    noDefaultVehicle: 'Brak pojazdu domyślnego',
+    removeDefault: 'Usuń domyślny',
+    removing: 'Usuwanie…',
+    removeDefaultFailed: 'Nie udało się usunąć pojazdu domyślnego.',
+    profileMissing: 'Nie znaleźliśmy profilu pracownika powiązanego z Twoim kontem.',
+    loadingShort: 'Ładowanie…',
+    timesheetPersonal: 'Ustawienia osobiste',
+    timesheetCompany: 'Domyślne ustawienia firmy',
+    timesheetManual: 'Ręcznie · {{source}}',
+    timesheetDaily: 'Automatycznie · NG dobowe po {{hours}} h',
+    timesheetWeekly: 'Automatycznie · NG tygodniowe po {{hours}} h',
+    timesheetAutomatic: 'Automatycznie · {{source}}',
+    timesheetPageTitle: 'Ustawienia czasu pracy',
+    timesheetPersonalOverride: 'Nadpisanie osobiste',
+    timesheetCompanyRules: 'Zasady firmy',
+    timesheetDefaultRules: 'Zasady domyślne',
+    yes: 'Tak',
+    no: 'Nie',
+    phone: 'Telefon',
+    profileManagedByOffice: 'Dane profilu są zarządzane przez biuro.',
+    defaultVehicle: 'Pojazd domyślny',
+    changeDefaultVehicle: 'Zmień pojazd domyślny',
+    security: 'Bezpieczeństwo',
+    helpInformation: 'Pomoc i informacje',
+    helpSupportSubtitle: 'Poradniki, błędy, opinie i dokumenty prawne',
+    appVersion: 'Wersja aplikacji',
   },
   home: {
     greetingMorning: 'Dzień dobry',
@@ -440,6 +476,14 @@ export const plWorker = {
     categoryEmergency: 'Alarmowy',
     categoryWorker: 'Pracownik',
     categoryOther: 'Inne',
+    call: 'Zadzwoń',
+    email: 'E-mail',
+    officeIntro:
+      'W sprawach godzin pracy, grafiku, urlopów, przypisanych pojazdów, dokumentów firmy i kwestii operacyjnych. Błędy aplikacji i problemy techniczne zgłaszaj do wsparcia DREVORA.',
+    officeEmptyTitle: 'Nie skonfigurowano danych kontaktowych biura.',
+    officeEmptyBody: 'Poproś biuro o udostępnienie telefonu lub e-maila dla pracowników.',
+    loadingOffice: 'Ładowanie kontaktów biura',
+    noPhoneEmailShared: 'Brak telefonu lub e-maila dla tego kontaktu.',
   },
   notes: {
     title: 'Moje notatki',
@@ -485,4 +529,6 @@ export const plWorker = {
     titleTooLong: 'Tytuł może mieć maksymalnie {{max}} znaków.',
     noteTooLong: 'Treść może mieć maksymalnie {{max}} znaków.',
   },
+  ...plWorkerFinalModules,
 } as const satisfies WorkerPhase1Resources
+

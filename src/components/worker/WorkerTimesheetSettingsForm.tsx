@@ -16,6 +16,7 @@ import {
   WorkerTimesheetSettingsServiceError,
 } from '@/services/workerTimesheetSettingsService'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   driverId: string
@@ -59,6 +60,7 @@ export function WorkerTimesheetSettingsForm({
   initialEffective,
   onSaved,
 }: Props) {
+  const { t } = useTranslation('worker')
   const [form, setForm] = useState(() => formFromEffective(initialEffective))
   const [baseline, setBaseline] = useState(() =>
     snapshot(formFromEffective(initialEffective)),
@@ -111,7 +113,7 @@ export function WorkerTimesheetSettingsForm({
       await saveOwnDriverTimesheetSettings(driverId, form, weekendRulesScope)
       setBaseline(snapshot(form))
       setHasOverride(true)
-      setSuccess('Timesheet settings saved.')
+      setSuccess(t('tsSettings.saved', { defaultValue: 'Timesheet settings saved.' }))
       await onSaved()
     } catch (saveError) {
       setError(
@@ -119,7 +121,9 @@ export function WorkerTimesheetSettingsForm({
           ? saveError.message
           : saveError instanceof Error
             ? saveError.message
-            : 'Unable to save Timesheet settings.',
+            : t('tsSettings.saveFailed', {
+                defaultValue: 'Unable to save Timesheet settings.',
+              }),
       )
     } finally {
       setIsSaving(false)
@@ -136,7 +140,7 @@ export function WorkerTimesheetSettingsForm({
     try {
       await resetOwnDriverTimesheetSettings(driverId)
       setHasOverride(false)
-      setSuccess('Reset to company defaults.')
+      setSuccess(t('tsSettings.resetDone', { defaultValue: 'Reset to company defaults.' }))
       await onSaved()
     } catch (resetError) {
       setError(
@@ -144,7 +148,9 @@ export function WorkerTimesheetSettingsForm({
           ? resetError.message
           : resetError instanceof Error
             ? resetError.message
-            : 'Unable to reset Timesheet settings.',
+            : t('tsSettings.resetFailed', {
+                defaultValue: 'Unable to reset Timesheet settings.',
+              }),
       )
     } finally {
       setIsResetting(false)
@@ -162,18 +168,26 @@ export function WorkerTimesheetSettingsForm({
             : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-[color:var(--worker-text)]',
         )}
       >
-        {hasOverride ? 'Personal override' : 'Company defaults'}
+        {hasOverride
+          ? t('settings.timesheetPersonalOverride', { defaultValue: 'Personal override' })
+          : t('settings.timesheetCompany', { defaultValue: 'Company defaults' })}
       </div>
 
       <SettingsCard
-        title="Entry Mode"
-        hint="Automatic calculates Basic and OT from your rules. Manual lets you enter hours yourself."
+        title={t('tsSettings.entryMode', { defaultValue: 'Entry Mode' })}
+        hint={t('tsSettings.entryModeHint', {
+          defaultValue:
+            'Automatic calculates Basic and OT from your rules. Manual lets you enter hours yourself.',
+        })}
       >
         <Segmented
           value={form.overtimeMode}
           options={[
-            { value: 'Automatic', label: 'Automatic' },
-            { value: 'Manual', label: 'Manual' },
+            {
+              value: 'Automatic',
+              label: t('tsSettings.automatic', { defaultValue: 'Automatic' }),
+            },
+            { value: 'Manual', label: t('tsSettings.manual', { defaultValue: 'Manual' }) },
           ]}
           onChange={(value) =>
             patch({ overtimeMode: value as WorkerTimesheetSettingsForm['overtimeMode'] })
@@ -181,21 +195,31 @@ export function WorkerTimesheetSettingsForm({
         />
         {form.overtimeMode === 'Manual' ? (
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
-            Enter Basic, Additional, and OT worked hours on each day. Total uses OT ×
-            multiplier.
+            {t('tsSettings.manualHint', {
+              defaultValue:
+                'Enter Basic, Additional, and OT worked hours on each day. Total uses OT × multiplier.',
+            })}
           </p>
         ) : (
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
-            The app calculates Basic and OT from Start/Finish using the rules below.
+            {t('tsSettings.automaticHint', {
+              defaultValue:
+                'The app calculates Basic and OT from Start/Finish using the rules below.',
+            })}
           </p>
         )}
       </SettingsCard>
 
       <SettingsCard
-        title="Break Rules"
-        hint="Unpaid break reduces worked time. Paid break goes to Additional Hours (not Basic, not OT)."
+        title={t('tsSettings.breakRules', { defaultValue: 'Break Rules' })}
+        hint={t('tsSettings.breakRulesHint', {
+          defaultValue:
+            'Unpaid break reduces worked time. Paid break goes to Additional Hours (not Basic, not OT).',
+        })}
       >
-        <FieldLabel>Default break (minutes)</FieldLabel>
+        <FieldLabel>
+          {t('tsSettings.defaultBreak', { defaultValue: 'Default break (minutes)' })}
+        </FieldLabel>
         <Segmented
           value={String(form.defaultBreakMinutes)}
           options={WORKER_BREAK_MINUTES_OPTIONS.map((minutes) => ({
@@ -210,26 +234,41 @@ export function WorkerTimesheetSettingsForm({
         />
         <div className="mt-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-950">Paid breaks</p>
-            <p className="text-xs text-slate-500">Add break minutes to Additional Hours</p>
+            <p className="text-sm font-semibold text-slate-950">
+              {t('tsSettings.paidBreaks', { defaultValue: 'Paid breaks' })}
+            </p>
+            <p className="text-xs text-slate-500">
+              {t('tsSettings.paidBreaksHint', {
+                defaultValue: 'Add break minutes to Additional Hours',
+              })}
+            </p>
           </div>
           <Switch
             checked={form.paidBreaks}
             onChange={(checked) => patch({ paidBreaks: checked })}
-            label="Paid breaks"
+            label={t('tsSettings.paidBreaks', { defaultValue: 'Paid breaks' })}
           />
         </div>
       </SettingsCard>
 
       <SettingsCard
-        title="Holiday hours"
-        hint="Hours credited for a full Holiday day (H). A half day (H-AM / H-PM) is automatically 50% of this value. 0 = unpaid holiday."
+        title={t('tsSettings.holidayHours', { defaultValue: 'Holiday hours' })}
+        hint={t('tsSettings.holidayHoursHint', {
+          defaultValue:
+            'Hours credited for a full Holiday day (H). A half day (H-AM / H-PM) is automatically 50% of this value. 0 = unpaid holiday.',
+        })}
       >
         <Segmented
           value={form.useCompanyDefaultHolidayHours ? 'company' : 'custom'}
           options={[
-            { value: 'company', label: 'Use company default' },
-            { value: 'custom', label: 'Custom holiday hours' },
+            {
+              value: 'company',
+              label: t('tsSettings.useCompanyDefault', { defaultValue: 'Use company default' }),
+            },
+            {
+              value: 'custom',
+              label: t('tsSettings.customHolidayHours', { defaultValue: 'Custom holiday hours' }),
+            },
           ]}
           onChange={(value) =>
             patch({ useCompanyDefaultHolidayHours: value === 'company' })
@@ -237,11 +276,18 @@ export function WorkerTimesheetSettingsForm({
         />
         {form.useCompanyDefaultHolidayHours ? (
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
-            Using company default: {form.defaultPaidHolidayHours} h per Holiday day.
+            {t('tsSettings.usingCompanyDefault', {
+              hours: form.defaultPaidHolidayHours,
+              defaultValue: 'Using company default: {{hours}} h per Holiday day.',
+            })}
           </p>
         ) : (
           <div className="mt-4">
-            <FieldLabel>Custom holiday hours per day</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.customHolidayHoursPerDay', {
+                defaultValue: 'Custom holiday hours per day',
+              })}
+            </FieldLabel>
             <NumberInput
               value={form.defaultPaidHolidayHours}
               min={0}
@@ -250,24 +296,29 @@ export function WorkerTimesheetSettingsForm({
               onChange={(value) => patch({ defaultPaidHolidayHours: value })}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Decimals allowed (e.g. 7.5). Half day ={' '}
-              {Math.round(form.defaultPaidHolidayHours * 50) / 100} h. Use 0 for unpaid
-              holiday.
+              {t('tsSettings.holidayDecimalsHint', {
+                hours: Math.round(form.defaultPaidHolidayHours * 50) / 100,
+                defaultValue:
+                  'Decimals allowed (e.g. 7.5). Half day = {{hours}} h. Use 0 for unpaid holiday.',
+              })}
             </p>
           </div>
         )}
       </SettingsCard>
 
       <SettingsCard
-        title="Overtime Rules"
-        hint="Applies in Automatic mode. Manual mode still uses the multiplier for Total."
+        title={t('tsSettings.overtimeRules', { defaultValue: 'Overtime Rules' })}
+        hint={t('tsSettings.overtimeRulesHint', {
+          defaultValue:
+            'Applies in Automatic mode. Manual mode still uses the multiplier for Total.',
+        })}
       >
         <Segmented
           value={form.overtimeCalculationMethod}
           options={[
-            { value: 'daily', label: 'Daily' },
-            { value: 'weekly', label: 'Weekly' },
-            { value: 'none', label: 'None' },
+            { value: 'daily', label: t('tsSettings.daily', { defaultValue: 'Daily' }) },
+            { value: 'weekly', label: t('tsSettings.weekly', { defaultValue: 'Weekly' }) },
+            { value: 'none', label: t('tsSettings.none', { defaultValue: 'None' }) },
           ]}
           onChange={(value) =>
             patch({
@@ -279,7 +330,9 @@ export function WorkerTimesheetSettingsForm({
 
         {form.overtimeCalculationMethod === 'daily' ? (
           <div className="mt-4">
-            <FieldLabel>Daily threshold (hours)</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.dailyThreshold', { defaultValue: 'Daily threshold (hours)' })}
+            </FieldLabel>
             <NumberInput
               value={form.overtimeAfterHours}
               min={0}
@@ -287,13 +340,17 @@ export function WorkerTimesheetSettingsForm({
               step={0.5}
               onChange={(value) => patch({ overtimeAfterHours: value })}
             />
-            <p className="mt-1 text-xs text-slate-500">Example: 10.5 hours per day</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {t('tsSettings.dailyExample', { defaultValue: 'Example: 10.5 hours per day' })}
+            </p>
           </div>
         ) : null}
 
         {form.overtimeCalculationMethod === 'weekly' ? (
           <div className="mt-4">
-            <FieldLabel>Weekly threshold (hours)</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.weeklyThreshold', { defaultValue: 'Weekly threshold (hours)' })}
+            </FieldLabel>
             <NumberInput
               value={form.weeklyOvertimeAfterHours}
               min={0}
@@ -301,18 +358,25 @@ export function WorkerTimesheetSettingsForm({
               step={0.5}
               onChange={(value) => patch({ weeklyOvertimeAfterHours: value })}
             />
-            <p className="mt-1 text-xs text-slate-500">Example: 45 hours per week</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {t('tsSettings.weeklyExample', { defaultValue: 'Example: 45 hours per week' })}
+            </p>
           </div>
         ) : null}
 
         {form.overtimeCalculationMethod === 'none' ? (
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
-            Automatic mode will not create OT hours. You can still enter OT in Manual mode.
+            {t('tsSettings.noneHint', {
+              defaultValue:
+                'Automatic mode will not create OT hours. You can still enter OT in Manual mode.',
+            })}
           </p>
         ) : null}
 
         <div className="mt-4">
-          <FieldLabel>Overtime multiplier</FieldLabel>
+          <FieldLabel>
+            {t('tsSettings.otMultiplier', { defaultValue: 'Overtime multiplier' })}
+          </FieldLabel>
           <NumberInput
             value={form.overtimeMultiplier}
             min={1}
@@ -321,23 +385,31 @@ export function WorkerTimesheetSettingsForm({
             onChange={(value) => patch({ overtimeMultiplier: value })}
           />
           <p className="mt-1 text-xs text-slate-500">
-            Common values: 1.0, 1.5, 2.0. OT display stays as worked hours.
+            {t('tsSettings.multiplierHint', {
+              defaultValue:
+                'Common values: 1.0, 1.5, 2.0. OT display stays as worked hours.',
+            })}
           </p>
         </div>
       </SettingsCard>
 
       <SettingsCard
-        title="Weekend Rules"
+        title={t('tsSettings.weekendRules', { defaultValue: 'Weekend Rules' })}
         hint={
           weekendEditable
-            ? 'Saturday and Sunday are independent.'
-            : 'Managed by your company. Your Admin controls these values for everyone.'
+            ? t('tsSettings.weekendIndependent', {
+                defaultValue: 'Saturday and Sunday are independent.',
+              })
+            : t('tsSettings.weekendManaged', {
+                defaultValue:
+                  'Managed by your company. Your Admin controls these values for everyone.',
+              })
         }
       >
         {weekendEditable ? (
           <>
             <WeekendDayEditor
-              dayLabel="Saturday"
+              dayLabel={t('tsSettings.saturday', { defaultValue: 'Saturday' })}
               enabled={form.saturdayOvertimeEnabled}
               afterHours={form.saturdayOvertimeAfterHours}
               multiplier={form.saturdayOvertimeMultiplier}
@@ -353,7 +425,7 @@ export function WorkerTimesheetSettingsForm({
             />
             <div className="my-4 border-t border-slate-100" />
             <WeekendDayEditor
-              dayLabel="Sunday"
+              dayLabel={t('tsSettings.sunday', { defaultValue: 'Sunday' })}
               enabled={form.sundayOvertimeEnabled}
               afterHours={form.sundayOvertimeAfterHours}
               multiplier={form.sundayOvertimeMultiplier}
@@ -371,7 +443,7 @@ export function WorkerTimesheetSettingsForm({
         ) : (
           <>
             <WeekendDayReadOnly
-              dayLabel="Saturday"
+              dayLabel={t('tsSettings.saturday', { defaultValue: 'Saturday' })}
               enabled={form.saturdayOvertimeEnabled}
               afterHours={form.saturdayOvertimeAfterHours}
               multiplier={form.saturdayOvertimeMultiplier}
@@ -380,7 +452,7 @@ export function WorkerTimesheetSettingsForm({
             />
             <div className="my-4 border-t border-slate-100" />
             <WeekendDayReadOnly
-              dayLabel="Sunday"
+              dayLabel={t('tsSettings.sunday', { defaultValue: 'Sunday' })}
               enabled={form.sundayOvertimeEnabled}
               afterHours={form.sundayOvertimeAfterHours}
               multiplier={form.sundayOvertimeMultiplier}
@@ -391,13 +463,23 @@ export function WorkerTimesheetSettingsForm({
         )}
       </SettingsCard>
 
-      <SettingsCard title="Week and Time Display" hint="Timesheet clocks stay in 24-hour format.">
-        <FieldLabel>Week starts on</FieldLabel>
+      <SettingsCard
+        title={t('tsSettings.weekTimeDisplay', { defaultValue: 'Week and Time Display' })}
+        hint={t('tsSettings.clocks24h', {
+          defaultValue: 'Timesheet clocks stay in 24-hour format.',
+        })}
+      >
+        <FieldLabel>
+          {t('tsSettings.weekStartsOn', { defaultValue: 'Week starts on' })}
+        </FieldLabel>
         <Segmented
           value={form.timesheetWeekStartDay}
           options={TIMESHEET_WEEK_START_DAY_OPTIONS.map((option) => ({
             value: option.value,
-            label: option.label,
+            label:
+              option.value === 'monday'
+                ? t('tsSettings.monday', { defaultValue: 'Monday' })
+                : t('tsSettings.sunday', { defaultValue: 'Sunday' }),
           }))}
           onChange={(value) =>
             patch({
@@ -408,13 +490,15 @@ export function WorkerTimesheetSettingsForm({
         />
 
         <div className="mt-4">
-          <FieldLabel>Time rounding</FieldLabel>
+          <FieldLabel>
+            {t('tsSettings.timeRounding', { defaultValue: 'Time rounding' })}
+          </FieldLabel>
           <Segmented
             value={String(form.roundTimeMinutes)}
             options={[
-              { value: '0', label: 'None' },
-              { value: '5', label: '5 min' },
-              { value: '15', label: '15 min' },
+              { value: '0', label: t('tsSettings.none', { defaultValue: 'None' }) },
+              { value: '5', label: t('tsSettings.min5', { defaultValue: '5 min' }) },
+              { value: '15', label: t('tsSettings.min15', { defaultValue: '15 min' }) },
             ]}
             onChange={(value) =>
               patch({
@@ -427,9 +511,14 @@ export function WorkerTimesheetSettingsForm({
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Reset to Company Defaults">
+      <SettingsCard
+        title={t('tsSettings.resetTitle', { defaultValue: 'Reset to Company Defaults' })}
+      >
         <p className="text-sm text-slate-600">
-          Remove your personal override and use the current company Timesheet settings.
+          {t('tsSettings.resetBody', {
+            defaultValue:
+              'Remove your personal override and use the current company Timesheet settings.',
+          })}
         </p>
         <Button
           type="button"
@@ -438,9 +527,12 @@ export function WorkerTimesheetSettingsForm({
           disabled={!hasOverride || isSaving || isResetting}
           onClick={() => void handleReset()}
         >
-          {isResetting ? 'Resetting…' : 'Reset to company defaults'}
+          {isResetting
+            ? t('tsSettings.resetting', { defaultValue: 'Resetting…' })
+            : t('tsSettings.resetCta', { defaultValue: 'Reset to company defaults' })}
         </Button>
       </SettingsCard>
+
 
       {validationError ? (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -465,7 +557,9 @@ export function WorkerTimesheetSettingsForm({
           disabled={!canSave}
           onClick={() => void handleSave()}
         >
-          {isSaving ? 'Saving…' : 'Save Timesheet settings'}
+          {isSaving
+            ? t('tsSettings.saving', { defaultValue: 'Saving…' })
+            : t('tsSettings.saveCta', { defaultValue: 'Save Timesheet settings' })}
         </Button>
       </div>
     </div>
@@ -615,23 +709,36 @@ function WeekendDayEditor({
   onGuaranteedChange: (value: number) => void
   onUseCompanyDefaultBreakChange: (checked: boolean) => void
 }) {
+  const { t } = useTranslation('worker')
+  const overtimeLabel = t('tsSettings.overtimeDay', {
+    day: dayLabel,
+    defaultValue: '{{day}} overtime',
+  })
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">{dayLabel} overtime</p>
-          <p className="text-xs text-slate-500">Use weekend guaranteed-hours rules</p>
+          <p className="text-sm font-semibold text-slate-950">{overtimeLabel}</p>
+          <p className="text-xs text-slate-500">
+            {t('tsSettings.weekendGuaranteedHint', {
+              defaultValue: 'Use weekend guaranteed-hours rules',
+            })}
+          </p>
         </div>
         <Switch
           checked={enabled}
           onChange={onEnabledChange}
-          label={`${dayLabel} overtime`}
+          label={overtimeLabel}
         />
       </div>
       {enabled ? (
         <div className="mt-3 space-y-3">
           <div>
-            <FieldLabel>Overtime threshold (hours)</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.otThresholdHours', {
+                defaultValue: 'Overtime threshold (hours)',
+              })}
+            </FieldLabel>
             <NumberInput
               value={afterHours}
               min={0}
@@ -641,7 +748,9 @@ function WeekendDayEditor({
             />
           </div>
           <div>
-            <FieldLabel>Overtime multiplier</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.otMultiplier', { defaultValue: 'Overtime multiplier' })}
+            </FieldLabel>
             <NumberInput
               value={multiplier}
               min={1}
@@ -651,7 +760,9 @@ function WeekendDayEditor({
             />
           </div>
           <div>
-            <FieldLabel>Guaranteed paid hours</FieldLabel>
+            <FieldLabel>
+              {t('tsSettings.guaranteedPaid', { defaultValue: 'Guaranteed paid hours' })}
+            </FieldLabel>
             <NumberInput
               value={guaranteed}
               min={0}
@@ -664,16 +775,24 @@ function WeekendDayEditor({
       ) : null}
       <div className="mt-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Use company default break</p>
+          <p className="text-sm font-semibold text-slate-950">
+            {t('tsSettings.useCompanyBreak', { defaultValue: 'Use company default break' })}
+          </p>
           <p className="text-xs text-slate-500">
-            On: new {dayLabel} entries use the company default break. Off: they start with
-            Break = 0 (still editable).
+            {t('tsSettings.companyBreakHint', {
+              day: dayLabel,
+              defaultValue:
+                'On: new {{day}} entries use the company default break. Off: they start with Break = 0 (still editable).',
+            })}
           </p>
         </div>
         <Switch
           checked={useCompanyDefaultBreak}
           onChange={onUseCompanyDefaultBreakChange}
-          label={`Use company default break — ${dayLabel}`}
+          label={t('tsSettings.companyBreakAria', {
+            day: dayLabel,
+            defaultValue: 'Use company default break — {{day}}',
+          })}
         />
       </div>
     </div>
@@ -695,33 +814,62 @@ function WeekendDayReadOnly({
   guaranteed: number
   useCompanyDefaultBreak: boolean
 }) {
+  const { t } = useTranslation('worker')
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-950">{dayLabel} overtime</p>
+        <p className="text-sm font-semibold text-slate-950">
+          {t('tsSettings.overtimeDay', {
+            day: dayLabel,
+            defaultValue: '{{day}} overtime',
+          })}
+        </p>
         <span
           className={cn(
             'rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
             enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500',
           )}
         >
-          {enabled ? 'On' : 'Off'}
+          {enabled
+            ? t('tsSettings.on', { defaultValue: 'On' })
+            : t('tsSettings.off', { defaultValue: 'Off' })}
         </span>
       </div>
       {enabled ? (
         <div className="mt-3 space-y-2">
-          <ReadOnlyRow label="Overtime threshold" value={`${afterHours} hours`} />
-          <ReadOnlyRow label="Overtime multiplier" value={`${multiplier}x`} />
-          <ReadOnlyRow label="Guaranteed paid hours" value={`${guaranteed} hours`} />
+          <ReadOnlyRow
+            label={t('tsSettings.otThreshold', { defaultValue: 'Overtime threshold' })}
+            value={t('tsSettings.hoursUnit', {
+              hours: afterHours,
+              defaultValue: '{{hours}} hours',
+            })}
+          />
+          <ReadOnlyRow
+            label={t('tsSettings.otMultiplier', { defaultValue: 'Overtime multiplier' })}
+            value={`${multiplier}x`}
+          />
+          <ReadOnlyRow
+            label={t('tsSettings.guaranteedPaid', { defaultValue: 'Guaranteed paid hours' })}
+            value={t('tsSettings.hoursUnit', {
+              hours: guaranteed,
+              defaultValue: '{{hours}} hours',
+            })}
+          />
         </div>
       ) : null}
       <div className="mt-3">
         <ReadOnlyRow
-          label="Use company default break"
-          value={useCompanyDefaultBreak ? 'On' : 'Off'}
+          label={t('tsSettings.useCompanyBreak', { defaultValue: 'Use company default break' })}
+          value={
+            useCompanyDefaultBreak
+              ? t('tsSettings.on', { defaultValue: 'On' })
+              : t('tsSettings.off', { defaultValue: 'Off' })
+          }
         />
       </div>
-      <p className="mt-2 text-xs font-medium text-slate-400">Managed by your company</p>
+      <p className="mt-2 text-xs font-medium text-slate-400">
+        {t('tsSettings.managedByCompany', { defaultValue: 'Managed by your company' })}
+      </p>
     </div>
   )
 }

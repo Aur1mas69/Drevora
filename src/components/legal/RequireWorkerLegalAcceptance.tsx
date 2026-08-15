@@ -25,6 +25,7 @@ import {
   LegalAcceptanceServiceError,
 } from '@/services/legalAcceptanceService'
 import { AuthSplashScreen } from '@/components/auth/AuthSplashScreen'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 
 const WORKER_LEGAL_ALLOWLIST = new Set<string>([
   WORKER_LEGAL_ROUTES.worker_terms,
@@ -61,6 +62,32 @@ type RequireWorkerLegalAcceptanceProps = {
 export function RequireWorkerLegalAcceptance({
   children,
 }: RequireWorkerLegalAcceptanceProps) {
+  const agreementsTitle = useWorkerChromeText('legal.agreementsTitle', 'Legal agreements')
+  const tryAgain = useWorkerChromeText('legal.tryAgain', 'Try again')
+  const offlinePrevious = useWorkerChromeText(
+    'legal.offlinePrevious',
+    'You’re offline. Continuing with your previously accepted Worker Terms. Confirm the latest version when you reconnect.',
+  )
+  const offlineCached = useWorkerChromeText(
+    'legal.offlineCached',
+    'You’re offline. Your previously confirmed legal settings are being used.',
+  )
+  const deferredTerms = useWorkerChromeText(
+    'legal.deferredTerms',
+    'Updated Worker Terms are available. You’ll be asked to confirm them after this check is saved.',
+  )
+  const verifyOfflineFailed = useWorkerChromeText(
+    'legal.verifyOfflineFailed',
+    'Unable to verify legal acceptance while offline. Reconnect to continue, or try again.',
+  )
+  const verifyFailed = useWorkerChromeText(
+    'legal.verifyFailed',
+    'Unable to verify legal acceptance status.',
+  )
+  const verifyForbidden = useWorkerChromeText(
+    'legal.verifyForbidden',
+    'You do not have permission to verify legal acceptance.',
+  )
   const { companyId, companyReady, companyLoading } = useCompanySettings()
   const location = useLocation()
   const [isOnline, setIsOnline] = useState(true)
@@ -121,9 +148,7 @@ export function RequireWorkerLegalAcceptance({
         // Network failure without usable proof — never treat as first-use Terms.
         setRequiresAcceptance(null)
         setUsingCachedAcceptance(false)
-        setError(
-          'Unable to verify legal acceptance while offline. Reconnect to continue, or try again.',
-        )
+        setError(verifyOfflineFailed)
         return state
       }
 
@@ -133,7 +158,7 @@ export function RequireWorkerLegalAcceptance({
       setError(null)
       return state
     },
-    [],
+    [verifyOfflineFailed],
   )
 
   const applyOnlineRequiresAcceptance = useCallback(
@@ -222,7 +247,7 @@ export function RequireWorkerLegalAcceptance({
         setError(
           err instanceof LegalAcceptanceServiceError
             ? err.message
-            : 'You do not have permission to verify legal acceptance.',
+            : verifyForbidden,
         )
         return
       }
@@ -230,7 +255,7 @@ export function RequireWorkerLegalAcceptance({
       const message =
         err instanceof LegalAcceptanceServiceError
           ? err.message
-          : 'Unable to verify legal acceptance status.'
+          : verifyFailed
 
       if (!(await getOnlineStatus())) {
         applyOfflineOrCacheDecision(companyId, { treatMissingAsUnavailable: true })
@@ -241,7 +266,7 @@ export function RequireWorkerLegalAcceptance({
       setUsingCachedAcceptance(false)
       setError(message)
     }
-  }, [applyOfflineOrCacheDecision, applyOnlineRequiresAcceptance, companyId, companyReady])
+  }, [applyOfflineOrCacheDecision, applyOnlineRequiresAcceptance, companyId, companyReady, verifyFailed])
 
   useEffect(() => {
     void refresh()
@@ -264,14 +289,14 @@ export function RequireWorkerLegalAcceptance({
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#F6F9FF] px-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-950">Legal agreements</h1>
+          <h1 className="text-lg font-semibold text-slate-950">{agreementsTitle}</h1>
           <p className="mt-2 text-sm text-slate-600">{error}</p>
           <button
             type="button"
             className="mt-5 h-10 w-full rounded-2xl bg-[#2F80ED] text-sm font-semibold text-white hover:bg-[#2563EB]"
             onClick={() => void refresh()}
           >
-            Try again
+            {tryAgain}
           </button>
         </div>
       </div>
@@ -303,8 +328,8 @@ export function RequireWorkerLegalAcceptance({
           className="legal-print-hide border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
         >
           {accessState === 'accepted_previous'
-            ? 'You’re offline. Continuing with your previously accepted Worker Terms. Confirm the latest version when you reconnect.'
-            : 'You’re offline. Your previously confirmed legal settings are being used.'}
+            ? offlinePrevious
+            : offlineCached}
         </div>
       ) : null}
       {deferredLatestRequired && isOnline ? (
@@ -312,8 +337,7 @@ export function RequireWorkerLegalAcceptance({
           role="status"
           className="legal-print-hide border-b border-sky-200/80 bg-sky-50 px-4 py-2 text-center text-xs font-medium text-sky-950 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100"
         >
-          Updated Worker Terms are available. You’ll be asked to confirm them after this check is
-          saved.
+          {deferredTerms}
         </div>
       ) : null}
       {children}

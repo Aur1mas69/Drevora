@@ -1,7 +1,7 @@
 import { WorkerSettingsBackLink } from '@/components/worker/WorkerSettingsBackLink'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import type { Contact } from '@/lib/contactTypes'
-import { getCategoryLabel, getContactPrimaryName } from '@/lib/contactUtils'
+import { getContactPrimaryName } from '@/lib/contactUtils'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { workerListCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ import {
 } from '@/services/contactsService'
 import { Mail, Phone } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { contactCategoryI18nKey } from '@/i18n/workerPhase3bDisplay'
 
 function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
@@ -25,6 +27,7 @@ function ContactActionCard({
   index: number
   isDark: boolean
 }) {
+  const { t } = useTranslation('worker')
   const phone = contact.phone?.trim() || null
   const email = contact.email?.trim() || null
   const roleOrOrg =
@@ -47,7 +50,7 @@ function ContactActionCard({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          {getCategoryLabel(contact.category)}
+          {t(contactCategoryI18nKey(contact.category))}
         </p>
         {roleOrOrg ? (
           <p
@@ -73,7 +76,7 @@ function ContactActionCard({
               )}
             >
               <Phone className="size-4" aria-hidden />
-              Call
+              {t('contacts.call', { defaultValue: 'Call' })}
             </a>
           ) : null}
           {email ? (
@@ -86,7 +89,7 @@ function ContactActionCard({
               )}
             >
               <Mail className="size-4" aria-hidden />
-              Email
+              {t('contacts.email', { defaultValue: 'Email' })}
             </a>
           ) : null}
         </div>
@@ -97,7 +100,9 @@ function ContactActionCard({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          No phone or email shared for this contact.
+          {t('contacts.noPhoneEmailShared', {
+            defaultValue: 'No phone or email shared for this contact.',
+          })}
         </p>
       )}
 
@@ -130,6 +135,7 @@ function ContactActionCard({
  * Separate from DREVORA technical support. Never invents phone/email.
  */
 export default function WorkerSettingsContactOfficePage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const { companyName } = useCompanySettings()
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -152,7 +158,7 @@ export default function WorkerSettingsContactOfficePage() {
             ? loadError.message
             : loadError instanceof Error
               ? loadError.message
-              : 'Unable to load contacts.',
+              : t('contacts.loadFailed', { defaultValue: 'Unable to load contacts.' }),
         )
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -179,15 +185,19 @@ export default function WorkerSettingsContactOfficePage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-3">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('help.title', { defaultValue: 'Help & Support' })}
+        />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-            Contact Office
+            {t('help.contactOffice', { defaultValue: 'Contact Office' })}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
-            For working hours, rota, holidays, assigned vehicles, company
-            documents and operational issues. App bugs and technical problems
-            belong in DREVORA Support.
+            {t('contacts.officeIntro', {
+              defaultValue:
+                'For working hours, rota, holidays, assigned vehicles, company documents and operational issues. App bugs and technical problems belong in DREVORA Support.',
+            })}
           </p>
         </div>
       </header>
@@ -195,7 +205,7 @@ export default function WorkerSettingsContactOfficePage() {
       {companyLabel ? (
         <div className="rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-            Company
+            {t('settings.company', { defaultValue: 'Company' })}
           </p>
           <p className="mt-1 text-base font-semibold text-[color:var(--worker-text)]">
             {companyLabel}
@@ -207,22 +217,28 @@ export default function WorkerSettingsContactOfficePage() {
         <div
           className="min-h-[12rem] rounded-[1.5rem] bg-[color:var(--worker-card)]"
           role="status"
-          aria-label="Loading office contacts"
+          aria-label={t('contacts.loadingOffice', {
+            defaultValue: 'Loading office contacts',
+          })}
         />
       ) : error ? (
         <div className="worker-card rounded-[1.5rem] px-4 py-5">
           <p className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Unable to load contacts
+            {t('contacts.loadFailedTitle', { defaultValue: 'Unable to load contacts' })}
           </p>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">{error}</p>
         </div>
       ) : officeContacts.length === 0 ? (
         <div className="rounded-[1.5rem] border border-dashed border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-8 text-center">
           <p className="text-base font-semibold text-[color:var(--worker-text)]">
-            No Office contact details have been configured.
+            {t('contacts.officeEmptyTitle', {
+              defaultValue: 'No Office contact details have been configured.',
+            })}
           </p>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
-            Ask your Office to share a phone or email contact for Workers.
+            {t('contacts.officeEmptyBody', {
+              defaultValue: 'Ask your Office to share a phone or email contact for Workers.',
+            })}
           </p>
         </div>
       ) : (

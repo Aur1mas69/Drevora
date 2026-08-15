@@ -6,12 +6,14 @@ import type { SupportDeviceMetadata } from '@/lib/supportRequestTypes'
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Collapsed Technical details for Bug reports only.
  * Passwords, tokens and session data are never collected.
  */
 export function SupportMetadataNotice() {
+  const { t } = useTranslation('worker')
   const location = useLocation()
   const [meta, setMeta] = useState<SupportDeviceMetadata | null>(null)
 
@@ -30,7 +32,9 @@ export function SupportMetadataNotice() {
   return (
     <details className="group rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] dark:border-slate-700 dark:bg-slate-900/50">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[color:var(--worker-text)] [&::-webkit-details-marker]:hidden">
-        <span>Technical details</span>
+        <span>
+          {t('support.technicalDetails', { defaultValue: 'Technical details' })}
+        </span>
         <ChevronDown
           className="h-4 w-4 shrink-0 text-[color:var(--worker-text-muted)] transition-transform group-open:rotate-180"
           aria-hidden
@@ -38,8 +42,10 @@ export function SupportMetadataNotice() {
       </summary>
       <div className="space-y-2 border-t border-[#BFE3F5]/60 px-4 py-3 dark:border-slate-700">
         <p className="text-xs text-[color:var(--worker-text-secondary)]">
-          Safe app details attached to help diagnose this bug. Passwords,
-          tokens and session data are never collected.
+          {t('support.technicalDetailsHint', {
+            defaultValue:
+              'Safe app details attached to help diagnose this bug. Passwords, tokens and session data are never collected.',
+          })}
         </p>
         {lines.length > 0 ? (
           <ul className="space-y-0.5 text-xs text-[color:var(--worker-text-secondary)]">
@@ -48,7 +54,9 @@ export function SupportMetadataNotice() {
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-[color:var(--worker-text-muted)]">Loading…</p>
+          <p className="text-xs text-[color:var(--worker-text-muted)]">
+            {t('support.loading', { defaultValue: 'Loading…' })}
+          </p>
         )}
       </div>
     </details>

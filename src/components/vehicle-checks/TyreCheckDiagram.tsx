@@ -11,8 +11,16 @@ import {
   tyreStatusLabel,
   tyreTreadVisualClasses,
 } from '@/lib/tyreCheckTypes'
+import {
+  tyreAxleDisplayLabel,
+  tyrePositionDisplayLabel,
+  tyreStatusDisplayLabel,
+} from '@/i18n/workerFinalDisplay'
+import { WorkerLocaleContext, useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { cn } from '@/lib/utils'
+import type { TFunction } from 'i18next'
 import { TriangleAlert } from 'lucide-react'
+import { useContext } from 'react'
 
 type TyreCheckDiagramProps = {
   measurements: TyreMeasurement[]
@@ -50,18 +58,28 @@ function TyreShape({
   emphasizeSelection: boolean
   palette: TyreStatusPalette
 }) {
+  const workerT = useContext(WorkerLocaleContext)?.t as TFunction | undefined
   const colours = tyreTreadVisualClasses(tyre.treadDepthMm, {
     dirty: Boolean(tyre.isDirty) || tyre.status === 'dirty',
     palette,
   })
   const depthLabel =
     tyre.treadDepthMm == null ? '—' : `${tyre.treadDepthMm.toFixed(1)} mm`
+  const positionLabel = workerT
+    ? tyrePositionDisplayLabel(tyre.position, workerT)
+    : tyre.position
+  const statusLabel = workerT
+    ? tyreStatusDisplayLabel(tyre.status, workerT)
+    : tyreStatusLabel(tyre.status)
+  const axleLabel = workerT
+    ? tyreAxleDisplayLabel(tyre.unit, tyre.axleNumber, workerT)
+    : tyre.axleLabel
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      aria-label={`${tyre.axleLabel} ${tyre.position}, ${depthLabel}, ${tyreStatusLabel(tyre.status)}`}
+      aria-label={`${axleLabel} ${positionLabel}, ${depthLabel}, ${statusLabel}`}
       aria-pressed={selected}
       className={cn(
         'group flex w-[4.6rem] flex-col items-center gap-1.5 rounded-[16px] p-1 transition-all sm:w-[5.25rem]',
@@ -129,7 +147,7 @@ function TyreShape({
 
       <div className="min-h-[2.6rem] w-full text-center">
         <p className="tyre-diagram-position text-[10px] font-bold leading-tight text-[#0B1F3A] sm:text-[11px]">
-          {tyre.position}
+          {positionLabel}
         </p>
         <p
           className={cn(
@@ -137,7 +155,7 @@ function TyreShape({
             colours.badge,
           )}
         >
-          {tyreStatusLabel(tyre.status)}
+          {statusLabel}
         </p>
       </div>
     </button>
@@ -232,6 +250,7 @@ function UnitDiagram({
   emphasizeSelection: boolean
   palette: TyreStatusPalette
 }) {
+  const workerT = useContext(WorkerLocaleContext)?.t as TFunction | undefined
   const unitTyres = measurements.filter((tyre) => tyre.unit === unit)
   if (unitTyres.length === 0) return null
 
@@ -258,7 +277,9 @@ function UnitDiagram({
       <div className="space-y-5">
         {axleNumbers.map((axleNumber) => {
           const tyres = unitTyres.filter((tyre) => tyre.axleNumber === axleNumber)
-          const label = tyres[0]?.axleLabel ?? `Axle ${axleNumber}`
+          const label = workerT
+            ? tyreAxleDisplayLabel(unit, axleNumber, workerT)
+            : (tyres[0]?.axleLabel ?? `Axle ${axleNumber}`)
           return (
             <div key={`${unit}-${axleNumber}`} data-pdf-block="axle">
               <AxleRow
@@ -278,6 +299,11 @@ function UnitDiagram({
 }
 
 function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
+  const workerT = useContext(WorkerLocaleContext)?.t as TFunction | undefined
+  const dirtyLabel = workerT ? tyreStatusDisplayLabel('dirty', workerT) : 'Dirty'
+  const defectLabel = workerT
+    ? workerT('tyreChecks.defect') || 'Defect'
+    : 'Defect'
   return (
     <div
       data-pdf-block="legends"
@@ -352,7 +378,7 @@ function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
                     )}
                   />
                   <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">
-                    {tyreStatusLabel(status)}
+                    {workerT ? tyreStatusDisplayLabel(status, workerT) : tyreStatusLabel(status)}
                   </span>
                 </li>
               ))}
@@ -366,14 +392,14 @@ function TyreCheckLegends({ palette }: { palette: TyreStatusPalette }) {
             <ul className="mt-2 space-y-1.5">
               <li className="flex items-center gap-2.5">
                 <span className="size-2.5 shrink-0 rounded-full bg-yellow-400" />
-                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">Dirty</span>
+                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">{dirtyLabel}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <TriangleAlert
                   className="size-3.5 shrink-0 text-rose-600"
                   aria-hidden
                 />
-                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">Defect</span>
+                <span className="text-xs font-semibold text-[#113C69] dark:text-slate-100">{defectLabel}</span>
               </li>
             </ul>
           </div>
@@ -389,14 +415,22 @@ export function TyreCheckDiagram({
   onSelectTyre,
   emphasizeSelection = false,
   palette = 'vivid',
-  vehicleUnitTitle = 'Truck · top view',
+  vehicleUnitTitle,
 }: TyreCheckDiagramProps) {
+  const truckTitle = useWorkerChromeText(
+    'tyreChecks.truckTopView',
+    'Truck · top view',
+  )
+  const trailerTitle = useWorkerChromeText(
+    'tyreChecks.trailerTopView',
+    'Trailer · top view',
+  )
   return (
     <div className="space-y-4">
       <TyreCheckLegends palette={palette} />
       <UnitDiagram
         unit="vehicle"
-        title={vehicleUnitTitle}
+        title={vehicleUnitTitle ?? truckTitle}
         measurements={measurements}
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}
@@ -405,7 +439,7 @@ export function TyreCheckDiagram({
       />
       <UnitDiagram
         unit="trailer"
-        title="Trailer · top view"
+        title={trailerTitle}
         measurements={measurements}
         selectedTyreId={selectedTyreId}
         onSelectTyre={onSelectTyre}

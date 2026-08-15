@@ -84,14 +84,15 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { WorkerExitVehicleCheckDialog } from '@/components/worker/WorkerExitVehicleCheckDialog'
 import { useWorkerVehicleCheckExitGuard } from '@/hooks/useWorkerVehicleCheckExitGuard'
 
 type FlowStep = 'setup' | 'checklist' | 'done'
 
-function getVehicleMakeModelLabel(vehicle: Vehicle): string {
+function getVehicleMakeModelLabel(vehicle: Vehicle, fallback: string): string {
   const label = `${vehicle.make} ${vehicle.model}`.trim()
-  return label || 'Make/model not set'
+  return label || fallback
 }
 
 function VehicleSummaryCard({
@@ -103,6 +104,10 @@ function VehicleSummaryCard({
   onClear?: () => void
 }) {
   const isDark = useIsWorkerDarkMode()
+  const { t } = useTranslation('worker')
+  const makeModelFallback = t('vehicleChecks.makeModelNotSet', {
+    defaultValue: 'Make/model not set',
+  })
 
   return (
     <div
@@ -123,7 +128,7 @@ function VehicleSummaryCard({
               !isDark && 'text-[#5499BF]',
             )}
           >
-            Selected vehicle
+            {t('vehicleChecks.selectedVehicle', { defaultValue: 'Selected vehicle' })}
           </p>
           <p
             className={cn(
@@ -138,7 +143,7 @@ function VehicleSummaryCard({
           <button
             type="button"
             onClick={onClear}
-            aria-label="Change vehicle"
+            aria-label={t('vehicleChecks.changeVehicle', { defaultValue: 'Change vehicle' })}
             className={cn(
               'worker-accent-icon-well flex size-8 shrink-0 items-center justify-center rounded-full transition-colors',
               !isDark &&
@@ -155,7 +160,7 @@ function VehicleSummaryCard({
           !isDark && 'text-[#3D7A9C]',
         )}
       >
-        {getVehicleMakeModelLabel(vehicle)}
+        {getVehicleMakeModelLabel(vehicle, makeModelFallback)}
       </p>
       <p
         className={cn(
@@ -163,7 +168,12 @@ function VehicleSummaryCard({
           !isDark && 'text-[#5499BF]',
         )}
       >
-        Type: {vehicle.vehicleType?.trim() || 'Not set on vehicle record'}
+        {t('vehicleChecks.typeLabel', {
+          value: vehicle.vehicleType?.trim() || t('vehicleChecks.typeNotSet', {
+            defaultValue: 'Not set on vehicle record',
+          }),
+          defaultValue: `Type: ${vehicle.vehicleType?.trim() || 'Not set on vehicle record'}`,
+        })}
       </p>
     </div>
   )
@@ -184,6 +194,7 @@ function formatLastSyncAt(value: string | null): string | null {
 
 /** Worker entry point from Vehicles → Start Vehicle Check. */
 export default function WorkerVehicleChecksPage() {
+  const { t } = useTranslation('worker')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { session } = useAuth()
@@ -316,7 +327,9 @@ export default function WorkerVehicleChecksPage() {
       offlineQueue.lastSyncAt !== lastSeenSyncAtRef.current
 
     if (lastSyncChanged && queueIdle) {
-      setSyncSuccessMessage('Vehicle Check synced successfully')
+      setSyncSuccessMessage(
+        t('vehicleChecks.synced', { defaultValue: 'Vehicle Check synced successfully' }),
+      )
     }
 
     lastSeenSyncAtRef.current = offlineQueue.lastSyncAt
@@ -473,7 +486,9 @@ export default function WorkerVehicleChecksPage() {
             loadError.message.trim() &&
             !/^TypeError:/i.test(loadError.message)
             ? loadError.message
-            : 'Unable to load vehicles.',
+            : t('vehicleChecks.loadVehiclesFailed', {
+                defaultValue: 'Unable to load vehicles.',
+              }),
         )
       } finally {
         if (!cancelled) setVehiclesLoading(false)
@@ -605,13 +620,17 @@ export default function WorkerVehicleChecksPage() {
     setError(null)
 
     if (!worker) {
-      setError('Worker profile is required.')
+      setError(t('vehicleChecks.workerRequired', { defaultValue: 'Worker profile is required.' }))
       return
     }
 
     const vehicle = selectedVehicle
     if (!vehicle || !isPoweredVehicleForVehicleCheck(vehicle)) {
-      setError('Search and select a powered vehicle from your company fleet.')
+      setError(
+        t('vehicleChecks.searchSelectVehicle', {
+          defaultValue: 'Search and select a powered vehicle from your company fleet.',
+        }),
+      )
       return
     }
 
@@ -622,7 +641,9 @@ export default function WorkerVehicleChecksPage() {
     }
 
     if (!inspectionDate) {
-      setError('Inspection date is required.')
+      setError(
+        t('vehicleChecks.dateRequired', { defaultValue: 'Inspection date is required.' }),
+      )
       return
     }
 
@@ -671,7 +692,11 @@ export default function WorkerVehicleChecksPage() {
       setStep('checklist')
     } catch (loadError) {
       setError(
-        loadError instanceof Error ? loadError.message : 'Failed to load inspection checklist.',
+        loadError instanceof Error
+          ? loadError.message
+          : t('vehicleChecks.loadChecklistFailed', {
+              defaultValue: 'Failed to load inspection checklist.',
+            }),
       )
     } finally {
       setIsLoadingChecklist(false)
@@ -685,12 +710,16 @@ export default function WorkerVehicleChecksPage() {
     if (submitLockRef.current || isSaving) return
 
     if (!worker) {
-      setError('Worker profile is required.')
+      setError(t('vehicleChecks.workerRequired', { defaultValue: 'Worker profile is required.' }))
       return
     }
 
     if (!vehicleId || !isPoweredVehicleForVehicleCheck(selectedVehicle)) {
-      setError('Please select a powered vehicle.')
+      setError(
+        t('vehicleChecks.selectPoweredVehicle', {
+          defaultValue: 'Please select a powered vehicle.',
+        }),
+      )
       return
     }
 
@@ -702,18 +731,30 @@ export default function WorkerVehicleChecksPage() {
 
     if (!canSubmitVehicleChecklist(checklistStatus, items, checklistSections)) {
       if (checklistStatus !== 'ready' || items.length === 0) {
-        setError(checklistNotice ?? 'Inspection checklist cannot be empty.')
+        setError(
+          checklistNotice ??
+            t('vehicleChecks.checklistEmpty', {
+              defaultValue: 'Inspection checklist cannot be empty.',
+            }),
+        )
         return
       }
 
       setShowChecklistValidation(true)
-      setError('Please answer every checklist item before saving.')
+      setError(
+        t('vehicleChecks.answerEveryItem', {
+          defaultValue: 'Please answer every checklist item before saving.',
+        }),
+      )
       return
     }
 
     if (!isValidInspectionStartedAt(inspectionStartedAt)) {
       setError(
-        'Inspection duration could not be calculated. Return to setup and open the checklist again.',
+        t('vehicleChecks.durationFailed', {
+          defaultValue:
+            'Inspection duration could not be calculated. Return to setup and open the checklist again.',
+        }),
       )
       return
     }
@@ -724,7 +765,11 @@ export default function WorkerVehicleChecksPage() {
     const parsedOdometer = Number.parseInt(odometer.trim(), 10)
     if (Number.isNaN(parsedOdometer) || parsedOdometer < 0) {
       setShowCompletionValidation(true)
-      setError('Please complete mileage before saving.')
+      setError(
+        t('vehicleChecks.mileageRequired', {
+          defaultValue: 'Please complete mileage before saving.',
+        }),
+      )
       return
     }
 
@@ -738,13 +783,21 @@ export default function WorkerVehicleChecksPage() {
 
       if (!canCompleteVehicleCheck({ odometer, signatureFile }) || !signatureFile) {
         setShowCompletionValidation(true)
-        setError('Please complete mileage and signature before saving.')
+        setError(
+          t('vehicleChecks.mileageSignatureRequired', {
+            defaultValue: 'Please complete mileage and signature before saving.',
+          }),
+        )
         return
       }
 
       if (!online) {
         if (!companyId) {
-          setError('Company context is required to save offline.')
+          setError(
+            t('vehicleChecks.companyRequiredOffline', {
+              defaultValue: 'Company context is required to save offline.',
+            }),
+          )
           return
         }
 
@@ -814,7 +867,7 @@ export default function WorkerVehicleChecksPage() {
             ? submitError.message
             : submitError instanceof Error
               ? submitError.message
-              : 'Failed to save inspection.',
+              : t('vehicleChecks.saveFailed', { defaultValue: 'Failed to save inspection.' }),
       )
     } finally {
       submitLockRef.current = false
@@ -854,7 +907,10 @@ export default function WorkerVehicleChecksPage() {
         >
           {offlinePrepareOnly
             ? OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE
-            : gateError || 'Unable to start a Vehicle Check right now.'}
+            : gateError ||
+              t('vehicleChecks.startFailed', {
+                defaultValue: 'Unable to start a Vehicle Check right now.',
+              })}
         </div>
         <Button
           type="button"
@@ -894,15 +950,24 @@ export default function WorkerVehicleChecksPage() {
           <ArrowLeft className="size-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-950">Vehicle Check</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-950">
+            {t('vehicleChecks.title', { defaultValue: 'Vehicle Checks' })}
+          </h1>
           <p className="text-sm text-slate-500">
             {step === 'setup'
-              ? 'Select vehicle and start walkaround'
+              ? t('vehicleChecks.startWalkaround', {
+                  defaultValue: 'Select vehicle and start walkaround',
+                })
               : step === 'checklist'
                 ? selectedVehicle
-                  ? `Checklist for ${selectedVehicle.registration}`
-                  : 'Mark each item as OK, Defect, or N/A'
-                : 'Submitted'}
+                  ? t('vehicleChecks.checklistFor', {
+                      registration: selectedVehicle.registration,
+                      defaultValue: `Checklist for ${selectedVehicle.registration}`,
+                    })
+                  : t('vehicleChecks.markItems', {
+                      defaultValue: 'Mark each item as OK, Defect, or N/A',
+                    })
+                : t('vehicleChecks.submitted', { defaultValue: 'Submitted' })}
           </p>
         </div>
         {offlineQueue.pending > 0 ||
@@ -957,7 +1022,10 @@ export default function WorkerVehicleChecksPage() {
               {offlineQueue.progressLabel ? (
                 <p className="text-xs text-amber-800/90">
                   {offlineQueue.currentItemId
-                    ? `Syncing item ${offlineQueue.currentItemId.slice(0, 8)}… `
+                    ? t('vehicleChecks.syncingItem', {
+                        id: offlineQueue.currentItemId.slice(0, 8),
+                        defaultValue: `Syncing item ${offlineQueue.currentItemId.slice(0, 8)}… `,
+                      })
                     : ''}
                   {offlineQueue.progressLabel}
                   {offlineQueue.progressPercent != null
@@ -1021,7 +1089,9 @@ export default function WorkerVehicleChecksPage() {
       {step === 'setup' ? (
         <aside
           role="note"
-          aria-label="Tachograph driver card reminder"
+          aria-label={t('vehicleChecks.tachoReminderAria', {
+            defaultValue: 'Tachograph driver card reminder',
+          })}
           className="worker-vc-tacho-reminder flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm"
         >
           <span
@@ -1084,9 +1154,13 @@ export default function WorkerVehicleChecksPage() {
                   }
                 }}
                 onClear={clearSelectedVehicle}
-                label="Select vehicle"
-                placeholder="Search registration"
-                inputAriaLabel="Search company vehicles by registration number"
+                label={t('vehicleChecks.selectVehicle', { defaultValue: 'Select vehicle' })}
+                placeholder={t('vehicleChecks.searchRegistration', {
+                  defaultValue: 'Search registration',
+                })}
+                inputAriaLabel={t('vehicleChecks.searchVehiclesAria', {
+                  defaultValue: 'Search company vehicles by registration number',
+                })}
                 showSelectedSummary={false}
                 required
               />
@@ -1155,7 +1229,9 @@ export default function WorkerVehicleChecksPage() {
               className="h-12 w-full rounded-2xl bg-[#2563EB] text-base font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
             >
               {isLoadingChecklist ? <Loader2 className="size-4 animate-spin" /> : null}
-              {isLoadingChecklist ? 'Loading checklist…' : 'Continue'}
+              {isLoadingChecklist
+                ? t('vehicleChecks.loadingChecklist', { defaultValue: 'Loading checklist…' })
+                : t('vehicleChecks.continue', { defaultValue: 'Continue' })}
             </Button>
           </form>
         </section>
@@ -1187,10 +1263,16 @@ export default function WorkerVehicleChecksPage() {
               >
                 <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
                 {startLocationStatus === 'capturing'
-                  ? 'Recording location…'
+                  ? t('vehicleChecks.recordingLocation', {
+                      defaultValue: 'Recording location…',
+                    })
                   : startLocationStatus === 'success'
-                    ? 'Location recorded'
-                    : 'Location unavailable — you can continue'}
+                    ? t('vehicleChecks.locationRecorded', {
+                        defaultValue: 'Location recorded',
+                      })
+                    : t('vehicleChecks.locationUnavailable', {
+                        defaultValue: 'Location unavailable — you can continue',
+                      })}
               </p>
             ) : null}
 
@@ -1209,12 +1291,14 @@ export default function WorkerVehicleChecksPage() {
             />
 
             <label className="worker-vc-label block text-sm font-medium text-slate-700">
-              Overall notes
+              {t('vehicleChecks.notesLabel', { defaultValue: 'Notes' })}
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={2}
-                placeholder="Additional notes about this inspection"
+                placeholder={t('vehicleChecks.notesPlaceholder', {
+                  defaultValue: 'Additional notes about this inspection',
+                })}
                 className="mt-1.5 min-h-[4.5rem] w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100"
               />
             </label>
@@ -1223,7 +1307,9 @@ export default function WorkerVehicleChecksPage() {
               <p className="worker-vc-muted text-sm text-slate-600">
                 Overall result:{' '}
                 <span className="worker-vc-title font-semibold text-[#2A376F]">
-                  {overallResult === 'Advisory' ? 'Defects found' : 'Passed'}
+                  {overallResult === 'Advisory'
+                    ? t('vehicleChecks.defectsFound', { defaultValue: 'Defects found' })
+                    : t('vehicleChecks.passed', { defaultValue: 'Passed' })}
                 </span>
                 {overallResult === 'Advisory' ? (
                   <span className="text-slate-400"> — one or more defects reported</span>
@@ -1267,7 +1353,9 @@ export default function WorkerVehicleChecksPage() {
                 className="worker-vc-btn-complete h-12 rounded-2xl bg-[#2563EB] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
-                {isSaving ? 'Completing Vehicle Check…' : 'Complete'}
+                {isSaving
+                  ? t('vehicleChecks.completing', { defaultValue: 'Completing Vehicle Check…' })
+                  : t('vehicleChecks.complete', { defaultValue: 'Complete' })}
               </Button>
             </div>
           </form>
@@ -1281,18 +1369,31 @@ export default function WorkerVehicleChecksPage() {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-emerald-950">
-              {savedOffline ? 'Vehicle Check saved offline' : 'Vehicle Check submitted'}
+              {savedOffline
+                ? t('vehicleChecks.savedOffline', {
+                    defaultValue: 'Vehicle Check saved offline',
+                  })
+                : t('vehicleChecks.submittedTitle', {
+                    defaultValue: 'Vehicle Check submitted',
+                  })}
             </h2>
             <p className="mt-2 text-sm text-emerald-900/80">
-              {savedOffline
-                ? 'Vehicle Check saved offline. It will sync automatically.'
-                : 'Saved for Admin review.'}
+                {savedOffline
+                ? t('vehicleChecks.savedOfflineBody', {
+                    defaultValue:
+                      'Vehicle Check saved offline. It will sync automatically.',
+                  })
+                : t('vehicleChecks.savedForReview', {
+                    defaultValue: 'Saved for Admin review.',
+                  })}
               {completedResult ? (
                 <>
                   {' '}
                   Result:{' '}
                   <span className="font-bold">
-                    {completedResult === 'Advisory' ? 'Defects found' : 'Passed'}
+                    {completedResult === 'Advisory'
+                      ? t('vehicleChecks.defectsFound', { defaultValue: 'Defects found' })
+                      : t('vehicleChecks.passed', { defaultValue: 'Passed' })}
                   </span>
                 </>
               ) : null}
@@ -1324,6 +1425,11 @@ export default function WorkerVehicleChecksPage() {
         open={exitOpen}
         onContinue={handleContinueCheck}
         onExit={handleExitCheck}
+        title={t('vehicleChecks.exitTitle', { defaultValue: 'Exit Vehicle Check?' })}
+        message={t('vehicleChecks.exitBody', {
+          defaultValue:
+            'Your current Vehicle Check is not completed. If you exit, your unsaved progress will be lost.',
+        })}
       />
     </div>
   )

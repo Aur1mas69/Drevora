@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import type { VehicleCheckOdometerUnit } from '@/lib/vehicleCheckTypes'
 import { VehicleCheckSignaturePad } from '@/components/vehicle-checks/VehicleCheckSignaturePad'
 
@@ -15,11 +16,6 @@ type VehicleCheckCompletionSectionProps = {
   onSignatureChange: (file: File | null) => void
 }
 
-const unitOptions: { value: VehicleCheckOdometerUnit; label: string }[] = [
-  { value: 'miles', label: 'Miles' },
-  { value: 'km', label: 'Km' },
-]
-
 export function VehicleCheckCompletionSection({
   odometer,
   odometerUnit,
@@ -32,6 +28,53 @@ export function VehicleCheckCompletionSection({
   onOdometerUnitChange,
   onSignatureChange,
 }: VehicleCheckCompletionSectionProps) {
+  const completeInspection = useWorkerChromeText(
+    'vehicleChecks.completeInspection',
+    'Complete inspection',
+  )
+  const mileageSignatureHint = useWorkerChromeText(
+    'vehicleChecks.mileageSignatureHint',
+    'Mileage and signature required.',
+  )
+  const durationLabelText = useWorkerChromeText('vehicleChecks.duration', 'Duration')
+  const odometerLabel = useWorkerChromeText('vehicleChecks.odometer', 'Odometer / mileage')
+  const enterReading = useWorkerChromeText(
+    'vehicleChecks.enterReading',
+    'Enter reading in {{unit}}',
+    { unit: odometerUnit },
+  )
+  const milesLabel = useWorkerChromeText('vehicleChecks.miles', 'Miles')
+  const kmLabel = useWorkerChromeText('vehicleChecks.km', 'Km')
+  const lastRecorded = useWorkerChromeText(
+    'vehicleChecks.lastRecorded',
+    'Last recorded: {{value}} {{unit}}',
+    {
+      value: lastRecordedOdometer != null ? lastRecordedOdometer.toLocaleString() : '',
+      unit: odometerUnit,
+    },
+  )
+  const odometerRequired = useWorkerChromeText(
+    'vehicleChecks.odometerRequired',
+    'Odometer / mileage is required.',
+  )
+  const odometerInvalid = useWorkerChromeText(
+    'vehicleChecks.odometerInvalid',
+    'Enter a valid number greater than or equal to 0.',
+  )
+  const workerSignature = useWorkerChromeText(
+    'vehicleChecks.workerSignature',
+    'Worker signature',
+  )
+  const signatureRequired = useWorkerChromeText(
+    'vehicleChecks.signatureRequired',
+    'Worker signature is required.',
+  )
+
+  const unitOptions: { value: VehicleCheckOdometerUnit; label: string }[] = [
+    { value: 'miles', label: milesLabel },
+    { value: 'km', label: kmLabel },
+  ]
+
   const parsedOdometer = odometer.trim() ? Number.parseInt(odometer, 10) : null
   const isOdometerMissing = !odometer.trim()
   const isOdometerInvalid =
@@ -43,14 +86,14 @@ export function VehicleCheckCompletionSection({
     <section className="worker-vc-completion mt-3 rounded-[14px] border border-[#D3E9FC] bg-[#FAFCFF] p-2.5 sm:mt-4 sm:p-3.5">
       <div className="mb-2 flex items-start justify-between gap-3 sm:mb-3">
         <div>
-          <h3 className="worker-vc-title text-sm font-semibold text-[#113C69]">Complete inspection</h3>
+          <h3 className="worker-vc-title text-sm font-semibold text-[#113C69]">{completeInspection}</h3>
           <p className="worker-vc-muted mt-0.5 text-[11px] text-[#5499BF] sm:text-xs">
-            Mileage and signature required.
+            {mileageSignatureHint}
           </p>
         </div>
         {durationLabel ? (
           <p className="worker-vc-muted shrink-0 text-[11px] font-semibold text-[#5499BF]">
-            Duration{' '}
+            {durationLabelText}{' '}
             <span className="worker-vc-title tabular-nums text-[#113C69]">{durationLabel}</span>
           </p>
         ) : null}
@@ -62,7 +105,7 @@ export function VehicleCheckCompletionSection({
             className="worker-vc-label block text-sm font-medium text-slate-700"
             htmlFor="vehicle-check-odometer"
           >
-            Odometer / mileage
+            {odometerLabel}
           </label>
           <div className="mt-1 flex gap-2 sm:mt-1.5">
             <Input
@@ -72,7 +115,7 @@ export function VehicleCheckCompletionSection({
               inputMode="numeric"
               value={odometer}
               onChange={(event) => onOdometerChange(event.target.value)}
-              placeholder={`Enter reading in ${odometerUnit}`}
+              placeholder={enterReading}
               disabled={disabled}
               className="h-11 min-w-0 flex-1 rounded-[12px] border-[rgba(75,120,220,0.12)] bg-white"
               aria-invalid={showValidation && (isOdometerMissing || isOdometerInvalid)}
@@ -98,23 +141,23 @@ export function VehicleCheckCompletionSection({
           </div>
           {lastRecordedOdometer != null ? (
             <p className="worker-vc-muted mt-1 text-[11px] text-[#5499BF]">
-              Last recorded: {lastRecordedOdometer.toLocaleString()} {odometerUnit}
+              {lastRecorded}
             </p>
           ) : null}
           {showValidation && isOdometerMissing ? (
             <p className="mt-1 text-[11px] font-medium text-rose-600">
-              Odometer / mileage is required.
+              {odometerRequired}
             </p>
           ) : null}
           {showValidation && isOdometerInvalid ? (
             <p className="mt-1 text-[11px] font-medium text-rose-600">
-              Enter a valid number greater than or equal to 0.
+              {odometerInvalid}
             </p>
           ) : null}
         </div>
 
         <div>
-          <p className="worker-vc-label text-sm font-medium text-slate-700">Worker signature</p>
+          <p className="worker-vc-label text-sm font-medium text-slate-700">{workerSignature}</p>
           <div className="mt-1 sm:mt-1.5">
             <VehicleCheckSignaturePad
               onChange={onSignatureChange}
@@ -123,7 +166,7 @@ export function VehicleCheckCompletionSection({
           </div>
           {showValidation && isSignatureMissing ? (
             <p className="mt-1 text-[11px] font-medium text-rose-600">
-              Worker signature is required.
+              {signatureRequired}
             </p>
           ) : null}
         </div>

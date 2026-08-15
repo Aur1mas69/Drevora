@@ -29,11 +29,14 @@ import {
   deleteConsumableReceipt,
 } from '@/services/consumableReceiptStorageService'
 import { fetchVehicles, type Vehicle } from '@/services/vehiclesService'
+import { consumableTypeDisplayLabel } from '@/i18n/workerFinalDisplay'
 import { Loader2, Pencil, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export default function WorkerConsumablesPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const { formatDate, formatTime, settings } = useCompanySettings()
   const { companyReady, companyId, companyLoading, membershipError } = useCompanyTenantGate()
@@ -87,7 +90,9 @@ export default function WorkerConsumablesPage() {
       setLoadError(
         error instanceof ConsumablesServiceError
           ? error.message
-          : 'Unable to load your consumables.',
+          : t('consumables.loadOwnFailed', {
+              defaultValue: 'Unable to load your consumables.',
+            }),
       )
     } finally {
       setIsLoading(false)
@@ -126,7 +131,11 @@ export default function WorkerConsumablesPage() {
 
   function openEdit(record: Consumable) {
     if (!worker?.id || record.workerId !== worker.id) {
-      showToast('You can only edit your own consumable entries.')
+      showToast(
+        t('consumables.editOwnOnly', {
+          defaultValue: 'You can only edit your own consumable entries.',
+        }),
+      )
       return
     }
     setFormMode('edit')
@@ -136,7 +145,11 @@ export default function WorkerConsumablesPage() {
 
   async function handleFormSubmit(payload: ConsumableFormSubmitPayload) {
     if (!worker?.id) {
-      throw new ConsumablesServiceError('Unable to identify your worker profile.')
+      throw new ConsumablesServiceError(
+        t('consumables.profileUnidentified', {
+          defaultValue: 'Unable to identify your worker profile.',
+        }),
+      )
     }
 
     setIsSaving(true)
@@ -166,10 +179,14 @@ export default function WorkerConsumablesPage() {
           await updateConsumable(created.id, { receiptUrl: receiptPath })
         }
 
-        showToast('Consumable entry saved')
+        showToast(t('consumables.entrySaved', { defaultValue: 'Consumable entry saved' }))
       } else if (editRecord) {
         if (editRecord.workerId !== worker.id) {
-          throw new ConsumablesServiceError('You can only edit your own consumable entries.')
+          throw new ConsumablesServiceError(
+            t('consumables.editOwnOnly', {
+              defaultValue: 'You can only edit your own consumable entries.',
+            }),
+          )
         }
 
         await updateConsumable(editRecord.id, { ...input, workerId: worker.id })
@@ -194,7 +211,9 @@ export default function WorkerConsumablesPage() {
           await updateConsumable(editRecord.id, { receiptUrl: receiptPath })
         }
 
-        showToast('Consumable entry updated')
+        showToast(
+          t('consumables.entryUpdated', { defaultValue: 'Consumable entry updated' }),
+        )
       }
 
       await loadData()
@@ -205,7 +224,11 @@ export default function WorkerConsumablesPage() {
       ) {
         throw error
       }
-      throw new ConsumablesServiceError('Failed to save consumable entry.')
+      throw new ConsumablesServiceError(
+        t('consumables.saveEntryFailed', {
+          defaultValue: 'Failed to save consumable entry.',
+        }),
+      )
     } finally {
       setIsSaving(false)
     }
@@ -223,7 +246,10 @@ export default function WorkerConsumablesPage() {
     return (
       <div className="px-4 py-8">
         <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          {workerError || 'Worker profile required to add consumables.'}
+          {workerError ||
+            t('consumables.profileRequiredAdd', {
+              defaultValue: 'Worker profile required to add consumables.',
+            })}
         </p>
       </div>
     )
@@ -234,10 +260,12 @@ export default function WorkerConsumablesPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-[-0.03em] text-[color:var(--worker-text)]">
-            Consumables
+            {t('consumables.title', { defaultValue: 'Consumables' })}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-muted)]">
-            Log fuel and fluids with the real pump price from your receipt.
+            {t('consumables.logHint', {
+              defaultValue: 'Log fuel and fluids with the real pump price from your receipt.',
+            })}
           </p>
         </div>
         <Button
@@ -246,7 +274,7 @@ export default function WorkerConsumablesPage() {
           className="h-10 shrink-0 rounded-2xl bg-[color:var(--worker-accent)] px-3 text-sm font-semibold text-white"
         >
           <Plus className="mr-1 size-4" />
-          Add
+          {t('consumables.add', { defaultValue: 'Add Consumable' })}
         </Button>
       </div>
 
@@ -263,17 +291,19 @@ export default function WorkerConsumablesPage() {
       ) : items.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] px-4 py-8 text-center">
           <p className="text-sm font-semibold text-[color:var(--worker-text)]">
-            No consumable entries yet
+            {t('consumables.empty', { defaultValue: 'No consumable records yet.' })}
           </p>
           <p className="mt-1 text-sm text-[color:var(--worker-text-muted)]">
-            Add Diesel, AdBlue or other fluids with quantity and unit price.
+            {t('consumables.emptyHint', {
+              defaultValue: 'Add Diesel, AdBlue or other fluids with quantity and unit price.',
+            })}
           </p>
           <Button
             type="button"
             onClick={openCreate}
             className="mt-4 h-10 rounded-2xl bg-[color:var(--worker-accent)] px-4 text-sm font-semibold text-white"
           >
-            Add entry
+            {t('consumables.addEntry', { defaultValue: 'Add entry' })}
           </Button>
         </div>
       ) : (
@@ -291,7 +321,7 @@ export default function WorkerConsumablesPage() {
                       !isDark && getConsumableTypeBadgeClass(item.consumableType),
                     )}
                   >
-                    {item.consumableType}
+                    {consumableTypeDisplayLabel(item.consumableType, t)}
                   </span>
                   <p
                     className={cn(
@@ -307,7 +337,8 @@ export default function WorkerConsumablesPage() {
                       !isDark && 'text-[color:var(--worker-text-muted)]',
                     )}
                   >
-                    {item.vehicleLabel ?? 'No vehicle'}
+                    {item.vehicleLabel ??
+                      t('consumables.noVehicle', { defaultValue: 'No vehicle' })}
                   </p>
                 </div>
                 <button
@@ -318,7 +349,7 @@ export default function WorkerConsumablesPage() {
                     !isDark &&
                       'text-[color:var(--worker-text-muted)] hover:bg-[color:var(--worker-input)] hover:text-[color:var(--worker-text)]',
                   )}
-                  aria-label="Edit consumable"
+                  aria-label={t('consumables.editAria', { defaultValue: 'Edit consumable' })}
                 >
                   <Pencil className="size-4" />
                 </button>

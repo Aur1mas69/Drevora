@@ -23,7 +23,6 @@ import {
   treadDepthToStatus,
   truckAxleOptions,
   tyreStatusClasses,
-  tyreStatusLabel,
   validateTyreAxleCounts,
   type AxleWheelLayout,
   type TyreMeasurement,
@@ -50,6 +49,13 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import {
+  tyreAxleDisplayLabel,
+  tyreOverallResultDisplayLabel,
+  tyrePositionDisplayLabel,
+  tyreStatusDisplayLabel,
+} from '@/i18n/workerFinalDisplay'
 
 type FlowStep = 'setup' | 'inspect' | 'review' | 'done'
 
@@ -102,6 +108,7 @@ function formatDuration(seconds: number | null, startedAt: string): string {
 }
 
 export default function WorkerTyreCheckPage() {
+  const { t } = useTranslation('worker')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { worker, isLoading: workerLoading, error: workerError } = useCurrentWorker()
@@ -205,7 +212,9 @@ export default function WorkerTyreCheckPage() {
       } catch (loadError) {
         if (cancelled) return
         setVehiclesError(
-          loadError instanceof Error ? loadError.message : 'Unable to load vehicles.',
+          loadError instanceof Error
+            ? loadError.message
+            : t('tyreChecks.loadVehiclesFailed', { defaultValue: 'Unable to load vehicles.' }),
         )
       } finally {
         if (!cancelled) setVehiclesLoading(false)
@@ -327,11 +336,11 @@ export default function WorkerTyreCheckPage() {
 
   async function handleStart() {
     if (!worker) {
-      setError('Worker profile is required.')
+      setError(t('tyreChecks.workerRequired', { defaultValue: 'Worker profile is required.' }))
       return
     }
     if (!vehicleId) {
-      setError('Select a vehicle to continue.')
+      setError(t('tyreChecks.selectToContinue', { defaultValue: 'Select a vehicle to continue.' }))
       return
     }
 
@@ -346,14 +355,18 @@ export default function WorkerTyreCheckPage() {
 
     const odometerValue = Number.parseInt(odometer, 10)
     if (!Number.isFinite(odometerValue) || odometerValue < 0) {
-      setError('Enter a valid odometer reading.')
+      setError(t('tyreChecks.odometerInvalid', { defaultValue: 'Enter a valid odometer reading.' }))
       return
     }
 
     if (hasTrailer) {
       const trailer = trailerVehicles.find((vehicle) => vehicle.id === trailerId)
       if (!trailer?.trailerNumber?.trim()) {
-        setError('Selected trailer needs a trailer number before inspection.')
+        setError(
+          t('tyreChecks.trailerNumberRequired', {
+            defaultValue: 'Selected trailer needs a trailer number before inspection.',
+          }),
+        )
         return
       }
     }
@@ -397,7 +410,7 @@ export default function WorkerTyreCheckPage() {
           ? startError.message
           : startError instanceof Error
             ? startError.message
-            : 'Unable to start tyre check.',
+            : t('tyreChecks.startFailed', { defaultValue: 'Unable to start tyre check.' }),
       )
     } finally {
       setBusy(false)
@@ -406,7 +419,7 @@ export default function WorkerTyreCheckPage() {
 
   async function saveCurrentTyre(options?: { advance?: boolean; goToReview?: boolean }) {
     if (!draft || !currentTyre?.dbItemId) {
-      setError('Tyre check is not ready.')
+      setError(t('tyreChecks.notReady', { defaultValue: 'Tyre check is not ready.' }))
       return false
     }
 
@@ -416,7 +429,11 @@ export default function WorkerTyreCheckPage() {
       return false
     }
     if (parsed.value == null) {
-      setError('Enter tread depth before saving this tyre.')
+      setError(
+        t('tyreChecks.treadRequired', {
+          defaultValue: 'Enter tread depth before saving this tyre.',
+        }),
+      )
       return false
     }
     const parsedPressure = parseTyrePressureValue(pressureInput)
@@ -425,7 +442,11 @@ export default function WorkerTyreCheckPage() {
       return false
     }
     if (hasDefect && !defectNotes.trim()) {
-      setError('Defect notes are required when Defect is selected.')
+      setError(
+        t('tyreChecks.defectNotesRequired', {
+          defaultValue: 'Defect notes are required when Defect is selected.',
+        }),
+      )
       return false
     }
 
@@ -454,7 +475,9 @@ export default function WorkerTyreCheckPage() {
           ? saveError.message
           : saveError instanceof Error
             ? saveError.message
-            : 'Unable to save tyre reading.',
+            : t('tyreChecks.saveReadingFailed', {
+                defaultValue: 'Unable to save tyre reading.',
+              }),
       )
       return false
     } finally {
@@ -466,14 +489,23 @@ export default function WorkerTyreCheckPage() {
     if (!draft || submitLockRef.current) return
     const unchecked = draft.items.filter((item) => item.treadDepthMm == null)
     if (unchecked.length > 0) {
-      setError(`Submit blocked: ${unchecked.length} tyre(s) still unchecked.`)
+      setError(
+        t('tyreChecks.submitBlocked', {
+          count: unchecked.length,
+          defaultValue: 'Submit blocked: {{count}} tyre(s) still unchecked.',
+        }),
+      )
       return
     }
     const missingDefectNotes = draft.items.filter(
       (item) => item.hasDefect && !item.defectNotes?.trim(),
     )
     if (missingDefectNotes.length > 0) {
-      setError('Add defect notes for every Defect tyre before submit.')
+      setError(
+        t('tyreChecks.defectNotesBeforeSubmit', {
+          defaultValue: 'Add defect notes for every Defect tyre before submit.',
+        }),
+      )
       return
     }
 
@@ -490,7 +522,7 @@ export default function WorkerTyreCheckPage() {
           ? submitError.message
           : submitError instanceof Error
             ? submitError.message
-            : 'Unable to submit tyre check.',
+            : t('tyreChecks.submitFailed', { defaultValue: 'Unable to submit tyre check.' }),
       )
       submitLockRef.current = false
     } finally {
@@ -527,7 +559,7 @@ export default function WorkerTyreCheckPage() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
         <Loader2 className="mr-2 size-4 animate-spin" />
-        Loading tyre check…
+        {t('tyreChecks.loading', { defaultValue: 'Loading tyre check' })}
       </div>
     )
   }
@@ -537,7 +569,7 @@ export default function WorkerTyreCheckPage() {
       <div className="space-y-3 rounded-[1.5rem] border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
         <p>{membershipError || workerError || vehiclesError}</p>
         <Link to="/worker/vehicles" className="font-semibold text-[#2F80ED]">
-          Back to Vehicles
+          {t('tyreChecks.backToVehicles', { defaultValue: 'Back to Vehicles' })}
         </Link>
       </div>
     )
@@ -568,20 +600,30 @@ export default function WorkerTyreCheckPage() {
             navigate('/worker/vehicles')
           }}
           className="flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
-          aria-label="Back"
+          aria-label={t('tyreChecks.back', { defaultValue: 'Back' })}
         >
           <ArrowLeft className="size-5" />
         </button>
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-950">Tyre Check</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-950">
+            {t('tyreChecks.title', { defaultValue: 'Tyre Checks' })}
+          </h1>
           <p className="text-sm text-slate-500">
             {step === 'setup'
-              ? 'Select vehicle and start inspection'
+              ? t('tyreChecks.setupSubtitle', {
+                  defaultValue: 'Select vehicle and start inspection',
+                })
               : step === 'inspect'
-                ? `Tyre ${tyreIndex + 1} of ${draft?.items.length ?? 0}`
+                ? t('tyreChecks.tyreOf', {
+                    current: tyreIndex + 1,
+                    total: draft?.items.length ?? 0,
+                    defaultValue: 'Tyre {{current}} of {{total}}',
+                  })
                 : step === 'review'
-                  ? 'Review before submit'
-                  : 'Submitted'}
+                  ? t('tyreChecks.reviewBeforeSubmit', {
+                      defaultValue: 'Review before submit',
+                    })
+                  : t('tyreChecks.submitted', { defaultValue: 'Submitted' })}
           </p>
         </div>
       </div>
@@ -599,7 +641,7 @@ export default function WorkerTyreCheckPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Selected vehicle
+                    {t('tyreChecks.selectedVehicle', { defaultValue: 'Selected vehicle' })}
                   </p>
                   <p className="mt-1 text-base font-semibold text-slate-950">
                     {vehicleLabel(setupSelectedVehicle)}
@@ -623,7 +665,10 @@ export default function WorkerTyreCheckPage() {
                       document.getElementById('worker-tyre-check-vehicle')?.focus()
                     }, 0)
                   }}
-                  aria-label={`Remove selected vehicle ${vehicleLabel(setupSelectedVehicle)}`}
+                  aria-label={t('tyreChecks.removeSelectedVehicle', {
+                    name: vehicleLabel(setupSelectedVehicle),
+                    defaultValue: 'Remove selected vehicle {{name}}',
+                  })}
                   className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
                 >
                   <X className="size-4" aria-hidden="true" />
@@ -632,8 +677,10 @@ export default function WorkerTyreCheckPage() {
             </div>
           ) : (
             <p className="text-sm text-slate-500">
-              Search and select an active company vehicle to continue. A saved
-              default is optional.
+              {t('tyreChecks.setupSearchHint', {
+                defaultValue:
+                  'Search and select an active company vehicle to continue. A saved default is optional.',
+              })}
             </p>
           )}
 
@@ -649,9 +696,13 @@ export default function WorkerTyreCheckPage() {
               setVehicleId('')
               setError(null)
             }}
-            label="Search registration"
-            placeholder="Enter registration number"
-            inputAriaLabel="Search company vehicles by registration number"
+            label={t('tyreChecks.searchRegistration', { defaultValue: 'Search registration' })}
+            placeholder={t('tyreChecks.searchPlaceholder', {
+              defaultValue: 'Enter registration number',
+            })}
+            inputAriaLabel={t('tyreChecks.searchVehiclesAria', {
+              defaultValue: 'Search company vehicles by registration number',
+            })}
             required
             showAllWhenEmpty
             showSelectedSummary={false}
@@ -659,14 +710,16 @@ export default function WorkerTyreCheckPage() {
 
           <label className="block space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Trailer (optional)
+              {t('tyreChecks.trailerOptional', { defaultValue: 'Trailer (optional)' })}
             </span>
             <select
               value={trailerId}
               onChange={(event) => handleTrailerChange(event.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900"
             >
-              <option value="">No trailer</option>
+              <option value="">
+                {t('tyreChecks.noTrailer', { defaultValue: 'No trailer' })}
+              </option>
               {trailerVehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicleLabel(vehicle)}
@@ -675,14 +728,16 @@ export default function WorkerTyreCheckPage() {
               ))}
             </select>
             <p className="text-xs text-slate-500">
-              Only trailers with a trailer number can be selected.
+              {t('tyreChecks.trailerNumberHint', {
+                defaultValue: 'Only trailers with a trailer number can be selected.',
+              })}
             </p>
           </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                Truck axles
+                {t('tyreChecks.truckAxles', { defaultValue: 'Truck axles' })}
               </span>
               <select
                 value={truckAxleCount}
@@ -720,7 +775,7 @@ export default function WorkerTyreCheckPage() {
             {hasTrailer ? (
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Trailer axles
+                  {t('tyreChecks.trailerAxles', { defaultValue: 'Trailer axles' })}
                 </span>
                 <select
                   value={trailerAxleCount ?? DEFAULT_TRAILER_AXLE_COUNT}
@@ -743,7 +798,11 @@ export default function WorkerTyreCheckPage() {
             ) : (
               <div className="flex items-end">
                 <p className="rounded-2xl border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-3 text-xs font-semibold text-[#0B68BE]">
-                  Total axles {combinedAxles} / {MAX_COMBINED_TYRE_AXLES}
+                  {t('tyreChecks.totalAxles', {
+                    current: combinedAxles,
+                    max: MAX_COMBINED_TYRE_AXLES,
+                    defaultValue: 'Total axles {{current}} / {{max}}',
+                  })}
                 </p>
               </div>
             )}
@@ -751,16 +810,20 @@ export default function WorkerTyreCheckPage() {
 
           {hasTrailer ? (
             <p className="text-xs font-semibold text-[#0B68BE]">
-              Total axles {combinedAxles} / {MAX_COMBINED_TYRE_AXLES}
+              {t('tyreChecks.totalAxles', {
+                current: combinedAxles,
+                max: MAX_COMBINED_TYRE_AXLES,
+                defaultValue: 'Total axles {{current}} / {{max}}',
+              })}
             </p>
           ) : null}
 
           <div className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Truck axle layout
+              {t('tyreChecks.truckAxleLayout', { defaultValue: 'Truck axle layout' })}
             </span>
             <AxleLayoutEditor
-              unitLabel="Truck"
+              unitLabel={t('tyreChecks.truck', { defaultValue: 'Truck' })}
               axleLayouts={truckAxleLayouts}
               onChange={setTruckAxleLayouts}
               compact
@@ -770,10 +833,10 @@ export default function WorkerTyreCheckPage() {
           {hasTrailer ? (
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                Trailer axle layout
+                {t('tyreChecks.trailerAxleLayout', { defaultValue: 'Trailer axle layout' })}
               </span>
               <AxleLayoutEditor
-                unitLabel="Trailer"
+                unitLabel={t('tyreChecks.trailer', { defaultValue: 'Trailer' })}
                 axleLayouts={trailerAxleLayouts}
                 onChange={setTrailerAxleLayouts}
                 compact
@@ -784,7 +847,7 @@ export default function WorkerTyreCheckPage() {
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                Odometer
+                {t('tyreChecks.odometer', { defaultValue: 'Odometer' })}
               </span>
               <Input
                 type="number"
@@ -794,12 +857,14 @@ export default function WorkerTyreCheckPage() {
                 value={odometer}
                 onChange={(event) => setOdometer(event.target.value)}
                 className="h-12 rounded-2xl"
-                placeholder="e.g. 124850"
+                placeholder={t('tyreChecks.odometerPlaceholder', {
+                  defaultValue: 'e.g. 124850',
+                })}
               />
             </label>
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                Unit
+                {t('tyreChecks.unit', { defaultValue: 'Unit' })}
               </span>
               <select
                 value={odometerUnit}
@@ -808,8 +873,10 @@ export default function WorkerTyreCheckPage() {
                 }
                 className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold"
               >
-                <option value="miles">miles</option>
-                <option value="km">km</option>
+                <option value="miles">
+                  {t('tyreChecks.miles', { defaultValue: 'miles' })}
+                </option>
+                <option value="km">{t('tyreChecks.km', { defaultValue: 'km' })}</option>
               </select>
             </label>
           </div>
@@ -821,7 +888,7 @@ export default function WorkerTyreCheckPage() {
             onClick={() => void handleStart()}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            Start inspection
+            {t('tyreChecks.startInspection', { defaultValue: 'Start inspection' })}
           </Button>
         </section>
       ) : null}
@@ -830,10 +897,16 @@ export default function WorkerTyreCheckPage() {
         <section className="space-y-4">
           <div className="rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-3 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-              Progress
+              {t('tyreChecks.progress', { defaultValue: 'Progress' })}
             </p>
             <p className="mt-1 text-sm font-semibold text-[color:var(--worker-text)]">
-              Tyre {tyreIndex + 1} of {draft.items.length} · {currentTyre.axleLabel}
+              {t('tyreChecks.tyreOf', {
+                current: tyreIndex + 1,
+                total: draft.items.length,
+                defaultValue: 'Tyre {{current}} of {{total}}',
+              })}{' '}
+              ·{' '}
+              {tyreAxleDisplayLabel(currentTyre.unit, currentTyre.axleNumber, t)}
             </p>
             <div className="mt-3 overflow-x-auto pb-2">
               <div className="min-w-[18rem] px-1.5 py-2">
@@ -856,21 +929,25 @@ export default function WorkerTyreCheckPage() {
           <div className="space-y-3 rounded-[1.5rem] border border-[color:var(--worker-border)] bg-[color:var(--worker-card)] p-4 shadow-sm">
             <div>
               <p className="text-lg font-semibold text-[color:var(--worker-text)]">
-                {currentTyre.axleLabel} · {currentTyre.position}
+                {tyreAxleDisplayLabel(currentTyre.unit, currentTyre.axleNumber, t)} ·{' '}
+                {tyrePositionDisplayLabel(currentTyre.position, t)}
               </p>
               <p className="mt-1 text-xs text-[color:var(--worker-text-secondary)]">
-                Thresholds: Good ≥ 6.0 mm · Attention 4.0–5.9 mm · Critical &lt; 4.0 mm
+                {t('tyreChecks.thresholds', {
+                  defaultValue:
+                    'Thresholds: Good ≥ 6.0 mm · Attention 4.0–5.9 mm · Critical < 4.0 mm',
+                })}
               </p>
             </div>
 
             <div className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                Pressure unit
+                {t('tyreChecks.pressureUnit', { defaultValue: 'Pressure unit' })}
               </span>
               <div
                 className="grid grid-cols-2 gap-2"
                 role="group"
-                aria-label="Pressure unit"
+                aria-label={t('tyreChecks.pressureUnit', { defaultValue: 'Pressure unit' })}
               >
                 {(['bar', 'psi'] as const).map((unit) => {
                   const selected = draft.pressureUnit === unit
@@ -899,7 +976,9 @@ export default function WorkerTyreCheckPage() {
                                 ? unitError.message
                                 : unitError instanceof Error
                                   ? unitError.message
-                                  : 'Unable to update pressure unit.',
+                                  : t('tyreChecks.pressureUnitFailed', {
+                                      defaultValue: 'Unable to update pressure unit.',
+                                    }),
                             )
                           } finally {
                             setBusy(false)
@@ -919,13 +998,16 @@ export default function WorkerTyreCheckPage() {
                 })}
               </div>
               <p className="text-xs text-[color:var(--worker-text-muted)]">
-                One unit for the whole Tyre Check. Pressure is optional.
+                {t('tyreChecks.pressureUnitHint', {
+                  defaultValue:
+                    'One unit for the whole Tyre Check. Pressure is optional.',
+                })}
               </p>
             </div>
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                Tread depth (mm)
+                {t('tyreChecks.treadDepthMm', { defaultValue: 'Tread depth (mm)' })}
               </span>
               <Input
                 type="number"
@@ -936,13 +1018,16 @@ export default function WorkerTyreCheckPage() {
                 value={depthInput}
                 onChange={(event) => setDepthInput(event.target.value)}
                 className="h-14 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-lg font-bold text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
-                placeholder="e.g. 7.5"
+                placeholder={t('tyreChecks.treadPlaceholder', { defaultValue: 'e.g. 7.5' })}
               />
             </label>
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                Pressure (optional, {draft.pressureUnit})
+                {t('tyreChecks.pressureOptionalLabel', {
+                  unit: draft.pressureUnit,
+                  defaultValue: 'Pressure (optional, {{unit}})',
+                })}
               </span>
               <Input
                 type="number"
@@ -953,7 +1038,9 @@ export default function WorkerTyreCheckPage() {
                 value={pressureInput}
                 onChange={(event) => setPressureInput(event.target.value)}
                 className="h-14 rounded-2xl border-[color:var(--worker-border)] bg-[color:var(--worker-input)] text-lg font-bold text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
-                placeholder="Leave blank if not recorded"
+                placeholder={t('tyreChecks.pressureOptional', {
+                  defaultValue: 'Leave blank if not recorded',
+                })}
               />
             </label>
 
@@ -969,7 +1056,7 @@ export default function WorkerTyreCheckPage() {
                 )}
                 aria-pressed={isDirty}
               >
-                Dirty / mud
+                {t('tyreChecks.dirtyMud', { defaultValue: 'Dirty / mud' })}
               </button>
               <button
                 type="button"
@@ -982,40 +1069,49 @@ export default function WorkerTyreCheckPage() {
                 )}
                 aria-pressed={hasDefect}
               >
-                Defect
+                {t('tyreChecks.defect', { defaultValue: 'Defect' })}
               </button>
             </div>
 
             {hasDefect ? (
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                  Defect notes (required)
+                  {t('tyreChecks.defectNotesLabel', {
+                    defaultValue: 'Defect notes (required)',
+                  })}
                 </span>
                 <textarea
                   value={defectNotes}
                   onChange={(event) => setDefectNotes(event.target.value)}
                   rows={3}
                   className="w-full rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-3 py-2 text-sm text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
-                  placeholder="Describe the defect…"
+                  placeholder={t('tyreChecks.describeDefect', {
+                    defaultValue: 'Describe the defect…',
+                  })}
                 />
               </label>
             ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                Notes (optional)
+                {t('tyreChecks.notesOptional', { defaultValue: 'Notes (optional)' })}
               </span>
               <textarea
                 value={itemNotes}
                 onChange={(event) => setItemNotes(event.target.value)}
                 rows={2}
                 className="w-full rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] px-3 py-2 text-sm text-[color:var(--worker-text)] placeholder:text-[color:var(--worker-text-muted)]"
-                placeholder="Optional tyre notes"
+                placeholder={t('tyreChecks.optionalTyreNotes', {
+                  defaultValue: 'Optional tyre notes',
+                })}
               />
             </label>
 
             <p className="text-xs text-[color:var(--worker-text-muted)]">
-              Photos are not available yet for Tyre Checks (storage bucket pending).
+              {t('tyreChecks.photosPending', {
+                defaultValue:
+                  'Photos are not available yet for Tyre Checks (storage bucket pending).',
+              })}
             </p>
 
             <div className="grid grid-cols-3 gap-2">
@@ -1027,7 +1123,7 @@ export default function WorkerTyreCheckPage() {
                 onClick={() => setTyreIndex((index) => Math.max(0, index - 1))}
               >
                 <ChevronLeft className="size-4" />
-                Prev
+                {t('tyreChecks.prev', { defaultValue: 'Prev' })}
               </Button>
               <Button
                 type="button"
@@ -1042,7 +1138,9 @@ export default function WorkerTyreCheckPage() {
                 }}
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                {tyreIndex >= draft.items.length - 1 ? 'Save' : 'Save & Next'}
+                {tyreIndex >= draft.items.length - 1
+                  ? t('tyreChecks.save', { defaultValue: 'Save' })
+                  : t('tyreChecks.saveAndNext', { defaultValue: 'Save & Next' })}
                 {tyreIndex < draft.items.length - 1 ? (
                   <ChevronRight className="size-4" />
                 ) : null}
@@ -1054,7 +1152,7 @@ export default function WorkerTyreCheckPage() {
                 disabled={busy}
                 onClick={() => void saveCurrentTyre({ goToReview: true })}
               >
-                Review
+                {t('tyreChecks.review', { defaultValue: 'Review' })}
               </Button>
             </div>
           </div>
@@ -1064,40 +1162,56 @@ export default function WorkerTyreCheckPage() {
       {step === 'review' && draft ? (
         <section className="space-y-4">
           <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-950">Review summary</h2>
+            <h2 className="text-lg font-semibold text-slate-950">
+              {t('tyreChecks.reviewSummary', { defaultValue: 'Review summary' })}
+            </h2>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Vehicle</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.vehicle', { defaultValue: 'Vehicle' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
                   {selectedVehicle ? vehicleLabel(selectedVehicle) : draft.vehicleId}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Trailer</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.trailer', { defaultValue: 'Trailer' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
-                  {selectedTrailer ? vehicleLabel(selectedTrailer) : 'None'}
+                  {selectedTrailer
+                    ? vehicleLabel(selectedTrailer)
+                    : t('tyreChecks.none', { defaultValue: 'None' })}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Worker</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.worker', { defaultValue: 'Worker' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
                   {worker.firstName} {worker.lastName}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Started</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.started', { defaultValue: 'Started' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
                   {formatStartedAt(draft.inspectionStartedAt)}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Duration</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.duration', { defaultValue: 'Duration' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
                   {formatDuration(draft.durationSeconds, draft.inspectionStartedAt)}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Odometer</dt>
+                <dt className="text-slate-500">
+                  {t('tyreChecks.odometer', { defaultValue: 'Odometer' })}
+                </dt>
                 <dd className="font-semibold text-slate-900">
                   {draft.odometer} {draft.odometerUnit}
                 </dd>
@@ -1107,12 +1221,12 @@ export default function WorkerTyreCheckPage() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               {(
                 [
-                  ['Good', draft.goodCount, 'good'],
-                  ['Attention', draft.attentionCount, 'attention'],
-                  ['Critical', draft.criticalCount, 'critical'],
-                  ['Dirty', draft.dirtyCount, 'dirty'],
-                  ['Defect', draft.defectCount, 'critical'],
-                  ['Not checked', draft.notCheckedCount, 'not_checked'],
+                  [t('tyreChecks.good', { defaultValue: 'Good' }), draft.goodCount, 'good'],
+                  [t('tyreChecks.attention', { defaultValue: 'Attention' }), draft.attentionCount, 'attention'],
+                  [t('tyreChecks.critical', { defaultValue: 'Critical' }), draft.criticalCount, 'critical'],
+                  [t('tyreChecks.dirty', { defaultValue: 'Dirty' }), draft.dirtyCount, 'dirty'],
+                  [t('tyreChecks.defect', { defaultValue: 'Defect' }), draft.defectCount, 'critical'],
+                  [t('tyreChecks.notChecked', { defaultValue: 'Not Checked' }), draft.notCheckedCount, 'not_checked'],
                 ] as const
               ).map(([label, value, tone]) => {
                 const colours = tyreStatusClasses(tone)
@@ -1134,7 +1248,9 @@ export default function WorkerTyreCheckPage() {
           {draft.notCheckedCount > 0 ? (
             <div className="flex items-start gap-2 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Submit is blocked until every tyre has a tread depth.
+              {t('tyreChecks.submitBlockedAll', {
+                defaultValue: 'Submit is blocked until every tyre has a tread depth.',
+              })}
             </div>
           ) : null}
 
@@ -1146,7 +1262,7 @@ export default function WorkerTyreCheckPage() {
               disabled={busy}
               onClick={() => setStep('inspect')}
             >
-              Back to tyres
+              {t('tyreChecks.backToTyres', { defaultValue: 'Back to tyres' })}
             </Button>
             <Button
               type="button"
@@ -1155,7 +1271,7 @@ export default function WorkerTyreCheckPage() {
               onClick={() => void handleSubmit()}
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              Submit Tyre Check
+              {t('tyreChecks.submitCheck', { defaultValue: 'Submit Tyre Check' })}
             </Button>
           </div>
         </section>
@@ -1167,14 +1283,23 @@ export default function WorkerTyreCheckPage() {
             <CheckCircle2 className="size-7" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-emerald-950">Tyre Check submitted</h2>
+            <h2 className="text-xl font-semibold text-emerald-950">
+              {t('tyreChecks.submitted', { defaultValue: 'Tyre check submitted' })}
+            </h2>
             <p className="mt-2 text-sm text-emerald-900/80">
-              Saved to Supabase for Admin review. Result:{' '}
-              <span className="font-bold">{draft.overallResult}</span>
+              {t('tyreChecks.savedForReview', {
+                defaultValue: 'Saved to Supabase for Admin review. Result:',
+              })}{' '}
+              <span className="font-bold">
+                {tyreOverallResultDisplayLabel(draft.overallResult, t)}
+              </span>
             </p>
             {draft.durationSeconds != null ? (
               <p className="mt-1 text-sm text-emerald-900/80">
-                Duration {formatDuration(draft.durationSeconds, draft.inspectionStartedAt)}
+                {t('tyreChecks.durationLabel', {
+                  value: formatDuration(draft.durationSeconds, draft.inspectionStartedAt),
+                  defaultValue: 'Duration {{value}}',
+                })}
               </p>
             ) : null}
           </div>
@@ -1188,7 +1313,7 @@ export default function WorkerTyreCheckPage() {
                     tyreStatusClasses(status).badge,
                   )}
                 >
-                  {tyreStatusLabel(status)}
+                  {tyreStatusDisplayLabel(status, t)}
                 </span>
               ),
             )}
@@ -1198,15 +1323,18 @@ export default function WorkerTyreCheckPage() {
             className="h-12 w-full rounded-2xl bg-[#2563EB] font-semibold text-white"
             onClick={() => navigate('/worker/vehicles')}
           >
-            Back to Vehicles
+            {t('tyreChecks.backToVehicles', { defaultValue: 'Back to Vehicles' })}
           </Button>
         </section>
       ) : null}
 
       <WorkerExitVehicleCheckDialog
         open={exitOpen}
-        title="Exit Tyre Check?"
-        message="Your Tyre Check is not completed. If you exit, your unsaved progress will be lost."
+        title={t('tyreChecks.exitTitle', { defaultValue: 'Exit Tyre Check?' })}
+        message={t('tyreChecks.exitBody', {
+          defaultValue:
+            'Your Tyre Check is not completed. If you exit, your unsaved progress will be lost.',
+        })}
         onContinue={handleContinueCheck}
         onExit={handleExitCheck}
       />

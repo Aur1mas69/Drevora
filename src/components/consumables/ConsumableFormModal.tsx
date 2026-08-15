@@ -20,17 +20,22 @@ import {
   deriveUnitPriceFromTotal,
   formatCalculatedCost,
   formatUnitPriceInput,
-  formatUnitPriceLabel,
   resolveDefaultUnitPrice,
   type ConsumableDefaultPricesMap,
 } from '@/lib/consumableDefaultPrices'
 import { formatConsumableCost } from '@/lib/consumableUtils'
 import { validateConsumableReceiptFile } from '@/lib/consumableReceiptStorage'
 import { DEFAULT_CURRENCY } from '@/lib/companySettingsTypes'
+import { consumableTypeDisplayLabel } from '@/i18n/workerFinalDisplay'
+import {
+  WorkerLocaleContext,
+  useWorkerChromeText,
+} from '@/i18n/workerLocaleContext'
+import type { TFunction } from 'i18next'
 import type { Driver } from '@/services/driversService'
 import type { Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 
 type ConsumableFormModalProps = {
   isOpen: boolean
@@ -53,6 +58,26 @@ const fieldClassName =
 
 const textareaClassName =
   'mt-1.5 min-h-[88px] w-full rounded-[12px] border border-[#D3E9FC] bg-[#F8FBFF] px-3 py-2 text-sm font-medium text-[#113C69] shadow-sm outline-none transition-colors focus:border-[#218EE7] focus:ring-2 focus:ring-[#E8F3FE]'
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: '£',
+  EUR: '€',
+  USD: '$',
+  RUB: '₽',
+}
+
+const CONSUMABLE_VALIDATION_KEYS: Record<string, string> = {
+  'Date is required.': 'consumables.dateRequired',
+  'Vehicle is required.': 'consumables.vehicleRequired',
+  'Type is required.': 'consumables.typeRequired',
+  'Unit is required.': 'consumables.unitRequired',
+  'Quantity must be zero or greater.': 'consumables.quantityInvalid',
+  'Cost must be zero or greater.': 'consumables.costInvalid',
+  'Unit price must be zero or greater.': 'consumables.unitPriceInvalid',
+  'Odometer must be zero or greater.': 'consumables.odometerInvalid',
+  'Receipt file must be 10 MB or smaller.': 'consumables.receiptTooLarge',
+  'Only JPG, PNG, WEBP and PDF files are allowed.': 'consumables.receiptType',
+}
 
 /** Recalculate total from the current editable unit price. Does not invent defaults. */
 function withRecalculatedTotal(values: ConsumableFormValues): ConsumableFormValues {
@@ -176,6 +201,72 @@ export function ConsumableFormModal({
   onClose,
   onSubmit,
 }: ConsumableFormModalProps) {
+  const workerLocale = useContext(WorkerLocaleContext)
+  const workerT = workerLocale?.t as TFunction | undefined
+  const addTitle = useWorkerChromeText('consumables.add', 'Add Consumable')
+  const editTitle = useWorkerChromeText('consumables.edit', 'Edit Consumable')
+  const dateLabel = useWorkerChromeText('consumables.date', 'Date')
+  const timeLabel = useWorkerChromeText('consumables.time', 'Time')
+  const typeLabel = useWorkerChromeText('consumables.type', 'Type')
+  const itemNameLabel = useWorkerChromeText('consumables.itemName', 'Item name')
+  const quantityLabel = useWorkerChromeText('consumables.quantity', 'Quantity')
+  const unitLabel = useWorkerChromeText('consumables.unit', 'Unit')
+  const notesLabel = useWorkerChromeText('consumables.notes', 'Notes')
+  const vehicleLabel = useWorkerChromeText('consumables.vehicle', 'Vehicle')
+  const searchRegistration = useWorkerChromeText(
+    'consumables.searchRegistration',
+    'Search registration',
+  )
+  const submitLabel = useWorkerChromeText('consumables.submit', 'Save')
+  const savingLabel = useWorkerChromeText('consumables.saving', 'Saving…')
+  const saveFailed = useWorkerChromeText(
+    'consumables.saveFailed',
+    'Failed to save consumable record.',
+  )
+  const searchPlaceholder = useWorkerChromeText(
+    'consumables.searchPlaceholder',
+    'Enter registration number',
+  )
+  const searchVehiclesAria = useWorkerChromeText(
+    'consumables.searchVehiclesAria',
+    'Search company vehicles by registration number',
+  )
+  const workerLabel = useWorkerChromeText('consumables.worker', 'Worker')
+  const youLabel = useWorkerChromeText('consumables.you', 'You')
+  const cancelLabel = useWorkerChromeText('consumables.cancel', 'Cancel')
+  const closeLabel = useWorkerChromeText('consumables.close', 'Close')
+  const formHint = useWorkerChromeText(
+    'consumables.formHint',
+    'Record fuel, fluids, AdBlue, oils and other vehicle consumables.',
+  )
+  const totalCostLabel = useWorkerChromeText('consumables.totalCost', 'Total cost')
+  const quantityTimesPrice = useWorkerChromeText(
+    'consumables.quantityTimesPrice',
+    'Quantity × unit price',
+  )
+  const odometerLabel = useWorkerChromeText('consumables.odometer', 'Odometer / Mileage')
+  const supplierLabel = useWorkerChromeText('consumables.supplier', 'Supplier / Location')
+  const siteLabel = useWorkerChromeText('consumables.site', 'Site / Depot')
+  const unitPriceHint = useWorkerChromeText(
+    'consumables.unitPriceHint',
+    'Prefills from company default when available. Change only this entry.',
+  )
+  const itemNamePlaceholder = useWorkerChromeText(
+    'consumables.itemNamePlaceholder',
+    'e.g. Shell Diesel, 5W-30 Engine Oil',
+  )
+  const unitPricePlaceholder = useWorkerChromeText(
+    'consumables.unitPricePlaceholder',
+    'e.g. 1.479',
+  )
+  const supplierPlaceholder = useWorkerChromeText(
+    'consumables.supplierPlaceholder',
+    'e.g. Shell Thetford',
+  )
+  const sitePlaceholder = useWorkerChromeText(
+    'consumables.sitePlaceholder',
+    'e.g. Yard, North Depot',
+  )
   const { timeFormat, settings } = useCompanySettings()
   const defaultPrices = settings?.consumableDefaultPrices ?? {}
   const currency = settings?.currency ?? DEFAULT_CURRENCY
@@ -186,6 +277,13 @@ export function ConsumableFormModal({
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [removeReceipt, setRemoveReceipt] = useState(false)
   const isWorkerForm = Boolean(lockedWorkerId)
+  const unitPriceWithUnit = useWorkerChromeText(
+    'consumables.unitPriceWithUnit',
+    'Unit price ({{unit}})',
+    {
+      unit: `${CURRENCY_SYMBOLS[currency] ?? '£'}/${values.unit}`,
+    },
+  )
 
   const sortedVehicles = useMemo(
     () => [...vehicles].sort((a, b) => a.registration.localeCompare(b.registration)),
@@ -265,14 +363,16 @@ export function ConsumableFormModal({
 
     const validationError = validateConsumableForm(nextValues)
     if (validationError) {
-      setError(validationError)
+      const key = CONSUMABLE_VALIDATION_KEYS[validationError]
+      setError(key && workerT ? workerT(key, { defaultValue: validationError }) : validationError)
       return
     }
 
     if (receiptFile) {
       const fileError = validateConsumableReceiptFile(receiptFile)
       if (fileError) {
-        setError(fileError)
+        const key = CONSUMABLE_VALIDATION_KEYS[fileError]
+        setError(key && workerT ? workerT(key, { defaultValue: fileError }) : fileError)
         return
       }
     }
@@ -286,7 +386,7 @@ export function ConsumableFormModal({
       onClose()
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : 'Failed to save consumable record.',
+        submitError instanceof Error ? submitError.message : saveFailed,
       )
     }
   }
@@ -305,10 +405,10 @@ export function ConsumableFormModal({
               id="consumable-form-title"
               className="text-lg font-semibold tracking-[-0.03em] text-[#113C69]"
             >
-              {mode === 'create' ? 'Add Consumable' : 'Edit Consumable'}
+              {mode === 'create' ? addTitle : editTitle}
             </h2>
             <p className="mt-1 text-sm text-[#3D7A9C]">
-              Record fuel, fluids, AdBlue, oils and other vehicle consumables.
+              {formHint}
             </p>
           </div>
           <Button
@@ -317,6 +417,7 @@ export function ConsumableFormModal({
             size="sm"
             onClick={onClose}
             disabled={isSaving}
+            aria-label={closeLabel}
             className="h-8 w-8 rounded-[10px] p-0 text-slate-500"
           >
             <X className="size-4" />
@@ -326,7 +427,7 @@ export function ConsumableFormModal({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-medium text-[#113C69]">
-              Date <span className="text-rose-500">*</span>
+              {dateLabel} <span className="text-rose-500">*</span>
               <Input
                 type="date"
                 required
@@ -337,7 +438,7 @@ export function ConsumableFormModal({
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Time
+              {timeLabel}
               <CompanyTimeInput
                 value={values.entryTime || null}
                 onChange={(nextValue) => updateField('entryTime', nextValue ?? '')}
@@ -354,15 +455,15 @@ export function ConsumableFormModal({
                   selectedVehicleId={values.vehicleId || null}
                   onSelect={(vehicle) => updateField('vehicleId', vehicle.id)}
                   onClear={() => updateField('vehicleId', '')}
-                  label="Search registration"
-                  placeholder="Enter registration number"
-                  inputAriaLabel="Search company vehicles by registration number"
+                  label={searchRegistration}
+                  placeholder={searchPlaceholder}
+                  inputAriaLabel={searchVehiclesAria}
                   required
                   showAllWhenEmpty
                 />
               ) : (
                 <label className="block text-sm font-medium text-[#113C69]">
-                  Vehicle <span className="text-rose-500">*</span>
+                  {vehicleLabel} <span className="text-rose-500">*</span>
                   <select
                     required
                     value={values.vehicleId}
@@ -384,7 +485,7 @@ export function ConsumableFormModal({
             </div>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Type <span className="text-rose-500">*</span>
+              {typeLabel} <span className="text-rose-500">*</span>
               <select
                 required
                 value={values.consumableType}
@@ -395,7 +496,7 @@ export function ConsumableFormModal({
               >
                 {CONSUMABLE_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {workerT ? consumableTypeDisplayLabel(type, workerT) : type}
                   </option>
                 ))}
               </select>
@@ -403,9 +504,9 @@ export function ConsumableFormModal({
 
             {isWorkerForm ? (
               <label className="block text-sm font-medium text-[#113C69]">
-                Worker
+                {workerLabel}
                 <Input
-                  value={lockedWorkerName?.trim() || 'You'}
+                  value={lockedWorkerName?.trim() || youLabel}
                   readOnly
                   className={`${fieldClassName} opacity-90`}
                 />
@@ -429,17 +530,17 @@ export function ConsumableFormModal({
             )}
 
             <label className="block text-sm font-medium text-[#113C69] sm:col-span-2">
-              Item / Fluid name
+              {itemNameLabel}
               <Input
                 value={values.itemName}
                 onChange={(event) => updateField('itemName', event.target.value)}
-                placeholder="e.g. Shell Diesel, 5W-30 Engine Oil"
+                placeholder={itemNamePlaceholder}
                 className={fieldClassName}
               />
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Quantity <span className="text-rose-500">*</span>
+              {quantityLabel} <span className="text-rose-500">*</span>
               <Input
                 type="number"
                 min="0"
@@ -452,7 +553,7 @@ export function ConsumableFormModal({
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Unit <span className="text-rose-500">*</span>
+              {unitLabel} <span className="text-rose-500">*</span>
               <select
                 required
                 value={values.unit}
@@ -470,7 +571,7 @@ export function ConsumableFormModal({
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              {formatUnitPriceLabel(values.unit, currency)}
+              {unitPriceWithUnit}
               <Input
                 type="number"
                 min="0"
@@ -478,16 +579,16 @@ export function ConsumableFormModal({
                 inputMode="decimal"
                 value={values.unitPrice}
                 onChange={(event) => updateField('unitPrice', event.target.value)}
-                placeholder="e.g. 1.479"
+                placeholder={unitPricePlaceholder}
                 className={fieldClassName}
               />
               <span className="mt-1 block text-xs font-normal text-[#5499BF]">
-                Prefills from company default when available. Change only this entry.
+                {unitPriceHint}
               </span>
             </label>
 
             <div className="block text-sm font-medium text-[#113C69]">
-              Total cost
+              {totalCostLabel}
               <div
                 className={`${fieldClassName} flex items-center bg-[#EEF6FF] tabular-nums`}
                 aria-live="polite"
@@ -495,12 +596,12 @@ export function ConsumableFormModal({
                 {totalCostDisplay}
               </div>
               <span className="mt-1 block text-xs font-normal text-[#5499BF]">
-                Quantity × unit price
+                {quantityTimesPrice}
               </span>
             </div>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Odometer / Mileage
+              {odometerLabel}
               <Input
                 type="number"
                 min="0"
@@ -512,21 +613,21 @@ export function ConsumableFormModal({
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Supplier / Location
+              {supplierLabel}
               <Input
                 value={values.supplier}
                 onChange={(event) => updateField('supplier', event.target.value)}
-                placeholder="e.g. Shell Thetford"
+                placeholder={supplierPlaceholder}
                 className={fieldClassName}
               />
             </label>
 
             <label className="block text-sm font-medium text-[#113C69]">
-              Site / Depot
+              {siteLabel}
               <Input
                 value={values.site}
                 onChange={(event) => updateField('site', event.target.value)}
-                placeholder="e.g. Yard, North Depot"
+                placeholder={sitePlaceholder}
                 className={fieldClassName}
               />
             </label>
@@ -549,7 +650,7 @@ export function ConsumableFormModal({
             />
 
             <label className="block text-sm font-medium text-[#113C69] sm:col-span-2">
-              Notes
+              {notesLabel}
               <textarea
                 value={values.notes}
                 onChange={(event) => updateField('notes', event.target.value)}
@@ -572,14 +673,14 @@ export function ConsumableFormModal({
               disabled={isSaving}
               className="h-10 rounded-[12px] border-[#D3E9FC] bg-white px-4 font-semibold text-[#0B68BE] hover:bg-[#F5FAFF] dark:border-white/10 dark:bg-slate-800/70 dark:text-blue-300 dark:hover:bg-slate-800/50"
             >
-              Cancel
+              {cancelLabel}
             </Button>
             <Button
               type="submit"
               disabled={isSaving}
               className="h-10 rounded-[12px] bg-[#218EE7] px-4 font-semibold text-white hover:bg-[#0B68BE]"
             >
-              {isSaving ? 'Saving…' : mode === 'create' ? 'Add Consumable' : 'Save Changes'}
+              {isSaving ? savingLabel : mode === 'create' ? addTitle : submitLabel}
             </Button>
           </div>
         </form>

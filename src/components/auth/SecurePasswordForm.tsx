@@ -10,6 +10,7 @@ import {
   passwordsMatch,
 } from '@/lib/passwordValidation'
 import { cn } from '@/lib/utils'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 
 const passwordFieldClassName =
   'h-11 w-full rounded-[14px] border border-[#D7E8FF]/90 bg-white px-3 pr-11 text-sm font-medium text-slate-800 shadow-sm outline-none transition-all placeholder:text-slate-400 focus-visible:border-[#4F8DFF] focus-visible:ring-3 focus-visible:ring-[#4F8DFF]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-500/25'
@@ -21,20 +22,6 @@ type SecurePasswordFormVariant = 'change' | 'create'
 type SecurePasswordFormProps = {
   variant?: SecurePasswordFormVariant
   onSubmit: (password: string) => Promise<void>
-}
-
-const VARIANT_COPY: Record<
-  SecurePasswordFormVariant,
-  { title: string; submitLabel: string }
-> = {
-  change: {
-    title: 'Change password',
-    submitLabel: 'Update password',
-  },
-  create: {
-    title: 'Create a secure password',
-    submitLabel: 'Continue',
-  },
 }
 
 type PasswordFieldProps = {
@@ -57,6 +44,8 @@ function PasswordField({
   describedBy,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false)
+  const hidePassword = useWorkerChromeText('security.hidePassword', 'Hide password')
+  const showPassword = useWorkerChromeText('security.showPassword', 'Show password')
 
   return (
     <label className="block space-y-1.5" htmlFor={id}>
@@ -76,7 +65,7 @@ function PasswordField({
         />
         <button
           type="button"
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? hidePassword : showPassword}
           onClick={() => setVisible((current) => !current)}
           disabled={disabled}
           className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-0.5 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F8DFF]/35 disabled:opacity-50 dark:text-slate-500 dark:hover:text-slate-300"
@@ -96,6 +85,33 @@ export function SecurePasswordForm({
   variant = 'change',
   onSubmit,
 }: SecurePasswordFormProps) {
+  const changeTitle = useWorkerChromeText('security.changePasswordTitle', 'Change password')
+  const updatePasswordLabel = useWorkerChromeText('security.updatePassword', 'Update password')
+  const createTitle = useWorkerChromeText(
+    'security.createPasswordTitle',
+    'Create a secure password',
+  )
+  const createSubmitLabel = useWorkerChromeText('security.createPasswordSubmit', 'Continue')
+  const newPasswordLabel = useWorkerChromeText('security.newPassword', 'New password')
+  const confirmPasswordLabel = useWorkerChromeText('security.confirmPassword', 'Confirm password')
+  const updatingLabel = useWorkerChromeText('security.updating', 'Updating…')
+  const savingLabel = useWorkerChromeText('security.saving', 'Saving…')
+  const strongPasswordHint = useWorkerChromeText(
+    'security.strongPasswordHint',
+    'Use a strong password to protect your DREVORA account.',
+  )
+  const passwordUpdated = useWorkerChromeText(
+    'security.passwordUpdated',
+    'Password updated successfully.',
+  )
+  const passwordSaved = useWorkerChromeText(
+    'security.passwordSaved',
+    'Password saved successfully.',
+  )
+  const passwordUpdateFailed = useWorkerChromeText(
+    'security.passwordUpdateFailed',
+    'Unable to update password.',
+  )
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -107,7 +123,10 @@ export function SecurePasswordForm({
   const confirmMatches = passwordsMatch(newPassword, confirmPassword)
   const canSubmit = validation.isValid && confirmMatches && !isSubmitting
 
-  const copy = VARIANT_COPY[variant]
+  const copy =
+    variant === 'change'
+      ? { title: changeTitle, submitLabel: updatePasswordLabel }
+      : { title: createTitle, submitLabel: createSubmitLabel }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -126,14 +145,10 @@ export function SecurePasswordForm({
       await onSubmit(newPassword)
       setNewPassword('')
       setConfirmPassword('')
-      setSuccessMessage(
-        variant === 'change'
-          ? 'Password updated successfully.'
-          : 'Password saved successfully.',
-      )
+      setSuccessMessage(variant === 'change' ? passwordUpdated : passwordSaved)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to update password.',
+        error instanceof Error ? error.message : passwordUpdateFailed,
       )
     } finally {
       setIsSubmitting(false)
@@ -151,7 +166,7 @@ export function SecurePasswordForm({
             {copy.title}
           </h3>
           <p className="secure-password-form__subtitle mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Use a strong password to protect your DREVORA account.
+            {strongPasswordHint}
           </p>
         </div>
 
@@ -179,7 +194,7 @@ export function SecurePasswordForm({
 
           <PasswordField
             id="new-password"
-            label="New password"
+            label={newPasswordLabel}
             value={newPassword}
             onChange={setNewPassword}
             autoComplete="new-password"
@@ -198,7 +213,7 @@ export function SecurePasswordForm({
 
           <PasswordField
             id="confirm-password"
-            label="Confirm password"
+            label={confirmPasswordLabel}
             value={confirmPassword}
             onChange={setConfirmPassword}
             autoComplete="new-password"
@@ -216,8 +231,8 @@ export function SecurePasswordForm({
           >
             {isSubmitting
               ? variant === 'change'
-                ? 'Updating…'
-                : 'Saving…'
+                ? updatingLabel
+                : savingLabel
               : copy.submitLabel}
           </Button>
         </form>

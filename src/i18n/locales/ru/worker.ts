@@ -1,4 +1,5 @@
 import type { WorkerPhase1Resources } from '../en/worker'
+import { ruWorkerFinalModules } from './workerFinalModules'
 
 export const ruWorker = {
   nav: {
@@ -24,6 +25,41 @@ export const ruWorker = {
     loading: 'Загрузка настроек',
     languageSaving: 'Сохранение…',
     languageSaveError: 'Не удалось сохранить язык.',
+    signOut: 'Выйти',
+    timesheetSettings: 'Настройки табеля',
+    passwordSecurity: 'Пароль и безопасность',
+    helpSupport: 'Справка и поддержка',
+    notSet: 'Не задано',
+    company: 'Компания',
+    profile: 'Профиль',
+    companyNotice: 'Уведомление компании',
+    companyNoticeSubtitle: 'Уведомление о конфиденциальности вашего работодателя',
+    noDefaultVehicle: 'Нет основного автомобиля',
+    removeDefault: 'Убрать основной',
+    removing: 'Удаление…',
+    removeDefaultFailed: 'Не удалось снять основной автомобиль.',
+    profileMissing: 'Не найден профиль сотрудника, связанный с аккаунтом.',
+    loadingShort: 'Загрузка…',
+    timesheetPersonal: 'Личные настройки',
+    timesheetCompany: 'Настройки компании',
+    timesheetManual: 'Вручную · {{source}}',
+    timesheetDaily: 'Авто · сверхурочные после {{hours}} ч в день',
+    timesheetWeekly: 'Авто · сверхурочные после {{hours}} ч в неделю',
+    timesheetAutomatic: 'Авто · {{source}}',
+    timesheetPageTitle: 'Настройки табеля',
+    timesheetPersonalOverride: 'Личное переопределение',
+    timesheetCompanyRules: 'Правила компании',
+    timesheetDefaultRules: 'Правила по умолчанию',
+    yes: 'Да',
+    no: 'Нет',
+    phone: 'Телефон',
+    profileManagedByOffice: 'Данные профиля управляются вашим офисом.',
+    defaultVehicle: 'Основной автомобиль',
+    changeDefaultVehicle: 'Изменить основной автомобиль',
+    security: 'Безопасность',
+    helpInformation: 'Справка и информация',
+    helpSupportSubtitle: 'Руководства, ошибки, отзывы и правовые документы',
+    appVersion: 'Версия приложения',
   },
   home: {
     greetingMorning: 'Доброе утро',
@@ -440,6 +476,14 @@ export const ruWorker = {
     categoryEmergency: 'Аварийный',
     categoryWorker: 'Сотрудник',
     categoryOther: 'Другое',
+    call: 'Позвонить',
+    email: 'Эл. почта',
+    officeIntro:
+      'По вопросам рабочего времени, графика, отпусков, закреплённого транспорта, документов компании и операционных вопросов. Ошибки приложения и технические проблемы — в поддержку DREVORA.',
+    officeEmptyTitle: 'Контакты офиса не настроены.',
+    officeEmptyBody: 'Попросите офис указать телефон или эл. почту для работников.',
+    loadingOffice: 'Загрузка контактов офиса',
+    noPhoneEmailShared: 'Для этого контакта не указаны телефон или эл. почта.',
   },
   notes: {
     title: 'Мои заметки',
@@ -485,4 +529,5 @@ export const ruWorker = {
     titleTooLong: 'Заголовок не длиннее {{max}} символов.',
     noteTooLong: 'Заметка не длиннее {{max}} символов.',
   },
+  ...ruWorkerFinalModules,
 } as const satisfies WorkerPhase1Resources

@@ -7,28 +7,50 @@ import type { AppLockAvailabilityStatus } from '@/lib/appLockNative'
 import { cn } from '@/lib/utils'
 import { Fingerprint, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-function statusLabel(status: AppLockAvailabilityStatus, enabled: boolean): string {
+function statusLabel(
+  status: AppLockAvailabilityStatus,
+  enabled: boolean,
+  t: (key: string, options?: { defaultValue: string }) => string,
+): string {
   if (enabled) {
-    return 'App lock is on for this device.'
+    return t('security.appLockOn', { defaultValue: 'App lock is on for this device.' })
   }
   switch (status) {
     case 'available':
-      return 'Require unlock when you return to DREVORA.'
+      return t('security.appLockHint', {
+        defaultValue: 'Require unlock when you return to DREVORA.',
+      })
     case 'notEnrolled':
-      return 'Set up a screen lock or biometric in your device settings first.'
+      return t('security.notEnrolled', {
+        defaultValue: 'Set up a screen lock or biometric in your device settings first.',
+      })
     case 'noHardware':
-      return 'This device does not support biometric unlock.'
+      return t('security.noHardware', {
+        defaultValue: 'This device does not support biometric unlock.',
+      })
     case 'temporarilyUnavailable':
-      return 'Biometric unlock is temporarily unavailable.'
+      return t('security.temporarilyUnavailable', {
+        defaultValue: 'Biometric unlock is temporarily unavailable.',
+      })
     case 'securityUpdateRequired':
-      return 'A device security update is required before app lock can be used.'
+      return t('security.securityUpdateRequired', {
+        defaultValue:
+          'A device security update is required before app lock can be used.',
+      })
     case 'disabledForApps':
-      return 'Biometric unlock is disabled for apps on this device.'
+      return t('security.disabledForApps', {
+        defaultValue: 'Biometric unlock is disabled for apps on this device.',
+      })
     case 'unsupported':
-      return 'App lock is not supported on this device.'
+      return t('security.unsupported', {
+        defaultValue: 'App lock is not supported on this device.',
+      })
     default:
-      return 'Checking device unlock availability…'
+      return t('security.checking', {
+        defaultValue: 'Checking device unlock availability…',
+      })
   }
 }
 
@@ -37,6 +59,7 @@ function statusLabel(status: AppLockAvailabilityStatus, enabled: boolean): strin
  * Mount only from native builds (import.meta.env.MODE === 'native').
  */
 export function NativeBiometricAppLockSettings() {
+  const { t } = useTranslation('worker')
   const {
     isEnabled,
     timeoutMs,
@@ -66,22 +89,30 @@ export function NativeBiometricAppLockSettings() {
     try {
       if (nextEnabled) {
         if (!canEnable) {
-          setHint(statusLabel(availability, false))
+          setHint(statusLabel(availability, false, t))
           return
         }
         const result = await enable()
         if (!result.success) {
           if (result.code === 'cancelled') {
-            setHint('Enable cancelled. App lock stays off.')
+            setHint(
+              t('security.enableCancelled', {
+                defaultValue: 'Enable cancelled. App lock stays off.',
+              }),
+            )
             return
           }
-          setHint(statusLabel(availability, false))
+          setHint(statusLabel(availability, false, t))
         }
         return
       }
       await disable()
     } catch {
-      setHint('Unable to update app lock right now.')
+      setHint(
+        t('security.updateLockFailed', {
+          defaultValue: 'Unable to update app lock right now.',
+        }),
+      )
     } finally {
       setBusy(false)
     }
@@ -94,7 +125,11 @@ export function NativeBiometricAppLockSettings() {
     try {
       await setTimeoutMs(next)
     } catch {
-      setHint('Unable to update lock timeout.')
+      setHint(
+        t('security.updateTimeoutFailed', {
+          defaultValue: 'Unable to update lock timeout.',
+        }),
+      )
     } finally {
       setBusy(false)
     }
@@ -110,17 +145,19 @@ export function NativeBiometricAppLockSettings() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[color:var(--worker-text)]">
-                Biometric App Lock
+                {t('security.biometricAria', { defaultValue: 'Biometric App Lock' })}
               </p>
               <p className="mt-0.5 text-xs font-medium text-[color:var(--worker-text-secondary)]">
-                {hint ?? statusLabel(availability, isEnabled)}
+                {hint ?? statusLabel(availability, isEnabled, t)}
               </p>
             </div>
             <button
               type="button"
               role="switch"
               aria-checked={isEnabled}
-              aria-label="Biometric App Lock"
+              aria-label={t('security.biometricAria', {
+                defaultValue: 'Biometric App Lock',
+              })}
               disabled={controlsDisabled || (!isEnabled && !canEnable)}
               onClick={() => void handleToggle(!isEnabled)}
               className={cn(
@@ -142,19 +179,23 @@ export function NativeBiometricAppLockSettings() {
           {busy || isAuthenticating ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--worker-text-muted)]">
               <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              {isAuthenticating ? 'Confirm on your device…' : 'Saving…'}
+              {isAuthenticating
+                ? t('security.confirmDevice', {
+                    defaultValue: 'Confirm on your device…',
+                  })
+                : t('security.saving', { defaultValue: 'Saving…' })}
             </p>
           ) : null}
 
           {isEnabled ? (
             <div className="mt-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                Lock after
+                {t('security.lockAfter', { defaultValue: 'Lock after' })}
               </p>
               <div
                 className="mt-2 grid grid-cols-2 gap-1 rounded-2xl border border-[color:var(--worker-border)] bg-[color:var(--worker-input)] p-1"
                 role="radiogroup"
-                aria-label="Lock after"
+                aria-label={t('security.lockAfter', { defaultValue: 'Lock after' })}
               >
                 {APP_LOCK_TIMEOUT_OPTIONS.map((option) => {
                   const selected = timeoutMs === option.value
@@ -173,7 +214,13 @@ export function NativeBiometricAppLockSettings() {
                           : 'text-[color:var(--worker-text-secondary)] hover:text-[color:var(--worker-text)]',
                       )}
                     >
-                      {option.label}
+                      {option.value === 0
+                        ? t('security.immediately', { defaultValue: 'Immediately' })
+                        : option.value === 30_000
+                          ? t('security.seconds30', { defaultValue: '30 seconds' })
+                          : option.value === 60_000
+                            ? t('security.minute1', { defaultValue: '1 minute' })
+                            : t('security.minutes5', { defaultValue: '5 minutes' })}
                     </button>
                   )
                 })}

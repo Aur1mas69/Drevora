@@ -4,6 +4,7 @@ import {
   SUPPORT_MAX_ATTACHMENTS,
 } from '@/lib/supportRequestTypes'
 import { validateSupportScreenshotFiles } from '@/services/supportAttachmentsService'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { X } from 'lucide-react'
 import { useRef } from 'react'
 
@@ -22,6 +23,17 @@ export function SupportScreenshotField({
   onError,
   disabled = false,
 }: SupportScreenshotFieldProps) {
+  const addScreenshot = useWorkerChromeText('support.addScreenshot', 'Add screenshot')
+  const screenshotLabel = useWorkerChromeText('support.screenshot', 'Screenshot')
+  const optionalMax = useWorkerChromeText('support.optionalMax', '(optional, max {{n}})', {
+    n: SUPPORT_MAX_ATTACHMENTS,
+  })
+  const screenshotHint = useWorkerChromeText(
+    'support.screenshotHint',
+    'JPEG, PNG or WebP. Max {{mb}} MB each. Only photos you select are uploaded.',
+    { mb: Math.round(SUPPORT_MAX_ATTACHMENT_BYTES / (1024 * 1024)) },
+  )
+  const removeFileLabel = useWorkerChromeText('support.removeFile', 'Remove {{name}}')
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handlePick(event: React.ChangeEvent<HTMLInputElement>) {
@@ -47,11 +59,11 @@ export function SupportScreenshotField({
   return (
     <div className="space-y-2">
       <label className="block text-sm font-semibold text-[color:var(--worker-text)]">
-        Screenshots <span className="font-normal text-[color:var(--worker-text-muted)]">(optional, max {SUPPORT_MAX_ATTACHMENTS})</span>
+        {screenshotLabel}{' '}
+        <span className="font-normal text-[color:var(--worker-text-muted)]">{optionalMax}</span>
       </label>
       <p className="text-xs text-[color:var(--worker-text-secondary)]">
-        JPEG, PNG or WebP. Max {Math.round(SUPPORT_MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB each.
-        Only photos you select are uploaded.
+        {screenshotHint}
       </p>
 
       {files.length > 0 ? (
@@ -66,7 +78,7 @@ export function SupportScreenshotField({
               </span>
               <button
                 type="button"
-                aria-label={`Remove ${file.name}`}
+                aria-label={removeFileLabel.replace(/\{\{\s*name\s*\}\}/g, file.name)}
                 disabled={disabled}
                 onClick={() => removeAt(index)}
                 className="inline-flex size-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
@@ -95,7 +107,7 @@ export function SupportScreenshotField({
             onClick={() => inputRef.current?.click()}
             className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#89CFF0] bg-[#E8F3FE] text-sm font-semibold text-[#0B68BE] hover:bg-[#DCEEFF] disabled:opacity-60"
           >
-            Add screenshot
+            {addScreenshot}
           </button>
         </>
       ) : null}

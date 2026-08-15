@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { cn } from '@/lib/utils'
 import {
   applyVehicleCheckTrailerSource,
@@ -24,12 +25,6 @@ type VehicleCheckTrailerFieldsProps = {
   error?: string | null
 }
 
-const SOURCE_OPTIONS: Array<{ value: VehicleCheckTrailerSource; label: string; ariaLabel: string }> = [
-  { value: 'none', label: 'No trailer', ariaLabel: 'No trailer' },
-  { value: 'company', label: 'Company trailer', ariaLabel: 'Company trailer' },
-  { value: 'third_party', label: 'Third-party', ariaLabel: 'Third-party / hired trailer' },
-]
-
 export function VehicleCheckTrailerFields({
   draft,
   companyTrailers,
@@ -38,6 +33,50 @@ export function VehicleCheckTrailerFields({
   tone = 'worker',
   error = null,
 }: VehicleCheckTrailerFieldsProps) {
+  const trailerLabel = useWorkerChromeText('vehicleChecks.trailer', 'Trailer')
+  const noTrailer = useWorkerChromeText('vehicleChecks.noTrailer', 'No trailer')
+  const companyTrailer = useWorkerChromeText('vehicleChecks.companyTrailer', 'Company trailer')
+  const thirdParty = useWorkerChromeText('vehicleChecks.thirdParty', 'Third-party')
+  const thirdPartyAria = useWorkerChromeText(
+    'vehicleChecks.thirdPartyAria',
+    'Third-party / hired trailer',
+  )
+  const changeCompanyTrailer = useWorkerChromeText(
+    'vehicleChecks.changeCompanyTrailer',
+    'Change company trailer',
+  )
+  const searchCompanyTrailer = useWorkerChromeText(
+    'vehicleChecks.searchCompanyTrailer',
+    'Search company trailer',
+  )
+  const trailerSearchPlaceholder = useWorkerChromeText(
+    'vehicleChecks.trailerSearchPlaceholder',
+    'Trailer number, type, or registration',
+  )
+  const noCompanyTrailers = useWorkerChromeText(
+    'vehicleChecks.noCompanyTrailers',
+    'No company trailers in the fleet.',
+  )
+  const noTrailerMatch = useWorkerChromeText(
+    'vehicleChecks.noTrailerMatch',
+    'No company trailers match that search.',
+  )
+  const trailerIdentifier = useWorkerChromeText(
+    'vehicleChecks.trailerIdentifier',
+    'Trailer identifier / number',
+  )
+  const registrationOptional = useWorkerChromeText(
+    'vehicleChecks.registrationOptional',
+    'Registration (optional)',
+  )
+  const ifKnown = useWorkerChromeText('vehicleChecks.ifKnown', 'If known')
+
+  const sourceOptions = [
+    { value: 'none' as const, label: noTrailer, ariaLabel: noTrailer },
+    { value: 'company' as const, label: companyTrailer, ariaLabel: companyTrailer },
+    { value: 'third_party' as const, label: thirdParty, ariaLabel: thirdPartyAria },
+  ]
+
   const isAdmin = tone === 'admin'
   const [trailerSearch, setTrailerSearch] = useState('')
 
@@ -86,10 +125,10 @@ export function VehicleCheckTrailerFields({
               : 'text-xs font-semibold uppercase tracking-[0.12em] text-slate-400'
           }
         >
-          Trailer
+          {trailerLabel}
         </p>
         <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-          {SOURCE_OPTIONS.map((option) => {
+          {sourceOptions.map((option) => {
             const active = draft.source === option.value
             return (
               <button
@@ -121,7 +160,7 @@ export function VehicleCheckTrailerFields({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Company trailer
+                    {companyTrailer}
                   </p>
                   <p
                     className={
@@ -133,7 +172,7 @@ export function VehicleCheckTrailerFields({
                     {companyTrailerPrimaryLabel(selectedTrailer)}
                   </p>
                   <p className="mt-0.5 text-sm text-slate-500">
-                    {companyTrailerSecondaryLabel(selectedTrailer) || 'Trailer'}
+                    {companyTrailerSecondaryLabel(selectedTrailer) || trailerLabel}
                   </p>
                 </div>
                 <button
@@ -143,7 +182,7 @@ export function VehicleCheckTrailerFields({
                     setTrailerSearch('')
                     onChange(applyVehicleCheckTrailerSource(draft, 'company'))
                   }}
-                  aria-label="Change company trailer"
+                  aria-label={changeCompanyTrailer}
                   className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
                 >
                   <X className="size-4" />
@@ -160,7 +199,7 @@ export function VehicleCheckTrailerFields({
                       : 'text-sm font-medium text-slate-700'
                   }
                 >
-                  Search company trailer
+                  {searchCompanyTrailer}
                 </span>
                 <div className="relative mt-1.5">
                   <Search
@@ -172,7 +211,7 @@ export function VehicleCheckTrailerFields({
                     value={trailerSearch}
                     disabled={disabled}
                     onChange={(event) => setTrailerSearch(event.target.value)}
-                    placeholder="Trailer number, type, or registration"
+                    placeholder={trailerSearchPlaceholder}
                     autoComplete="off"
                     className={
                       isAdmin
@@ -185,7 +224,7 @@ export function VehicleCheckTrailerFields({
 
               {companyTrailers.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                  No company trailers in the fleet.
+                  {noCompanyTrailers}
                 </p>
               ) : (
                 <div
@@ -197,7 +236,7 @@ export function VehicleCheckTrailerFields({
                 >
                   {filteredTrailers.length === 0 ? (
                     <p className="px-3 py-2 text-sm text-slate-500">
-                      No company trailers match that search.
+                      {noTrailerMatch}
                     </p>
                   ) : (
                     filteredTrailers.map((trailer) => (
@@ -219,7 +258,7 @@ export function VehicleCheckTrailerFields({
                           {companyTrailerPrimaryLabel(trailer)}
                         </span>
                         <span className="text-xs text-slate-500">
-                          {companyTrailerSecondaryLabel(trailer) || 'Trailer'}
+                          {companyTrailerSecondaryLabel(trailer) || trailerLabel}
                         </span>
                       </button>
                     ))
@@ -241,7 +280,7 @@ export function VehicleCheckTrailerFields({
                   : 'text-sm font-medium text-slate-700'
               }
             >
-              Trailer identifier / number
+              {trailerIdentifier}
             </span>
             <Input
               type="text"
@@ -273,7 +312,7 @@ export function VehicleCheckTrailerFields({
                   : 'text-sm font-medium text-slate-700'
               }
             >
-              Registration <span className="font-normal text-slate-400">(optional)</span>
+              {registrationOptional}
             </span>
             <Input
               type="text"
@@ -287,7 +326,7 @@ export function VehicleCheckTrailerFields({
                   ),
                 )
               }
-              placeholder="If known"
+              placeholder={ifKnown}
               autoComplete="off"
               className={
                 isAdmin

@@ -1,5 +1,6 @@
 import { LegalMarkdownBody } from '@/components/legal/LegalMarkdownBody'
 import { Button } from '@/components/ui/button'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { ExternalLink } from 'lucide-react'
 
 type WorkerPrivacyNoticeCardProps = {
@@ -21,6 +22,16 @@ export function WorkerPrivacyNoticeCard({
   content,
   className,
 }: WorkerPrivacyNoticeCardProps) {
+  const title = useWorkerChromeText('legal.workerPrivacyTitle', 'Worker Privacy Notice')
+  const openNotice = useWorkerChromeText('legal.openNotice', 'Open notice')
+  const noticeExternal = useWorkerChromeText(
+    'legal.noticeExternal',
+    'Your company has published an external Worker Privacy Notice.',
+  )
+  const noticeMissing = useWorkerChromeText(
+    'legal.noticeMissing',
+    FALLBACK,
+  )
   const trimmedUrl = url?.trim() || null
   const trimmedContent = content?.trim() || null
 
@@ -30,10 +41,10 @@ export function WorkerPrivacyNoticeCard({
         className={`rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] p-5 dark:border-slate-700 dark:bg-slate-900/50 ${className ?? ''}`}
       >
         <h2 className="text-base font-semibold text-[color:var(--worker-text)]">
-          Worker Privacy Notice
+          {title}
         </h2>
         <p className="mt-1.5 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-          Your company has published an external Worker Privacy Notice.
+          {noticeExternal}
         </p>
         <Button
           asChild
@@ -41,7 +52,7 @@ export function WorkerPrivacyNoticeCard({
         >
           <a href={trimmedUrl} target="_blank" rel="noreferrer">
             <ExternalLink className="size-4" aria-hidden />
-            Open notice
+            {openNotice}
           </a>
         </Button>
       </div>
@@ -55,7 +66,7 @@ export function WorkerPrivacyNoticeCard({
         className={`rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] p-5 dark:border-slate-700 dark:bg-slate-900/50 ${className ?? ''}`}
       >
         <h2 className="text-base font-semibold text-[color:var(--worker-text)]">
-          Worker Privacy Notice
+          {title}
         </h2>
         <div className="mt-3">
           {asMarkdown ? (
@@ -74,11 +85,11 @@ export function WorkerPrivacyNoticeCard({
     <div
       className={`rounded-2xl border border-[#BFE3F5]/80 bg-[#F5FAFF] p-5 dark:border-slate-700 dark:bg-slate-900/50 ${className ?? ''}`}
     >
-      <h2 className="text-base font-semibold text-[color:var(--worker-text)]">
-        Worker Privacy Notice
-      </h2>
+        <h2 className="text-base font-semibold text-[color:var(--worker-text)]">
+          {title}
+        </h2>
       <p className="mt-1.5 text-sm leading-6 text-[color:var(--worker-text-secondary)]">
-        {FALLBACK}
+        {noticeMissing}
       </p>
     </div>
   )

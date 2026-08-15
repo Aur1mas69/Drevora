@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Worker Password & Security — change password via Supabase auth;
@@ -18,6 +19,7 @@ import { useNavigate } from 'react-router-dom'
  * Delete account schedules a 30-day deletion via Edge Function.
  */
 export default function WorkerSecuritySettingsPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const navigate = useNavigate()
   const { session, signOut } = useAuth()
@@ -42,17 +44,17 @@ export default function WorkerSecuritySettingsPage() {
         <WorkerSettingsBackLink />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-            Password &amp; Security
+            {t('security.title', { defaultValue: 'Password & Security' })}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
-            Manage your sign-in password
-            {email ? (
-              <>
-                {' '}
-                for <span className="font-medium text-[color:var(--worker-text)]">{email}</span>
-              </>
-            ) : null}
-            .
+            {email
+              ? t('security.subtitleFor', {
+                  email,
+                  defaultValue: `Manage your sign-in password for ${email}.`,
+                })
+              : t('security.subtitle', {
+                  defaultValue: 'Manage your sign-in password',
+                })}
           </p>
         </div>
       </header>

@@ -1,4 +1,5 @@
 import { slugifyLegalHeading } from '@/components/legal/LegalMarkdownBody'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { adminHeading, adminText } from '@/lib/adminUiStyles'
 import { cn } from '@/lib/utils'
 
@@ -40,20 +41,22 @@ type LegalTableOfContentsProps = {
 export function LegalTableOfContents({
   markdown,
   className,
-  label = 'Contents',
+  label,
 }: LegalTableOfContentsProps) {
+  const defaultContents = useWorkerChromeText('legal.contents', 'Contents')
+  const heading = label ?? defaultContents
   const items = parseLegalTableOfContents(markdown)
   if (items.length === 0) return null
 
   return (
     <nav
-      aria-label={label}
+      aria-label={heading}
       className={cn(
         'legal-document-toc legal-print-hide mb-8 rounded-[14px] border border-[rgba(75,120,220,0.12)] bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-slate-900/60',
         className,
       )}
     >
-      <h2 className={`text-sm font-semibold ${adminHeading}`}>{label}</h2>
+      <h2 className={`text-sm font-semibold ${adminHeading}`}>{heading}</h2>
       <ol className={`mt-3 columns-1 gap-x-8 space-y-1.5 text-sm sm:columns-2 ${adminText}`}>
         {items.map((item) => (
           <li key={item.id} className="break-inside-avoid">

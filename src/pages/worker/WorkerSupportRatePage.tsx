@@ -12,12 +12,14 @@ import {
   SupportRequestsServiceError,
 } from '@/services/supportRequestsService'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 
 const fieldClass =
   'mt-1.5 w-full rounded-2xl border border-[#BFE3F5] bg-white px-3 py-3 text-sm text-[color:var(--worker-text)] outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20 dark:border-slate-600 dark:bg-slate-900/50'
 
 export default function WorkerSupportRatePage() {
+  const { t } = useTranslation('worker')
   const location = useLocation()
   const { worker, isLoading: workerLoading } = useCurrentWorker()
   const [isOnline, setIsOnline] = useState(true)
@@ -56,15 +58,27 @@ export default function WorkerSupportRatePage() {
     event.preventDefault()
     if (isSubmitting || !worker) return
     if (!isOnline) {
-      setError('You’re offline. Reconnect to send this report.')
+      setError(
+        t('support.offlineSend', {
+          defaultValue: 'You’re offline. Reconnect to send this report.',
+        }),
+      )
       return
     }
     if (rating < 1) {
-      setError('Please choose a rating from 1 to 5 stars.')
+      setError(
+        t('support.chooseRating', {
+          defaultValue: 'Please choose a rating from 1 to 5 stars.',
+        }),
+      )
       return
     }
     if (comment.trim().length > 500) {
-      setError('Comment must be 500 characters or fewer.')
+      setError(
+        t('support.commentMax', {
+          defaultValue: 'Comment must be 500 characters or fewer.',
+        }),
+      )
       return
     }
 
@@ -85,7 +99,9 @@ export default function WorkerSupportRatePage() {
       setError(
         submitError instanceof SupportRequestsServiceError
           ? submitError.message
-          : 'Unable to save your rating. Please try again.',
+          : t('support.rateFailed', {
+              defaultValue: 'Unable to save your rating. Please try again.',
+            }),
       )
     } finally {
       setIsSubmitting(false)
@@ -100,17 +116,25 @@ export default function WorkerSupportRatePage() {
   if (successRef && successId) {
     return (
       <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('support.backHelp', { defaultValue: 'Help & Support' })}
+        />
         <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-5 space-y-3">
-          <h1 className="text-xl font-semibold text-emerald-900">Thanks for rating DREVORA</h1>
+          <h1 className="text-xl font-semibold text-emerald-900">
+            {t('support.thanksRating', { defaultValue: 'Thanks for rating DREVORA' })}
+          </h1>
           <p className="text-sm text-emerald-800">
-            Reference <span className="font-semibold">{successRef}</span>
+            {t('support.reference', {
+              ref: successRef,
+              defaultValue: 'Reference {{ref}}',
+            })}
           </p>
           <Link
             to={`/worker/settings/help/requests/${successId}`}
             className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#2F80ED] px-4 text-sm font-semibold text-white"
           >
-            View request
+            {t('support.viewRequest', { defaultValue: 'View request' })}
           </Link>
           {showPlayCta ? (
             <button
@@ -118,7 +142,7 @@ export default function WorkerSupportRatePage() {
               onClick={openPlayStore}
               className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#89CFF0] bg-white text-sm font-semibold text-[#0B68BE]"
             >
-              Rate on Google Play
+              {t('support.rateOnPlay', { defaultValue: 'Rate on Google Play' })}
             </button>
           ) : null}
         </div>
@@ -129,18 +153,25 @@ export default function WorkerSupportRatePage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-2">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('support.backHelp', { defaultValue: 'Help & Support' })}
+        />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Rate DREVORA
+          {t('support.rateTitle', { defaultValue: 'Rate DREVORA' })}
         </h1>
         <p className="text-sm text-[color:var(--worker-text-secondary)]">
-          Your rating is stored in DREVORA Support to help improve the app.
+          {t('support.rateIntro', {
+            defaultValue: 'Your rating is stored in DREVORA Support to help improve the app.',
+          })}
         </p>
       </header>
 
       {!isOnline ? (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
-          You’re offline. Reconnect to send this report.
+          {t('support.offlineSend', {
+            defaultValue: 'You’re offline. Reconnect to send this report.',
+          })}
         </p>
       ) : null}
 
@@ -149,13 +180,15 @@ export default function WorkerSupportRatePage() {
           value={rating}
           onChange={setRating}
           disabled={isSubmitting}
-          label="Your rating"
+          label={t('support.yourRating', { defaultValue: 'Your rating' })}
         />
 
         <div>
           <label htmlFor="rate-comment" className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Short comment{' '}
-            <span className="font-normal text-[color:var(--worker-text-muted)]">(optional)</span>
+            {t('support.shortComment', { defaultValue: 'Short comment' })}{' '}
+            <span className="font-normal text-[color:var(--worker-text-muted)]">
+              {t('support.optional', { defaultValue: '(optional)' })}
+            </span>
           </label>
           <textarea
             id="rate-comment"
@@ -178,7 +211,9 @@ export default function WorkerSupportRatePage() {
           disabled={isSubmitting || workerLoading || !worker || !isOnline}
           className="h-12 w-full rounded-2xl bg-[#2F80ED] text-base font-semibold hover:bg-[#2569C7]"
         >
-          {isSubmitting ? 'Saving…' : 'Submit rating'}
+          {isSubmitting
+            ? t('tsSettings.saving', { defaultValue: 'Saving…' })
+            : t('support.submitRating', { defaultValue: 'Submit rating' })}
         </Button>
       </form>
     </div>

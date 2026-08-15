@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { LegalAcceptancePanel } from '@/components/legal/LegalAcceptancePanel'
 import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
@@ -26,6 +27,7 @@ export default function WorkerLegalAgreementsPage({
   onAccepted,
   className,
 }: WorkerLegalAgreementsPageProps) {
+  const { t } = useTranslation('worker')
   const { companyId, companyReady } = useCompanySettings()
   const { worker, isLoading: workerLoading } = useCurrentWorker()
   const location = useLocation()
@@ -76,12 +78,14 @@ export default function WorkerLegalAgreementsPage({
       setError(
         err instanceof LegalAcceptanceServiceError
           ? err.message
-          : 'Unable to load legal agreement status.',
+          : t('legal.loadStatusFailed', {
+              defaultValue: 'Unable to load legal agreement status.',
+            }),
       )
     } finally {
       setLoading(false)
     }
-  }, [companyId, companyReady])
+  }, [companyId, companyReady, t])
 
   useEffect(() => {
     void reload()
@@ -123,7 +127,9 @@ export default function WorkerLegalAgreementsPage({
       setError(
         err instanceof LegalAcceptanceServiceError
           ? err.message
-          : 'Unable to record legal acceptance.',
+          : t('legal.recordFailed', {
+              defaultValue: 'Unable to record legal acceptance.',
+            }),
       )
     } finally {
       setIsSubmitting(false)
@@ -136,32 +142,43 @@ export default function WorkerLegalAgreementsPage({
     >
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2F80ED]">
-          Required
+          {t('legal.required', { defaultValue: 'Required' })}
         </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Legal agreements
+          {t('legal.agreementsTitle', { defaultValue: 'Legal agreements' })}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[color:var(--worker-text-secondary)]">
           {workerName
-            ? `Hi ${workerName}. Please accept the Worker Terms and acknowledge the Privacy Policy to continue.`
-            : 'Please accept the Worker Terms and acknowledge the Privacy Policy to continue.'}
+            ? t('legal.welcomeAccept', {
+                name: workerName,
+                defaultValue:
+                  'Hi {{name}}. Please accept the Worker Terms and acknowledge the Privacy Policy to continue.',
+              })
+            : t('legal.pleaseAccept', {
+                defaultValue:
+                  'Please accept the Worker Terms and acknowledge the Privacy Policy to continue.',
+              })}
         </p>
       </div>
 
       {!isOnline ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-          <p className="font-semibold">Internet connection required</p>
+          <p className="font-semibold">
+            {t('legal.connectionRequired', { defaultValue: 'Internet connection required' })}
+          </p>
           <p className="mt-1">
-            An internet connection is required to confirm the latest Worker Terms and Privacy
-            Policy. You can still read the Worker Terms and Privacy Policy offline. Acceptance
-            stays disabled until you reconnect. Any Vehicle Checks already saved on this device
-            are kept.
+            {t('legal.connectionRequiredBody', {
+              defaultValue:
+                'An internet connection is required to confirm the latest Worker Terms and Privacy Policy. You can still read the Worker Terms and Privacy Policy offline. Acceptance stays disabled until you reconnect. Any Vehicle Checks already saved on this device are kept.',
+            })}
           </p>
         </div>
       ) : null}
 
       {loading || workerLoading ? (
-        <p className="text-sm text-[color:var(--worker-text-muted)]">Loading…</p>
+        <p className="text-sm text-[color:var(--worker-text-muted)]">
+          {t('legal.loading', { defaultValue: 'Loading legal documents' })}
+        </p>
       ) : (
         <>
           {error ? (
@@ -182,7 +199,9 @@ export default function WorkerLegalAgreementsPage({
 
           {status && !status.requiresAcceptance ? (
             <p className="text-sm text-[color:var(--worker-text-secondary)]">
-              You’re up to date with the current Worker legal documents.
+              {t('legal.upToDate', {
+                defaultValue: 'You’re up to date with the current Worker legal documents.',
+              })}
             </p>
           ) : null}
         </>

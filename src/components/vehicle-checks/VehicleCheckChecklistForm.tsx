@@ -18,8 +18,17 @@ import {
   DREVORA_RECOMMENDED_SECTION_HINT,
   DREVORA_RECOMMENDED_VEHICLE_HINT,
 } from '@/lib/defaultDrevoraRecommendedCheckItems'
+import {
+  translateCanonicalChecklistLabel,
+  translateCanonicalChecklistSection,
+} from '@/i18n/workerFinalDisplay'
+import {
+  WorkerLocaleContext,
+  useWorkerChromeText,
+} from '@/i18n/workerLocaleContext'
+import type { TFunction } from 'i18next'
 import { Camera, Check, Info, X } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useContext, useMemo, useState, type ReactNode } from 'react'
 
 const RESULT_OPTIONS: VehicleCheckItemResult[] = ['Pass', 'Advisory', 'Fail']
 
@@ -73,12 +82,6 @@ const resultBadgeStyles: Record<VehicleCheckItemResult, string> = {
   Fail: 'border-amber-900 bg-amber-400 text-amber-950',
 }
 
-const resultLabels: Record<VehicleCheckItemResult, string> = {
-  Pass: 'OK',
-  Advisory: 'Defect',
-  Fail: 'N/A',
-}
-
 type VehicleCheckChecklistFormProps = {
   items: VehicleCheckItemInput[]
   onChange: (items: VehicleCheckItemInput[]) => void
@@ -96,6 +99,38 @@ export function VehicleCheckChecklistForm({
   emptyMessage,
   highlightUnanswered = false,
 }: VehicleCheckChecklistFormProps) {
+  const workerLocale = useContext(WorkerLocaleContext)
+  const workerT = workerLocale?.t as TFunction | undefined
+  const labelOk = useWorkerChromeText('vehicleChecks.ok', 'OK')
+  const labelDefect = useWorkerChromeText('vehicleChecks.defect', 'Defect')
+  const labelNa = useWorkerChromeText('vehicleChecks.na', 'N/A')
+  const resultLabels: Record<VehicleCheckItemResult, string> = {
+    Pass: labelOk,
+    Advisory: labelDefect,
+    Fail: labelNa,
+  }
+  const selectedSuffix = useWorkerChromeText('vehicleChecks.selectedSuffix', ', selected')
+  const requiredLabel = useWorkerChromeText('vehicleChecks.required', 'Required')
+  const answeredLabel = useWorkerChromeText('vehicleChecks.answered', 'answered')
+  const describeDefect = useWorkerChromeText(
+    'vehicleChecks.describeDefect',
+    'Describe the defect…',
+  )
+  const defectPhotoLabel = useWorkerChromeText('vehicleChecks.defectPhoto', 'Defect photo')
+  const closeGuidance = useWorkerChromeText('vehicleChecks.closeGuidance', 'Close guidance')
+  const guidanceLabel = useWorkerChromeText('vehicleChecks.guidance', 'Guidance')
+  const noGuidance = useWorkerChromeText(
+    'vehicleChecks.noGuidance',
+    'No guidance added yet.',
+  )
+  const recommendedHintTrailer = useWorkerChromeText(
+    'vehicleChecks.recommendedHintTrailer',
+    DREVORA_RECOMMENDED_SECTION_HINT,
+  )
+  const recommendedHintVehicle = useWorkerChromeText(
+    'vehicleChecks.recommendedHintVehicle',
+    DREVORA_RECOMMENDED_VEHICLE_HINT,
+  )
   const [helpItem, setHelpItem] = useState<VehicleCheckItemInput | null>(null)
   const expectedItems = useMemo(
     () => buildExpectedChecklistItems(items, sections),
@@ -170,6 +205,30 @@ export function VehicleCheckChecklistForm({
     }
     return totalCount
   }, [grouped, numberedItems, totalCount])
+
+  const remainingCount = Math.max(0, totalCount - answeredCount)
+  const checkOfLabel = useWorkerChromeText(
+    'vehicleChecks.checkOf',
+    'Check {{current}} of {{total}}',
+    { current: currentCheckNumber, total: totalCount },
+  )
+  const percentCompleteLabel = useWorkerChromeText(
+    'vehicleChecks.percentComplete',
+    '{{percent}}% complete',
+    { percent: progressPercent },
+  )
+  const leftLabel = useWorkerChromeText('vehicleChecks.left', '{{count}} left', {
+    count: remainingCount,
+  })
+  const progressAria = useWorkerChromeText(
+    'vehicleChecks.progressAria',
+    'Check {{current}} of {{total}}, {{percent}} percent complete',
+    {
+      current: currentCheckNumber,
+      total: totalCount,
+      percent: progressPercent,
+    },
+  )
 
   function clearDefectPhoto(item: VehicleCheckItemInput) {
     if (item.photoPreviewUrl?.startsWith('blob:')) {
@@ -286,17 +345,17 @@ export function VehicleCheckChecklistForm({
           <div className="flex min-w-0 items-end justify-between gap-2">
             <div className="min-w-0">
               <p className="worker-vc-progress-eyebrow text-[10px] font-bold uppercase tracking-[0.1em] text-[#0B68BE]">
-                Check {currentCheckNumber} of {totalCount}
+                {checkOfLabel}
               </p>
               <p className="worker-vc-progress-value mt-0.5 text-sm font-bold tabular-nums leading-none text-[#113C69]">
                 {answeredCount}
-                <span className="worker-vc-muted font-semibold text-[#5499BF]"> answered</span>
-                <span className="worker-vc-progress-pct ml-2 text-[#0B68BE]">{progressPercent}% complete</span>
+                <span className="worker-vc-muted font-semibold text-[#5499BF]"> {answeredLabel}</span>
+                <span className="worker-vc-progress-pct ml-2 text-[#0B68BE]">{percentCompleteLabel}</span>
               </p>
             </div>
             {highlightUnanswered && answeredCount < totalCount ? (
               <span className="worker-vc-left-pill shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
-                {totalCount - answeredCount} left
+                {leftLabel}
               </span>
             ) : null}
           </div>
@@ -306,7 +365,7 @@ export function VehicleCheckChecklistForm({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progressPercent}
-            aria-label={`Check ${currentCheckNumber} of ${totalCount}, ${progressPercent} percent complete`}
+            aria-label={progressAria}
           >
             <div
               className="worker-vc-progress-fill h-full rounded-full bg-[#218EE7] transition-all duration-200"
@@ -323,15 +382,17 @@ export function VehicleCheckChecklistForm({
         >
           <div className="worker-vc-section-head bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-3 py-1 dark:from-slate-800/70 dark:to-slate-800/50">
             <h3 className="worker-vc-muted text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-              {category === DREVORA_RECOMMENDED_SECTION && assetScope === 'trailer'
-                ? 'DREVORA Recommended — Trailer'
-                : category}
+              {workerT
+                ? translateCanonicalChecklistSection(category, assetScope, workerT)
+                : category === DREVORA_RECOMMENDED_SECTION && assetScope === 'trailer'
+                  ? 'DREVORA Recommended — Trailer'
+                  : category}
             </h3>
             {category === DREVORA_RECOMMENDED_SECTION ? (
               <p className="mt-0.5 text-[11px] font-medium leading-4 text-[#7FAFCC] dark:text-slate-400">
                 {assetScope === 'trailer'
-                  ? DREVORA_RECOMMENDED_SECTION_HINT
-                  : DREVORA_RECOMMENDED_VEHICLE_HINT}
+                  ? recommendedHintTrailer
+                  : recommendedHintVehicle}
               </p>
             ) : null}
           </div>
@@ -345,6 +406,15 @@ export function VehicleCheckChecklistForm({
               const shouldShowDefectNotes = isDefect && allowNotes
               const shouldShowDefectPhoto = isDefect && !readOnly
               const showUnansweredHighlight = highlightUnanswered && !isAnswered
+              const displayName = workerT
+                ? translateCanonicalChecklistLabel(item.itemName, workerT)
+                : item.itemName
+              const showGuidanceAria = workerT
+                ? workerT('vehicleChecks.showGuidanceAria', { name: displayName })
+                : `Show guidance for ${displayName}`
+              const statusAria = workerT
+                ? workerT('vehicleChecks.statusAria', { name: displayName })
+                : `Status for ${displayName}`
 
               return (
                 <div
@@ -362,10 +432,10 @@ export function VehicleCheckChecklistForm({
                           <span className="worker-vc-item-num mr-1.5 font-bold tabular-nums text-[#218EE7]">
                             {itemNumber}.
                           </span>
-                          {item.itemName}
+                          {displayName}
                           {showUnansweredHighlight ? (
                             <span className="ml-1.5 text-[11px] font-semibold text-amber-700">
-                              Required
+                              {requiredLabel}
                             </span>
                           ) : null}
                         </h4>
@@ -373,7 +443,7 @@ export function VehicleCheckChecklistForm({
                           type="button"
                           onClick={() => setHelpItem(item)}
                           className="worker-vc-help flex size-11 shrink-0 items-center justify-center rounded-full border border-[#C5DFFB] bg-[#F5FAFF] text-[#0B68BE] shadow-sm transition-colors hover:bg-[#E8F3FE] sm:size-9"
-                          aria-label={`Show guidance for ${item.itemName}`}
+                          aria-label={showGuidanceAria}
                         >
                           <Info className="size-3.5" />
                         </button>
@@ -398,7 +468,7 @@ export function VehicleCheckChecklistForm({
                           <div
                             className="mt-1.5 grid min-w-0 grid-cols-3 gap-2"
                             role="group"
-                            aria-label={`Status for ${item.itemName}`}
+                            aria-label={statusAria}
                           >
                             {RESULT_OPTIONS.map((option) => {
                               const selected = isAnswered && item.result === option
@@ -416,7 +486,7 @@ export function VehicleCheckChecklistForm({
                                   className={`${resultButtonBaseClassName} ${resultButtonStyles[option]} worker-result-${option === 'Pass' ? 'ok' : option === 'Advisory' ? 'defect' : 'na'}`}
                                   data-selected={selected}
                                   aria-pressed={selected}
-                                  aria-label={`${resultLabels[option]}${selected ? ', selected' : ''}`}
+                                  aria-label={`${resultLabels[option]}${selected ? selectedSuffix : ''}`}
                                 >
                                   {selected ? (
                                     <Check
@@ -447,7 +517,7 @@ export function VehicleCheckChecklistForm({
                                   }, item.assetScope)
                                 }
                                 rows={2}
-                                placeholder="Describe the defect…"
+                                placeholder={describeDefect}
                                 className={commentClassName}
                               />
                             </div>
@@ -457,7 +527,7 @@ export function VehicleCheckChecklistForm({
                             <div className="worker-vc-defect-panel mt-1.5 min-w-0 w-full max-w-full">
                               <p className="worker-vc-muted mb-1 flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#5499BF]">
                                 <Camera className="size-3.5 shrink-0" />
-                                Defect photo
+                                {defectPhotoLabel}
                               </p>
                               <VehicleCheckDefectPhotoField
                                 storagePath={
@@ -500,29 +570,37 @@ export function VehicleCheckChecklistForm({
           <button
             type="button"
             className="absolute inset-0"
-            aria-label="Close guidance"
+            aria-label={closeGuidance}
             onClick={() => setHelpItem(null)}
           />
           <div
             className="relative max-h-[70vh] w-full max-w-md overflow-hidden rounded-[18px] border border-[#C5DFFB] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-slate-900/95 dark:shadow-black/50"
             role="dialog"
             aria-modal="true"
-            aria-label={`${helpItem.itemName} guidance`}
+            aria-label={
+              workerT
+                ? workerT('vehicleChecks.itemGuidanceAria', {
+                    name: translateCanonicalChecklistLabel(helpItem.itemName, workerT),
+                  })
+                : `${helpItem.itemName} guidance`
+            }
           >
             <div className="flex items-start justify-between gap-3 border-b border-[#D3E9FC] bg-gradient-to-r from-[#F4FAFF] to-[#E8F3FE] px-4 py-3 dark:border-white/10 dark:from-slate-800/70 dark:to-slate-800/50">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5499BF]">
-                  Guidance
+                  {guidanceLabel}
                 </p>
                 <h3 className="mt-1 text-sm font-semibold leading-5 text-[#113C69] dark:text-slate-100">
-                  {helpItem.itemName}
+                  {workerT
+                    ? translateCanonicalChecklistLabel(helpItem.itemName, workerT)
+                    : helpItem.itemName}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setHelpItem(null)}
                 className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-[#0B68BE] shadow-sm dark:bg-slate-800 dark:text-blue-300 sm:size-9"
-                aria-label="Close guidance"
+                aria-label={closeGuidance}
               >
                 <X className="size-4" />
               </button>
@@ -531,7 +609,7 @@ export function VehicleCheckChecklistForm({
               {helpGuidance ? (
                 renderGuidanceText(helpGuidance)
               ) : (
-                <p className="text-sm text-slate-600">No guidance added yet.</p>
+                <p className="text-sm text-slate-600">{noGuidance}</p>
               )}
             </div>
           </div>

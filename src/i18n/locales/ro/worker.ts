@@ -1,4 +1,5 @@
 import type { WorkerPhase1Resources } from '../en/worker'
+import { roWorkerFinalModules } from './workerFinalModules'
 
 export const roWorker = {
   nav: {
@@ -24,6 +25,41 @@ export const roWorker = {
     loading: 'Se încarcă setările',
     languageSaving: 'Se salvează…',
     languageSaveError: 'Nu s-a putut salva limba.',
+    signOut: 'Deconectare',
+    timesheetSettings: 'Setări pontaj',
+    passwordSecurity: 'Parolă și securitate',
+    helpSupport: 'Ajutor și suport',
+    notSet: 'Nesetat',
+    company: 'Companie',
+    profile: 'Profil',
+    companyNotice: 'Notificare companie',
+    companyNoticeSubtitle: 'Notificarea de confidențialitate a angajatorului',
+    noDefaultVehicle: 'Niciun vehicul implicit',
+    removeDefault: 'Elimină implicitul',
+    removing: 'Se elimină…',
+    removeDefaultFailed: 'Vehiculul implicit nu a putut fi eliminat.',
+    profileMissing: 'Nu am găsit un profil de angajat asociat contului tău.',
+    loadingShort: 'Se încarcă…',
+    timesheetPersonal: 'Setări personale',
+    timesheetCompany: 'Valori implicite ale companiei',
+    timesheetManual: 'Manual · {{source}}',
+    timesheetDaily: 'Automat · Ore extra zilnice după {{hours}}h',
+    timesheetWeekly: 'Automat · Ore extra săptămânale după {{hours}}h',
+    timesheetAutomatic: 'Automat · {{source}}',
+    timesheetPageTitle: 'Setări pontaj',
+    timesheetPersonalOverride: 'Excepție personală',
+    timesheetCompanyRules: 'Reguli ale companiei',
+    timesheetDefaultRules: 'Reguli implicite',
+    yes: 'Da',
+    no: 'Nu',
+    phone: 'Telefon',
+    profileManagedByOffice: 'Detaliile profilului sunt gestionate de birou.',
+    defaultVehicle: 'Vehicul implicit',
+    changeDefaultVehicle: 'Schimbă vehiculul implicit',
+    security: 'Securitate',
+    helpInformation: 'Ajutor și informații',
+    helpSupportSubtitle: 'Ghiduri, erori, feedback și documente legale',
+    appVersion: 'Versiunea aplicației',
   },
   home: {
     greetingMorning: 'Bună dimineața',
@@ -440,6 +476,14 @@ export const roWorker = {
     categoryEmergency: 'Urgență',
     categoryWorker: 'Angajat',
     categoryOther: 'Altele',
+    call: 'Sună',
+    email: 'E-mail',
+    officeIntro:
+      'Pentru ore de lucru, program, concedii, vehicule alocate, documente ale companiei și probleme operaționale. Erorile aplicației și problemele tehnice țin de suportul DREVORA.',
+    officeEmptyTitle: 'Nu au fost configurate date de contact ale biroului.',
+    officeEmptyBody: 'Cere biroului un telefon sau e-mail pentru lucrători.',
+    loadingOffice: 'Se încarcă contactele biroului',
+    noPhoneEmailShared: 'Nu s-a partajat telefon sau e-mail pentru acest contact.',
   },
   notes: {
     title: 'Notele mele',
@@ -485,4 +529,5 @@ export const roWorker = {
     titleTooLong: 'Titlul trebuie să aibă cel mult {{max}} caractere.',
     noteTooLong: 'Nota trebuie să aibă cel mult {{max}} caractere.',
   },
+  ...roWorkerFinalModules,
 } as const satisfies WorkerPhase1Resources

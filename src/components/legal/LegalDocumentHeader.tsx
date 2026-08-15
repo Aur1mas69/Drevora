@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Printer } from 'lucide-react'
 import { LegalVersionBadge } from '@/components/legal/LegalVersionBadge'
 import { Button } from '@/components/ui/button'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { adminHeading, adminTextMuted } from '@/lib/adminUiStyles'
 import { cn } from '@/lib/utils'
 
@@ -24,12 +25,14 @@ export function LegalDocumentHeader({
   extra,
   className,
 }: LegalDocumentHeaderProps) {
+  const legalEyebrow = useWorkerChromeText('legal.eyebrow', 'Legal')
+  const printLabel = useWorkerChromeText('legal.print', 'Print')
   return (
     <header className={cn('space-y-3', className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2563EB] print:text-slate-600">
-            Legal
+            {legalEyebrow}
           </p>
           <h1 className={`text-3xl font-semibold tracking-[-0.03em] ${adminHeading}`}>{title}</h1>
           <LegalVersionBadge version={version} effectiveDate={effectiveDate} />
@@ -46,7 +49,7 @@ export function LegalDocumentHeader({
             onClick={() => window.print()}
           >
             <Printer className="size-3.5" aria-hidden />
-            Print
+            {printLabel}
           </Button>
         ) : null}
       </div>

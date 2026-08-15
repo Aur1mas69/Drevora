@@ -129,7 +129,8 @@ function WorkerLocaleController({ children }: { children: ReactNode }) {
       isSaving,
       error,
       setLanguage,
-      t: (key: string) => workerI18n.t(key),
+      t: (key: string, options?: Record<string, string | number>) =>
+        workerI18n.t(key, options),
     }),
     [error, isSaving, language, setLanguage],
   )

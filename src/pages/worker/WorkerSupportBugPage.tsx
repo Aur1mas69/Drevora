@@ -19,12 +19,15 @@ import {
   SupportRequestsServiceError,
 } from '@/services/supportRequestsService'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
+import { bugCategoryDisplayLabel } from '@/i18n/workerFinalDisplay'
 
 const fieldClass =
   'mt-1.5 w-full rounded-2xl border border-[#BFE3F5] bg-white px-3 py-3 text-sm text-[color:var(--worker-text)] outline-none focus:border-[#2F80ED] focus:ring-2 focus:ring-[#2F80ED]/20 dark:border-slate-600 dark:bg-slate-900/50'
 
 export default function WorkerSupportBugPage() {
+  const { t } = useTranslation('worker')
   const location = useLocation()
   const { worker, isLoading: workerLoading } = useCurrentWorker()
   const [isOnline, setIsOnline] = useState(true)
@@ -66,7 +69,11 @@ export default function WorkerSupportBugPage() {
     if (isSubmitting || !worker) return
 
     if (!isOnline) {
-      setSubmitError('You’re offline. Reconnect to send this report.')
+      setSubmitError(
+        t('support.offlineSend', {
+          defaultValue: 'You’re offline. Reconnect to send this report.',
+        }),
+      )
       return
     }
 
@@ -110,7 +117,9 @@ export default function WorkerSupportBugPage() {
       setSubmitError(
         error instanceof SupportRequestsServiceError
           ? error.message
-          : 'Unable to send your bug report. Please try again.',
+          : t('support.bugSendFailed', {
+              defaultValue: 'Unable to send your bug report. Please try again.',
+            }),
       )
     } finally {
       setIsSubmitting(false)
@@ -120,19 +129,25 @@ export default function WorkerSupportBugPage() {
   if (successRef && successId) {
     return (
       <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('support.backHelp', { defaultValue: 'Help & Support' })}
+        />
         <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-5 dark:border-emerald-900/50 dark:bg-emerald-950/30">
           <h1 className="text-xl font-semibold text-emerald-900 dark:text-emerald-100">
-            Bug report sent
+            {t('support.bugSent', { defaultValue: 'Bug report sent' })}
           </h1>
           <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
-            Reference <span className="font-semibold">{successRef}</span>
+            {t('support.reference', {
+              ref: successRef,
+              defaultValue: 'Reference {{ref}}',
+            })}
           </p>
           <Link
             to={`/worker/settings/help/requests/${successId}`}
             className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-[#2F80ED] px-4 text-sm font-semibold text-white"
           >
-            View request
+            {t('support.viewRequest', { defaultValue: 'View request' })}
           </Link>
         </div>
       </div>
@@ -142,13 +157,18 @@ export default function WorkerSupportBugPage() {
   return (
     <div className="mx-auto max-w-md space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:max-w-2xl">
       <header className="space-y-2">
-        <WorkerSettingsBackLink to="/worker/settings/help" label="Help & Support" />
+        <WorkerSettingsBackLink
+          to="/worker/settings/help"
+          label={t('support.backHelp', { defaultValue: 'Help & Support' })}
+        />
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Report a Bug
+          {t('support.bugTitle', { defaultValue: 'Report a Bug' })}
         </h1>
         <p className="text-sm text-[color:var(--worker-text-secondary)]">
-          Tell DREVORA about app errors or unexpected behaviour. Work and rota
-          questions should go to Contact Office.
+          {t('support.bugIntro', {
+            defaultValue:
+              'Tell DREVORA about app errors or unexpected behaviour. Work and rota questions should go to Contact Office.',
+          })}
         </p>
       </header>
 
@@ -157,14 +177,16 @@ export default function WorkerSupportBugPage() {
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
           role="status"
         >
-          You’re offline. Reconnect to send this report.
+          {t('support.offlineSend', {
+            defaultValue: 'You’re offline. Reconnect to send this report.',
+          })}
         </p>
       ) : null}
 
       <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
         <div>
           <label htmlFor="bug-category" className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Category
+            {t('support.category', { defaultValue: 'Category' })}
           </label>
           <select
             id="bug-category"
@@ -175,7 +197,7 @@ export default function WorkerSupportBugPage() {
           >
             {BUG_CATEGORIES.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {bugCategoryDisplayLabel(option, t)}
               </option>
             ))}
           </select>
@@ -183,7 +205,7 @@ export default function WorkerSupportBugPage() {
 
         <div>
           <label htmlFor="bug-title" className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Short title
+            {t('support.shortTitle', { defaultValue: 'Short title' })}
           </label>
           <input
             id="bug-title"
@@ -198,7 +220,7 @@ export default function WorkerSupportBugPage() {
 
         <div>
           <label htmlFor="bug-description" className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Description
+            {t('support.description', { defaultValue: 'Description' })}
           </label>
           <textarea
             id="bug-description"
@@ -212,8 +234,10 @@ export default function WorkerSupportBugPage() {
 
         <div>
           <label htmlFor="bug-steps" className="text-sm font-semibold text-[color:var(--worker-text)]">
-            Steps to reproduce{' '}
-            <span className="font-normal text-[color:var(--worker-text-muted)]">(optional)</span>
+            {t('support.steps', { defaultValue: 'Steps to reproduce' })}{' '}
+            <span className="font-normal text-[color:var(--worker-text-muted)]">
+              {t('support.optional', { defaultValue: '(optional)' })}
+            </span>
           </label>
           <textarea
             id="bug-steps"
@@ -246,7 +270,9 @@ export default function WorkerSupportBugPage() {
           disabled={isSubmitting || workerLoading || !worker || !isOnline}
           className="h-12 w-full rounded-2xl bg-[#2F80ED] text-base font-semibold hover:bg-[#2569C7]"
         >
-          {isSubmitting ? 'Sending…' : 'Send bug report'}
+          {isSubmitting
+            ? t('support.sending', { defaultValue: 'Sending…' })
+            : t('support.sendBug', { defaultValue: 'Send bug report' })}
         </Button>
       </form>
     </div>

@@ -4,6 +4,7 @@ import {
   validateVehicleCheckPhotoFile,
 } from '@/lib/vehicleCheckPhotoStorage'
 import { getVehicleCheckPhotoSignedUrl } from '@/services/vehicleCheckPhotoStorageService'
+import { useWorkerChromeText } from '@/i18n/workerLocaleContext'
 import { Camera, Loader2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -24,6 +25,19 @@ export function VehicleCheckDefectPhotoField({
   onPhotoRemoved,
   disabled = false,
 }: VehicleCheckDefectPhotoFieldProps) {
+  const addPhoto = useWorkerChromeText('vehicleChecks.addPhoto', 'Add photo')
+  const preparingPhoto = useWorkerChromeText('vehicleChecks.preparingPhoto', 'Preparing photo…')
+  const replacePhoto = useWorkerChromeText('vehicleChecks.replacePhoto', 'Replace photo')
+  const removePhotoAria = useWorkerChromeText(
+    'vehicleChecks.removePhotoAria',
+    'Remove defect photo',
+  )
+  const photoPreview = useWorkerChromeText('vehicleChecks.photoPreview', 'Defect photo preview')
+  const defectPhotoLabel = useWorkerChromeText('vehicleChecks.defectPhoto', 'Defect photo')
+  const photoPrepareFailed = useWorkerChromeText(
+    'vehicleChecks.photoPrepareFailed',
+    'Unable to prepare the selected photo.',
+  )
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -59,6 +73,11 @@ export function VehicleCheckDefectPhotoField({
     : storagePath
       ? getVehicleCheckPhotoDisplayName(storagePath)
       : null
+  const photoPreviewOf = useWorkerChromeText(
+    'vehicleChecks.photoPreviewOf',
+    'Preview of {{name}}',
+    { name: displayName ?? '' },
+  )
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null
@@ -82,7 +101,7 @@ export function VehicleCheckDefectPhotoField({
       setError(
         processingError instanceof Error
           ? processingError.message
-          : 'Unable to prepare the selected photo.',
+          : photoPrepareFailed,
       )
     } finally {
       setIsProcessing(false)
@@ -105,12 +124,12 @@ export function VehicleCheckDefectPhotoField({
         <div className="flex min-w-0 max-w-full items-center gap-2 rounded-[10px] border border-[#C5DFFB] bg-[#F8FBFF] px-2 py-1.5">
           <img
             src={previewUrl}
-            alt={displayName ? `Preview of ${displayName}` : 'Defect photo preview'}
+            alt={displayName ? photoPreviewOf : photoPreview}
             className="size-12 shrink-0 rounded-[8px] object-cover"
           />
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="truncate text-xs font-semibold text-[#113C69]">
-              {displayName ?? 'Defect photo'}
+              {displayName ?? defectPhotoLabel}
             </p>
             <button
               type="button"
@@ -118,7 +137,7 @@ export function VehicleCheckDefectPhotoField({
               disabled={disabled || isProcessing}
               className="mt-0.5 text-[11px] font-semibold text-[#0B68BE] hover:underline disabled:opacity-60"
             >
-              Replace photo
+              {replacePhoto}
             </button>
           </div>
           <button
@@ -126,7 +145,7 @@ export function VehicleCheckDefectPhotoField({
             onClick={onPhotoRemoved}
             disabled={disabled || isProcessing}
             className="flex size-11 shrink-0 items-center justify-center rounded-full text-[#5499BF] hover:bg-white hover:text-rose-600 disabled:opacity-60 sm:size-8"
-            aria-label="Remove defect photo"
+            aria-label={removePhotoAria}
           >
             <X className="size-4" />
           </button>
@@ -143,7 +162,7 @@ export function VehicleCheckDefectPhotoField({
           ) : (
             <Camera className="size-3.5 shrink-0" />
           )}
-          {isProcessing ? 'Preparing photo…' : 'Add photo'}
+          {isProcessing ? preparingPhoto : addPhoto}
         </button>
       )}
 

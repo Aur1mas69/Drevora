@@ -22,7 +22,6 @@ import {
   type WorkerAppearance,
 } from '@/lib/workerAppearance'
 import { workerAccentCardClass } from '@/lib/workerDarkAccent'
-import { formatWorkerTimesheetSettingsSummary } from '@/lib/workerTimesheetSettingsSummary'
 import { cn } from '@/lib/utils'
 import {
   DriversServiceError,
@@ -44,9 +43,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
-function displayValue(value: string | null | undefined): string {
+function displayValue(
+  value: string | null | undefined,
+  notSet: string,
+): string {
   const trimmed = value?.trim()
-  return trimmed ? trimmed : 'Not set'
+  return trimmed ? trimmed : notSet
 }
 
 function SettingsRowLink({
@@ -208,7 +210,9 @@ export default function WorkerSettingsPage() {
           ? removeError.message
           : removeError instanceof Error
             ? removeError.message
-            : 'Unable to remove your default vehicle.',
+            : t('settings.removeDefaultFailed', {
+                defaultValue: 'Unable to remove your default vehicle.',
+              }),
       )
     } finally {
       setIsRemovingDefault(false)
@@ -233,18 +237,22 @@ export default function WorkerSettingsPage() {
         </h1>
         <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {error ??
-            'We could not find a worker profile linked to your account.'}
+            t('settings.profileMissing', {
+              defaultValue:
+                'We could not find a worker profile linked to your account.',
+            })}
         </p>
         <Button type="button" className="mt-4" onClick={() => void handleSignOut()}>
-          Sign out
+          {t('settings.signOut', { defaultValue: 'Sign out' })}
         </Button>
       </div>
     )
   }
 
-  const fullName = `${worker.firstName} ${worker.lastName}`.trim() || 'Worker'
-  const email = displayValue(session?.user.email ?? worker.email)
-  const company = displayValue(companyName?.trim() || worker.company)
+  const notSet = t('settings.notSet', { defaultValue: 'Not set' })
+  const fullName = `${worker.firstName} ${worker.lastName}`.trim() || t('home.workerFallback', { defaultValue: 'Worker' })
+  const email = displayValue(session?.user.email ?? worker.email, notSet)
+  const company = displayValue(companyName?.trim() || worker.company, notSet)
   const phoneNumber = worker.phone?.trim() || null
   const defaultVehicleLabel =
     worker.defaultVehicleRegistration?.trim() ||
@@ -253,8 +261,34 @@ export default function WorkerSettingsPage() {
   const hasDefaultVehicle = Boolean(worker.defaultVehicleId || defaultVehicleLabel)
   const timesheetSummary =
     !settingsLoading && effective
-      ? formatWorkerTimesheetSettingsSummary(effective)
-      : 'Loading…'
+      ? (() => {
+          const sourceLabel = effective.hasWorkerOverride
+            ? t('settings.timesheetPersonal', { defaultValue: 'Personal settings' })
+            : t('settings.timesheetCompany', { defaultValue: 'Company defaults' })
+          if (effective.overtimeMode === 'Manual') {
+            return t('settings.timesheetManual', {
+              source: sourceLabel,
+              defaultValue: `Manual · ${sourceLabel}`,
+            })
+          }
+          if (effective.overtimeCalculationMethod === 'daily') {
+            return t('settings.timesheetDaily', {
+              hours: effective.overtimeAfterHours,
+              defaultValue: `Automatic · Daily OT after ${effective.overtimeAfterHours}h`,
+            })
+          }
+          if (effective.overtimeCalculationMethod === 'weekly') {
+            return t('settings.timesheetWeekly', {
+              hours: effective.weeklyOvertimeAfterHours,
+              defaultValue: `Automatic · Weekly OT after ${effective.weeklyOvertimeAfterHours}h`,
+            })
+          }
+          return t('settings.timesheetAutomatic', {
+            source: sourceLabel,
+            defaultValue: `Automatic · ${sourceLabel}`,
+          })
+        })()
+      : t('settings.loadingShort', { defaultValue: 'Loading…' })
 
   return (
     <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
@@ -275,7 +309,7 @@ export default function WorkerSettingsPage() {
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Profile
+          {t('settings.profile', { defaultValue: 'Profile' })}
         </h2>
         <div className="mt-4 flex items-center gap-4">
           <WorkerAvatar
@@ -309,9 +343,17 @@ export default function WorkerSettingsPage() {
             !isDark && 'border-[color:var(--worker-border)]',
           )}
         >
-          <ProfileField label="Company" value={company} isDark={isDark} />
+          <ProfileField
+            label={t('settings.company', { defaultValue: 'Company' })}
+            value={company}
+            isDark={isDark}
+          />
           {phoneNumber ? (
-            <ProfileField label="Phone" value={phoneNumber} isDark={isDark} />
+            <ProfileField
+              label={t('settings.phone', { defaultValue: 'Phone' })}
+              value={phoneNumber}
+              isDark={isDark}
+            />
           ) : null}
         </dl>
         <p
@@ -320,7 +362,9 @@ export default function WorkerSettingsPage() {
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Profile details are managed by your office.
+          {t('settings.profileManagedByOffice', {
+            defaultValue: 'Profile details are managed by your office.',
+          })}
         </p>
       </section>
 
@@ -352,7 +396,7 @@ export default function WorkerSettingsPage() {
         <SettingsRowLink
           to="/worker/settings/timesheet"
           icon={Clock}
-          title="Timesheet Settings"
+          title={t('settings.timesheetSettings', { defaultValue: 'Timesheet Settings' })}
           subtitle={timesheetSummary}
           isDark={isDark}
         />
@@ -360,8 +404,10 @@ export default function WorkerSettingsPage() {
         <SettingsRowLink
           to="/worker/settings/help/legal/company-privacy-notice"
           icon={Building2}
-          title="Company Notice"
-          subtitle="Your employer’s privacy notice"
+          title={t('settings.companyNotice', { defaultValue: 'Company Notice' })}
+          subtitle={t('settings.companyNoticeSubtitle', {
+            defaultValue: 'Your employer’s privacy notice',
+          })}
           className={cn(
             'worker-accent-divider border-t',
             !isDark && 'border-[color:var(--worker-border)]',
@@ -392,7 +438,7 @@ export default function WorkerSettingsPage() {
                   !isDark && 'text-[color:var(--worker-text)]',
                 )}
               >
-                Default Vehicle
+                {t('settings.defaultVehicle', { defaultValue: 'Default Vehicle' })}
               </p>
               <p
                 className={cn(
@@ -400,7 +446,8 @@ export default function WorkerSettingsPage() {
                   !isDark && 'text-[color:var(--worker-text-secondary)]',
                 )}
               >
-                {defaultVehicleLabel ?? 'No default vehicle'}
+                {defaultVehicleLabel ??
+                  t('settings.noDefaultVehicle', { defaultValue: 'No default vehicle' })}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
@@ -411,7 +458,9 @@ export default function WorkerSettingsPage() {
                       'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE] hover:bg-[#DCEEFF] active:bg-[#D3E9FC]',
                   )}
                 >
-                  Change default vehicle
+                  {t('settings.changeDefaultVehicle', {
+                    defaultValue: 'Change default vehicle',
+                  })}
                 </Link>
                 {hasDefaultVehicle ? (
                   <button
@@ -420,7 +469,9 @@ export default function WorkerSettingsPage() {
                     onClick={() => void handleRemoveDefaultVehicle()}
                     className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isRemovingDefault ? 'Removing…' : 'Remove default'}
+                    {isRemovingDefault
+                      ? t('settings.removing', { defaultValue: 'Removing…' })
+                      : t('settings.removeDefault', { defaultValue: 'Remove default' })}
                   </button>
                 ) : null}
               </div>
@@ -592,17 +643,21 @@ export default function WorkerSettingsPage() {
               !isDark && 'text-[color:var(--worker-text-muted)]',
             )}
           >
-            Security
+            {t('settings.security', { defaultValue: 'Security' })}
           </h2>
         </div>
         <SettingsRowLink
           to="/worker/settings/security"
           icon={Lock}
-          title="Password & Security"
+          title={t('settings.passwordSecurity', { defaultValue: 'Password & Security' })}
           subtitle={
             import.meta.env.MODE === 'native'
-              ? 'Password and biometric app lock'
-              : 'Change your sign-in password'
+              ? t('security.passwordBiometric', {
+                  defaultValue: 'Password and biometric app lock',
+                })
+              : t('security.changePassword', {
+                  defaultValue: 'Change your sign-in password',
+                })
           }
           isDark={isDark}
         />
@@ -629,15 +684,17 @@ export default function WorkerSettingsPage() {
               !isDark && 'text-[color:var(--worker-text-muted)]',
             )}
           >
-            Help &amp; Information
+            {t('settings.helpInformation', { defaultValue: 'Help & Information' })}
           </h2>
         </div>
 
         <SettingsRowLink
           to="/worker/settings/help"
           icon={CircleHelp}
-          title="Help & Support"
-          subtitle="Guides, bugs, feedback and legal"
+          title={t('settings.helpSupport', { defaultValue: 'Help & Support' })}
+          subtitle={t('settings.helpSupportSubtitle', {
+            defaultValue: 'Guides, bugs, feedback and legal',
+          })}
           isDark={isDark}
         />
 
@@ -653,7 +710,7 @@ export default function WorkerSettingsPage() {
               !isDark && 'text-[color:var(--worker-text)]',
             )}
           >
-            App Version
+            {t('settings.appVersion', { defaultValue: 'App Version' })}
           </span>
           <span
             className={cn(
@@ -677,7 +734,7 @@ export default function WorkerSettingsPage() {
         onClick={() => void handleSignOut()}
       >
         <LogOut className="size-4" aria-hidden />
-        Sign out
+        {t('settings.signOut', { defaultValue: 'Sign out' })}
       </Button>
     </div>
   )

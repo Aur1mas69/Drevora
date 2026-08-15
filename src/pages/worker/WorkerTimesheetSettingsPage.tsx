@@ -13,16 +13,24 @@ import { workerAccentCardClass } from '@/lib/workerDarkAccent'
 import { cn } from '@/lib/utils'
 import type { EffectiveTimesheetSettings } from '@/lib/workerTimesheetSettingsTypes'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function formatHours(value: number): string {
   return Number.isInteger(value) ? `${value}h` : `${value}h`
 }
 
-function yesNo(value: boolean): string {
-  return value ? 'Yes' : 'No'
+function yesNo(value: boolean, t: (key: string, options?: { defaultValue: string }) => string): string {
+  return value
+    ? t('settings.yes', { defaultValue: 'Yes' })
+    : t('settings.no', { defaultValue: 'No' })
 }
 
-function weekStartLabel(day: EffectiveTimesheetSettings['timesheetWeekStartDay']): string {
+function weekStartLabel(
+  day: EffectiveTimesheetSettings['timesheetWeekStartDay'],
+  t: (key: string, options?: { defaultValue: string }) => string,
+): string {
+  if (day === 'monday') return t('tsSettings.monday', { defaultValue: 'Monday' })
+  if (day === 'sunday') return t('tsSettings.sunday', { defaultValue: 'Sunday' })
   return (
     TIMESHEET_WEEK_START_DAY_OPTIONS.find((option) => option.value === day)?.label ??
     String(day)
@@ -72,13 +80,15 @@ function ReadOnlyTimesheetDetails({
   effective: EffectiveTimesheetSettings
   isDark: boolean
 }) {
+  const { t } = useTranslation('worker')
   const sourceLabel =
     effective.source === 'worker'
-      ? 'Personal override'
+      ? t('settings.timesheetPersonalOverride', { defaultValue: 'Personal override' })
       : effective.source === 'company'
-        ? 'Company rules'
-        : 'Default rules'
+        ? t('settings.timesheetCompanyRules', { defaultValue: 'Company rules' })
+        : t('settings.timesheetDefaultRules', { defaultValue: 'Default rules' })
   const halfDayHours = Math.round(effective.defaultPaidHolidayHours * 50) / 100
+  const offLabel = t('tsSettings.off', { defaultValue: 'Off' })
 
   return (
     <div className="space-y-4">
@@ -91,7 +101,7 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Applied rules
+          {t('tsSettings.appliedRules', { defaultValue: 'Applied rules' })}
         </p>
         <p
           className={cn(
@@ -99,14 +109,22 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-secondary)]',
           )}
         >
-          These are the company timesheet rules currently applied to your account.
-          Only your office can change them.
+          {t('tsSettings.appliedRulesHint', {
+            defaultValue:
+              'These are the company timesheet rules currently applied to your account. Only your office can change them.',
+          })}
         </p>
         <dl className="mt-2">
-          <DetailRow label="Source" value={sourceLabel} isDark={isDark} />
           <DetailRow
-            label="Personal override"
-            value={yesNo(effective.hasWorkerOverride)}
+            label={t('tsSettings.source', { defaultValue: 'Source' })}
+            value={sourceLabel}
+            isDark={isDark}
+          />
+          <DetailRow
+            label={t('settings.timesheetPersonalOverride', {
+              defaultValue: 'Personal override',
+            })}
+            value={yesNo(effective.hasWorkerOverride, t)}
             isDark={isDark}
           />
         </dl>
@@ -121,39 +139,47 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Overtime
+          {t('tsSettings.overtime', { defaultValue: 'Overtime' })}
         </p>
         <dl className="mt-1">
-          <DetailRow label="Mode" value={effective.overtimeMode} isDark={isDark} />
+          <DetailRow
+            label={t('tsSettings.mode', { defaultValue: 'Mode' })}
+            value={
+              effective.overtimeMode === 'Automatic'
+                ? t('tsSettings.automatic', { defaultValue: 'Automatic' })
+                : t('tsSettings.manual', { defaultValue: 'Manual' })
+            }
+            isDark={isDark}
+          />
           {effective.overtimeMode === 'Automatic' ? (
             <>
               <DetailRow
-                label="Calculation"
+                label={t('tsSettings.calculation', { defaultValue: 'Calculation' })}
                 value={
                   effective.overtimeCalculationMethod === 'daily'
-                    ? 'Daily'
+                    ? t('tsSettings.daily', { defaultValue: 'Daily' })
                     : effective.overtimeCalculationMethod === 'weekly'
-                      ? 'Weekly'
-                      : String(effective.overtimeCalculationMethod)
+                      ? t('tsSettings.weekly', { defaultValue: 'Weekly' })
+                      : t('tsSettings.none', { defaultValue: 'None' })
                 }
                 isDark={isDark}
               />
               {effective.overtimeCalculationMethod === 'daily' ? (
                 <DetailRow
-                  label="Daily OT after"
+                  label={t('tsSettings.dailyOtAfter', { defaultValue: 'Daily OT after' })}
                   value={formatHours(effective.overtimeAfterHours)}
                   isDark={isDark}
                 />
               ) : null}
               {effective.overtimeCalculationMethod === 'weekly' ? (
                 <DetailRow
-                  label="Weekly OT after"
+                  label={t('tsSettings.weeklyOtAfter', { defaultValue: 'Weekly OT after' })}
                   value={formatHours(effective.weeklyOvertimeAfterHours)}
                   isDark={isDark}
                 />
               ) : null}
               <DetailRow
-                label="OT multiplier"
+                label={t('tsSettings.otMultiplierShort', { defaultValue: 'OT multiplier' })}
                 value={`${effective.overtimeMultiplier}×`}
                 isDark={isDark}
               />
@@ -171,27 +197,37 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Breaks &amp; time
+          {t('tsSettings.breaksTime', { defaultValue: 'Breaks & time' })}
         </p>
         <dl className="mt-1">
           <DetailRow
-            label="Default break"
-            value={`${effective.defaultBreakMinutes} min`}
+            label={t('tsSettings.defaultBreak', { defaultValue: 'Default break (minutes)' })}
+            value={t('tsSettings.minutesShort', {
+              n: effective.defaultBreakMinutes,
+              defaultValue: '{{n}} min',
+            })}
             isDark={isDark}
           />
-          <DetailRow label="Paid breaks" value={yesNo(effective.paidBreaks)} isDark={isDark} />
           <DetailRow
-            label="Round time"
+            label={t('tsSettings.paidBreaks', { defaultValue: 'Paid breaks' })}
+            value={yesNo(effective.paidBreaks, t)}
+            isDark={isDark}
+          />
+          <DetailRow
+            label={t('tsSettings.roundTime', { defaultValue: 'Round time' })}
             value={
               effective.roundTimeMinutes === 0
-                ? 'None'
-                : `${effective.roundTimeMinutes} min`
+                ? t('tsSettings.none', { defaultValue: 'None' })
+                : t('tsSettings.minutesShort', {
+                    n: effective.roundTimeMinutes,
+                    defaultValue: '{{n}} min',
+                  })
             }
             isDark={isDark}
           />
           <DetailRow
-            label="Week starts"
-            value={weekStartLabel(effective.timesheetWeekStartDay)}
+            label={t('tsSettings.weekStarts', { defaultValue: 'Week starts' })}
+            value={weekStartLabel(effective.timesheetWeekStartDay, t)}
             isDark={isDark}
           />
         </dl>
@@ -206,23 +242,23 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Holiday pay
+          {t('tsSettings.holidayPay', { defaultValue: 'Holiday pay' })}
         </p>
         <dl className="mt-1">
           <DetailRow
-            label="Full day"
+            label={t('tsSettings.fullDay', { defaultValue: 'Full day' })}
             value={
               effective.defaultPaidHolidayHours === 0
-                ? 'Unpaid (0 h)'
+                ? t('tsSettings.unpaid', { defaultValue: 'Unpaid (0 h)' })
                 : formatHours(effective.defaultPaidHolidayHours)
             }
             isDark={isDark}
           />
           <DetailRow
-            label="Half day"
+            label={t('tsSettings.halfDay', { defaultValue: 'Half day' })}
             value={
               effective.defaultPaidHolidayHours === 0
-                ? 'Unpaid (0 h)'
+                ? t('tsSettings.unpaid', { defaultValue: 'Unpaid (0 h)' })
                 : formatHours(halfDayHours)
             }
             isDark={isDark}
@@ -239,34 +275,42 @@ function ReadOnlyTimesheetDetails({
             !isDark && 'text-[color:var(--worker-text-muted)]',
           )}
         >
-          Weekend
+          {t('tsSettings.weekend', { defaultValue: 'Weekend' })}
         </p>
         <dl className="mt-1">
           <DetailRow
-            label="Saturday OT"
+            label={t('tsSettings.saturdayOt', { defaultValue: 'Saturday OT' })}
             value={
               effective.saturdayOvertimeEnabled
-                ? `On · after ${formatHours(effective.saturdayOvertimeAfterHours)} · ${effective.saturdayOvertimeMultiplier}×`
-                : 'Off'
+                ? t('tsSettings.otOnAfter', {
+                    hours: formatHours(effective.saturdayOvertimeAfterHours),
+                    multiplier: effective.saturdayOvertimeMultiplier,
+                    defaultValue: 'On · after {{hours}} · {{multiplier}}×',
+                  })
+                : offLabel
             }
             isDark={isDark}
           />
           <DetailRow
-            label="Saturday guaranteed"
+            label={t('tsSettings.saturdayGuaranteed', { defaultValue: 'Saturday guaranteed' })}
             value={formatHours(effective.saturdayGuaranteedPaidHours)}
             isDark={isDark}
           />
           <DetailRow
-            label="Sunday OT"
+            label={t('tsSettings.sundayOt', { defaultValue: 'Sunday OT' })}
             value={
               effective.sundayOvertimeEnabled
-                ? `On · after ${formatHours(effective.sundayOvertimeAfterHours)} · ${effective.sundayOvertimeMultiplier}×`
-                : 'Off'
+                ? t('tsSettings.otOnAfter', {
+                    hours: formatHours(effective.sundayOvertimeAfterHours),
+                    multiplier: effective.sundayOvertimeMultiplier,
+                    defaultValue: 'On · after {{hours}} · {{multiplier}}×',
+                  })
+                : offLabel
             }
             isDark={isDark}
           />
           <DetailRow
-            label="Sunday guaranteed"
+            label={t('tsSettings.sundayGuaranteed', { defaultValue: 'Sunday guaranteed' })}
             value={formatHours(effective.sundayGuaranteedPaidHours)}
             isDark={isDark}
           />
@@ -282,6 +326,7 @@ function ReadOnlyTimesheetDetails({
  * Read-only when Office manages Timesheets (company rules only).
  */
 export default function WorkerTimesheetSettingsPage() {
+  const { t } = useTranslation('worker')
   const isDark = useIsWorkerDarkMode()
   const navigate = useNavigate()
   const { signOut } = useAuth()
@@ -307,7 +352,9 @@ export default function WorkerTimesheetSettingsPage() {
     return (
       <div
         className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
-        aria-label="Loading Timesheet settings"
+        aria-label={t('tsSettings.loadingAria', {
+          defaultValue: 'Loading Timesheet settings',
+        })}
         role="status"
       />
     )
@@ -319,14 +366,17 @@ export default function WorkerTimesheetSettingsPage() {
         <WorkerSettingsBackLink />
         <div className="worker-card rounded-[1.75rem] p-5">
           <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">
-            Timesheet settings
+            {t('settings.timesheetPageTitle', { defaultValue: 'Timesheet Settings' })}
           </h1>
           <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
             {error ??
-              'We could not find a worker profile linked to your account.'}
+              t('settings.profileMissing', {
+                defaultValue:
+                  'We could not find a worker profile linked to your account.',
+              })}
           </p>
           <Button type="button" className="mt-4" onClick={() => void handleSignOut()}>
-            Sign out
+            {t('settings.signOut', { defaultValue: 'Sign out' })}
           </Button>
         </div>
       </div>
@@ -339,12 +389,18 @@ export default function WorkerTimesheetSettingsPage() {
         <WorkerSettingsBackLink />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-            Timesheet settings
+            {t('settings.timesheetPageTitle', { defaultValue: 'Timesheet Settings' })}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--worker-text-secondary)]">
             {canEditPersonalRules
-              ? 'Edit your personal Timesheet rules. Changes apply to your Timesheet calculations.'
-              : 'Read-only view of the company rules applied to your timesheets.'}
+              ? t('tsSettings.editHint', {
+                  defaultValue:
+                    'Edit your personal Timesheet rules. Changes apply to your Timesheet calculations.',
+                })
+              : t('tsSettings.readOnlyHint', {
+                  defaultValue:
+                    'Read-only view of the company rules applied to your timesheets.',
+                })}
           </p>
         </div>
       </header>
@@ -352,14 +408,19 @@ export default function WorkerTimesheetSettingsPage() {
       {settingsLoading || !effective ? (
         <div
           className="min-h-40 rounded-[1.75rem] bg-[color:var(--worker-card)]"
-          aria-label="Loading Timesheet settings"
+          aria-label={t('tsSettings.loadingAria', {
+          defaultValue: 'Loading Timesheet settings',
+        })}
           role="status"
         />
       ) : (
         <>
           {settingsError ? (
             <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {settingsError} Showing the best available rules until settings reload.
+              {settingsError}{' '}
+              {t('tsSettings.staleRules', {
+                defaultValue: 'Showing the best available rules until settings reload.',
+              })}
             </p>
           ) : null}
           {canEditPersonalRules ? (
