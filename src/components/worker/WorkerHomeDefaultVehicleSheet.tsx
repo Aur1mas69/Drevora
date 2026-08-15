@@ -3,6 +3,7 @@ import { isTrailerFleetAsset, type Vehicle } from '@/services/vehiclesService'
 import { X } from 'lucide-react'
 import { useEffect, useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 export type WorkerHomeDefaultVehicleSheetProps = {
   open: boolean
@@ -25,6 +26,7 @@ export function WorkerHomeDefaultVehicleSheet({
   onSelect,
   onClose,
 }: WorkerHomeDefaultVehicleSheetProps) {
+  const { t } = useTranslation('worker')
   const titleId = useId()
   const listId = useId()
   const poweredVehicles = useMemo(
@@ -77,7 +79,9 @@ export function WorkerHomeDefaultVehicleSheet({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-[1px]"
-        aria-label="Close select default vehicle"
+        aria-label={t('home.closeSelectDefaultVehicle', {
+          defaultValue: 'Close select default vehicle',
+        })}
         disabled={isSaving}
         onClick={() => {
           if (!isSaving) onClose()
@@ -95,13 +99,15 @@ export function WorkerHomeDefaultVehicleSheet({
             id={titleId}
             className="min-w-0 flex-1 text-base font-semibold tracking-[-0.02em] text-[color:var(--worker-text)]"
           >
-            Select default vehicle
+            {t('home.selectDefaultVehicle', {
+              defaultValue: 'Select default vehicle',
+            })}
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Close"
+            aria-label={t('home.close', { defaultValue: 'Close' })}
             className="flex size-10 shrink-0 items-center justify-center rounded-xl text-[color:var(--worker-text-secondary)] transition-colors hover:bg-[color:var(--worker-row-hover)] hover:text-[color:var(--worker-text)] disabled:opacity-50"
           >
             <X className="size-5" aria-hidden />
@@ -111,7 +117,9 @@ export function WorkerHomeDefaultVehicleSheet({
         <div
           id={listId}
           role="listbox"
-          aria-label="Active powered company vehicles"
+          aria-label={t('home.activeVehiclesList', {
+            defaultValue: 'Active powered company vehicles',
+          })}
           className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
           style={{
             overflowY: 'auto',
@@ -122,7 +130,9 @@ export function WorkerHomeDefaultVehicleSheet({
         >
           {poweredVehicles.length === 0 ? (
             <p className="px-3 py-6 text-sm text-[color:var(--worker-text-secondary)]">
-              No active powered vehicles available.
+              {t('home.noActiveVehicles', {
+                defaultValue: 'No active powered vehicles available.',
+              })}
             </p>
           ) : (
             poweredVehicles.map((vehicle) => (

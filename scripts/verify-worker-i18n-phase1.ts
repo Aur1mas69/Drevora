@@ -144,4 +144,32 @@ assert(workerSettings.includes('settings.language'), 'Worker Settings translates
 assert(workerSettings.includes('WorkerLanguageFlag'), 'Worker Settings uses SVG language flags')
 assert(!workerSettings.includes('🇬🇧'), 'Worker Settings does not use emoji flags')
 
+const homeKeys = englishKeys.filter((key) => key.startsWith('home.'))
+assert(homeKeys.length >= 20, 'Phase 2 home keys exist')
+assert(homeKeys.includes('home.heroTitle'), 'home.heroTitle exists')
+assert(homeKeys.includes('home.greetingMorning'), 'home.greetingMorning exists')
+assert(homeKeys.includes('home.startVehicleCheck'), 'home.startVehicleCheck exists')
+assert(String(ltWorker.home.heroTitle) !== String(enWorker.home.heroTitle), 'LT home.heroTitle is translated')
+assert(String(plWorker.home.heroTitle) !== String(enWorker.home.heroTitle), 'PL home.heroTitle is translated')
+assert(String(roWorker.home.heroTitle) !== String(enWorker.home.heroTitle), 'RO home.heroTitle is translated')
+assert(String(ruWorker.home.heroTitle) !== String(enWorker.home.heroTitle), 'RU home.heroTitle is translated')
+
+const dashboardPage = read('src/pages/DashboardPage.tsx')
+const homeSheet = read('src/components/worker/WorkerHomeDefaultVehicleSheet.tsx')
+assert(dashboardPage.includes("t('home.heroTitle'"), 'Dashboard translates hero title')
+assert(dashboardPage.includes("t('home.startVehicleCheck'"), 'Dashboard translates start CTA')
+assert(dashboardPage.includes("t('home.quickActions'"), 'Dashboard translates quick actions')
+assert(dashboardPage.includes('WORKER_HOME_GREETING_KEYS'), 'Dashboard uses localized greeting keys')
+assert(homeSheet.includes("t('home.selectDefaultVehicle'"), 'Home vehicle sheet title is translated')
+assert(mainLayout.includes('nav.${item.id}'), 'MainLayout translates nav labels')
+assert(mainLayout.includes("t('nav.home'"), 'MainLayout translates Home nav')
+
+void workerI18n.changeLanguage('lt')
+assert(
+  workerI18n.t('home.heroTitle') === ltWorker.home.heroTitle,
+  'Lithuanian home.heroTitle is used when language is lt',
+)
+void workerI18n.changeLanguage('en')
+assert(workerI18n.t('home.heroTitle') === enWorker.home.heroTitle, 'English home.heroTitle after reset')
+
 console.log('verify-worker-i18n-phase1: PASS')

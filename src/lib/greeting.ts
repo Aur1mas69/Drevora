@@ -2,23 +2,42 @@ import type { CompanyTimeFormat } from '@/lib/dateTimeFormat'
 import { formatTimeFromDate } from '@/lib/dateTimeFormat'
 import { WORKER_EMPLOYMENT_TYPES } from '@/lib/workerProfileUtils'
 
-export function getTimeGreeting(date = new Date()): string {
-  const hour = date.getHours()
+export type GreetingPeriod = 'morning' | 'afternoon' | 'evening' | 'night'
 
-  if (hour >= 5 && hour < 12) return 'Good Morning'
-  if (hour >= 12 && hour < 17) return 'Good Afternoon'
-  if (hour >= 17 && hour < 22) return 'Good Evening'
-  return 'Good Night'
+/** Same hour bands as Worker Home greeting icons: 05–11 / 12–16 / 17–21 / 22–04. */
+export function getGreetingPeriod(date = new Date()): GreetingPeriod {
+  const hour = date.getHours()
+  if (hour >= 5 && hour < 12) return 'morning'
+  if (hour >= 12 && hour < 17) return 'afternoon'
+  if (hour >= 17 && hour < 22) return 'evening'
+  return 'night'
+}
+
+export function getTimeGreeting(date = new Date()): string {
+  switch (getGreetingPeriod(date)) {
+    case 'morning':
+      return 'Good Morning'
+    case 'afternoon':
+      return 'Good Afternoon'
+    case 'evening':
+      return 'Good Evening'
+    case 'night':
+      return 'Good Night'
+  }
 }
 
 /** Sentence-case daypart for personal greetings (Worker Home). */
 export function getSentenceTimeGreeting(date = new Date()): string {
-  const hour = date.getHours()
-
-  if (hour >= 5 && hour < 12) return 'Good morning'
-  if (hour >= 12 && hour < 17) return 'Good afternoon'
-  if (hour >= 17 && hour < 22) return 'Good evening'
-  return 'Good night'
+  switch (getGreetingPeriod(date)) {
+    case 'morning':
+      return 'Good morning'
+    case 'afternoon':
+      return 'Good afternoon'
+    case 'evening':
+      return 'Good evening'
+    case 'night':
+      return 'Good night'
+  }
 }
 
 const INVALID_GREETING_FIRST_NAMES = new Set(

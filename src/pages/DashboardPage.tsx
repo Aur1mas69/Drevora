@@ -4,7 +4,12 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { WorkerHomeDefaultVehicleSheet } from '@/components/worker/WorkerHomeDefaultVehicleSheet'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
-import { getSentenceTimeGreeting, resolveGreetingFullName } from '@/lib/greeting'
+import {
+  getGreetingPeriod,
+  getSentenceTimeGreeting,
+  resolveGreetingFullName,
+  type GreetingPeriod,
+} from '@/lib/greeting'
 import {
   addOnlineStatusListener,
   getOnlineStatus,
@@ -101,15 +106,47 @@ const WORKER_HOME_HERO_WIDTH = 1983
 const WORKER_HOME_HERO_HEIGHT = 793
 
 /**
- * Same hour thresholds as getSentenceTimeGreeting / getTimeGreeting.
+ * Same hour thresholds as getGreetingPeriod / getSentenceTimeGreeting.
  * Morning 05–11, Afternoon 12–16, Evening 17–21, Night 22–04.
  */
 function getGreetingPeriodIconSrc(date = new Date()): string {
-  const hour = date.getHours()
-  if (hour >= 5 && hour < 12) return morningGreetingIcon
-  if (hour >= 12 && hour < 17) return afternoonGreetingIcon
-  if (hour >= 17 && hour < 22) return eveningGreetingIcon
-  return nightGreetingIcon
+  switch (getGreetingPeriod(date)) {
+    case 'morning':
+      return morningGreetingIcon
+    case 'afternoon':
+      return afternoonGreetingIcon
+    case 'evening':
+      return eveningGreetingIcon
+    case 'night':
+      return nightGreetingIcon
+  }
+}
+
+const WORKER_HOME_GREETING_KEYS: Record<GreetingPeriod, string> = {
+  morning: 'home.greetingMorning',
+  afternoon: 'home.greetingAfternoon',
+  evening: 'home.greetingEvening',
+  night: 'home.greetingNight',
+}
+
+function translateWorkerHomeStatusTitle(
+  t: (key: string, options?: { defaultValue: string }) => string,
+  title: string,
+): string {
+  switch (title) {
+    case 'Completed today':
+      return t('home.vehicleCheckCompletedToday', { defaultValue: title })
+    case 'Not completed today':
+      return t('home.vehicleCheckNotCompletedToday', { defaultValue: title })
+    case 'Overdue':
+      return t('home.timesheetOverdue', { defaultValue: title })
+    case 'Submitted':
+      return t('home.timesheetSubmitted', { defaultValue: title })
+    case 'In progress':
+      return t('home.timesheetInProgress', { defaultValue: title })
+    default:
+      return title
+  }
 }
 
 function resetHorizontalScrollOffset() {
@@ -146,9 +183,13 @@ function WorkerHomeStatusIcon({ tone }: { tone: WorkerHomeStatusTone }) {
 }
 
 function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
+  const { t } = useTranslation('worker')
   const headerRef = useRef<HTMLElement>(null)
   const greetingIconSrc = getGreetingPeriodIconSrc()
-  const greeting = getSentenceTimeGreeting()
+  const greetingPeriod = getGreetingPeriod()
+  const greeting = t(WORKER_HOME_GREETING_KEYS[greetingPeriod], {
+    defaultValue: getSentenceTimeGreeting(),
+  })
 
   useLayoutEffect(() => {
     // iOS PWA cold launch can keep a non-zero horizontal scroll offset (or a
@@ -219,6 +260,7 @@ function WorkerHomeHeader({ workerName }: { workerName: string | null }) {
 }
 
 function WorkerHomeRobotHero() {
+  const { t } = useTranslation('worker')
   return (
     <section className="worker-home-hero relative isolate pt-5 sm:pt-6">
       <div className="worker-home-hero__frame relative overflow-hidden rounded-[1.75rem]">
@@ -234,7 +276,7 @@ function WorkerHomeRobotHero() {
         />
         <div className="absolute inset-0 z-[2] flex max-w-[58%] flex-col justify-start px-4 pt-3.5 pb-3 min-[380px]:pt-4 sm:px-5 sm:pt-5 sm:pb-4 lg:pt-6">
           <h2 className="worker-home-hero__title break-words text-lg font-bold leading-[1.2] tracking-tight min-[380px]:text-xl sm:text-2xl [font-weight:800]">
-            Ready for the road?
+            {t('home.heroTitle', { defaultValue: 'Ready for the road?' })}
           </h2>
         </div>
       </div>
@@ -275,11 +317,16 @@ function DashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const toastTimerRef = useRef<number | null>(null)
 
+  const workerFallbackName = t('home.workerFallback', { defaultValue: 'Worker' })
   const greetingWorkerName = worker
-    ? resolveGreetingFullName(worker.firstName, worker.lastName)
+    ? resolveGreetingFullName(
+        worker.firstName,
+        worker.lastName,
+        workerFallbackName,
+      )
     : isLoading
       ? null
-      : 'Worker'
+      : workerFallbackName
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -521,7 +568,12 @@ function DashboardPage() {
       await setWorkerDefaultVehicle(vehicle.id)
       reloadWorker()
       setVehicleSheetOpen(false)
-      showToast(`Default vehicle changed to ${registration}`)
+      showToast(
+        t('home.defaultVehicleChanged', {
+          registration,
+          defaultValue: `Default vehicle changed to ${registration}`,
+        }),
+      )
     } catch (saveError) {
       // Keep sheet open and previous selection — do not optimistically flip.
       showToast(
@@ -529,7 +581,9 @@ function DashboardPage() {
           ? saveError.message
           : saveError instanceof Error && saveError.message.trim()
             ? saveError.message
-            : 'Unable to change default vehicle.',
+            : t('home.defaultVehicleChangeError', {
+                defaultValue: 'Unable to change default vehicle.',
+              }),
       )
     } finally {
       setIsSavingDefaultVehicle(false)
@@ -541,10 +595,15 @@ function DashboardPage() {
   if (!isLoading && (error || !worker) && isOnline) {
     return (
       <div className="worker-card rounded-[1.75rem] p-5">
-        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Worker profile</h1>
+        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">
+          {t('home.profileMissingTitle', { defaultValue: 'Worker profile' })}
+        </h1>
         <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {error ??
-            'We could not find a worker profile linked to your account. Please contact your manager.'}
+            t('home.profileMissing', {
+              defaultValue:
+                'We could not find a worker profile linked to your account. Please contact your manager.',
+            })}
         </p>
       </div>
     )
@@ -583,7 +642,9 @@ function DashboardPage() {
             aria-hidden
           />
         </span>
-        <span className="truncate">Start Vehicle Check</span>
+        <span className="truncate">
+          {t('home.startVehicleCheck', { defaultValue: 'Start Vehicle Check' })}
+        </span>
       </span>
       <ChevronRight className="size-5 shrink-0 opacity-90" aria-hidden />
     </Link>
@@ -602,7 +663,9 @@ function DashboardPage() {
             role="status"
             className="worker-home-surface px-4 py-3.5 text-sm text-[color:var(--worker-text-secondary)]"
           >
-            {OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE}
+            {t('home.offlineNotPrepared', {
+              defaultValue: OFFLINE_VEHICLE_CHECKS_NOT_PREPARED_MESSAGE,
+            })}
           </div>
         ) : null}
 
@@ -618,7 +681,7 @@ function DashboardPage() {
       {isLoading || companyLoading ? (
         <div
           className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
-          aria-label="Loading worker home"
+          aria-label={t('home.loading', { defaultValue: 'Loading worker home' })}
           role="status"
         />
       ) : (
@@ -643,7 +706,7 @@ function DashboardPage() {
                     !isDark && 'text-[color:var(--worker-text-muted)]',
                   )}
                 >
-                  Default vehicle
+                  {t('home.defaultVehicle', { defaultValue: 'Default vehicle' })}
                 </p>
                 <ChevronRight className="worker-home-chevron size-4 shrink-0" aria-hidden />
               </div>
@@ -661,7 +724,7 @@ function DashboardPage() {
                       !isDark && 'text-[color:var(--worker-text)]',
                     )}
                   >
-                    Not set
+                    {t('home.notSet', { defaultValue: 'Not set' })}
                   </p>
                 </div>
               )}
@@ -669,7 +732,7 @@ function DashboardPage() {
 
             <section
               className="worker-home-status-card flex h-full min-w-0 flex-col justify-center gap-2.5 px-3 py-3"
-              aria-label="Worker status"
+              aria-label={t('home.statusAria', { defaultValue: 'Worker status' })}
               aria-busy={statusLoading}
             >
               <Link
@@ -679,10 +742,10 @@ function DashboardPage() {
                 <WorkerHomeStatusIcon tone={vehicleCheckStatus.tone} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                    Vehicle Check
+                    {t('home.vehicleCheck', { defaultValue: 'Vehicle Check' })}
                   </span>
                   <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[color:var(--worker-text)]">
-                    {vehicleCheckStatus.title}
+                    {translateWorkerHomeStatusTitle(t, vehicleCheckStatus.title)}
                   </span>
                   {vehicleCheckDetail ? (
                     <span className="mt-0.5 block truncate text-[10px] leading-snug text-[color:var(--worker-text-secondary)]">
@@ -696,10 +759,10 @@ function DashboardPage() {
                 <WorkerHomeStatusIcon tone={timesheetStatus.tone} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--worker-text-muted)]">
-                    Timesheet
+                    {t('home.timesheet', { defaultValue: 'Timesheet' })}
                   </span>
                   <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[color:var(--worker-text)]">
-                    {timesheetStatus.title}
+                    {translateWorkerHomeStatusTitle(t, timesheetStatus.title)}
                   </span>
                   {timesheetDetail ? (
                     <span className="mt-0.5 block truncate text-[10px] leading-snug text-[color:var(--worker-text-secondary)]">
@@ -713,7 +776,7 @@ function DashboardPage() {
 
           <section className="worker-home-quick-actions">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--worker-text-muted)]">
-              Quick actions
+              {t('home.quickActions', { defaultValue: 'Quick actions' })}
             </h2>
             <div className="worker-home-quick-actions-grid grid grid-cols-2 gap-3">
               {quickActionItems.map((item, index) => {
