@@ -19,6 +19,10 @@ import {
   WORKER_PLAN_ALLOWANCE_UNAVAILABLE,
   WORKER_PLAN_LIMIT_REACHED,
 } from '@/lib/workerAllowance'
+import {
+  parseWorkerLanguage,
+  type WorkerLanguage,
+} from '@/i18n/languages'
 
 export type DriverStatus = 'Working' | 'Off Duty' | 'Holiday' | 'Suspended'
 export type LicenceCategory =
@@ -104,6 +108,11 @@ export type Driver = {
   archivedAt: string | null
   /** Archived profile shell retention deadline (archived_at + 6 years). Null when active. */
   retentionExpiresAt: string | null
+  /**
+   * Worker UI language. Null when the column was not selected (legacy fallback).
+   * Canonical stored values: en | lt | pl | ro | ru.
+   */
+  preferredLanguage: WorkerLanguage | null
 }
 
 export type CreateDriverInput = {
@@ -223,6 +232,7 @@ type DriverRow = {
   auth_user_id?: string | null
   archived_at?: string | null
   retention_expires_at?: string | null
+  preferred_language?: string | null
 }
 
 const basicDriverSelectMinimal =
@@ -235,10 +245,10 @@ const basicDriverSelectWithAssignmentLegacy =
   'id, created_at, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url'
 
 const workerCoreSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at, preferred_language'
 
 const workerProfileSelect =
-  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at, retention_expires_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country'
+  'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, paid_holiday_enabled, annual_paid_holiday_days, bank_holiday_entitlement_days, unpaid_leave_allowed, holiday_entitlement_notes, assigned_vehicle, status, avatar_url, auth_user_id, archived_at, retention_expires_at, licence_categories, driving_licence_expiry, tacho_card_number, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry, default_vehicle_id, start_date, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, address_line_1, address_line_2, town_city, county, postcode, country, preferred_language'
 
 const complianceDriverSelect =
   'id, created_at, worker_code, first_name, last_name, email, phone, company, role, employment_type, assigned_vehicle, status, avatar_url, driving_licence_expiry, cpc_expiry, driver_card_expiry, medical_expiry, adr_expiry, hiab_expiry'
@@ -982,6 +992,9 @@ function mapDriverRow(row: DriverRow): Driver {
     authUserId: row.auth_user_id?.trim() || null,
     archivedAt: row.archived_at?.trim() || null,
     retentionExpiresAt: row.retention_expires_at?.trim() || null,
+    preferredLanguage: Object.prototype.hasOwnProperty.call(row, 'preferred_language')
+      ? parseWorkerLanguage(row.preferred_language)
+      : null,
   }
 }
 
@@ -1638,6 +1651,70 @@ export async function setWorkerDefaultVehicle(
   return typeof data === 'string' ? data : data ?? null
 }
 
+export async function fetchOwnPreferredLanguage(): Promise<WorkerLanguage | null> {
+  const { data, error } = await requireSupabase()
+    .from('drivers')
+    .select('preferred_language')
+    .limit(1)
+    .maybeSingle()
+
+  logSupabaseQuery({
+    service: 'driversService.fetchOwnPreferredLanguage',
+    table: 'drivers',
+    data: data ? [data] : [],
+    error,
+  })
+
+  if (error) {
+    if (/preferred_language/i.test(error.message ?? '')) {
+      return null
+    }
+    throw new DriversServiceError(
+      error.message || 'Unable to load your language.',
+      error.code ?? null,
+    )
+  }
+
+  if (!data || !Object.prototype.hasOwnProperty.call(data, 'preferred_language')) {
+    return null
+  }
+
+  return parseWorkerLanguage(
+    (data as { preferred_language?: string | null }).preferred_language,
+  )
+}
+
+export async function setWorkerPreferredLanguage(
+  language: WorkerLanguage,
+): Promise<WorkerLanguage> {
+  const next = parseWorkerLanguage(language)
+  const { data, error } = await requireSupabase().rpc(
+    'drevora_worker_set_preferred_language',
+    { p_language: next },
+  )
+
+  logSupabaseQuery({
+    service: 'driversService.setWorkerPreferredLanguage',
+    table: 'rpc:drevora_worker_set_preferred_language',
+    data: data != null ? [{ preferred_language: data }] : [],
+    error,
+  })
+
+  if (error) {
+    if (/function .*drevora_worker_set_preferred_language/i.test(error.message ?? '')) {
+      throw new DriversServiceError(
+        'Saving a language is not available yet. Ask DREVORA support to apply the latest database migration.',
+      )
+    }
+    throw new DriversServiceError(
+      error.message || 'Unable to save your language.',
+      error.code ?? null,
+    )
+  }
+
+  return parseWorkerLanguage(typeof data === 'string' ? data : next)
+}
+
 export async function getWorkerAccessStatus(): Promise<WorkerAccessStatus> {
   // Offline (Web/PWA and Native): the lifecycle RPC cannot resolve, and waiting
   // on it keeps the Worker shell behind the membership splash. Treat the last
@@ -1680,5 +1757,7 @@ export const driversService = {
   reactivateDriver,
   getWorkerAccessStatus,
   setWorkerDefaultVehicle,
+  fetchOwnPreferredLanguage,
+  setWorkerPreferredLanguage,
   getDriverFormValues,
 }

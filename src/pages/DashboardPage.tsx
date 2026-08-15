@@ -42,6 +42,7 @@ import eveningGreetingIcon from '@/assets/worker-greetings/evening.png'
 import nightGreetingIcon from '@/assets/worker-greetings/night.png'
 import { ChevronRight, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /** Default Vehicle card icon size. */
 const WORKER_HOME_DEFAULT_VEHICLE_ICON_CLASS = 'size-[53px] shrink-0 object-contain'
@@ -242,6 +243,7 @@ function WorkerHomeRobotHero() {
 }
 
 function DashboardPage() {
+  const { t } = useTranslation('worker')
   const { session } = useAuth()
   const { worker, isLoading, error, reload: reloadWorker } = useCurrentWorker()
   const { companyId, companyLoading, settings } = useCompanySettings()
@@ -716,8 +718,9 @@ function DashboardPage() {
             <div className="worker-home-quick-actions-grid grid grid-cols-2 gap-3">
               {quickActionItems.map((item, index) => {
                 const iconSrc = WORKER_HOME_QUICK_ACTION_ICONS[item.id]
-                const label =
-                  WORKER_HOME_QUICK_ACTION_LABELS[item.id] ?? item.label
+                const label = t(`nav.${item.id}`, {
+                  defaultValue: WORKER_HOME_QUICK_ACTION_LABELS[item.id] ?? item.label,
+                })
                 const accentClass = isDark
                   ? index % 2 === 0
                     ? 'worker-quick-action-mint'
@@ -741,9 +744,11 @@ function DashboardPage() {
                           !isDark && 'text-[color:var(--worker-text)]',
                         )}
                       >
-                        <span className="block leading-tight">Holiday</span>
+                        <span className="block leading-tight">
+                          {t('nav.holiday', { defaultValue: 'Holiday' })}
+                        </span>
                         <span className="worker-home-qa-request-line mt-0.5 block leading-tight">
-                          Request
+                          {t('nav.holidayRequest', { defaultValue: 'Request' })}
                         </span>
                       </p>
                     ) : (

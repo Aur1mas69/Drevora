@@ -5,6 +5,13 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
+import { WorkerLanguageFlag } from '@/components/worker/WorkerLanguageFlag'
+import { WorkerLanguagePickerSheet } from '@/components/worker/WorkerLanguagePickerSheet'
+import { useWorkerLocale } from '@/i18n/workerLocaleContext'
+import {
+  WORKER_LANGUAGE_LABELS,
+  type WorkerLanguage,
+} from '@/i18n/languages'
 import { getAppVersionLabel } from '@/lib/appVersion'
 import { LOGIN_PATH } from '@/lib/membershipRoles'
 import {
@@ -26,6 +33,7 @@ import {
   ChevronRight,
   CircleHelp,
   Clock,
+  Languages,
   Lock,
   LogOut,
   Moon,
@@ -33,6 +41,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
 function displayValue(value: string | null | undefined): string {
@@ -138,6 +147,13 @@ function ProfileField({
 
 export default function WorkerSettingsPage() {
   const isDark = useIsWorkerDarkMode()
+  const { t } = useTranslation('worker')
+  const {
+    language,
+    isSaving: isSavingLanguage,
+    error: languageError,
+    setLanguage,
+  } = useWorkerLocale()
   const navigate = useNavigate()
   const { signOut, session } = useAuth()
   const { worker, isLoading, error, reload } = useCurrentWorker()
@@ -153,6 +169,7 @@ export default function WorkerSettingsPage() {
   )
   const [isRemovingDefault, setIsRemovingDefault] = useState(false)
   const [defaultVehicleError, setDefaultVehicleError] = useState<string | null>(null)
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false)
 
   useEffect(() => {
     setAppearance(applyResolvedWorkerAppearance(userId))
@@ -161,6 +178,12 @@ export default function WorkerSettingsPage() {
   async function handleSignOut() {
     await signOut()
     navigate(LOGIN_PATH, { replace: true })
+  }
+
+  function handleLanguageChange(next: WorkerLanguage) {
+    setLanguagePickerOpen(false)
+    if (next === language || isSavingLanguage) return
+    void setLanguage(next)
   }
 
   function handleAppearanceChange(next: WorkerAppearance) {
@@ -196,7 +219,7 @@ export default function WorkerSettingsPage() {
     return (
       <div
         className="min-h-[40vh] rounded-[1.75rem] bg-[color:var(--worker-card)]"
-        aria-label="Loading settings"
+        aria-label={t('settings.loading', { defaultValue: 'Loading settings' })}
         role="status"
       />
     )
@@ -205,7 +228,9 @@ export default function WorkerSettingsPage() {
   if (error || !worker) {
     return (
       <div className="worker-card rounded-[1.75rem] p-5">
-        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">Settings</h1>
+        <h1 className="text-lg font-semibold text-[color:var(--worker-text)]">
+          {t('settings.title', { defaultValue: 'Settings' })}
+        </h1>
         <p className="mt-2 text-sm text-[color:var(--worker-text-secondary)]">
           {error ??
             'We could not find a worker profile linked to your account.'}
@@ -235,7 +260,7 @@ export default function WorkerSettingsPage() {
     <div className="mx-auto max-w-md space-y-4 lg:max-w-2xl">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--worker-text)]">
-          Settings
+          {t('settings.title', { defaultValue: 'Settings' })}
         </h1>
       </header>
 
@@ -320,7 +345,7 @@ export default function WorkerSettingsPage() {
               !isDark && 'text-[color:var(--worker-text-muted)]',
             )}
           >
-            Preferences
+            {t('settings.preferences', { defaultValue: 'Preferences' })}
           </h2>
         </div>
 
@@ -408,6 +433,78 @@ export default function WorkerSettingsPage() {
 
         <div
           className={cn(
+            'worker-accent-divider border-t',
+            !isDark && 'border-[color:var(--worker-border)]',
+          )}
+        >
+          <button
+            type="button"
+            className={cn(
+              'flex min-h-11 w-full min-w-0 items-center gap-2.5 worker-list-row',
+              !isDark &&
+                'active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
+            )}
+            aria-haspopup="dialog"
+            aria-expanded={languagePickerOpen}
+            aria-busy={isSavingLanguage}
+            onClick={() => setLanguagePickerOpen(true)}
+          >
+            <span
+              className={cn(
+                'worker-accent-icon-well flex size-9 shrink-0 items-center justify-center rounded-xl',
+                !isDark &&
+                  'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
+              )}
+            >
+              <Languages className="size-4" aria-hidden />
+            </span>
+            <span
+              className={cn(
+                'worker-accent-title min-w-0 flex-1 text-left text-sm font-semibold',
+                !isDark && 'text-[color:var(--worker-text)]',
+              )}
+            >
+              {t('settings.language', { defaultValue: 'Language' })}
+            </span>
+            <span
+              className={cn(
+                'worker-accent-secondary inline-flex shrink-0 items-center gap-1.5 text-sm font-medium',
+                !isDark && 'text-[color:var(--worker-text-secondary)]',
+              )}
+            >
+              <WorkerLanguageFlag language={language} />
+              <span>
+                {isSavingLanguage
+                  ? t('settings.languageSaving', { defaultValue: 'Saving…' })
+                  : WORKER_LANGUAGE_LABELS[language]}
+              </span>
+            </span>
+            <ChevronRight
+              className={cn(
+                'worker-accent-muted size-5 shrink-0',
+                !isDark && 'text-[color:var(--worker-text-muted)]',
+              )}
+              aria-hidden
+            />
+          </button>
+          {languageError ? (
+            <p className="px-4 pb-3 text-xs font-medium text-rose-600">
+              {t('settings.languageSaveError', { defaultValue: languageError })}
+            </p>
+          ) : null}
+        </div>
+
+        <WorkerLanguagePickerSheet
+          open={languagePickerOpen}
+          language={language}
+          title={t('settings.language', { defaultValue: 'Language' })}
+          isSaving={isSavingLanguage}
+          onSelect={handleLanguageChange}
+          onClose={() => setLanguagePickerOpen(false)}
+        />
+
+        <div
+          className={cn(
             'worker-accent-divider border-t px-4 py-3.5',
             !isDark && 'border-[color:var(--worker-border)]',
           )}
@@ -418,7 +515,7 @@ export default function WorkerSettingsPage() {
               !isDark && 'text-[color:var(--worker-text)]',
             )}
           >
-            Appearance
+            {t('settings.appearance', { defaultValue: 'Appearance' })}
           </p>
           <div
             className={cn(
@@ -428,12 +525,20 @@ export default function WorkerSettingsPage() {
                 : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)]',
             )}
             role="radiogroup"
-            aria-label="Appearance"
+            aria-label={t('settings.appearance', { defaultValue: 'Appearance' })}
           >
             {(
               [
-                { value: 'light' as const, label: 'Light', icon: Sun },
-                { value: 'dark' as const, label: 'Dark', icon: Moon },
+                {
+                  value: 'light' as const,
+                  label: t('settings.light', { defaultValue: 'Light' }),
+                  icon: Sun,
+                },
+                {
+                  value: 'dark' as const,
+                  label: t('settings.dark', { defaultValue: 'Dark' }),
+                  icon: Moon,
+                },
               ] as const
             ).map((option) => {
               const selected = appearance === option.value

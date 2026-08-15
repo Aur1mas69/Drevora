@@ -15,6 +15,7 @@ import {
   type WorkerNavItem,
 } from '@/lib/workerNavigation'
 import { cn } from '@/lib/utils'
+import { WorkerLocaleProvider } from '@/i18n/WorkerLocaleProvider'
 import { subscribeWorkerVisualViewportSync } from '@/lib/workerVisualViewport'
 import homeBlueIcon from '@/assets/worker-nav/home-blue.png'
 import homeGrayIcon from '@/assets/worker-nav/home-gray.png'
@@ -24,6 +25,7 @@ import notesBlueIcon from '@/assets/worker-nav/notes-blue.png'
 import notesGrayIcon from '@/assets/worker-nav/notes-gray.png'
 import settingsBlueIcon from '@/assets/worker-nav/settings-blue.png'
 import settingsGrayIcon from '@/assets/worker-nav/settings-gray.png'
+import { useTranslation } from 'react-i18next'
 import { useLayoutEffect, useMemo, type MouseEvent } from 'react'
 
 const WORKER_BOTTOM_NAV_ICONS: Record<
@@ -71,6 +73,7 @@ function MainLayoutShell() {
   const { attemptLeave } = useWorkerNavigationGuard()
   const userId = session?.user.id ?? null
 
+  const { t } = useTranslation('worker')
   const bottomNavItems = useMemo(() => getWorkerBottomNavItems(), [])
 
   // useLayoutEffect (not useEffect) so the resolved theme applies before the
@@ -106,7 +109,9 @@ function MainLayoutShell() {
         <span className="worker-nav-icon-wrap" aria-hidden>
           <WorkerBottomNavIcon id={item.id} active={active} />
         </span>
-        <span className="truncate">{item.shortLabel ?? item.label}</span>
+        <span className="truncate">
+          {t(`nav.${item.id}`, { defaultValue: item.shortLabel ?? item.label })}
+        </span>
       </NavLink>
     )
   }
@@ -126,7 +131,7 @@ function MainLayoutShell() {
               className={() =>
                 navButtonClass(location.pathname === WORKER_HOME_PATH)
               }
-              aria-label="Home"
+              aria-label={t('nav.home', { defaultValue: 'Home' })}
             >
               {location.pathname === WORKER_HOME_PATH ? (
                 <span className="worker-nav-indicator" aria-hidden />
@@ -137,7 +142,7 @@ function MainLayoutShell() {
                   active={location.pathname === WORKER_HOME_PATH}
                 />
               </span>
-              <span className="truncate">Home</span>
+              <span className="truncate">{t('nav.home', { defaultValue: 'Home' })}</span>
             </NavLink>
 
             {bottomNavItems.map((item) => renderNavLink(item))}
@@ -151,7 +156,9 @@ function MainLayoutShell() {
 function MainLayout() {
   return (
     <WorkerNavigationGuardProvider>
-      <MainLayoutShell />
+      <WorkerLocaleProvider>
+        <MainLayoutShell />
+      </WorkerLocaleProvider>
     </WorkerNavigationGuardProvider>
   )
 }
