@@ -890,8 +890,10 @@ img.drevora-brand-logo {
    page has resolved its saved theme — restore the matching dark background
    on body/#root so no light gap can show behind the loader/short pages.
    `.auth-splash` itself is never targeted here: it stays Light always. */
-html.dark body,
-html.dark #root {
+/* Admin Dark only. Worker Light keeps a baby-blue chrome so iPhone safe-area
+   / overscroll cannot show a dark gap around the Worker shell. */
+html.dark:not(:has(.worker-mobile-layout)) body,
+html.dark:not(:has(.worker-mobile-layout)) #root {
   background-color: #0f172a;
   color-scheme: dark;
 }

@@ -18,12 +18,12 @@
   --worker-success-soft: rgba(22, 163, 74, 0.12);
   --worker-text: #0f172a;
   --worker-text-secondary: #64748b;
-  --worker-text-muted: #94a3b8;
+  --worker-text-muted: #64748b;
   --worker-danger: #e11d48;
   --worker-danger-soft: rgba(225, 29, 72, 0.12);
   --worker-warning: #d97706;
   --worker-warning-soft: rgba(217, 119, 6, 0.14);
-  --worker-disabled: #475569;
+  --worker-disabled: #cbd5e1;
   --worker-nav-inactive: #94a3b8;
   /* Alias kept for components written against --worker-accent. */
   --worker-accent: var(--worker-primary);
@@ -97,6 +97,92 @@ html:not(.worker-dark) .worker-mobile-layout {
   background-color: var(--worker-bg);
   background-image: var(--worker-home-blue-gradient);
   background-attachment: fixed;
+  color-scheme: light;
+}
+
+/*
+ * Worker Light isolation from company/Admin `html.dark`.
+ * Office theme (or iPhone system Dark while company theme is "system") can
+ * leave `.dark` on <html>. Tailwind `dark:` and shadcn tokens would then
+ * recolour Worker Light. These rules restore Light tokens/surfaces only
+ * while the Worker shell is mounted and `worker-dark` is off.
+ */
+html:not(.worker-dark):has(.worker-mobile-layout) {
+  color-scheme: light;
+}
+
+html:not(.worker-dark):has(.worker-mobile-layout) body,
+html:not(.worker-dark):has(.worker-mobile-layout) #root {
+  background-color: #dceeff;
+  color-scheme: light;
+}
+
+html.dark:not(.worker-dark) .worker-mobile-layout,
+html.dark:not(.worker-dark) .worker-theme-surface {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #4344f6;
+  --primary-foreground: #ffffff;
+  --secondary: #eef4ff;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eef4ff;
+  --accent-foreground: #0f172a;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #4344f6;
+}
+
+html:not(.worker-dark) .worker-mobile-layout [data-slot='card'],
+html:not(.worker-dark) .worker-theme-surface [data-slot='card'] {
+  background-color: var(--worker-card);
+  color: var(--worker-text);
+}
+
+html:not(.worker-dark) .worker-mobile-layout [data-slot='button'][data-variant='default'],
+html:not(.worker-dark) .worker-theme-surface [data-slot='button'][data-variant='default'] {
+  background-color: var(--worker-primary);
+  color: #ffffff;
+}
+
+html:not(.worker-dark) .worker-mobile-layout [data-slot='button'][data-variant='outline'],
+html:not(.worker-dark) .worker-theme-surface [data-slot='button'][data-variant='outline'] {
+  background-color: var(--worker-card);
+  border-color: var(--worker-border-strong);
+  color: var(--worker-text);
+}
+
+html:not(.worker-dark) .worker-mobile-layout input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+html:not(.worker-dark) .worker-mobile-layout select,
+html:not(.worker-dark) .worker-mobile-layout textarea,
+html:not(.worker-dark) .worker-theme-surface input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+html:not(.worker-dark) .worker-theme-surface select,
+html:not(.worker-dark) .worker-theme-surface textarea {
+  background-color: var(--worker-input);
+  border-color: var(--worker-border);
+  color: var(--worker-text);
+  color-scheme: light;
+}
+
+html:not(.worker-dark) .worker-mobile-layout input::placeholder,
+html:not(.worker-dark) .worker-mobile-layout textarea::placeholder,
+html:not(.worker-dark) .worker-theme-surface input::placeholder,
+html:not(.worker-dark) .worker-theme-surface textarea::placeholder {
+  color: var(--worker-text-muted);
+}
+
+/* Beat leftover Tailwind `dark:bg-slate-9xx` panels if `.dark` is still on html. */
+html.dark:not(.worker-dark) .worker-mobile-layout [class*='dark:bg-slate-9'],
+html.dark:not(.worker-dark) .worker-theme-surface [class*='dark:bg-slate-9'],
+html.dark:not(.worker-dark) .worker-mobile-layout [class*='dark:bg-slate-8'],
+html.dark:not(.worker-dark) .worker-theme-surface [class*='dark:bg-slate-8'] {
+  background-color: var(--worker-card) !important;
 }
 
 /* Helpers for Capacitor / future Worker surfaces */
@@ -234,8 +320,13 @@ html:not(.worker-dark) .worker-mobile-layout {
 
 .worker-mobile-layout .worker-btn-primary:disabled {
   background-color: var(--worker-disabled);
-  color: var(--worker-text-muted);
+  color: var(--worker-text);
   opacity: 0.7;
+}
+
+html:not(.worker-dark) .worker-mobile-layout .worker-btn-primary:disabled {
+  color: #475569;
+  opacity: 1;
 }
 
 /* Light: blue active. Dark: fresh green active (icon + label + indicator). */
@@ -718,11 +809,12 @@ html:not(.worker-dark) .worker-mobile-layout .worker-nav-indicator {
   color: #c8f5ce;
 }
 
-.worker-mobile-layout .worker-quick-action-mint {
+/* Mint / indigo fills are Worker Dark checkerboard only — never Light. */
+.worker-dark .worker-mobile-layout .worker-quick-action-mint {
   background-color: #a3f1ab;
 }
 
-.worker-mobile-layout .worker-quick-action-indigo {
+.worker-dark .worker-mobile-layout .worker-quick-action-indigo {
   background-color: var(--worker-primary);
 }
 

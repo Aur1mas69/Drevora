@@ -5,6 +5,7 @@ import { useCompanySettings } from '@/contexts/CompanySettingsContext'
 import { useCurrentWorker } from '@/hooks/useCurrentWorker'
 import { useIsWorkerDarkMode } from '@/hooks/useIsWorkerDarkMode'
 import { useWorkerEffectiveTimesheetSettings } from '@/hooks/useWorkerEffectiveTimesheetSettings'
+import { WorkerHomeDefaultVehicleSheet } from '@/components/worker/WorkerHomeDefaultVehicleSheet'
 import { WorkerLanguageFlag } from '@/components/worker/WorkerLanguageFlag'
 import { WorkerLanguagePickerSheet } from '@/components/worker/WorkerLanguagePickerSheet'
 import { useWorkerLocale } from '@/i18n/workerLocaleContext'
@@ -28,6 +29,11 @@ import {
   setWorkerDefaultVehicle,
 } from '@/services/driversService'
 import {
+  fetchVehicles,
+  isTrailerFleetAsset,
+  type Vehicle,
+} from '@/services/vehiclesService'
+import {
   Building2,
   ChevronRight,
   CircleHelp,
@@ -38,6 +44,7 @@ import {
   Moon,
   Sun,
   Truck,
+  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +58,32 @@ function displayValue(
   return trimmed ? trimmed : notSet
 }
 
+const SETTINGS_ICON_STROKE = 1.75
+
+function SettingsRowIconBadge({
+  icon: Icon,
+  isDark,
+}: {
+  icon: LucideIcon
+  isDark: boolean
+}) {
+  return (
+    <span
+      className={cn(
+        'worker-accent-icon-well flex size-9 shrink-0 items-center justify-center rounded-full',
+        !isDark &&
+          'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
+      )}
+    >
+      <Icon
+        className="block size-[1.125rem]"
+        strokeWidth={SETTINGS_ICON_STROKE}
+        aria-hidden
+      />
+    </span>
+  )
+}
+
 function SettingsRowLink({
   to,
   icon: Icon,
@@ -60,7 +93,7 @@ function SettingsRowLink({
   isDark,
 }: {
   to: string
-  icon: typeof Clock
+  icon: LucideIcon
   title: string
   subtitle?: string
   className?: string
@@ -76,15 +109,7 @@ function SettingsRowLink({
         className,
       )}
     >
-      <span
-        className={cn(
-          'worker-accent-icon-well flex size-9 shrink-0 items-center justify-center rounded-xl',
-          !isDark &&
-            'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
-        )}
-      >
-        <Icon className="size-4" aria-hidden />
-      </span>
+      <SettingsRowIconBadge icon={Icon} isDark={isDark} />
       <span className="min-w-0 flex-1 text-left">
         <span
           className={cn(
@@ -170,12 +195,33 @@ export default function WorkerSettingsPage() {
     DEFAULT_WORKER_APPEARANCE,
   )
   const [isRemovingDefault, setIsRemovingDefault] = useState(false)
+  const [isSavingDefaultVehicle, setIsSavingDefaultVehicle] = useState(false)
   const [defaultVehicleError, setDefaultVehicleError] = useState<string | null>(null)
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false)
+  const [vehicleSheetOpen, setVehicleSheetOpen] = useState(false)
+  const [fleetVehicles, setFleetVehicles] = useState<Vehicle[]>([])
 
   useEffect(() => {
     setAppearance(applyResolvedWorkerAppearance(userId))
   }, [userId])
+
+  useEffect(() => {
+    if (!vehicleSheetOpen) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await fetchVehicles({ lifecycle: 'active' })
+        if (!cancelled) setFleetVehicles(rows)
+      } catch {
+        if (!cancelled) setFleetVehicles([])
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [vehicleSheetOpen])
 
   async function handleSignOut() {
     await signOut()
@@ -197,6 +243,34 @@ export default function WorkerSettingsPage() {
     applyWorkerAppearance(next)
   }
 
+  async function handleSelectDefaultVehicle(vehicle: Vehicle) {
+    if (isTrailerFleetAsset(vehicle)) return
+    if (vehicle.id === worker?.defaultVehicleId) {
+      setVehicleSheetOpen(false)
+      return
+    }
+
+    setIsSavingDefaultVehicle(true)
+    setDefaultVehicleError(null)
+    try {
+      await setWorkerDefaultVehicle(vehicle.id)
+      reload()
+      setVehicleSheetOpen(false)
+    } catch (saveError) {
+      setDefaultVehicleError(
+        saveError instanceof DriversServiceError
+          ? saveError.message
+          : saveError instanceof Error
+            ? saveError.message
+            : t('settings.saveDefaultFailed', {
+                defaultValue: 'Unable to save your default vehicle.',
+              }),
+      )
+    } finally {
+      setIsSavingDefaultVehicle(false)
+    }
+  }
+
   async function handleRemoveDefaultVehicle() {
     if (!worker?.defaultVehicleId) return
     setIsRemovingDefault(true)
@@ -204,6 +278,7 @@ export default function WorkerSettingsPage() {
     try {
       await setWorkerDefaultVehicle(null)
       reload()
+      setVehicleSheetOpen(false)
     } catch (removeError) {
       setDefaultVehicleError(
         removeError instanceof DriversServiceError
@@ -258,7 +333,6 @@ export default function WorkerSettingsPage() {
     worker.defaultVehicleRegistration?.trim() ||
     worker.assignment?.trim() ||
     null
-  const hasDefaultVehicle = Boolean(worker.defaultVehicleId || defaultVehicleLabel)
   const timesheetSummary =
     !settingsLoading && effective
       ? (() => {
@@ -417,70 +491,71 @@ export default function WorkerSettingsPage() {
 
         <div
           className={cn(
-            'worker-accent-divider border-t px-4 py-3.5',
+            'worker-accent-divider border-t',
             !isDark && 'border-[color:var(--worker-border)]',
           )}
         >
-          <div className="flex items-start gap-3">
+          <button
+            type="button"
+            className={cn(
+              'flex min-h-11 w-full min-w-0 items-center gap-2.5 worker-list-row',
+              !isDark &&
+                'active:bg-[color:var(--worker-input)] hover:bg-[color:var(--worker-input)]',
+            )}
+            aria-haspopup="dialog"
+            aria-expanded={vehicleSheetOpen}
+            aria-busy={isSavingDefaultVehicle || isRemovingDefault}
+            onClick={() => setVehicleSheetOpen(true)}
+          >
+            <SettingsRowIconBadge icon={Truck} isDark={isDark} />
             <span
               className={cn(
-                'worker-accent-icon-well flex size-10 shrink-0 items-center justify-center rounded-2xl',
-                !isDark &&
-                  'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
+                'worker-accent-title min-w-0 flex-1 text-left text-sm font-semibold',
+                !isDark && 'text-[color:var(--worker-text)]',
               )}
             >
-              <Truck className="size-5" aria-hidden />
+              {t('settings.defaultVehicle', { defaultValue: 'Default Vehicle' })}
             </span>
-            <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  'worker-accent-title text-sm font-semibold',
-                  !isDark && 'text-[color:var(--worker-text)]',
-                )}
-              >
-                {t('settings.defaultVehicle', { defaultValue: 'Default Vehicle' })}
-              </p>
-              <p
-                className={cn(
-                  'worker-accent-secondary mt-0.5 truncate text-xs font-medium',
-                  !isDark && 'text-[color:var(--worker-text-secondary)]',
-                )}
-              >
-                {defaultVehicleLabel ??
-                  t('settings.noDefaultVehicle', { defaultValue: 'No default vehicle' })}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  to="/worker/vehicles"
-                  className={cn(
-                    'worker-accent-pill inline-flex h-10 items-center justify-center rounded-2xl border px-3 text-xs font-semibold transition-colors',
-                    !isDark &&
-                      'border-[#89CFF0] bg-[#E8F3FE] text-[#0B68BE] hover:bg-[#DCEEFF] active:bg-[#D3E9FC]',
-                  )}
-                >
-                  {t('settings.changeDefaultVehicle', {
-                    defaultValue: 'Change default vehicle',
-                  })}
-                </Link>
-                {hasDefaultVehicle ? (
-                  <button
-                    type="button"
-                    disabled={isRemovingDefault}
-                    onClick={() => void handleRemoveDefaultVehicle()}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isRemovingDefault
-                      ? t('settings.removing', { defaultValue: 'Removing…' })
-                      : t('settings.removeDefault', { defaultValue: 'Remove default' })}
-                  </button>
-                ) : null}
-              </div>
-              {defaultVehicleError ? (
-                <p className="mt-2 text-xs font-medium text-rose-600">{defaultVehicleError}</p>
-              ) : null}
-            </div>
-          </div>
+            <span
+              className={cn(
+                'worker-accent-secondary max-w-[45%] shrink-0 truncate text-sm font-medium',
+                !isDark && 'text-[color:var(--worker-text-secondary)]',
+              )}
+            >
+              {defaultVehicleLabel ?? notSet}
+            </span>
+            <ChevronRight
+              className={cn(
+                'worker-accent-muted size-5 shrink-0',
+                !isDark && 'text-[color:var(--worker-text-muted)]',
+              )}
+              aria-hidden
+            />
+          </button>
+          {defaultVehicleError ? (
+            <p className="px-4 pb-3 text-xs font-medium text-rose-600">
+              {defaultVehicleError}
+            </p>
+          ) : null}
         </div>
+
+        <WorkerHomeDefaultVehicleSheet
+          open={vehicleSheetOpen}
+          vehicles={fleetVehicles}
+          selectedVehicleId={worker.defaultVehicleId ?? null}
+          isSaving={isSavingDefaultVehicle || isRemovingDefault}
+          onSelect={(vehicle) => {
+            void handleSelectDefaultVehicle(vehicle)
+          }}
+          onClear={() => {
+            void handleRemoveDefaultVehicle()
+          }}
+          onClose={() => {
+            if (!isSavingDefaultVehicle && !isRemovingDefault) {
+              setVehicleSheetOpen(false)
+            }
+          }}
+        />
 
         <div
           className={cn(
@@ -500,15 +575,7 @@ export default function WorkerSettingsPage() {
             aria-busy={isSavingLanguage}
             onClick={() => setLanguagePickerOpen(true)}
           >
-            <span
-              className={cn(
-                'worker-accent-icon-well flex size-9 shrink-0 items-center justify-center rounded-xl',
-                !isDark &&
-                  'bg-[color:var(--worker-primary-soft)] text-[color:var(--worker-primary)]',
-              )}
-            >
-              <Languages className="size-4" aria-hidden />
-            </span>
+            <SettingsRowIconBadge icon={Languages} isDark={isDark} />
             <span
               className={cn(
                 'worker-accent-title min-w-0 flex-1 text-left text-sm font-semibold',
@@ -556,68 +623,71 @@ export default function WorkerSettingsPage() {
 
         <div
           className={cn(
-            'worker-accent-divider border-t px-4 py-3.5',
+            'worker-accent-divider border-t',
             !isDark && 'border-[color:var(--worker-border)]',
           )}
         >
-          <p
-            className={cn(
-              'worker-accent-title text-sm font-semibold',
-              !isDark && 'text-[color:var(--worker-text)]',
-            )}
-          >
-            {t('settings.appearance', { defaultValue: 'Appearance' })}
-          </p>
-          <div
-            className={cn(
-              'mt-3 grid grid-cols-2 gap-1 rounded-2xl border p-1',
-              isDark
-                ? 'worker-accent-pill border-transparent'
-                : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)]',
-            )}
-            role="radiogroup"
-            aria-label={t('settings.appearance', { defaultValue: 'Appearance' })}
-          >
-            {(
-              [
-                {
-                  value: 'light' as const,
-                  label: t('settings.light', { defaultValue: 'Light' }),
-                  icon: Sun,
-                },
-                {
-                  value: 'dark' as const,
-                  label: t('settings.dark', { defaultValue: 'Dark' }),
-                  icon: Moon,
-                },
-              ] as const
-            ).map((option) => {
-              const selected = appearance === option.value
-              const Icon = option.icon
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-pressed={selected}
-                  onClick={() => handleAppearanceChange(option.value)}
-                  className={cn(
-                    'worker-appearance-option inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--worker-card)]',
-                    selected
-                      ? isDark
-                        ? 'bg-white/90 text-[#0b0d12] shadow-sm'
-                        : 'bg-[color:var(--worker-card)] text-[color:var(--worker-text)] shadow-sm'
-                      : isDark
-                        ? 'text-inherit opacity-80 hover:opacity-100'
-                        : 'text-[color:var(--worker-text-secondary)] hover:text-[color:var(--worker-text)]',
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {option.label}
-                </button>
-              )
-            })}
+          <div className="flex min-h-11 w-full min-w-0 items-center gap-2.5 worker-list-row">
+            <SettingsRowIconBadge icon={Sun} isDark={isDark} />
+            <span
+              className={cn(
+                'worker-accent-title min-w-0 flex-1 text-left text-sm font-semibold',
+                !isDark && 'text-[color:var(--worker-text)]',
+              )}
+            >
+              {t('settings.appearance', { defaultValue: 'Appearance' })}
+            </span>
+            <div
+              role="radiogroup"
+              aria-label={t('settings.appearance', { defaultValue: 'Appearance' })}
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center rounded-xl border p-0.5',
+                isDark
+                  ? 'worker-accent-pill border-transparent'
+                  : 'border-[color:var(--worker-border)] bg-[color:var(--worker-input)]',
+              )}
+            >
+              {(
+                [
+                  {
+                    value: 'light' as const,
+                    label: t('settings.light', { defaultValue: 'Light' }),
+                    icon: Sun,
+                  },
+                  {
+                    value: 'dark' as const,
+                    label: t('settings.dark', { defaultValue: 'Dark' }),
+                    icon: Moon,
+                  },
+                ] as const
+              ).map((option) => {
+                const selected = appearance === option.value
+                const Icon = option.icon
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-pressed={selected}
+                    onClick={() => handleAppearanceChange(option.value)}
+                    className={cn(
+                      'worker-appearance-option inline-flex h-7 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--worker-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--worker-card)]',
+                      selected
+                        ? isDark
+                          ? 'bg-white/90 text-[#0b0d12] shadow-sm'
+                          : 'bg-[color:var(--worker-primary)] text-white shadow-sm'
+                        : isDark
+                          ? 'text-inherit opacity-80 hover:opacity-100'
+                          : 'text-[color:var(--worker-text-secondary)] hover:text-[color:var(--worker-text)]',
+                    )}
+                  >
+                    <Icon className="size-3" aria-hidden />
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </section>

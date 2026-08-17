@@ -44,7 +44,13 @@ export function readWorkerAppearancePreference(
 /** Applies Worker Light/Dark appearance by toggling the scoped `worker-dark` class. */
 export function applyWorkerAppearance(theme: WorkerAppearance): void {
   if (typeof document === 'undefined') return
-  document.documentElement.classList.toggle(WORKER_DARK_CLASS, theme === 'dark')
+  const root = document.documentElement
+  root.classList.toggle(WORKER_DARK_CLASS, theme === 'dark')
+  // Worker Light is independent of Office/Admin theme. Strip `dark` so
+  // company Dark / iPhone system Dark cannot recolour Worker Light screens.
+  if (theme === 'light') {
+    root.classList.remove('dark')
+  }
 }
 
 /** Removes the Worker theme class from the document (call on Worker shell unmount). */

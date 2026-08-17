@@ -12,6 +12,8 @@ export type WorkerHomeDefaultVehicleSheetProps = {
   isSaving: boolean
   onSelect: (vehicle: Vehicle) => void
   onClose: () => void
+  /** Optional clear action for Settings. Home does not pass this. */
+  onClear?: () => void
 }
 
 /**
@@ -25,6 +27,7 @@ export function WorkerHomeDefaultVehicleSheet({
   isSaving,
   onSelect,
   onClose,
+  onClear,
 }: WorkerHomeDefaultVehicleSheetProps) {
   const { t } = useTranslation('worker')
   const titleId = useId()
@@ -120,7 +123,11 @@ export function WorkerHomeDefaultVehicleSheet({
           aria-label={t('home.activeVehiclesList', {
             defaultValue: 'Active powered company vehicles',
           })}
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          className={
+            onClear && selectedVehicleId
+              ? 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1'
+              : 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+          }
           style={{
             overflowY: 'auto',
             overscrollBehavior: 'contain',
@@ -146,6 +153,18 @@ export function WorkerHomeDefaultVehicleSheet({
             ))
           )}
         </div>
+        {onClear && selectedVehicleId ? (
+          <div className="shrink-0 border-t border-[color:var(--worker-border)] bg-[color:var(--worker-elevated)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={onClear}
+              className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-rose-300/80 bg-[color:var(--worker-card)] text-sm font-semibold text-rose-700 transition-colors hover:bg-[color:var(--worker-row-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {t('settings.removeDefault', { defaultValue: 'Remove default' })}
+            </button>
+          </div>
+        ) : null}
       </section>
     </div>,
     document.body,
